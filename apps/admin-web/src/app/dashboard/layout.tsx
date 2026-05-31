@@ -6,18 +6,17 @@ import { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
+// Demo nav: only pages that are fully wired to the backend are shown. Stub pages
+// (exams, timetable, library, events) are hidden until built so nothing reads "coming soon".
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard", icon: "📊" },
   { label: "Students", href: "/dashboard/students", icon: "👨‍🎓" },
   { label: "Staff", href: "/dashboard/staff", icon: "👩‍🏫" },
   { label: "Classes", href: "/dashboard/classes", icon: "🏫" },
+  { label: "AI Papers", href: "/dashboard/ai-papers", icon: "✨" },
   { label: "Attendance", href: "/dashboard/attendance", icon: "📋" },
-  { label: "Exams", href: "/dashboard/exams", icon: "📝" },
   { label: "Finance", href: "/dashboard/finance", icon: "💰" },
-  { label: "Timetable", href: "/dashboard/timetable", icon: "📅" },
   { label: "Notices", href: "/dashboard/notices", icon: "📢" },
-  { label: "Library", href: "/dashboard/library", icon: "📚" },
-  { label: "Events", href: "/dashboard/events", icon: "🎉" },
 ];
 
 export default function DashboardLayout({
