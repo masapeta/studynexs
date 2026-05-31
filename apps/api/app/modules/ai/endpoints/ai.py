@@ -6,14 +6,16 @@ teacher edit and APPROVE it (human-in-the-loop), then export. Tutor/grading/etc.
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, require_roles
+from app.db.models.ai_usage import AIUsage
 from app.db.models.question_paper import PaperStatus, QuestionPaper
 from app.db.models.school import School
 from app.modules.ai.schemas.question_paper import (
@@ -44,6 +46,38 @@ async def ai_health(
             "anthropic": bool(settings.ANTHROPIC_API_KEY),
             "openai": bool(settings.OPENAI_API_KEY),
         },
+    }
+
+
+# Conservative estimate of the manual time a teacher spends setting one paper.
+_MINUTES_SAVED_PER_PAPER = 45
+
+
+@router.get("/usage")
+async def ai_usage_summary(
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """School-facing AI value summary: papers generated + estimated teacher-hours saved.
+
+    Deliberately does NOT expose provider cost — that is our cost-of-goods (operator-only;
+    see scripts/ai_cost_report.py). Schools see value, never our margins.
+    """
+    school_id = uuid.UUID(current_user.school_id)
+    month_start = datetime.now(timezone.utc).replace(
+        day=1, hour=0, minute=0, second=0, microsecond=0
+    )
+    base = (
+        select(func.count())
+        .select_from(AIUsage)
+        .where(AIUsage.school_id == school_id, AIUsage.feature == "question_paper")
+    )
+    total = await db.scalar(base) or 0
+    this_month = await db.scalar(base.where(AIUsage.created_at >= month_start)) or 0
+    return {
+        "papers_total": total,
+        "papers_this_month": this_month,
+        "est_hours_saved": round(total * _MINUTES_SAVED_PER_PAPER / 60, 1),
     }
 
 

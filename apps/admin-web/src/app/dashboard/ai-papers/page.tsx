@@ -48,6 +48,7 @@ export default function AiPapersPage() {
   const [paper, setPaper] = useState<Paper | null>(null);
   const [showAnswers, setShowAnswers] = useState(false);
   const [recent, setRecent] = useState<any[]>([]);
+  const [usage, setUsage] = useState<any>(null);
 
   useEffect(() => {
     api("/api/v1/academic/classes?page_size=100")
@@ -58,6 +59,7 @@ export default function AiPapersPage() {
       })
       .catch((e) => console.error(e));
     loadRecent();
+    api("/api/v1/ai/usage").then(setUsage).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -200,6 +202,32 @@ export default function AiPapersPage() {
           before it reaches students.
         </p>
       </div>
+
+      {usage && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
+          <div className="card" style={{ display: "flex", alignItems: "center", gap: 16, padding: 20 }}>
+            <div className="stat-icon-container icon-blue">📄</div>
+            <div>
+              <div className="stat-label">Papers generated</div>
+              <div style={{ fontSize: 24, fontWeight: 700 }}>{usage.papers_total}</div>
+            </div>
+          </div>
+          <div className="card" style={{ display: "flex", alignItems: "center", gap: 16, padding: 20 }}>
+            <div className="stat-icon-container icon-green">🗓️</div>
+            <div>
+              <div className="stat-label">This month</div>
+              <div style={{ fontSize: 24, fontWeight: 700 }}>{usage.papers_this_month}</div>
+            </div>
+          </div>
+          <div className="card" style={{ display: "flex", alignItems: "center", gap: 16, padding: 20 }}>
+            <div className="stat-icon-container icon-purple">⏱️</div>
+            <div>
+              <div className="stat-label">Est. teacher-hours saved</div>
+              <div style={{ fontSize: 24, fontWeight: 700 }}>~{usage.est_hours_saved}</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Generator form */}
       <div className="card" style={{ marginBottom: 24, padding: 24 }}>
