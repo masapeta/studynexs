@@ -6,8 +6,8 @@ import { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
-// Demo nav: only pages that are fully wired to the backend are shown. Stub pages
-// (exams, timetable, library, events) are hidden until built so nothing reads "coming soon".
+// Demo nav: only pages fully wired to the backend are shown. Remaining stub pages
+// (timetable, library, events) are hidden until built so nothing reads "coming soon".
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard", icon: "📊" },
   { label: "Students", href: "/dashboard/students", icon: "👨‍🎓" },
@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { label: "Classes", href: "/dashboard/classes", icon: "🏫" },
   { label: "AI Papers", href: "/dashboard/ai-papers", icon: "✨" },
   { label: "Attendance", href: "/dashboard/attendance", icon: "📋" },
+  { label: "Exams", href: "/dashboard/exams", icon: "📝" },
   { label: "Finance", href: "/dashboard/finance", icon: "💰" },
   { label: "Notices", href: "/dashboard/notices", icon: "📢" },
 ];
