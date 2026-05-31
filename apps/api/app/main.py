@@ -117,6 +117,7 @@ def create_app() -> FastAPI:
     from app.modules.fees.endpoints.fee import router as fee_router
     from app.modules.files.endpoints.file import router as file_router
     from app.modules.notifications.endpoints.notification import router as notif_router
+    from app.modules.school.endpoints.school import router as school_router
     from app.modules.school_ops.endpoints.ops import router as ops_router
     from app.modules.timetable.endpoints.timetable import router as timetable_router
     from app.modules.users.endpoints.users import router as users_router
@@ -133,6 +134,7 @@ def create_app() -> FastAPI:
     app.include_router(notif_router, prefix=f"{prefix}/notifications", tags=["notifications"])
     app.include_router(file_router, prefix=f"{prefix}/files", tags=["files"])
     app.include_router(ai_router, prefix=f"{prefix}/ai", tags=["ai"])
+    app.include_router(school_router, prefix=f"{prefix}/school", tags=["school"])
 
     return app
 
