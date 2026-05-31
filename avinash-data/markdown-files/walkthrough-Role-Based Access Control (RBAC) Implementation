@@ -1,0 +1,24 @@
+# Role-Based Access Control (RBAC) Implementation
+
+The frontend of the Staff Portal is now fully equipped with Role-Based Access Control to ensure users only interact with authorized modules.
+
+## Summary of Changes
+
+### 1. Sidebar Navigation Filtering
+The `Sidebar.tsx` component now dynamically hides navigation items based on the logged-in user's role.
+- **Teachers**: See `Dashboard`, `Attendance`, and `Students`.
+- **Operations**: See `Dashboard`, `Attendance`, `Students`, and `Fees`.
+- **Class Incharge**: See `Dashboard`, `Attendance`, `Students`, `Fees`, and `Teachers`.
+- **Admin & Super Admin**: See all of the above, plus `User Management` and `Settings`.
+
+### 2. Layout Route Guards
+In addition to hiding links, we added a hard guard to `src/app/(dashboard)/layout.tsx`. If a Teacher attempts to bypass the UI by manually typing `http://localhost:3000/fees` into the URL bar, they will be immediately redirected back to their Dashboard.
+
+### 3. User Role Management Modal
+Admins can now easily alter user roles.
+- On the **User Management** page (`/users`), clicking the **"Edit"** button next to any user triggers a clean popup modal.
+- Admins can select a new role from a dropdown (Admin, Teacher, Operations, Parent, Student, etc.) and save it.
+- This directly calls the `api.users.update` backend endpoint and dynamically updates the table UI without requiring a page reload.
+
+## Backend Dependencies
+As previously added to our plan, the **Academic Service** will need an update to automatically scope the `GET /students` request to only return students explicitly mapped to the requesting Teacher. The frontend is prepared to receive this scoped data natively once the backend update is performed!

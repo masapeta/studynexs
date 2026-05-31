@@ -1,0 +1,56 @@
+# ── Python ──
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.venv/
+venv/
+env/
+
+# ── Environment ──
+.env
+.env.local
+.env.production
+!.env.example
+
+# ── IDE ──
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── OS ──
+.DS_Store
+Thumbs.db
+
+# ── Node (frontends) ──
+node_modules/
+.next/
+out/
+
+# ── Docker ──
+*.log
+
+# ── Testing ──
+.coverage
+htmlcov/
+.pytest_cache/
+
+# ── Alembic ──
+alembic/versions/__pycache__/
+
+# ── Type/lint caches ──
+.mypy_cache/
+.ruff_cache/
+
+# ── Runtime / generated ──
+uploads/
+memory_samples.jsonl
+apps/api/scripts/seed_credentials.json
+
+# ── Local agent & editor settings ──
+.claude/settings.local.json

@@ -1,0 +1,65 @@
+"""Examination models — Exam definitions and student marks."""
+from __future__ import annotations
+
+import enum
+import uuid
+from datetime import date
+
+from sqlalchemy import Boolean, Date, Enum, ForeignKey, Index, Numeric, String, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.db.models.base import BaseModel
+
+
+class ExamType(str, enum.Enum):
+    UNIT_TEST = "unit_test"
+    MID_TERM = "mid_term"
+    FINAL = "final"
+    ASSIGNMENT = "assignment"
+    QUIZ = "quiz"
+
+
+class Exam(BaseModel):
+    __tablename__ = "exams"
+
+    school_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("schools.id"), nullable=False
+    )
+    class_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("classes.id"), nullable=False
+    )
+    subject_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("subjects.id"), nullable=False
+    )
+    exam_type: Mapped[ExamType] = mapped_column(Enum(ExamType), nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    total_marks: Mapped[float] = mapped_column(Numeric(6, 2), nullable=False)
+    date: Mapped[date | None] = mapped_column(Date)
+    created_by: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
+    )
+
+
+class ExamMark(BaseModel):
+    __tablename__ = "exam_marks"
+
+    school_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("schools.id"), nullable=False
+    )
+    exam_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("exams.id"), nullable=False
+    )
+    student_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("students.id"), nullable=False
+    )
+    marks_obtained: Mapped[float] = mapped_column(Numeric(6, 2), nullable=False)
+    grade_letter: Mapped[str | None] = mapped_column(String(5))
+    remarks: Mapped[str | None] = mapped_column(Text)
+    ai_feedback: Mapped[str | None] = mapped_column(Text)
+    ai_graded: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    __table_args__ = (
+        UniqueConstraint("exam_id", "student_id", name="uq_exam_student"),
+        Index("ix_exam_marks_school_student", "school_id", "student_id"),
+    )

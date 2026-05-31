@@ -1,0 +1,82 @@
+name: studynexs-platform
+
+services:
+  # ── PostgreSQL ───────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: studynexs-postgres
+    environment:
+      POSTGRES_USER: studynexs
+      POSTGRES_PASSWORD: studynexs_dev
+      POSTGRES_DB: studynexs
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U studynexs"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Redis ────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: studynexs-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Qdrant (Vector DB) ───────────────────────────────────────
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: studynexs-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrantdata:/qdrant/storage
+
+  # ── StudyNexs API ─────────────────────────────────────────────
+  api:
+    image: studynexs-platform/api:dev
+    build:
+      context: ../../apps/api
+      dockerfile: Dockerfile
+    container_name: studynexs-api
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - POSTGRES_HOST=postgres
+      - REDIS_URL=redis://redis:6379/0
+      - QDRANT_HOST=qdrant
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ../../apps/api:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # ── Nginx (API Gateway) ─────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: studynexs-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  qdrantdata:

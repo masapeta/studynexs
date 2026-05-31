@@ -1,0 +1,139 @@
+"""
+StudyNexs Platform — FastAPI Application Entry Point
+Creates the app, mounts CORS, routers, health checks.
+"""
+from __future__ import annotations
+
+import asyncio
+import time
+from contextlib import asynccontextmanager, suppress
+
+import structlog
+from fastapi import FastAPI, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.core.config import Environment, get_settings
+
+settings = get_settings()
+logger = structlog.get_logger()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup/shutdown lifecycle."""
+    logger.info("StudyNexs API starting", environment=settings.ENVIRONMENT.value)
+
+    outbox_task: asyncio.Task | None = None
+    if (
+        settings.OUTBOX_WORKER_ENABLED
+        and settings.ENVIRONMENT not in (Environment.TESTING,)
+    ):
+        # Register outbox handlers (side effect on import)
+        import app.workers.outbox_worker  # noqa: F401
+        from app.workers.outbox_worker import run_worker
+
+        outbox_task = asyncio.create_task(
+            run_worker(poll_interval=settings.OUTBOX_POLL_INTERVAL_SECONDS)
+        )
+        logger.info("outbox_worker_embedded_started")
+
+    yield
+
+    if outbox_task:
+        outbox_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await outbox_task
+        logger.info("outbox_worker_embedded_stopped")
+
+    logger.info("StudyNexs API shutting down")
+
+
+def create_app() -> FastAPI:
+    """Application factory."""
+    app = FastAPI(
+        title=settings.APP_NAME,
+        version=settings.APP_VERSION,
+        docs_url="/docs" if settings.is_development else None,
+        redoc_url="/redoc" if settings.is_development else None,
+        lifespan=lifespan,
+    )
+
+    # ── CORS ─────────────────────────────────────────────────────
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.ALLOWED_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # BaseHTTPMiddleware breaks async DB under pytest; skip in testing.
+    if settings.ENVIRONMENT != Environment.TESTING:
+        from app.core.audit_middleware import AuditMiddleware
+        from app.core.metrics_middleware import MetricsMiddleware
+        from app.core.tenant_middleware import TenantMiddleware
+
+        app.add_middleware(AuditMiddleware)
+        app.add_middleware(TenantMiddleware)
+        app.add_middleware(MetricsMiddleware)
+
+    # ── Health Checks ────────────────────────────────────────────
+    @app.get("/health", tags=["system"])
+    async def health():
+        return {"status": "healthy", "service": settings.APP_NAME}
+
+    @app.get("/ready", tags=["system"])
+    async def readiness():
+        """Readiness probe — checks DB and Redis connectivity."""
+        from app.core.database import engine
+        from app.core.dependencies import get_redis
+
+        checks = {}
+        try:
+            async with engine.connect() as conn:
+                await conn.execute(__import__("sqlalchemy").text("SELECT 1"))
+            checks["database"] = "ok"
+        except Exception as e:
+            checks["database"] = f"error: {e}"
+
+        try:
+            r = await get_redis()
+            await r.ping()
+            checks["redis"] = "ok"
+        except Exception as e:
+            checks["redis"] = f"error: {e}"
+
+        all_ok = all(v == "ok" for v in checks.values())
+        return {"status": "ready" if all_ok else "degraded", "checks": checks}
+
+    # ── Mount Routers ────────────────────────────────────────────
+    prefix = settings.API_V1_PREFIX
+
+    from app.modules.auth.endpoints.auth import router as auth_router
+    from app.modules.users.endpoints.users import router as users_router
+    from app.modules.academic.endpoints.academic import router as academic_router
+    from app.modules.attendance.endpoints.attendance import router as attendance_router
+    from app.modules.examinations.endpoints.exam import router as exam_router
+    from app.modules.fees.endpoints.fee import router as fee_router
+    from app.modules.timetable.endpoints.timetable import router as timetable_router
+    from app.modules.communications.endpoints.notice import router as notice_router
+    from app.modules.school_ops.endpoints.ops import router as ops_router
+    from app.modules.notifications.endpoints.notification import router as notif_router
+    from app.modules.files.endpoints.file import router as file_router
+
+    app.include_router(auth_router, prefix=f"{prefix}/auth", tags=["auth"])
+    app.include_router(users_router, prefix=f"{prefix}/users", tags=["users"])
+    app.include_router(academic_router, prefix=f"{prefix}/academic", tags=["academic"])
+    app.include_router(attendance_router, prefix=f"{prefix}/attendance", tags=["attendance"])
+    app.include_router(exam_router, prefix=f"{prefix}/exams", tags=["examinations"])
+    app.include_router(fee_router, prefix=f"{prefix}/fees", tags=["fees"])
+    app.include_router(timetable_router, prefix=f"{prefix}/timetable", tags=["timetable"])
+    app.include_router(notice_router, prefix=f"{prefix}/notices", tags=["communications"])
+    app.include_router(ops_router, prefix=f"{prefix}/ops", tags=["school-operations"])
+    app.include_router(notif_router, prefix=f"{prefix}/notifications", tags=["notifications"])
+    app.include_router(file_router, prefix=f"{prefix}/files", tags=["files"])
+
+    return app
+
+
+app = create_app()
