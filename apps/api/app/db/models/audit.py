@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import ForeignKey, Index, String, Text
+from sqlalchemy import ForeignKey, Index, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -24,6 +24,7 @@ class AuditLog(BaseModel):
     resource_id: Mapped[str | None] = mapped_column(String(50))
     details: Mapped[dict | None] = mapped_column(JSONB)
     ip_address: Mapped[str | None] = mapped_column(String(45))
+    user_agent: Mapped[str | None] = mapped_column(String(300))
 
     __table_args__ = (
         Index("ix_audit_school_action", "school_id", "action"),

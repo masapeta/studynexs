@@ -121,7 +121,7 @@ class FeeService:
             student_id=student.id,
             student_name=student_user.full_name,
             class_name=f"{cls.grade}-{cls.section}",
-            amount_paid=float(pay_amount),
+            amount_paid=pay_amount,
             payment_mode=payment_mode,
             fee_type=fee_struct.fee_type.value.title(),
             paid_at=now,
@@ -137,7 +137,7 @@ class FeeService:
         await self.db.flush()
 
         new_paid = already_paid + pay_amount
-        fee_record.paid_amount = float(new_paid)
+        fee_record.paid_amount = new_paid
         fee_record.paid_at = now
         fee_record.payment_mode = payment_mode
         fee_record.razorpay_payment_id = razorpay_payment_id

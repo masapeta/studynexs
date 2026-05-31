@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import enum
 from functools import lru_cache
-from typing import Any
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -136,6 +135,14 @@ class Settings(BaseSettings):
     QDRANT_PORT: int = 6333
     QDRANT_API_KEY: str = ""
 
+    # ── AI / LLM Gateway (provider-agnostic; benchmark before committing) ──
+    GEMINI_API_KEY: str = ""
+    ANTHROPIC_API_KEY: str = ""
+    OPENAI_API_KEY: str = ""
+    AI_DEFAULT_PROVIDER: str = "gemini"  # default only; benchmark decides the real one
+    AI_DEFAULT_MODEL: str = ""  # empty → factory picks the provider's default model
+    AI_REQUEST_TIMEOUT_SECONDS: float = 60.0
+
     # ── Derived Properties ───────────────────────────────────────
     @property
     def is_development(self) -> bool:
@@ -175,7 +182,7 @@ class Settings(BaseSettings):
 
         if errors:
             raise ValueError(
-                f"FATAL: Production configuration errors:\n"
+                "FATAL: Production configuration errors:\n"
                 + "\n".join(f"  • {e}" for e in errors)
             )
 

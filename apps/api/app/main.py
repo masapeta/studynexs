@@ -5,11 +5,10 @@ Creates the app, mounts CORS, routers, health checks.
 from __future__ import annotations
 
 import asyncio
-import time
 from contextlib import asynccontextmanager, suppress
 
 import structlog
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import Environment, get_settings
@@ -109,17 +108,18 @@ def create_app() -> FastAPI:
     # ── Mount Routers ────────────────────────────────────────────
     prefix = settings.API_V1_PREFIX
 
-    from app.modules.auth.endpoints.auth import router as auth_router
-    from app.modules.users.endpoints.users import router as users_router
     from app.modules.academic.endpoints.academic import router as academic_router
+    from app.modules.ai.endpoints.ai import router as ai_router
     from app.modules.attendance.endpoints.attendance import router as attendance_router
+    from app.modules.auth.endpoints.auth import router as auth_router
+    from app.modules.communications.endpoints.notice import router as notice_router
     from app.modules.examinations.endpoints.exam import router as exam_router
     from app.modules.fees.endpoints.fee import router as fee_router
-    from app.modules.timetable.endpoints.timetable import router as timetable_router
-    from app.modules.communications.endpoints.notice import router as notice_router
-    from app.modules.school_ops.endpoints.ops import router as ops_router
-    from app.modules.notifications.endpoints.notification import router as notif_router
     from app.modules.files.endpoints.file import router as file_router
+    from app.modules.notifications.endpoints.notification import router as notif_router
+    from app.modules.school_ops.endpoints.ops import router as ops_router
+    from app.modules.timetable.endpoints.timetable import router as timetable_router
+    from app.modules.users.endpoints.users import router as users_router
 
     app.include_router(auth_router, prefix=f"{prefix}/auth", tags=["auth"])
     app.include_router(users_router, prefix=f"{prefix}/users", tags=["users"])
@@ -132,6 +132,7 @@ def create_app() -> FastAPI:
     app.include_router(ops_router, prefix=f"{prefix}/ops", tags=["school-operations"])
     app.include_router(notif_router, prefix=f"{prefix}/notifications", tags=["notifications"])
     app.include_router(file_router, prefix=f"{prefix}/files", tags=["files"])
+    app.include_router(ai_router, prefix=f"{prefix}/ai", tags=["ai"])
 
     return app
 
