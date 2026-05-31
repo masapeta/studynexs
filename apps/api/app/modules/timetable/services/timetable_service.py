@@ -3,7 +3,7 @@
 import uuid
 from datetime import time
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenant_scope import TenantScope

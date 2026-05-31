@@ -2,9 +2,8 @@
 
 import uuid
 from datetime import time as time_type
-from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.db.models.timetable import DayOfWeek
 
@@ -28,5 +27,11 @@ class TimetableSlotOut(BaseModel):
     period_number: int
     start_time: str
     end_time: str
+
+    @field_validator("start_time", "end_time", mode="before")
+    @classmethod
+    def _coerce_time(cls, v):
+        # DB stores these as datetime.time; serialize to "HH:MM" for the API.
+        return v.strftime("%H:%M") if isinstance(v, time_type) else v
 
     model_config = ConfigDict(from_attributes=True)
