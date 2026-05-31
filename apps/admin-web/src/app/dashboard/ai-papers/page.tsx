@@ -38,7 +38,7 @@ export default function AiPapersPage() {
   const [classId, setClassId] = useState("");
   const [subjectId, setSubjectId] = useState("");
   const [topics, setTopics] = useState("");
-  const [totalMarks, setTotalMarks] = useState(100);
+  const [totalMarks, setTotalMarks] = useState(80);
   const [duration, setDuration] = useState(180);
   const [difficulty, setDifficulty] = useState("balanced");
 

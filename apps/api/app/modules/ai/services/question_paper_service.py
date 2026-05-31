@@ -28,25 +28,27 @@ _DIFFICULTY_MIX = {
 
 
 def _ssc_blueprint(total_marks: int) -> list[dict]:
-    """A believable SSC-style section plan (tuned for 100 marks; scaled otherwise).
+    """Authentic Telangana (TSBIE/BSE) SSC Class-10 paper structure — 80 marks.
 
-    Approximate — replace with the board's official blueprint or a school sample for exact format.
+    Modelled on real March-2024 SSC Maths papers: Part-A (Sections I-III, 60 marks) +
+    Part-B objective (20 marks). `answer_any` marks an internal-choice section (print N,
+    answer fewer). Non-standard totals fall back to a scaled version.
     """
-    base = [
-        {"title": "Section A", "marks_per_q": 1, "count": 12, "type": "mcq",
-         "instructions": "Answer all questions. Each question carries 1 mark."},
-        {"title": "Section B", "marks_per_q": 2, "count": 8, "type": "short",
-         "instructions": "Answer all questions. Each question carries 2 marks."},
-        {"title": "Section C", "marks_per_q": 4, "count": 8, "type": "long",
-         "instructions": "Answer all questions. Each question carries 4 marks."},
-        {"title": "Section D", "marks_per_q": 8, "count": 5, "type": "very_long",
-         "instructions": "Internal choice provided. Each question carries 8 marks."},
+    standard = [
+        {"title": "Section I", "marks_per_q": 2, "count": 6, "type": "very_short",
+         "instructions": "Answer ALL questions. Each question carries 2 marks."},
+        {"title": "Section II", "marks_per_q": 4, "count": 6, "type": "short",
+         "instructions": "Answer ALL questions. Each question carries 4 marks."},
+        {"title": "Section III", "marks_per_q": 6, "count": 6, "answer_any": 4, "type": "long",
+         "instructions": "Answer ANY FOUR of the following six questions. Each carries 6 marks."},
+        {"title": "Part-B (Objective)", "marks_per_q": 1, "count": 20, "type": "mcq",
+         "instructions": "Answer ALL. Each carries 1 mark; write the correct option (A/B/C/D)."},
     ]
-    base_total = sum(s["marks_per_q"] * s["count"] for s in base)  # 100
-    if total_marks == base_total:
-        return base
-    factor = total_marks / base_total
-    return [{**s, "count": max(1, round(s["count"] * factor))} for s in base]
+    standard_total = sum(s["marks_per_q"] * s.get("answer_any", s["count"]) for s in standard)
+    if total_marks in (0, standard_total):
+        return standard
+    factor = total_marks / standard_total
+    return [{**s, "count": max(1, round(s["count"] * factor))} for s in standard]
 
 
 def _build_messages(*, board, grade, subject, topics, total_marks, duration, difficulty, plan):
@@ -145,6 +147,7 @@ async def generate_paper(
     grade = cls.grade
 
     plan = _ssc_blueprint(total_marks)
+    official_total = sum(s["marks_per_q"] * s.get("answer_any", s["count"]) for s in plan)
     messages = _build_messages(
         board=board, grade=grade, subject=subject.name, topics=topics,
         total_marks=total_marks, duration=duration_minutes, difficulty=difficulty, plan=plan,
@@ -183,7 +186,7 @@ async def generate_paper(
         board=board,
         grade=grade,
         subject_name=subject.name,
-        total_marks=Decimal(str(computed_total or total_marks)),
+        total_marks=Decimal(str(official_total)),
         duration_minutes=duration_minutes,
         topics=topics or None,
         difficulty_mix=_DIFFICULTY_MIX.get(difficulty, _DIFFICULTY_MIX["balanced"]),
