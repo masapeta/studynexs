@@ -168,18 +168,34 @@ class AuthService:
         return f"{settings.REDIS_REFRESH_JTI_PREFIX}{user_id}:{sid}"
 
     async def _store_refresh_jti(self, user_id: str, sid: str, jti: str) -> None:
+        # Value is "<current_jti>|<prev_jti>"; a fresh login has no predecessor.
         ttl = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600
-        await self.redis.setex(self._refresh_key(user_id, sid), ttl, jti)
+        await self.redis.setex(self._refresh_key(user_id, sid), ttl, f"{jti}|")
 
-    # Atomic compare-and-swap: only rotate if the stored jti still matches the presented one.
-    # Lock-free, so each device's session rotates independently (no cross-device contention).
+    # Atomic compare-and-swap with a one-rotation grace. The session value is
+    # "<current_jti>|<prev_jti>". Rotation is allowed if the presented jti is the current
+    # jti OR the immediate predecessor — the predecessor case is the benign multi-tab race
+    # (two tabs share the cookie, each fires a refresh with the same jti; one wins, the other
+    # would otherwise look like reuse). Lock-free, so sessions on different devices (different
+    # keys) never contend. Returns: 1 = rotated, 0 = unknown/logged-out session (key gone,
+    # nothing to revoke), -1 = a jti older than the grace → genuine reuse, revoke the session.
     _ROTATE_LUA = """
-    local cur = redis.call('GET', KEYS[1])
-    if cur == false or cur ~= ARGV[1] then
-        return 0
+    local v = redis.call('GET', KEYS[1])
+    if v == false then return 0 end
+    local cur, prev
+    local sep = string.find(v, '|', 1, true)
+    if sep == nil then
+        cur = v
+        prev = ''
+    else
+        cur = string.sub(v, 1, sep - 1)
+        prev = string.sub(v, sep + 1)
     end
-    redis.call('SET', KEYS[1], ARGV[2], 'EX', tonumber(ARGV[3]))
-    return 1
+    if ARGV[1] == cur or (prev ~= '' and ARGV[1] == prev) then
+        redis.call('SET', KEYS[1], ARGV[2] .. '|' .. cur, 'EX', tonumber(ARGV[3]))
+        return 1
+    end
+    return -1
     """
 
     async def rotate_refresh_session(
@@ -188,10 +204,11 @@ class AuthService:
         """
         Rotate one session's refresh token, lock-free, with reuse detection.
 
-        The presented jti must match what is stored for ``(user, sid)``. If it doesn't —
-        a replayed/stale token, or this session was logged out — we revoke that session and
-        raise. The swap is a single atomic Lua CAS, so two concurrent rotations can't both
-        win and silently orphan a token.
+        The presented jti must be the session's current jti or its immediate predecessor
+        (a one-rotation grace that lets two browser tabs sharing the cookie both refresh
+        without one revoking the other). A jti older than that is treated as reuse of a stolen
+        chain and revokes the session. An unknown/logged-out session just 401s — its key is
+        already gone, so there is nothing to revoke.
         """
         key = self._refresh_key(str(user.id), sid)
         ttl = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600
@@ -213,20 +230,20 @@ class AuthService:
             user_id=str(user.id), school_id=str(user.school_id), sid=sid
         )
 
-        won = int(await self.redis.eval(self._ROTATE_LUA, 1, key, presented_jti, new_jti, ttl))
-        if not won:
-            # The presented jti no longer matches the session's stored jti: it was already
-            # rotated away (a replay/stolen chain) or the session was logged out. Revoke the
-            # whole session so the chain can't continue. The atomic CAS is what guarantees a
-            # rotated token is dead immediately — so we deliberately do NOT blacklist on the
-            # success path (that would let a replay short-circuit here and skip this revoke).
-            # A benign concurrent double-submit also lands here; acceptable for the in-memory
-            # access-token / single-flight-refresh client this serves.
-            await self.blacklist_token(presented_jti, ttl)
-            await self.redis.delete(key)
-            raise ValueError("Refresh token reuse detected")
-
-        return access_token, new_refresh
+        result = int(await self.redis.eval(self._ROTATE_LUA, 1, key, presented_jti, new_jti, ttl))
+        if result == 1:
+            # Rotated (current jti, or the predecessor within the grace window). We do NOT
+            # blacklist the presented jti: the atomic CAS already makes a superseded token
+            # unusable, and blacklisting it would break the legitimate predecessor grace.
+            return access_token, new_refresh
+        if result == 0:
+            # Session no longer exists (logged out / expired). Key is gone — nothing to revoke.
+            raise ValueError("Session expired, please log in again")
+        # result == -1: a jti older than the one-rotation grace → reuse of a stolen chain.
+        # Revoke the whole session so it can't continue.
+        await self.blacklist_token(presented_jti, ttl)
+        await self.redis.delete(key)
+        raise ValueError("Refresh token reuse detected")
 
     async def revoke_session(self, user_id: str, sid: str) -> None:
         """Log out a single device/session (drop its refresh slot)."""

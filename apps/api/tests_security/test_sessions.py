@@ -4,6 +4,8 @@ Two independent devices (separate cookie jars) each get their own rotation chain
 replaying a stale token revokes only that one session — the other keeps working. The
 pre-M8 single per-user slot would have let the second login clobber the first.
 """
+import asyncio
+
 import pytest
 
 from app.core.config import get_settings
@@ -51,17 +53,54 @@ async def test_reuse_revokes_only_that_session(make_client):
     await _login(a, info)
     await _login(b, info)
 
-    stale_a = a.cookies.get(COOKIE)          # A's first refresh token
-    r1 = await _refresh(a)
-    assert r1.status_code == 200, r1.text
-    current_a = a.cookies.get(COOKIE)        # A's rotated (currently-valid) token
+    old_a = a.cookies.get(COOKIE)            # token gen 0
+    assert (await _refresh(a)).status_code == 200   # gen 0 -> gen 1
+    assert (await _refresh(a)).status_code == 200   # gen 1 -> gen 2; gen 0 now beyond grace
+    current_a = a.cookies.get(COOKIE)        # gen 2 (currently valid)
 
     probe = factory()
-    replay = await _refresh(probe, token=stale_a)
-    assert replay.status_code == 401         # stale jti != stored → reuse detected
+    replay = await _refresh(probe, token=old_a)
+    assert replay.status_code == 401         # 2 generations old → reuse, not the grace window
 
     dead = await _refresh(probe, token=current_a)
     assert dead.status_code == 401           # A's whole session was revoked by the reuse
 
     rb = await _refresh(b)
     assert rb.status_code == 200, rb.text    # B is a different sid → untouched
+
+
+@pytest.mark.asyncio
+async def test_predecessor_within_grace_is_not_reuse(make_client):
+    """The immediate predecessor (one rotation back) is the benign multi-tab case: it must
+    still rotate, not revoke."""
+    factory, info = make_client
+    a = factory()
+    await _login(a, info)
+
+    gen0 = a.cookies.get(COOKIE)
+    assert (await _refresh(a)).status_code == 200   # gen0 -> gen1
+    probe = factory()
+    again = await _refresh(probe, token=gen0)       # replay the immediate predecessor
+    assert again.status_code == 200                 # accepted within the one-rotation grace
+    # session is alive: the current token still refreshes
+    assert (await _refresh(a)).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_concurrent_same_session_refresh_does_not_self_revoke(make_client):
+    """Two tabs share the cookie and fire a refresh with the SAME token at once. Both must
+    succeed (grace) and the session must stay alive — the bug was the loser deleting the
+    winner's freshly-minted key and logging the session out."""
+    factory, info = make_client
+    a = factory()
+    await _login(a, info)
+    token = a.cookies.get(COOKIE)
+
+    p1, p2 = factory(), factory()
+    r1, r2 = await asyncio.gather(
+        _refresh(p1, token=token), _refresh(p2, token=token)
+    )
+    assert {r1.status_code, r2.status_code} == {200}, (r1.status_code, r2.status_code)
+    # The session survived: a token issued by the race (now current/predecessor) still works.
+    # p1's jar holds the token from its successful refresh.
+    assert (await _refresh(p1)).status_code == 200
