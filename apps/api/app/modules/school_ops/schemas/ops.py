@@ -54,3 +54,17 @@ class TransportAssignRequest(BaseModel):
     student_id: uuid.UUID
     route_id: uuid.UUID
     boarding_stop: Optional[str] = None
+
+
+class ResidentialBlockCreate(BaseModel):
+    block_name: str = Field(..., max_length=100)
+    block_gender: str = "mixed"
+    warden_name: Optional[str] = None
+    warden_contact: Optional[str] = None
+    total_rooms: int = 0
+
+
+class ResidentialAllocateRequest(BaseModel):
+    student_id: uuid.UUID
+    block_id: uuid.UUID
+    room_number: Optional[str] = None

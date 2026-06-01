@@ -11,6 +11,7 @@ from app.core.tenant_scope import TenantScope
 from app.db.models.academic import Class, Subject, TeacherSubjectMapping
 from app.db.models.attendance import Attendance
 from app.db.models.fee import StudentFeeRecord
+from app.db.models.residential import ResidentialBlock, RoomAllocation
 from app.db.models.school_ops import StudentTransport, TransportRoute
 from app.db.models.student import Parent, Relationship, Student, StudentParentMap
 from app.db.models.user import User
@@ -302,6 +303,26 @@ class AcademicService:
                     "vehicle_number": route.vehicle_number,
                 }
 
+        ra = (
+            await self.db.execute(
+                select(RoomAllocation).where(RoomAllocation.student_id == student_id)
+            )
+        ).scalar_one_or_none()
+        residential = None
+        if ra:
+            block = (
+                await self.db.execute(
+                    select(ResidentialBlock).where(ResidentialBlock.id == ra.block_id)
+                )
+            ).scalar_one_or_none()
+            if block:
+                residential = {
+                    "block_name": block.block_name,
+                    "room_number": ra.room_number,
+                    "warden_name": block.warden_name,
+                    "warden_contact": block.warden_contact,
+                }
+
         dob = student.date_of_birth.isoformat() if student.date_of_birth else None
         adm = student.admission_date.isoformat() if student.admission_date else None
         return {
@@ -321,6 +342,7 @@ class AcademicService:
             "attendance": attendance,
             "fees": fees,
             "transport": transport,
+            "residential": residential,
         }
 
     # ── Teacher Mappings ─────────────────────────────────────────

@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenant_scope import TenantScope
+from app.db.models.residential import BlockGender, ResidentialBlock, RoomAllocation
 from app.db.models.school_ops import (
     Event,
     LibraryBook,
@@ -20,6 +21,8 @@ from app.db.models.user import User
 from app.modules.school_ops.schemas.ops import (
     EventCreate,
     LibraryBookCreate,
+    ResidentialAllocateRequest,
+    ResidentialBlockCreate,
     TransportAssignRequest,
     TransportRouteCreate,
 )
@@ -227,3 +230,118 @@ class SchoolOpsService:
         self.db.add(st)
         await self.db.flush()
         return st
+
+    # ── Residential ──────────────────────────────────────────────
+
+    async def list_residential_blocks(self, school_id: uuid.UUID) -> list[dict]:
+        blocks = (
+            await self.db.execute(
+                select(ResidentialBlock)
+                .where(ResidentialBlock.school_id == school_id)
+                .order_by(ResidentialBlock.block_name)
+            )
+        ).scalars().all()
+        block_ids = [b.id for b in blocks]
+        counts: dict = {}
+        if block_ids:
+            rows = (
+                await self.db.execute(
+                    select(RoomAllocation.block_id, func.count())
+                    .where(RoomAllocation.block_id.in_(block_ids))
+                    .group_by(RoomAllocation.block_id)
+                )
+            ).all()
+            counts = {bid: c for bid, c in rows}
+        return [
+            {
+                "id": str(b.id), "block_name": b.block_name,
+                "block_gender": b.block_gender.value if b.block_gender else "mixed",
+                "warden_name": b.warden_name, "warden_contact": b.warden_contact,
+                "total_rooms": b.total_rooms, "is_active": b.is_active,
+                "resident_count": counts.get(b.id, 0),
+            }
+            for b in blocks
+        ]
+
+    async def create_block(
+        self, school_id: uuid.UUID, data: ResidentialBlockCreate
+    ) -> ResidentialBlock:
+        try:
+            gender = BlockGender(data.block_gender)
+        except ValueError:
+            gender = BlockGender.MIXED
+        block = ResidentialBlock(
+            school_id=school_id, block_name=data.block_name, block_gender=gender,
+            warden_name=data.warden_name, warden_contact=data.warden_contact,
+            total_rooms=data.total_rooms,
+        )
+        self.db.add(block)
+        await self.db.flush()
+        return block
+
+    async def list_block_residents(
+        self, school_id: uuid.UUID, block_id: uuid.UUID
+    ) -> list[dict]:
+        block = (
+            await self.db.execute(
+                select(ResidentialBlock).where(
+                    ResidentialBlock.id == block_id, ResidentialBlock.school_id == school_id
+                )
+            )
+        ).scalar_one_or_none()
+        if not block:
+            raise ValueError("Block not found")
+        rows = (
+            await self.db.execute(
+                select(RoomAllocation, User.full_name, Student.admission_no)
+                .join(Student, Student.id == RoomAllocation.student_id)
+                .join(User, User.id == Student.user_id)
+                .where(RoomAllocation.block_id == block_id)
+                .order_by(RoomAllocation.room_number)
+            )
+        ).all()
+        return [
+            {"student_id": str(a.student_id), "name": name,
+             "admission_no": adm, "room_number": a.room_number}
+            for a, name, adm in rows
+        ]
+
+    async def allocate_resident(
+        self, school_id: uuid.UUID, data: ResidentialAllocateRequest
+    ) -> RoomAllocation:
+        block = (
+            await self.db.execute(
+                select(ResidentialBlock).where(
+                    ResidentialBlock.id == data.block_id,
+                    ResidentialBlock.school_id == school_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not block:
+            raise ValueError("Block not found")
+        student = (
+            await self.db.execute(
+                select(Student).where(
+                    Student.id == data.student_id, Student.school_id == school_id
+                )
+            )
+        ).scalar_one_or_none()
+        if not student:
+            raise ValueError("Student not found")
+        existing = (
+            await self.db.execute(
+                select(RoomAllocation).where(RoomAllocation.student_id == data.student_id)
+            )
+        ).scalar_one_or_none()
+        if existing:
+            existing.block_id = data.block_id
+            existing.room_number = data.room_number
+            await self.db.flush()
+            return existing
+        alloc = RoomAllocation(
+            school_id=school_id, student_id=data.student_id,
+            block_id=data.block_id, room_number=data.room_number,
+        )
+        self.db.add(alloc)
+        await self.db.flush()
+        return alloc

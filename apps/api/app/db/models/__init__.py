@@ -17,6 +17,7 @@ from app.db.models.ai_usage import AIUsage  # noqa: F401
 from app.db.models.ai_feedback import AIFeedback  # noqa: F401
 from app.db.models.question_paper import PaperStatus, QuestionPaper  # noqa: F401
 from app.db.models.report_card import ReportCard, ReportStatus  # noqa: F401
+from app.db.models.residential import BlockGender, ResidentialBlock, RoomAllocation  # noqa: F401
 from app.db.models.audit import AuditLog  # noqa: F401
 from app.db.models.notification import Notification  # noqa: F401
 from app.db.models.file import UploadedFile  # noqa: F401

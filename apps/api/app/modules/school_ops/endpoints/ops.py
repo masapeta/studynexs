@@ -12,6 +12,8 @@ from app.modules.school_ops.schemas.ops import (
     EventOut,
     LibraryBookCreate,
     LibraryBookOut,
+    ResidentialAllocateRequest,
+    ResidentialBlockCreate,
     TransportAssignRequest,
     TransportRouteCreate,
 )
@@ -150,3 +152,56 @@ async def assign_transport(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return APIResponse(message="Student assigned to route")
+
+
+# ── Residential ────────────────────────────────────────────────────────────────
+
+@router.get("/residential/blocks", response_model=APIResponse)
+async def list_residential_blocks(
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    service = SchoolOpsService(db)
+    blocks = await service.list_residential_blocks(uuid.UUID(current_user.school_id))
+    return APIResponse(data=blocks)
+
+
+@router.post("/residential/blocks", response_model=APIResponse, status_code=201)
+async def create_residential_block(
+    body: ResidentialBlockCreate,
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin", "operations")),
+    db: AsyncSession = Depends(get_db),
+):
+    service = SchoolOpsService(db)
+    block = await service.create_block(uuid.UUID(current_user.school_id), body)
+    return APIResponse(
+        data={"id": str(block.id), "block_name": block.block_name}, message="Block created"
+    )
+
+
+@router.get("/residential/blocks/{block_id}/residents", response_model=APIResponse)
+async def list_block_residents(
+    block_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    service = SchoolOpsService(db)
+    try:
+        residents = await service.list_block_residents(uuid.UUID(current_user.school_id), block_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return APIResponse(data=residents)
+
+
+@router.post("/residential/allocate", response_model=APIResponse)
+async def allocate_resident(
+    body: ResidentialAllocateRequest,
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin", "operations")),
+    db: AsyncSession = Depends(get_db),
+):
+    service = SchoolOpsService(db)
+    try:
+        await service.allocate_resident(uuid.UUID(current_user.school_id), body)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return APIResponse(message="Student allocated to block")

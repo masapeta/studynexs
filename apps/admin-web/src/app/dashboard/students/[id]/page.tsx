@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api, getApiErrorMessage } from "@/lib/api";
-import { ArrowLeft, Phone, Mail, Users, ClipboardCheck, Wallet, Bus } from "lucide-react";
+import { ArrowLeft, Phone, Mail, Users, ClipboardCheck, Wallet, Bus, BedDouble } from "lucide-react";
 
 const sectionH: React.CSSProperties = {
   fontSize: 14, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5,
@@ -152,6 +152,23 @@ export default function StudentDetailPage() {
                   {p.transport.boarding_stop ? `Stop: ${p.transport.boarding_stop}` : ""}
                   {p.transport.vehicle_number ? ` · ${p.transport.vehicle_number}` : ""}
                   {p.transport.driver_name ? ` · ${p.transport.driver_name}` : ""}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Residential (only if allocated) */}
+        {p.residential && (
+          <div className="card" style={{ padding: 24 }}>
+            <h2 style={sectionH}>Residential</h2>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div className="stat-icon-container icon-purple"><BedDouble size={20} /></div>
+              <div>
+                <div style={{ fontWeight: 600 }}>{p.residential.block_name}</div>
+                <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+                  {p.residential.room_number ? `Room ${p.residential.room_number}` : ""}
+                  {p.residential.warden_name ? ` · Warden: ${p.residential.warden_name}` : ""}
                 </div>
               </div>
             </div>
