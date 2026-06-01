@@ -21,23 +21,27 @@ export default function DashboardPage() {
   });
   const [attendancePercent, setAttendancePercent] = useState<string>("0");
   const [notices, setNotices] = useState<any[]>([]);
+  const [classPerf, setClassPerf] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       try {
         const today = new Date().toISOString().split("T")[0];
-        const [studentsRes, classesRes, noticesRes, feesRes, attRes] = await Promise.allSettled([
-          api("/api/v1/academic/students?page_size=1"),
-          api("/api/v1/academic/classes?page_size=1"),
-          api("/api/v1/notices"),
-          api("/api/v1/fees/stats"),
-          api(`/api/v1/attendance/school-summary?date=${today}`)
-        ]);
+        const [studentsRes, classesRes, teachersRes, noticesRes, feesRes, attRes, perfRes] =
+          await Promise.allSettled([
+            api("/api/v1/academic/students?page_size=1"),
+            api("/api/v1/academic/classes?page_size=1"),
+            api("/api/v1/users?role=teacher&page_size=1"),
+            api("/api/v1/notices"),
+            api("/api/v1/fees/stats"),
+            api(`/api/v1/attendance/school-summary?date=${today}`),
+            api("/api/v1/exams/class-performance?limit=3"),
+          ]);
 
         setStats({
           totalStudents: studentsRes.status === "fulfilled" ? studentsRes.value.total || 0 : 0,
-          totalTeachers: 0,
+          totalTeachers: teachersRes.status === "fulfilled" ? teachersRes.value.total || 0 : 0,
           totalClasses: classesRes.status === "fulfilled" ? classesRes.value.total || 0 : 0,
           pendingFees: feesRes.status === "fulfilled" ? feesRes.value.data?.pending_amount || 0 : 0,
         });
@@ -45,9 +49,11 @@ export default function DashboardPage() {
         if (attRes.status === "fulfilled" && attRes.value.data) {
           setAttendancePercent(attRes.value.data.percentage.toString());
         }
-
         if (noticesRes.status === "fulfilled") {
-          setNotices(noticesRes.value.data?.slice(0, 3) || []);
+          setNotices(noticesRes.value.data?.slice(0, 4) || []);
+        }
+        if (perfRes.status === "fulfilled") {
+          setClassPerf(perfRes.value.data || []);
         }
       } catch (err) {
         console.error("Dashboard fetch error:", err);
@@ -96,24 +102,24 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Upcoming Events */}
+        {/* School at a Glance */}
         <div className="card">
           <div className="card-header">
-            <span className="card-title">Upcoming Events</span>
+            <span className="card-title">School at a Glance</span>
             <button className="card-menu">⋯</button>
           </div>
           <div className="event-item green">
-            <div className="event-icon">📋</div>
+            <div className="event-icon">👨‍🎓</div>
             <div>
-              <div className="event-title">Field Trip</div>
-              <div className="event-subtitle">Science Museum · 10:00 AM</div>
+              <div className="event-title">{stats.totalStudents} Students</div>
+              <div className="event-subtitle">Enrolled across {stats.totalClasses} classes</div>
             </div>
           </div>
           <div className="event-item orange">
-            <div className="event-icon">🏆</div>
+            <div className="event-icon">👩‍🏫</div>
             <div>
-              <div className="event-title">Sports Day</div>
-              <div className="event-subtitle">Annual Sports · 8:00 AM</div>
+              <div className="event-title">{stats.totalTeachers} Teaching staff</div>
+              <div className="event-subtitle">Active this academic year</div>
             </div>
           </div>
         </div>
@@ -124,36 +130,32 @@ export default function DashboardPage() {
             <span className="card-title">Class Progress</span>
             <button className="card-menu">⋯</button>
           </div>
-          <div className="progress-item">
-            <div className="progress-icon" style={{ background: "var(--primary-50)" }}>📘</div>
-            <div className="progress-info">
-              <div className="progress-label">Grade 8-A</div>
-              <div className="progress-sub">Maths</div>
+          {classPerf.length > 0 ? (
+            classPerf.map((c: any, i: number) => (
+              <div className="progress-item" key={c.label}>
+                <div
+                  className="progress-icon"
+                  style={{ background: ["var(--primary-50)", "var(--warning-light)", "var(--success-light)"][i % 3] }}
+                >
+                  {["📘", "📗", "📕"][i % 3]}
+                </div>
+                <div className="progress-info">
+                  <div className="progress-label">{c.label}</div>
+                  <div className="progress-sub">Overall average</div>
+                </div>
+                <div className="progress-bar">
+                  <div
+                    className={`progress-fill ${c.percentage >= 60 ? "green" : "orange"}`}
+                    style={{ width: `${Math.min(100, c.percentage)}%` }}
+                  />
+                </div>
+              </div>
+            ))
+          ) : (
+            <div style={{ color: "var(--text-muted)", fontSize: 13, padding: "8px 0" }}>
+              No exam data yet.
             </div>
-            <div className="progress-bar">
-              <div className="progress-fill green" style={{ width: "85%" }} />
-            </div>
-          </div>
-          <div className="progress-item">
-            <div className="progress-icon" style={{ background: "var(--warning-light)" }}>📗</div>
-            <div className="progress-info">
-              <div className="progress-label">Grade 7-B</div>
-              <div className="progress-sub">English</div>
-            </div>
-            <div className="progress-bar">
-              <div className="progress-fill orange" style={{ width: "45%" }} />
-            </div>
-          </div>
-          <div className="progress-item">
-            <div className="progress-icon" style={{ background: "var(--success-light)" }}>📕</div>
-            <div className="progress-info">
-              <div className="progress-label">Grade 6-A</div>
-              <div className="progress-sub">Science</div>
-            </div>
-            <div className="progress-bar">
-              <div className="progress-fill green" style={{ width: "92%" }} />
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -191,36 +193,18 @@ export default function DashboardPage() {
                     <span className="status-dot green" />
                     {n.title}
                   </td>
-                  <td>{n.content?.substring(0, 40)}...</td>
-                  <td>{new Date(n.created_at).toLocaleDateString()}</td>
-                  <td>{n.priority}</td>
+                  <td>{n.content?.substring(0, 50)}…</td>
+                  <td>{n.created_at ? new Date(n.created_at).toLocaleDateString() : "—"}</td>
+                  <td style={{ textTransform: "capitalize" }}>{n.priority}</td>
                   <td><button className="card-menu">⋯</button></td>
                 </tr>
               ))
             ) : (
-              <>
-                <tr>
-                  <td><span className="status-dot green" />Grade 8-A Maths</td>
-                  <td>Science Project due 16:00</td>
-                  <td>May 12, 2026</td>
-                  <td>Active</td>
-                  <td><button className="card-menu">⋯</button></td>
-                </tr>
-                <tr>
-                  <td><span className="status-dot orange" />Grade 7-B English</td>
-                  <td>History Essay submission</td>
-                  <td>May 10, 2026</td>
-                  <td>Pending</td>
-                  <td><button className="card-menu">⋯</button></td>
-                </tr>
-                <tr>
-                  <td><span className="status-dot green" />Grade 6-A Science</td>
-                  <td>Lab session rescheduled</td>
-                  <td>May 8, 2026</td>
-                  <td>Active</td>
-                  <td><button className="card-menu">⋯</button></td>
-                </tr>
-              </>
+              <tr>
+                <td colSpan={5} style={{ color: "var(--text-muted)", textAlign: "center", padding: "16px" }}>
+                  No notices yet.
+                </td>
+              </tr>
             )}
           </tbody>
         </table>

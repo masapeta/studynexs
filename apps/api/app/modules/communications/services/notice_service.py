@@ -32,19 +32,19 @@ class NoticeService:
         return notice
 
     async def list_notices(self, school_id: uuid.UUID, viewer_role: str) -> list[Notice]:
-        """Return notices visible to viewer_role; enforce expiry in SQL."""
+        """Return notices visible to viewer_role; enforce expiry in SQL.
+
+        Admins/principals administer communications and see every notice for the school;
+        students/parents/teachers see only notices addressed to their role.
+        """
         now = datetime.now(timezone.utc)
-        role_json = cast([viewer_role], JSONB)
-        query = (
-            select(Notice)
-            .where(
-                Notice.school_id == school_id,
-                (Notice.expires_at.is_(None)) | (Notice.expires_at > now),
-                Notice.target_roles.contains(role_json),
-            )
-            .order_by(Notice.created_at.desc())
-            .limit(50)
+        query = select(Notice).where(
+            Notice.school_id == school_id,
+            (Notice.expires_at.is_(None)) | (Notice.expires_at > now),
         )
+        if viewer_role not in ("admin", "super_admin"):
+            query = query.where(Notice.target_roles.contains(cast([viewer_role], JSONB)))
+        query = query.order_by(Notice.created_at.desc()).limit(50)
         result = await self.db.execute(query)
         return list(result.scalars().all())
 
