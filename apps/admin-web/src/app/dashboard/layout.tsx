@@ -5,21 +5,25 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import {
+  LayoutDashboard, GraduationCap, Users, School, Sparkles, ClipboardCheck,
+  FileText, Award, CalendarDays, Wallet, Megaphone, Settings as SettingsIcon, LogOut,
+} from "lucide-react";
 
 // Demo nav: only pages fully wired to the backend are shown. Remaining stub pages
 // (library, events) are hidden until built so nothing reads "coming soon".
 const NAV_ITEMS = [
-  { label: "Dashboard", href: "/dashboard", icon: "📊" },
-  { label: "Students", href: "/dashboard/students", icon: "👨‍🎓" },
-  { label: "Staff", href: "/dashboard/staff", icon: "👩‍🏫" },
-  { label: "Classes", href: "/dashboard/classes", icon: "🏫" },
-  { label: "AI Papers", href: "/dashboard/ai-papers", icon: "✨" },
-  { label: "Attendance", href: "/dashboard/attendance", icon: "📋" },
-  { label: "Exams", href: "/dashboard/exams", icon: "📝" },
-  { label: "Report Cards", href: "/dashboard/report-cards", icon: "🎓" },
-  { label: "Timetable", href: "/dashboard/timetable", icon: "📅" },
-  { label: "Finance", href: "/dashboard/finance", icon: "💰" },
-  { label: "Notices", href: "/dashboard/notices", icon: "📢" },
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Students", href: "/dashboard/students", icon: GraduationCap },
+  { label: "Staff", href: "/dashboard/staff", icon: Users },
+  { label: "Classes", href: "/dashboard/classes", icon: School },
+  { label: "AI Papers", href: "/dashboard/ai-papers", icon: Sparkles },
+  { label: "Attendance", href: "/dashboard/attendance", icon: ClipboardCheck },
+  { label: "Exams", href: "/dashboard/exams", icon: FileText },
+  { label: "Report Cards", href: "/dashboard/report-cards", icon: Award },
+  { label: "Timetable", href: "/dashboard/timetable", icon: CalendarDays },
+  { label: "Finance", href: "/dashboard/finance", icon: Wallet },
+  { label: "Notices", href: "/dashboard/notices", icon: Megaphone },
 ];
 
 export default function DashboardLayout({
@@ -63,21 +67,24 @@ export default function DashboardLayout({
         </div>
 
         <nav className="sidebar-nav">
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`nav-item ${pathname === item.href ? "active" : ""}`}
-            >
-              <span className="nav-icon">{item.icon}</span>
-              {item.label}
-            </Link>
-          ))}
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`nav-item ${pathname === item.href ? "active" : ""}`}
+              >
+                <Icon className="nav-icon" size={19} strokeWidth={1.9} />
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="sidebar-footer">
           <Link href="/dashboard/settings" className={`nav-item ${pathname === "/dashboard/settings" ? "active" : ""}`}>
-            <span className="nav-icon">⚙️</span>
+            <SettingsIcon className="nav-icon" size={19} strokeWidth={1.9} />
             Settings
           </Link>
           <button
@@ -85,7 +92,7 @@ export default function DashboardLayout({
             onClick={logout}
             style={{ width: "100%", border: "none", background: "none", textAlign: "left", font: "inherit" }}
           >
-            <span className="nav-icon">🚪</span>
+            <LogOut className="nav-icon" size={19} strokeWidth={1.9} />
             Logout
           </button>
         </div>

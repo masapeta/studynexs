@@ -3,6 +3,7 @@
 import { useAuth } from "@/lib/auth-context";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { GraduationCap, Users, BookOpen, UserPlus, ClipboardCheck, Megaphone } from "lucide-react";
 import { api } from "@/lib/api";
 
 interface DashboardStats {
@@ -78,9 +79,9 @@ export default function DashboardPage() {
     <>
       {/* Hero Banner */}
       <div className="hero-banner">
-        <h2>STUDYNEXS CONNECT | ADMIN HUB</h2>
-        <p>Welcome back, {user?.full_name}! Here&apos;s your school overview.</p>
-        <div className="hero-decorations">📖 🎓 ✏️</div>
+        <h2>Welcome back, {user?.full_name?.split(" ")[0] || "there"}</h2>
+        <p>Here&apos;s your school at a glance today.</p>
+        <div className="hero-decorations"><GraduationCap size={76} strokeWidth={1.1} /></div>
       </div>
 
       {/* Stats Grid */}
@@ -110,14 +111,14 @@ export default function DashboardPage() {
             <button className="card-menu">⋯</button>
           </div>
           <div className="event-item green">
-            <div className="event-icon">👨‍🎓</div>
+            <div className="event-icon"><GraduationCap size={18} color="var(--success)" /></div>
             <div>
               <div className="event-title">{stats.totalStudents} Students</div>
               <div className="event-subtitle">Enrolled across {stats.totalClasses} classes</div>
             </div>
           </div>
           <div className="event-item orange">
-            <div className="event-icon">👩‍🏫</div>
+            <div className="event-icon"><Users size={18} color="var(--accent-dark)" /></div>
             <div>
               <div className="event-title">{stats.totalTeachers} Teaching staff</div>
               <div className="event-subtitle">Active this academic year</div>
@@ -136,9 +137,9 @@ export default function DashboardPage() {
               <div className="progress-item" key={c.label}>
                 <div
                   className="progress-icon"
-                  style={{ background: ["var(--primary-50)", "var(--warning-light)", "var(--success-light)"][i % 3] }}
+                  style={{ background: ["var(--primary-50)", "var(--accent-50)", "var(--success-light)"][i % 3] }}
                 >
-                  {["📘", "📗", "📕"][i % 3]}
+                  <BookOpen size={15} color={["var(--text-secondary)", "var(--accent-dark)", "var(--success)"][i % 3]} />
                 </div>
                 <div className="progress-info">
                   <div className="progress-label">{c.label}</div>
@@ -164,9 +165,9 @@ export default function DashboardPage() {
       <div className="quick-actions">
         <h3>Quick Actions</h3>
         <div className="quick-actions-row">
-          <Link href="/dashboard/students" className="btn btn-action btn-green">👨‍🎓 Add Student</Link>
-          <Link href="/dashboard/attendance" className="btn btn-action btn-blue">📋 Mark Attendance</Link>
-          <Link href="/dashboard/notices" className="btn btn-action btn-orange">📢 Post Notice</Link>
+          <Link href="/dashboard/students" className="btn btn-action"><UserPlus size={16} /> Add Student</Link>
+          <Link href="/dashboard/attendance" className="btn btn-action"><ClipboardCheck size={16} /> Mark Attendance</Link>
+          <Link href="/dashboard/notices" className="btn btn-action"><Megaphone size={16} /> Post Notice</Link>
         </div>
       </div>
 
