@@ -25,10 +25,12 @@ class FeeRecordOut(BaseModel):
 
 class PayFeeRequest(BaseModel):
     fee_record_id: uuid.UUID
-    amount: Decimal = Field(..., gt=0, max_digits=12, decimal_places=2)
+    # max_digits=10 matches the Numeric(10,2) column (prevents validate-then-overflow→500).
+    amount: Decimal = Field(..., gt=0, max_digits=10, decimal_places=2)
     payment_mode: PaymentMode
     razorpay_payment_id: str | None = None
     transaction_id: str | None = Field(None, max_length=100)
+    idempotency_key: str | None = Field(None, max_length=64)
 
     @field_validator("transaction_id")
     @classmethod

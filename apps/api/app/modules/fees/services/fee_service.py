@@ -9,8 +9,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.fee import (
-    FeeReceipt, FeeStatus, FeeStructure, PaymentMode,
-    ReceiptCounter, StudentFeeRecord,
+    FeeReceipt,
+    FeeStatus,
+    FeeStructure,
+    PaymentMode,
+    ReceiptCounter,
+    StudentFeeRecord,
 )
 from app.db.models.school import School
 from app.db.models.student import Student
@@ -40,21 +44,29 @@ class FeeService:
         payment_mode: PaymentMode,
         razorpay_payment_id: str | None = None,
         transaction_id: str | None = None,
+        idempotency_key: str | None = None,
     ) -> FeeReceipt:
         """
         Process payment and generate receipt atomically.
-        Locks fee record + receipt counter. Idempotent on transaction_id.
+        Locks fee record + receipt counter. Idempotent on transaction_id / idempotency_key
+        (sequential retries return the existing receipt; truly-concurrent dups hit the partial
+        unique index and surface as a 409).
         """
-        if transaction_id:
-            dup = await self.db.execute(
-                select(FeeReceipt).where(
-                    FeeReceipt.school_id == school_id,
-                    FeeReceipt.transaction_id == transaction_id,
-                )
-            )
-            existing_receipt = dup.scalar_one_or_none()
-            if existing_receipt:
-                return existing_receipt
+        for field, value in (
+            ("transaction_id", transaction_id),
+            ("idempotency_key", idempotency_key),
+        ):
+            if value:
+                existing_receipt = (
+                    await self.db.execute(
+                        select(FeeReceipt).where(
+                            FeeReceipt.school_id == school_id,
+                            getattr(FeeReceipt, field) == value,
+                        )
+                    )
+                ).scalar_one_or_none()
+                if existing_receipt:
+                    return existing_receipt
 
         result = await self.db.execute(
             select(StudentFeeRecord)
@@ -127,6 +139,7 @@ class FeeService:
             paid_at=now,
             razorpay_payment_id=razorpay_payment_id,
             transaction_id=transaction_id,
+            idempotency_key=idempotency_key,
             school_name=school.name,
             school_logo_url=school.logo_url,
             school_address=school.address.get("city", "") if school.address else None,
@@ -151,8 +164,9 @@ class FeeService:
 
     async def get_fee_stats(self, school_id: uuid.UUID) -> dict:
         """Get aggregate fee stats for the dashboard."""
-        from sqlalchemy import func
         from datetime import datetime, timezone
+
+        from sqlalchemy import func
         
         now = datetime.now(timezone.utc)
         current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)

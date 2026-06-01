@@ -79,6 +79,7 @@ async def pay_fee(
             payment_mode=body.payment_mode,
             razorpay_payment_id=body.razorpay_payment_id,
             transaction_id=body.transaction_id,
+            idempotency_key=body.idempotency_key,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

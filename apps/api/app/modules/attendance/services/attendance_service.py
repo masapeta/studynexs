@@ -5,6 +5,7 @@ import uuid
 from datetime import date
 
 from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenant_scope import TenantScope
@@ -24,35 +25,34 @@ class AttendanceService:
         scope = TenantScope(self.db, school_id)
         await scope.school_class(class_id)
         await scope.students_in_class(class_id, [e.student_id for e in entries])
-        count = 0
-        for entry in entries:
-            # Upsert: check if already exists
-            result = await self.db.execute(
-                select(Attendance).where(
-                    Attendance.school_id == school_id,
-                    Attendance.student_id == entry.student_id,
-                    Attendance.date == att_date,
-                )
-            )
-            existing = result.scalar_one_or_none()
 
-            if existing:
-                existing.status = entry.status
-                existing.remarks = entry.remarks
-                existing.marked_by = marked_by
-            else:
-                self.db.add(Attendance(
-                    school_id=school_id,
-                    student_id=entry.student_id,
-                    class_id=class_id,
-                    date=att_date,
-                    status=entry.status,
-                    marked_by=marked_by,
-                    remarks=entry.remarks,
-                ))
-            count += 1
+        # De-dupe by student (last write wins) — ON CONFLICT can't touch the same row twice.
+        by_student = {e.student_id: e for e in entries}
+        if not by_student:
+            return 0
+        rows = [
+            {
+                "school_id": school_id, "student_id": sid, "class_id": class_id,
+                "date": att_date, "status": e.status, "marked_by": marked_by,
+                "remarks": e.remarks,
+            }
+            for sid, e in by_student.items()
+        ]
+
+        # Single race-safe upsert (no N+1, no check-then-insert race).
+        stmt = pg_insert(Attendance).values(rows)
+        stmt = stmt.on_conflict_do_update(
+            constraint="uq_attendance_student_date",
+            set_={
+                "status": stmt.excluded.status,
+                "remarks": stmt.excluded.remarks,
+                "marked_by": stmt.excluded.marked_by,
+                "updated_at": func.now(),  # Core upsert skips the ORM onupdate
+            },
+        )
+        await self.db.execute(stmt)
         await self.db.flush()
-        return count
+        return len(rows)
 
     async def get_class_attendance(
         self, school_id: uuid.UUID, class_id: uuid.UUID, att_date: date

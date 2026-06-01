@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import Boolean, Date, ForeignKey, Index, Integer, String, UniqueConstraint
+from sqlalchemy import Boolean, Date, ForeignKey, Index, Integer, String, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -23,6 +23,10 @@ class AcademicYear(BaseModel):
 
     __table_args__ = (
         UniqueConstraint("school_id", "year_label", name="uq_school_academic_year"),
+        # At most one active year per school — closes the concurrent double-activation race
+        # (the service deactivates others first, but nothing enforced the invariant at the DB).
+        Index("uq_one_active_year_per_school", "school_id", unique=True,
+              postgresql_where=text("is_active")),
     )
 
 

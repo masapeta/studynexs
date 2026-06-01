@@ -138,6 +138,8 @@ class FeeReceipt(BaseModel):
     # Razorpay details (if online payment)
     razorpay_payment_id: Mapped[str | None] = mapped_column(String(100))
     transaction_id: Mapped[str | None] = mapped_column(String(100))
+    # Client-supplied idempotency key — covers cash (which has no transaction_id).
+    idempotency_key: Mapped[str | None] = mapped_column(String(64))
 
     # School branding snapshot (immutable — captured at receipt time)
     school_name: Mapped[str] = mapped_column(String(200), nullable=False)
@@ -159,6 +161,11 @@ class FeeReceipt(BaseModel):
         Index(
             "uq_receipt_txn_per_school", "school_id", "transaction_id",
             unique=True, postgresql_where=text("transaction_id IS NOT NULL"),
+        ),
+        # Idempotency for ALL payments incl. cash (client-supplied key).
+        Index(
+            "uq_receipt_idem_per_school", "school_id", "idempotency_key",
+            unique=True, postgresql_where=text("idempotency_key IS NOT NULL"),
         ),
     )
 

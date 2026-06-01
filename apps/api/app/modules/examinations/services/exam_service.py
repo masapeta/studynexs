@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenant_scope import TenantScope
@@ -45,30 +46,39 @@ class ExamService:
     async def enter_marks(self, school_id: uuid.UUID, exam_id: uuid.UUID, entries: list[MarkEntry]) -> int:
         scope = TenantScope(self.db, school_id)
         exam = await scope.exam(exam_id)
-        student_ids = [e.student_id for e in entries]
-        await scope.students_in_class(exam.class_id, student_ids)
-        count = 0
-        for entry in entries:
-            result = await self.db.execute(
-                select(ExamMark).where(ExamMark.exam_id == exam_id, ExamMark.student_id == entry.student_id)
-            )
-            existing = result.scalar_one_or_none()
-            if existing:
-                existing.marks_obtained = entry.marks_obtained
-                existing.grade_letter = entry.grade_letter
-                existing.remarks = entry.remarks
-            else:
-                self.db.add(ExamMark(
-                    school_id=school_id,
-                    exam_id=exam_id,
-                    student_id=entry.student_id,
-                    marks_obtained=entry.marks_obtained,
-                    grade_letter=entry.grade_letter,
-                    remarks=entry.remarks,
-                ))
-            count += 1
+        by_student = {e.student_id: e for e in entries}
+        await scope.students_in_class(exam.class_id, list(by_student))
+        if not by_student:
+            return 0
+
+        # Data integrity (not a race): reject marks above the exam's max.
+        for e in by_student.values():
+            if e.marks_obtained > exam.total_marks:
+                raise ValueError("marks_obtained exceeds exam total_marks")
+
+        rows = [
+            {
+                "school_id": school_id, "exam_id": exam_id, "student_id": sid,
+                "marks_obtained": e.marks_obtained, "grade_letter": e.grade_letter,
+                "remarks": e.remarks,
+            }
+            for sid, e in by_student.items()
+        ]
+
+        # Single race-safe upsert (no N+1, no check-then-insert race).
+        stmt = pg_insert(ExamMark).values(rows)
+        stmt = stmt.on_conflict_do_update(
+            constraint="uq_exam_student",
+            set_={
+                "marks_obtained": stmt.excluded.marks_obtained,
+                "grade_letter": stmt.excluded.grade_letter,
+                "remarks": stmt.excluded.remarks,
+                "updated_at": func.now(),  # Core upsert skips the ORM onupdate
+            },
+        )
+        await self.db.execute(stmt)
         await self.db.flush()
-        return count
+        return len(rows)
 
     async def get_exam_marks(self, school_id: uuid.UUID, exam_id: uuid.UUID) -> list[ExamMark]:
         await TenantScope(self.db, school_id).exam(exam_id)

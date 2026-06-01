@@ -232,23 +232,27 @@ def require_roles(*allowed_roles: str):
 # ── Rate Limiting Helper ─────────────────────────────────────────────────────
 
 
+# INCR + first-hit EXPIRE atomically — a crash between the two can't leave the key
+# without a TTL, which would otherwise lock the user out permanently.
+_RATE_LIMIT_LUA = """
+local c = redis.call('INCR', KEYS[1])
+if c == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]) end
+return c
+"""
+
+
 async def check_rate_limit(
     key: str,
     max_attempts: int,
     window_seconds: int,
     r: redis.Redis,
 ) -> None:
-    """
-    Redis-backed sliding window rate limiter.
-    Raises 429 if limit exceeded.
-    """
+    """Redis fixed-window rate limiter (atomic). Raises 429 if the limit is exceeded."""
     if settings.ENVIRONMENT == "testing":
         return
 
     redis_key = f"{settings.REDIS_RATE_LIMIT_PREFIX}{key}"
-    current = await r.incr(redis_key)
-    if current == 1:
-        await r.expire(redis_key, window_seconds)
+    current = int(await r.eval(_RATE_LIMIT_LUA, 1, redis_key, window_seconds))
     if current > max_attempts:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
