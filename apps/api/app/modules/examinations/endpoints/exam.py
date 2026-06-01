@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -78,7 +78,10 @@ async def enter_marks(
     db: AsyncSession = Depends(get_db),
 ):
     service = ExamService(db)
-    count = await service.enter_marks(uuid.UUID(current_user.school_id), body.exam_id, body.entries)
+    try:
+        count = await service.enter_marks(uuid.UUID(current_user.school_id), body.exam_id, body.entries)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return APIResponse(message=f"Marks entered for {count} students")
 
 
