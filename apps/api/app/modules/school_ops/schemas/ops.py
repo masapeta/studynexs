@@ -1,7 +1,7 @@
 """School operations schemas — library, events."""
 
 import uuid
-from datetime import date, datetime, time
+from datetime import date
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -40,3 +40,17 @@ class EventCreate(BaseModel):
     event_date: date
     venue: Optional[str] = None
     target_roles: Optional[list[str]] = None
+
+
+class TransportRouteCreate(BaseModel):
+    route_name: str = Field(..., max_length=100)
+    vehicle_number: Optional[str] = None
+    driver_name: Optional[str] = None
+    driver_contact: Optional[str] = None
+    stops: Optional[list] = None
+
+
+class TransportAssignRequest(BaseModel):
+    student_id: uuid.UUID
+    route_id: uuid.UUID
+    boarding_stop: Optional[str] = None

@@ -7,8 +7,22 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenant_scope import TenantScope
-from app.db.models.school_ops import Event, LibraryBook, LibraryIssue, LibraryIssueStatus
-from app.modules.school_ops.schemas.ops import EventCreate, LibraryBookCreate
+from app.db.models.school_ops import (
+    Event,
+    LibraryBook,
+    LibraryIssue,
+    LibraryIssueStatus,
+    StudentTransport,
+    TransportRoute,
+)
+from app.db.models.student import Student
+from app.db.models.user import User
+from app.modules.school_ops.schemas.ops import (
+    EventCreate,
+    LibraryBookCreate,
+    TransportAssignRequest,
+    TransportRouteCreate,
+)
 
 
 class SchoolOpsService:
@@ -106,3 +120,110 @@ class SchoolOpsService:
         self.db.add(event)
         await self.db.flush()
         return event
+
+    # ── Transport ────────────────────────────────────────────────
+
+    async def list_transport_routes(self, school_id: uuid.UUID) -> list[dict]:
+        routes = (
+            await self.db.execute(
+                select(TransportRoute)
+                .where(TransportRoute.school_id == school_id)
+                .order_by(TransportRoute.route_name)
+            )
+        ).scalars().all()
+        route_ids = [r.id for r in routes]
+        counts: dict = {}
+        if route_ids:
+            rows = (
+                await self.db.execute(
+                    select(StudentTransport.route_id, func.count())
+                    .where(StudentTransport.route_id.in_(route_ids))
+                    .group_by(StudentTransport.route_id)
+                )
+            ).all()
+            counts = {rid: c for rid, c in rows}
+        return [
+            {
+                "id": str(r.id), "route_name": r.route_name,
+                "vehicle_number": r.vehicle_number, "driver_name": r.driver_name,
+                "driver_contact": r.driver_contact, "stops": r.stops or [],
+                "is_active": r.is_active, "student_count": counts.get(r.id, 0),
+            }
+            for r in routes
+        ]
+
+    async def create_route(
+        self, school_id: uuid.UUID, data: TransportRouteCreate
+    ) -> TransportRoute:
+        route = TransportRoute(
+            school_id=school_id, route_name=data.route_name,
+            vehicle_number=data.vehicle_number, driver_name=data.driver_name,
+            driver_contact=data.driver_contact, stops=data.stops or [],
+        )
+        self.db.add(route)
+        await self.db.flush()
+        return route
+
+    async def list_route_students(self, school_id: uuid.UUID, route_id: uuid.UUID) -> list[dict]:
+        route = (
+            await self.db.execute(
+                select(TransportRoute).where(
+                    TransportRoute.id == route_id, TransportRoute.school_id == school_id
+                )
+            )
+        ).scalar_one_or_none()
+        if not route:
+            raise ValueError("Route not found")
+        rows = (
+            await self.db.execute(
+                select(StudentTransport, User.full_name, Student.admission_no)
+                .join(Student, Student.id == StudentTransport.student_id)
+                .join(User, User.id == Student.user_id)
+                .where(StudentTransport.route_id == route_id)
+                .order_by(Student.admission_no)
+            )
+        ).all()
+        return [
+            {"student_id": str(st.student_id), "name": name,
+             "admission_no": adm, "boarding_stop": st.boarding_stop}
+            for st, name, adm in rows
+        ]
+
+    async def assign_student_transport(
+        self, school_id: uuid.UUID, data: TransportAssignRequest
+    ) -> StudentTransport:
+        route = (
+            await self.db.execute(
+                select(TransportRoute).where(
+                    TransportRoute.id == data.route_id, TransportRoute.school_id == school_id
+                )
+            )
+        ).scalar_one_or_none()
+        if not route:
+            raise ValueError("Route not found")
+        student = (
+            await self.db.execute(
+                select(Student).where(
+                    Student.id == data.student_id, Student.school_id == school_id
+                )
+            )
+        ).scalar_one_or_none()
+        if not student:
+            raise ValueError("Student not found")
+        existing = (
+            await self.db.execute(
+                select(StudentTransport).where(StudentTransport.student_id == data.student_id)
+            )
+        ).scalar_one_or_none()
+        if existing:
+            existing.route_id = data.route_id
+            existing.boarding_stop = data.boarding_stop
+            await self.db.flush()
+            return existing
+        st = StudentTransport(
+            student_id=data.student_id, route_id=data.route_id,
+            boarding_stop=data.boarding_stop,
+        )
+        self.db.add(st)
+        await self.db.flush()
+        return st

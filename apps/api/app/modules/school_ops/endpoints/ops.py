@@ -8,7 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, get_current_user, require_roles
 from app.modules.school_ops.schemas.ops import (
-    EventCreate, EventOut, LibraryBookCreate, LibraryBookOut,
+    EventCreate,
+    EventOut,
+    LibraryBookCreate,
+    LibraryBookOut,
+    TransportAssignRequest,
+    TransportRouteCreate,
 )
 from app.modules.school_ops.services.ops_service import SchoolOpsService
 from app.shared.schemas.common import APIResponse
@@ -92,3 +97,56 @@ async def create_event(
         uuid.UUID(current_user.school_id), body, uuid.UUID(current_user.id)
     )
     return APIResponse(data=EventOut.model_validate(event), message="Event created")
+
+
+# ── Transport ──────────────────────────────────────────────────────────────────
+
+@router.get("/transport/routes", response_model=APIResponse)
+async def list_transport_routes(
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    service = SchoolOpsService(db)
+    routes = await service.list_transport_routes(uuid.UUID(current_user.school_id))
+    return APIResponse(data=routes)
+
+
+@router.post("/transport/routes", response_model=APIResponse, status_code=201)
+async def create_transport_route(
+    body: TransportRouteCreate,
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin", "operations")),
+    db: AsyncSession = Depends(get_db),
+):
+    service = SchoolOpsService(db)
+    route = await service.create_route(uuid.UUID(current_user.school_id), body)
+    return APIResponse(
+        data={"id": str(route.id), "route_name": route.route_name}, message="Route created"
+    )
+
+
+@router.get("/transport/routes/{route_id}/students", response_model=APIResponse)
+async def list_route_students(
+    route_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    service = SchoolOpsService(db)
+    try:
+        students = await service.list_route_students(uuid.UUID(current_user.school_id), route_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return APIResponse(data=students)
+
+
+@router.post("/transport/assign", response_model=APIResponse)
+async def assign_transport(
+    body: TransportAssignRequest,
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin", "operations")),
+    db: AsyncSession = Depends(get_db),
+):
+    service = SchoolOpsService(db)
+    try:
+        await service.assign_student_transport(uuid.UUID(current_user.school_id), body)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return APIResponse(message="Student assigned to route")
