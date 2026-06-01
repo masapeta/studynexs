@@ -205,8 +205,10 @@ textarea.form-input { resize: vertical; line-height: 1.5; }
 }
 
 .sidebar-logo img {
-  width: 36px;
-  height: 36px;
+  width: auto;
+  height: 40px;
+  max-width: 100%;
+  object-fit: contain;
 }
 
 .sidebar-logo span {
