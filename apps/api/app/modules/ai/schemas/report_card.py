@@ -24,6 +24,7 @@ class ReportCardOut(BaseModel):
     student_name: str
     class_name: str
     subjects: list[SubjectRow]
+    not_assessed: list[str] = []
     total_obtained: float
     total_max: float
     percentage: float

@@ -26,6 +26,9 @@ _STYLES = """
   .summary .box { border:1px solid #999; border-radius:6px; padding:8px 14px; }
   .summary .box span { display:block; font-size:9pt; color:#666; font-weight:400;
                        text-transform:uppercase; letter-spacing:.5px; }
+  .note { border:1px dashed #999; border-radius:6px; padding:8px 12px; margin-top:8px;
+          font-size:10.5pt; color:#444; }
+  .note b { color:#111; }
   .remark { border:1px solid #999; border-radius:6px; padding:10px 12px; margin-top:8px; }
   .remark h4 { margin:0 0 4px; font-size:10pt; text-transform:uppercase;
                letter-spacing:.5px; color:#444; }
@@ -62,6 +65,10 @@ def render_report_html(report: ReportCard, *, school_name: str | None = None) ->
         if report.attendance_percentage is not None
         else "—"
     )
+    not_assessed_html = ""
+    if report.not_assessed:
+        items = ", ".join(html.escape(str(s)) for s in report.not_assessed)
+        not_assessed_html = f'<div class="note"><b>Not assessed this term:</b> {items}</div>'
     remark_html = ""
     if report.ai_remark:
         remark_html = (
@@ -84,6 +91,7 @@ def render_report_html(report: ReportCard, *, school_name: str | None = None) ->
         + f'<div class="box"><span>Percentage</span>{float(report.percentage or 0):g}%</div>'
         + f'<div class="box"><span>Grade</span>{html.escape(report.overall_grade or "—")}</div>'
         + f'<div class="box"><span>Attendance</span>{att}</div></div>'
+        + not_assessed_html
         + remark_html
         + '<div class="signs"><div>Class Teacher</div><div>Principal</div>'
         + "<div>Parent / Guardian</div></div>"

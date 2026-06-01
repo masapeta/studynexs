@@ -4,7 +4,7 @@ from __future__ import annotations
 import enum
 import uuid
 
-from sqlalchemy import Enum, ForeignKey, Index, Numeric, String, Text
+from sqlalchemy import Enum, ForeignKey, Index, Numeric, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -37,6 +37,11 @@ class ReportCard(BaseModel):
     class_name: Mapped[str] = mapped_column(String(50), nullable=False)     # snapshot
     # subjects = [{subject, marks_obtained, total_marks}] consolidated across the term's exams
     subjects: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    # not_assessed = ["Hindi", ...] — subjects the class was examined in but this student has
+    # no marks for. Surfaced so a missing subject isn't silently dropped from consolidation.
+    not_assessed: Mapped[list] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
     total_obtained: Mapped[float] = mapped_column(Numeric(8, 2), default=0)
     total_max: Mapped[float] = mapped_column(Numeric(8, 2), default=0)
     percentage: Mapped[float] = mapped_column(Numeric(5, 2), default=0)

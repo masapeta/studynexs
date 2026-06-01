@@ -66,6 +66,35 @@ async def _consolidate_marks(
     ]
 
 
+async def _not_assessed_subjects(
+    db: AsyncSession, *, school_id: uuid.UUID, student_id: uuid.UUID, class_id: uuid.UUID
+) -> list[str]:
+    """Subjects the student's class was examined in, but for which this student has no marks.
+
+    Consolidation only sees subjects the student actually has marks in, so a skipped/absent
+    subject would otherwise vanish from the card. This surfaces those gaps by name.
+    """
+    assessed = (
+        select(Exam.subject_id)
+        .join(ExamMark, (ExamMark.exam_id == Exam.id) & (ExamMark.student_id == student_id))
+        .where(Exam.class_id == class_id, Exam.school_id == school_id)
+    )
+    rows = (
+        await db.execute(
+            select(Subject.name)
+            .join(Exam, Exam.subject_id == Subject.id)
+            .where(
+                Exam.class_id == class_id,
+                Exam.school_id == school_id,
+                Subject.id.not_in(assessed.scalar_subquery()),
+            )
+            .distinct()
+            .order_by(Subject.name)
+        )
+    ).scalars().all()
+    return list(rows)
+
+
 async def _attendance_percentage(
     db: AsyncSession, *, school_id: uuid.UUID, student_id: uuid.UUID
 ) -> float | None:
@@ -91,7 +120,8 @@ async def _attendance_percentage(
 
 
 def _build_remark_messages(
-    *, student_name, class_name, subjects, percentage, grade, attendance_pct
+    *, student_name, class_name, subjects, percentage, grade, attendance_pct,
+    not_assessed=None,
 ) -> list[LLMMessage]:
     lines = "\n".join(
         f"- {s['subject']}: {s['marks_obtained']:g}/{s['total_marks']:g} "
@@ -99,6 +129,11 @@ def _build_remark_messages(
         for s in subjects
     )
     att = f"{attendance_pct:g}%" if attendance_pct is not None else "not recorded"
+    not_assessed_line = (
+        f"Not assessed this term (do not comment on these): {', '.join(not_assessed)}.\n"
+        if not_assessed
+        else ""
+    )
     system = (
         "You are an experienced Indian school class teacher writing the remark on a "
         "student's term report card, read by the parent. Write 2-3 warm, specific, "
@@ -110,6 +145,7 @@ def _build_remark_messages(
     user = (
         f"Student: {student_name} (Class {class_name})\n"
         f"Subject performance:\n{lines}\n"
+        f"{not_assessed_line}"
         f"Overall: {percentage:.0f}% (Grade {grade}). Attendance: {att}.\n\n"
         "Write the report-card remark."
     )
@@ -144,6 +180,9 @@ async def generate_report_for_student(
     attendance_pct = await _attendance_percentage(
         db, school_id=school_id, student_id=student_id
     )
+    not_assessed = await _not_assessed_subjects(
+        db, school_id=school_id, student_id=student_id, class_id=student.class_id
+    )
 
     student_name = student.user.full_name if student.user else "Student"
     cls = student.class_
@@ -152,6 +191,7 @@ async def generate_report_for_student(
     messages = _build_remark_messages(
         student_name=student_name, class_name=class_name, subjects=subjects,
         percentage=percentage, grade=grade, attendance_pct=attendance_pct,
+        not_assessed=not_assessed,
     )
     provider = get_provider()
     model = default_model()
@@ -170,6 +210,7 @@ async def generate_report_for_student(
         student_name=student_name,
         class_name=class_name,
         subjects=subjects,
+        not_assessed=not_assessed,
         total_obtained=Decimal(str(round(total_obtained, 2))),
         total_max=Decimal(str(round(total_max, 2))),
         percentage=Decimal(str(percentage)),

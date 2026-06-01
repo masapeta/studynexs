@@ -18,6 +18,7 @@ type Report = {
   student_name: string;
   class_name: string;
   subjects: SubjectRow[];
+  not_assessed?: string[];
   total_obtained: number;
   total_max: number;
   percentage: number;
@@ -246,6 +247,22 @@ export default function ReportCardsPage() {
               </tr>
             </tbody>
           </table>
+
+          {report.not_assessed && report.not_assessed.length > 0 && (
+            <div
+              style={{
+                border: "1px dashed var(--border)",
+                borderRadius: "var(--radius-md)",
+                padding: "8px 14px",
+                margin: "0 0 16px",
+                fontSize: 13,
+                color: "var(--text-muted)",
+              }}
+            >
+              <strong style={{ color: "var(--text)" }}>Not assessed this term:</strong>{" "}
+              {report.not_assessed.join(", ")}
+            </div>
+          )}
 
           <div style={{ display: "flex", gap: 24, marginBottom: 16, flexWrap: "wrap" }}>
             <Stat label="Percentage" value={`${report.percentage}%`} />
