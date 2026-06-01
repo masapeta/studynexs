@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Wallet, AlertCircle, CalendarDays, FileText } from "lucide-react";
 import { api, API_URL } from "@/lib/api";
 
 export default function FinancePage() {
@@ -36,7 +37,7 @@ export default function FinancePage() {
       <div className="bento-grid" style={{ marginBottom: 24 }}>
         <div className="card bento-col-4" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div className="stat-icon-container icon-green">
-            ₹
+            <Wallet size={20} />
           </div>
           <div style={{ flex: 1 }}>
             <div className="stat-label" style={{ marginBottom: 4 }}>Total Collected</div>
@@ -52,7 +53,7 @@ export default function FinancePage() {
         
         <div className="card bento-col-4" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div className="stat-icon-container icon-orange">
-            ⚠
+            <AlertCircle size={20} />
           </div>
           <div style={{ flex: 1 }}>
             <div className="stat-label" style={{ marginBottom: 4 }}>Pending Dues</div>
@@ -68,7 +69,7 @@ export default function FinancePage() {
         
         <div className="card bento-col-4" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div className="stat-icon-container icon-blue">
-            📅
+            <CalendarDays size={20} />
           </div>
           <div style={{ flex: 1 }}>
             <div className="stat-label" style={{ marginBottom: 4 }}>This Month</div>
@@ -120,7 +121,7 @@ export default function FinancePage() {
                   <td style={{ color: "var(--text-secondary)" }}>{new Date(r.paid_at).toLocaleDateString()}</td>
                   <td style={{ textAlign: 'right' }}>
                     <button onClick={() => window.open(`${API_URL}/api/v1/fees/receipt/${r.receipt_number}`, '_blank')} className="btn" style={{ padding: "6px 14px", background: "var(--primary-50)", color: "var(--primary)", fontSize: 12, borderRadius: "var(--radius-full)" }}>
-                      📄 View Receipt
+                      <FileText size={14} /> View Receipt
                     </button>
                   </td>
                 </tr>

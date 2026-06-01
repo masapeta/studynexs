@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Users, UserCheck, Clock, UserX } from "lucide-react";
 import { api } from "@/lib/api";
 
 export default function AttendancePage() {
@@ -132,28 +133,28 @@ export default function AttendancePage() {
       {/* Real-time Stats */}
       <div className="bento-grid" style={{ marginBottom: 24 }}>
         <div className="card bento-col-3" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div className="stat-icon-container icon-blue">👥</div>
+          <div className="stat-icon-container icon-blue"><Users size={20} /></div>
           <div style={{ flex: 1 }}>
             <div className="stat-label" style={{ marginBottom: 4 }}>Total Students</div>
             <div style={{ fontSize: 24, fontWeight: 700, color: "var(--text-primary)" }}>{totalStudents}</div>
           </div>
         </div>
         <div className="card bento-col-3" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div className="stat-icon-container icon-green">✓</div>
+          <div className="stat-icon-container icon-green"><UserCheck size={20} /></div>
           <div style={{ flex: 1 }}>
             <div className="stat-label" style={{ marginBottom: 4 }}>Present</div>
             <div style={{ fontSize: 24, fontWeight: 700, color: "var(--text-primary)" }}>{totalPresent}</div>
           </div>
         </div>
         <div className="card bento-col-3" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div className="stat-icon-container icon-orange">!</div>
+          <div className="stat-icon-container icon-orange"><Clock size={20} /></div>
           <div style={{ flex: 1 }}>
             <div className="stat-label" style={{ marginBottom: 4 }}>Late</div>
             <div style={{ fontSize: 24, fontWeight: 700, color: "var(--text-primary)" }}>{totalLate}</div>
           </div>
         </div>
         <div className="card bento-col-3" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div className="stat-icon-container icon-purple">✗</div>
+          <div className="stat-icon-container icon-purple"><UserX size={20} /></div>
           <div style={{ flex: 1 }}>
             <div className="stat-label" style={{ marginBottom: 4 }}>Absent</div>
             <div style={{ fontSize: 24, fontWeight: 700, color: "var(--text-primary)" }}>{totalAbsent}</div>

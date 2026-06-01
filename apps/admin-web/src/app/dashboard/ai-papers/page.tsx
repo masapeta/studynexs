@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { FileText, CalendarDays, Clock, Sparkles, Save, Check, Printer, KeyRound } from "lucide-react";
 import {
   api,
   API_URL,
@@ -206,21 +207,21 @@ export default function AiPapersPage() {
       {usage && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
           <div className="card" style={{ display: "flex", alignItems: "center", gap: 16, padding: 20 }}>
-            <div className="stat-icon-container icon-blue">📄</div>
+            <div className="stat-icon-container icon-blue"><FileText size={20} /></div>
             <div>
               <div className="stat-label">Papers generated</div>
               <div style={{ fontSize: 24, fontWeight: 700 }}>{usage.papers_total}</div>
             </div>
           </div>
           <div className="card" style={{ display: "flex", alignItems: "center", gap: 16, padding: 20 }}>
-            <div className="stat-icon-container icon-green">🗓️</div>
+            <div className="stat-icon-container icon-green"><CalendarDays size={20} /></div>
             <div>
               <div className="stat-label">This month</div>
               <div style={{ fontSize: 24, fontWeight: 700 }}>{usage.papers_this_month}</div>
             </div>
           </div>
           <div className="card" style={{ display: "flex", alignItems: "center", gap: 16, padding: 20 }}>
-            <div className="stat-icon-container icon-purple">⏱️</div>
+            <div className="stat-icon-container icon-purple"><Clock size={20} /></div>
             <div>
               <div className="stat-label">Est. teacher-hours saved</div>
               <div style={{ fontSize: 24, fontWeight: 700 }}>~{usage.est_hours_saved}</div>
@@ -317,7 +318,7 @@ export default function AiPapersPage() {
             disabled={generating}
             style={{ width: "auto", padding: "10px 24px", borderRadius: "var(--radius-full)" }}
           >
-            {generating ? "Generating…" : "✨ Generate Paper"}
+            {generating ? "Generating…" : <><Sparkles size={16} /> Generate Paper</>}
           </button>
         </div>
 
@@ -337,17 +338,18 @@ export default function AiPapersPage() {
         <div className="card" style={{ padding: 24, marginBottom: 24 }}>
           <div
             style={{
-              background: approved ? "rgba(5,150,105,0.08)" : "rgba(37,99,235,0.08)",
-              border: `1px solid ${approved ? "var(--success)" : "var(--primary)"}`,
+              background: approved ? "var(--success-light)" : "var(--accent-50)",
+              border: `1px solid ${approved ? "var(--success)" : "var(--accent-100)"}`,
               borderRadius: "var(--radius-md)",
               padding: "10px 14px",
               marginBottom: 16,
               fontSize: 13,
+              color: approved ? "#0a6b4b" : "var(--accent-dark)",
             }}
           >
             {approved
-              ? "✅ Teacher-approved. Ready to print and hand out."
-              : "🤖 AI-generated draft — review and edit anything, then Approve. Nothing reaches students until you approve."}
+              ? "Teacher-approved — ready to print and hand out."
+              : "AI-generated draft. Review and edit anything, then Approve — nothing reaches students until you do."}
           </div>
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
@@ -369,16 +371,16 @@ export default function AiPapersPage() {
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20 }}>
             <button className="btn btn-primary" onClick={saveEdits} disabled={saving}
-              style={btnSm}>{saving ? "Saving…" : "💾 Save edits"}</button>
+              style={btnSm}>{saving ? "Saving…" : <><Save size={15} /> Save edits</>}</button>
             <button className="btn btn-primary" onClick={approve} disabled={approved}
               style={{ ...btnSm, background: approved ? "var(--text-muted)" : "var(--success)" }}>
-              {approved ? "Approved" : "✔ Approve"}
+              {approved ? "Approved" : <><Check size={15} /> Approve</>}
             </button>
             <button className="btn btn-outline" onClick={() => openPdf(false)} style={btnSm}>
-              🖨️ Open / print paper
+              <Printer size={15} /> Open / print paper
             </button>
             <button className="btn btn-outline" onClick={() => openPdf(true)} style={btnSm}>
-              🔑 Answer key (teacher)
+              <KeyRound size={15} /> Answer key (teacher)
             </button>
             <button className="btn btn-ghost" onClick={() => setShowAnswers((v) => !v)} style={btnSm}>
               {showAnswers ? "Hide answers" : "Show answers inline"}

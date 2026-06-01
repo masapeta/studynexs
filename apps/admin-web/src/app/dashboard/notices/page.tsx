@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Users, CalendarDays } from "lucide-react";
 import { api } from "@/lib/api";
 
 export default function NoticesPage() {
@@ -52,8 +53,8 @@ export default function NoticesPage() {
                 </span>
               </div>
               <div style={{ display: "flex", gap: 16, marginTop: 12, fontSize: 12, color: "var(--text-muted)" }}>
-                <span>🎯 {(n.target_roles || []).join(", ")}</span>
-                <span>📅 {n.created_at ? new Date(n.created_at).toLocaleDateString() : "—"}</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Users size={13} /> {(n.target_roles || []).join(", ")}</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><CalendarDays size={13} /> {n.created_at ? new Date(n.created_at).toLocaleDateString() : "—"}</span>
               </div>
             </div>
           ))}

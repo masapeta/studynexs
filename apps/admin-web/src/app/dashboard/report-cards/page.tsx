@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Award, CalendarDays, Clock, Save, Check, Printer } from "lucide-react";
 import {
   api,
   API_URL,
@@ -161,21 +162,21 @@ export default function ReportCardsPage() {
       {usage && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
           <div className="card" style={{ display: "flex", alignItems: "center", gap: 16, padding: 20 }}>
-            <div className="stat-icon-container icon-blue">🎓</div>
+            <div className="stat-icon-container icon-blue"><Award size={20} /></div>
             <div>
               <div className="stat-label">Report cards generated</div>
               <div style={{ fontSize: 24, fontWeight: 700 }}>{usage.reports_total ?? 0}</div>
             </div>
           </div>
           <div className="card" style={{ display: "flex", alignItems: "center", gap: 16, padding: 20 }}>
-            <div className="stat-icon-container icon-green">🗓️</div>
+            <div className="stat-icon-container icon-green"><CalendarDays size={20} /></div>
             <div>
               <div className="stat-label">This month</div>
               <div style={{ fontSize: 24, fontWeight: 700 }}>{usage.reports_this_month ?? 0}</div>
             </div>
           </div>
           <div className="card" style={{ display: "flex", alignItems: "center", gap: 16, padding: 20 }}>
-            <div className="stat-icon-container icon-purple">⏱️</div>
+            <div className="stat-icon-container icon-purple"><Clock size={20} /></div>
             <div>
               <div className="stat-label">Est. teacher-hours saved</div>
               <div style={{ fontSize: 24, fontWeight: 700 }}>~{usage.est_hours_saved}</div>
@@ -189,17 +190,18 @@ export default function ReportCardsPage() {
         <div className="card" style={{ padding: 24, marginBottom: 24 }}>
           <div
             style={{
-              background: approved ? "rgba(5,150,105,0.08)" : "rgba(37,99,235,0.08)",
-              border: `1px solid ${approved ? "var(--success)" : "var(--primary)"}`,
+              background: approved ? "var(--success-light)" : "var(--accent-50)",
+              border: `1px solid ${approved ? "var(--success)" : "var(--accent-100)"}`,
               borderRadius: "var(--radius-md)",
               padding: "10px 14px",
               marginBottom: 16,
               fontSize: 13,
+              color: approved ? "#0a6b4b" : "var(--accent-dark)",
             }}
           >
             {approved
-              ? "✅ Approved. Ready to print and issue."
-              : "🤖 Draft — the remark below was AI-written from this student's marks. Edit it freely, then Approve. Nothing is issued until you approve."}
+              ? "Approved — ready to print and issue."
+              : "Draft — the remark below was AI-written from this student's marks. Edit it freely, then Approve. Nothing is issued until you do."}
           </div>
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
@@ -265,7 +267,7 @@ export default function ReportCardsPage() {
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16 }}>
             <button className="btn btn-primary" onClick={saveRemark} disabled={saving} style={btnSm}>
-              {saving ? "Saving…" : "💾 Save remark"}
+              {saving ? "Saving…" : <><Save size={15} /> Save remark</>}
             </button>
             <button
               className="btn btn-primary"
@@ -273,10 +275,10 @@ export default function ReportCardsPage() {
               disabled={approved}
               style={{ ...btnSm, background: approved ? "var(--text-muted)" : "var(--success)" }}
             >
-              {approved ? "Approved" : "✔ Approve"}
+              {approved ? "Approved" : <><Check size={15} /> Approve</>}
             </button>
             <button className="btn btn-outline" onClick={openPdf} style={btnSm}>
-              🖨️ Open / print
+              <Printer size={15} /> Open / print
             </button>
             <button className="btn btn-ghost" onClick={() => setReport(null)} style={btnSm}>
               Close
