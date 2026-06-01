@@ -103,7 +103,7 @@ export default function LoginPage() {
         <div className="login-brand">
           <div style={{ marginBottom: 28 }}>
             <Image
-              src="/studynexs-logo.png"
+              src="/studynexs.png"
               alt="StudyNexs"
               width={220}
               height={70}

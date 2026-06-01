@@ -53,12 +53,12 @@ export default function DashboardLayout({
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-logo" style={{ padding: "24px 20px" }}>
-          <Image 
-            src="/logo.png" 
-            alt="StudyNexs Logo" 
-            width={140} 
-            height={40} 
-            style={{ objectFit: "contain" }} 
+          <Image
+            src="/studynexs.png"
+            alt="StudyNexs Logo"
+            width={150}
+            height={48}
+            style={{ objectFit: "contain" }}
           />
         </div>
 
