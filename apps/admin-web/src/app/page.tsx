@@ -34,8 +34,9 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const r = await apiAuth.sendOtp(formatted);
-      setMaskedMobile(r.data?.masked_mobile || formatted);
-      if (r.data?.dev_otp) setDevOtp(r.data.dev_otp);
+      setMaskedMobile(r.masked_mobile || r.data?.masked_mobile || formatted);
+      const dev = r.dev_otp || r.data?.dev_otp;
+      if (dev) setDevOtp(dev);
       setStep("otp");
     } catch (e: unknown) {
       setError(getApiErrorMessage(e, "Failed to send OTP"));

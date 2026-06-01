@@ -47,14 +47,18 @@ def _get_client_ip(request: Request) -> str:
 # ── POST /auth/send-otp ─────────────────────────────────────────────────────
 
 
-@router.post("/send-otp", response_model=MessageResponse)
+@router.post("/send-otp")
 async def send_otp(
     body: SendOTPRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
     r: redis.Redis = Depends(get_redis),
-):
-    """Send OTP to mobile number."""
+) -> dict:
+    """Send OTP to a mobile number.
+
+    Returns a masked mobile for the verify screen; in development it also returns the OTP
+    itself (`dev_otp`) so the flow is testable without an SMS gateway.
+    """
     client_ip = _get_client_ip(request)
     await check_rate_limit(
         key=f"send_otp:{client_ip}",
@@ -70,11 +74,12 @@ async def send_otp(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(e))
 
-    msg = "OTP sent successfully"
+    m = body.mobile
+    masked = f"{m[:3]}XXXXX{m[-2:]}" if len(m) >= 6 else m
+    resp: dict = {"message": "OTP sent successfully", "masked_mobile": masked}
     if settings.is_development:
-        msg += f" (dev OTP: {otp})"
-
-    return MessageResponse(message=msg)
+        resp["dev_otp"] = otp
+    return resp
 
 
 # ── POST /auth/verify-otp ───────────────────────────────────────────────────
