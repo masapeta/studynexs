@@ -37,10 +37,15 @@ router = APIRouter()
 
 
 def _get_client_ip(request: Request) -> str:
-    """Extract real client IP, respecting X-Forwarded-For from trusted proxies."""
-    forwarded = request.headers.get("x-forwarded-for", "")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
+    """Client IP for auth rate-limiting.
+
+    Trust X-Real-IP (set by our reverse proxy) and fall back to the socket peer. We do NOT
+    trust the left-most X-Forwarded-For — it is client-supplied and trivially spoofable, so a
+    caller could mint a fresh rate-limit bucket per request and defeat the limiter entirely.
+    """
+    real_ip = request.headers.get("x-real-ip", "").strip()
+    if real_ip:
+        return real_ip
     return request.client.host if request.client else "unknown"
 
 

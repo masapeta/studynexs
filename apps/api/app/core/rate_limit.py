@@ -26,13 +26,6 @@ async def enforce_api_rate_limit(
     await check_rate_limit(key, max_requests, window_seconds, r)
 
 
-def _client_ip(request: Request) -> str:
-    forwarded = request.headers.get("x-forwarded-for", "")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
-
-
 def rate_limit(
     action: str,
     *,
