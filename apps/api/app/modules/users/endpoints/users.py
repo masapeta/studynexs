@@ -15,7 +15,7 @@ from app.core.rate_limit import rate_limit
 settings = get_settings()
 from app.core.dependencies import CurrentUser, get_current_user, get_redis, require_roles
 from app.modules.users.schemas.user import UserCreate, UserListParams, UserOut, UserUpdate
-from app.modules.users.services.user_service import UserService
+from app.modules.users.services.user_service import UserService, can_assign_role
 from app.shared.schemas.common import APIResponse, PaginatedResponse
 
 router = APIRouter()
@@ -86,6 +86,12 @@ async def create_user(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new user (admin only)."""
+    # Role ceiling: an admin cannot mint a super_admin (or any role above its own).
+    if not can_assign_role(current_user.role, body.role):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You cannot assign a role higher than your own.",
+        )
     service = UserService(db)
     user = await service.create_user(uuid.UUID(current_user.school_id), body)
     return APIResponse(data=UserOut.model_validate(user), message="User created")

@@ -15,6 +15,34 @@ from app.modules.users.schemas.user import UserCreate, UserListParams, UserUpdat
 
 settings = get_settings()
 
+# Privilege ceiling. A caller may only create/assign a role at or below its own rank — this
+# is what stops an admin from minting a super_admin (H4). Provisioning that legitimately needs
+# to create the first super_admin (school onboarding) bypasses this by not going through the
+# authenticated /users endpoint.
+_ROLE_RANK: dict[UserRole, int] = {
+    UserRole.STUDENT: 10,
+    UserRole.PARENT: 10,
+    UserRole.TEACHER: 30,
+    UserRole.CLASS_INCHARGE: 40,
+    UserRole.OPERATIONS: 60,
+    UserRole.ADMIN: 80,
+    UserRole.SUPER_ADMIN: 100,
+}
+
+
+def can_assign_role(actor_role: UserRole | str, target_role: UserRole | str) -> bool:
+    """True if a caller with ``actor_role`` may assign ``target_role`` to a user.
+
+    Unknown actor role → denied; unknown target role → treated as top rank (deny unless the
+    actor is the highest). Fail-closed on both sides.
+    """
+    try:
+        actor = UserRole(actor_role)
+        target = UserRole(target_role)
+    except ValueError:
+        return False
+    return _ROLE_RANK.get(target, 100) <= _ROLE_RANK.get(actor, 0)
+
 
 class UserService:
     def __init__(self, db: AsyncSession, redis_client: redis.Redis | None = None):

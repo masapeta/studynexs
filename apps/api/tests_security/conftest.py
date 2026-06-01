@@ -72,9 +72,13 @@ async def make_client():
                         contact_email="a@a.com", contact_phone="+910000000001")
         s.add(school)
         await s.flush()
-        s.add(User(school_id=school.id, username="adm", mobile="+910000000003", full_name="Adm",
-                   role=UserRole.SUPER_ADMIN, password_hash=hash_password("Pw@12345"),
-                   is_active=True))
+        s.add_all([
+            User(school_id=school.id, username="adm", mobile="+910000000003", full_name="Adm",
+                 role=UserRole.SUPER_ADMIN, password_hash=hash_password("Pw@12345"),
+                 is_active=True),
+            User(school_id=school.id, username="adm2", mobile="+910000000004", full_name="Adm2",
+                 role=UserRole.ADMIN, password_hash=hash_password("Pw@12345"), is_active=True),
+        ])
         await s.commit()
 
     async def _override():
@@ -89,7 +93,11 @@ async def make_client():
         opened.append(c)
         return c
 
-    yield _factory, {"slug": "a", "username": "adm", "password": "Pw@12345"}
+    yield _factory, {
+        "slug": "a",
+        "username": "adm", "password": "Pw@12345",          # super_admin
+        "admin_username": "adm2", "admin_password": "Pw@12345",  # admin
+    }
 
     for c in opened:
         await c.aclose()
