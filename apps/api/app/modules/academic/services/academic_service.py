@@ -9,6 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenant_scope import TenantScope
 from app.db.models.academic import Class, Subject, TeacherSubjectMapping
+from app.db.models.attendance import Attendance
+from app.db.models.fee import StudentFeeRecord
+from app.db.models.school_ops import StudentTransport, TransportRoute
 from app.db.models.student import Parent, Relationship, Student, StudentParentMap
 from app.db.models.user import User
 from app.modules.academic.schemas.academic import (
@@ -215,6 +218,110 @@ class AcademicService:
             select(StudentParentMap).where(StudentParentMap.student_id == student_id)
         )
         return list(result.scalars().all())
+
+    async def student_profile(self, school_id: uuid.UUID, student_id: uuid.UUID) -> dict | None:
+        """Aggregate a student's full profile: info, parents, attendance, fees, transport."""
+        student = await self.get_student(school_id, student_id)
+        if not student:
+            return None
+        user = (
+            await self.db.execute(select(User).where(User.id == student.user_id))
+        ).scalar_one_or_none()
+        cls = (
+            await self.db.execute(select(Class).where(Class.id == student.class_id))
+        ).scalar_one_or_none()
+
+        parents = []
+        for m in await self.get_student_parents(school_id, student_id):
+            parent = (
+                await self.db.execute(select(Parent).where(Parent.id == m.parent_id))
+            ).scalar_one_or_none()
+            if not parent:
+                continue
+            pu = (
+                await self.db.execute(select(User).where(User.id == parent.user_id))
+            ).scalar_one_or_none()
+            parents.append({
+                "name": pu.full_name if pu else "—",
+                "relationship": parent.relationship_type.value,
+                "mobile": pu.mobile if pu else None,
+                "email": pu.email if pu else None,
+                "is_primary": m.is_primary,
+            })
+
+        att_rows = (
+            await self.db.execute(
+                select(Attendance.status, func.count())
+                .where(Attendance.school_id == school_id, Attendance.student_id == student_id)
+                .group_by(Attendance.status)
+            )
+        ).all()
+        att = {(s.value if hasattr(s, "value") else s): c for s, c in att_rows}
+        total_att = sum(att.values())
+        credited = att.get("present", 0) + att.get("late", 0) + att.get("half_day", 0)
+        attendance = {
+            "present": att.get("present", 0),
+            "absent": att.get("absent", 0),
+            "late": att.get("late", 0),
+            "total": total_att,
+            "percentage": round(credited / total_att * 100, 1) if total_att else None,
+        }
+
+        fee_row = (
+            await self.db.execute(
+                select(
+                    func.coalesce(func.sum(StudentFeeRecord.amount), 0),
+                    func.coalesce(func.sum(StudentFeeRecord.paid_amount), 0),
+                ).where(
+                    StudentFeeRecord.school_id == school_id,
+                    StudentFeeRecord.student_id == student_id,
+                )
+            )
+        ).first()
+        total_fee = float(fee_row[0] or 0)
+        paid = float(fee_row[1] or 0)
+        fees = {"total": total_fee, "paid": paid, "pending": round(total_fee - paid, 2)}
+
+        st = (
+            await self.db.execute(
+                select(StudentTransport).where(StudentTransport.student_id == student_id)
+            )
+        ).scalar_one_or_none()
+        transport = None
+        if st:
+            route = (
+                await self.db.execute(
+                    select(TransportRoute).where(TransportRoute.id == st.route_id)
+                )
+            ).scalar_one_or_none()
+            if route:
+                transport = {
+                    "route_name": route.route_name,
+                    "boarding_stop": st.boarding_stop,
+                    "driver_name": route.driver_name,
+                    "vehicle_number": route.vehicle_number,
+                }
+
+        dob = student.date_of_birth.isoformat() if student.date_of_birth else None
+        adm = student.admission_date.isoformat() if student.admission_date else None
+        return {
+            "id": str(student.id),
+            "admission_no": student.admission_no,
+            "roll_no": student.roll_no,
+            "student_name": user.full_name if user else "—",
+            "mobile": user.mobile if user else None,
+            "email": user.email if user else None,
+            "class_name": f"{cls.grade} - {cls.section}" if cls else "—",
+            "date_of_birth": dob,
+            "gender": student.gender.value if student.gender else None,
+            "blood_group": student.blood_group,
+            "admission_date": adm,
+            "apaar_number": student.apaar_number,
+            "parents": parents,
+            "attendance": attendance,
+            "fees": fees,
+            "transport": transport,
+        }
 
     # ── Teacher Mappings ─────────────────────────────────────────
 

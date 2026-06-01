@@ -167,6 +167,21 @@ async def get_student_parents(
     return APIResponse(data=[ParentLinkOut.model_validate(l) for l in links])
 
 
+@router.get("/students/{student_id}/profile", response_model=APIResponse)
+async def get_student_profile(
+    student_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Consolidated student profile: info, parents/guardians, attendance, fees, transport."""
+    profile = await AcademicService(db).student_profile(
+        uuid.UUID(current_user.school_id), student_id
+    )
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Student not found")
+    return APIResponse(data=profile)
+
+
 # ── Teacher Mapping ──────────────────────────────────────────────────────────
 
 @router.post("/teacher-mappings", response_model=APIResponse[TeacherMappingOut], status_code=201)

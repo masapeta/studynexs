@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 
 interface StudentRow {
@@ -18,6 +19,7 @@ export default function StudentsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     fetchStudents();
@@ -84,12 +86,16 @@ export default function StudentsPage() {
               </td></tr>
             ) : (
               students.map((s) => (
-                <tr key={s.id}>
+                <tr
+                  key={s.id}
+                  onClick={() => router.push(`/dashboard/students/${s.id}`)}
+                  style={{ cursor: "pointer" }}
+                >
                   <td style={{ fontWeight: 600 }}>{s.admission_no || "—"}</td>
                   <td>{s.student_name || "—"}</td>
                   <td>{s.class_name || "—"}</td>
                   <td><span className="status-dot green" />Active</td>
-                  <td><button className="card-menu">⋯</button></td>
+                  <td style={{ color: "var(--accent-dark)", fontWeight: 600, fontSize: 13 }}>View →</td>
                 </tr>
               ))
             )}
