@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.fee import (
@@ -19,6 +20,12 @@ from app.db.models.fee import (
 from app.db.models.school import School
 from app.db.models.student import Student
 from app.db.models.user import User
+
+
+def _default_receipt_prefix(school: School) -> str:
+    """Receipt prefix used when a school's counter wasn't provisioned at onboarding."""
+    base = "".join(ch for ch in (school.code or "") if ch.isalnum()).upper()
+    return (base or "RCPT")[:10]
 
 
 class FeeService:
@@ -112,13 +119,34 @@ class FeeService:
         class_result = await self.db.execute(select(Class).where(Class.id == student.class_id))
         cls = class_result.scalar_one()
 
-        # 3. Atomic receipt number generation (SELECT FOR UPDATE)
-        counter_result = await self.db.execute(
-            select(ReceiptCounter)
-            .where(ReceiptCounter.school_id == school_id)
-            .with_for_update()  # ← ROW LOCK — prevents race conditions
-        )
-        counter = counter_result.scalar_one()
+        # 3. Atomic receipt number generation (SELECT FOR UPDATE). Self-provision the
+        # per-school counter if onboarding didn't create one — idempotent and race-safe via
+        # the unique school_id constraint — so the first-ever payment can't crash.
+        counter = (
+            await self.db.execute(
+                select(ReceiptCounter)
+                .where(ReceiptCounter.school_id == school_id)
+                .with_for_update()  # ← ROW LOCK — prevents race conditions
+            )
+        ).scalar_one_or_none()
+        if counter is None:
+            await self.db.execute(
+                pg_insert(ReceiptCounter)
+                .values(
+                    school_id=school_id,
+                    prefix=_default_receipt_prefix(school),
+                    last_sequence=0,
+                )
+                .on_conflict_do_nothing(index_elements=["school_id"])
+            )
+            await self.db.flush()
+            counter = (
+                await self.db.execute(
+                    select(ReceiptCounter)
+                    .where(ReceiptCounter.school_id == school_id)
+                    .with_for_update()
+                )
+            ).scalar_one()
         counter.last_sequence += 1
         next_seq = counter.last_sequence
         year = datetime.now(timezone.utc).year
@@ -167,10 +195,10 @@ class FeeService:
         from datetime import datetime, timezone
 
         from sqlalchemy import func
-        
+
         now = datetime.now(timezone.utc)
         current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        
+
         # Total Collected (this year - simplified)
         total_collected_query = select(func.sum(FeeReceipt.amount_paid)).where(
             FeeReceipt.school_id == school_id

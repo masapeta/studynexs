@@ -13,7 +13,7 @@ from decimal import Decimal
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
@@ -198,6 +198,28 @@ async def test_cash_idempotency_concurrent(engine):
     async with _sm(engine)() as s:
         n = await s.scalar(select(func.count()).select_from(FeeReceipt))
     assert n == 1  # exactly one receipt for the cash payment
+
+
+@pytest.mark.asyncio
+async def test_first_payment_provisions_counter(engine):
+    """M5: a school whose ReceiptCounter was never created still takes its first payment —
+    the counter self-provisions instead of crashing on scalar_one()."""
+    ids = await _seed(engine)
+    async with _sm(engine)() as s:
+        await s.execute(
+            delete(ReceiptCounter).where(ReceiptCounter.school_id == ids["school_id"]))
+        await s.commit()
+
+    async with _sm(engine)() as s:
+        receipt = await FeeService(s).process_payment(
+            ids["school_id"], ids["fee_record_id"], Decimal("400"), PaymentMode.CASH)
+        await s.commit()
+        assert receipt.receipt_number  # a receipt was issued, no NoResultFound
+
+    async with _sm(engine)() as s:
+        n = await s.scalar(select(func.count()).select_from(ReceiptCounter).where(
+            ReceiptCounter.school_id == ids["school_id"]))
+    assert n == 1  # counter self-provisioned exactly once
 
 
 @pytest.mark.asyncio
