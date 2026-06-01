@@ -184,8 +184,8 @@ export default function AttendancePage() {
             ) : (
               students.map((s) => (
                 <tr key={s.id}>
-                  <td style={{ fontWeight: 600 }}>{s.admission_number || "—"}</td>
-                  <td>{s.full_name || s.user_id?.substring(0, 8)}</td>
+                  <td style={{ fontWeight: 600 }}>{s.admission_no || "—"}</td>
+                  <td>{s.student_name || "—"}</td>
                   <td>
                     <span className={`status-dot ${attendance[s.id] === 'present' ? 'green' : attendance[s.id] === 'absent' ? 'red' : 'orange'}`} />
                     <span style={{ textTransform: "capitalize" }}>{attendance[s.id]?.replace("_", " ") || "Present"}</span>

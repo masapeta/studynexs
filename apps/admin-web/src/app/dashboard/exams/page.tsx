@@ -201,7 +201,7 @@ export default function ExamsPage() {
               ) : students.map((s) => (
                 <tr key={s.id}>
                   <td style={{ fontWeight: 600 }}>{s.roll_no || "—"}</td>
-                  <td>{s.full_name || s.student_name || s.id.substring(0, 8)}</td>
+                  <td>{s.student_name || "—"}</td>
                   <td style={{ textAlign: "right" }}>
                     <input
                       type="number"
