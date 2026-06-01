@@ -48,21 +48,27 @@ export async function api<T = any>(
   });
 
   if (res.status === 401) {
-    // Try refresh
-    const refreshed = await refreshToken();
-    if (refreshed) {
-      headers["Authorization"] = `Bearer ${accessToken}`;
-      const retry = await fetch(`${API_URL}${path}`, {
-        ...options,
-        headers,
-        credentials: "include",
-      });
-      if (!retry.ok) throw new ApiError(retry.status, await retry.text());
-      return retry.json();
-    }
-    // Redirect to login
-    if (typeof window !== "undefined") {
-      window.location.href = "/";
+    // The auth endpoints (refresh/login) returning 401 just means "no valid session
+    // yet" — never refresh-and-redirect for those. Otherwise the public login page
+    // reload-loops: auth-context calls /auth/refresh on mount, the 401 forces a
+    // window.location redirect to "/", which remounts and calls /auth/refresh again.
+    const isAuthCall = path.includes("/auth/");
+    if (!isAuthCall) {
+      const refreshed = await refreshToken();
+      if (refreshed) {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+        const retry = await fetch(`${API_URL}${path}`, {
+          ...options,
+          headers,
+          credentials: "include",
+        });
+        if (!retry.ok) throw new ApiError(retry.status, await retry.text());
+        return retry.json();
+      }
+      // Session truly gone — bounce to login, but only if we aren't already there.
+      if (typeof window !== "undefined" && window.location.pathname !== "/") {
+        window.location.href = "/";
+      }
     }
     throw new ApiError(401, "Unauthorized");
   }
