@@ -2,31 +2,40 @@
 
 import { useAuth } from "@/lib/auth-context";
 import { useRouter, usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { api } from "@/lib/api";
 import { applyThemeColor } from "@/lib/theme";
 import {
   LayoutDashboard, GraduationCap, Users, School, Sparkles, ClipboardCheck,
-  FileText, Award, CalendarDays, Wallet, Megaphone, Settings as SettingsIcon, LogOut,
+  FileText, Award, CalendarDays, Wallet, Megaphone, Bus, BedDouble,
+  Settings as SettingsIcon, LogOut,
 } from "lucide-react";
 
-// Demo nav: only pages fully wired to the backend are shown. Remaining stub pages
-// (library, events) are hidden until built so nothing reads "coming soon".
-const NAV_ITEMS = [
+// Nav items without a `module` are core (always shown). Items with a `module` key are
+// gated by the school's enabled_modules (per-tenant feature flags) — a school can switch
+// them off in Settings. Default is ON (absent key => shown), except modules not yet built.
+type NavItem = { label: string; href: string; icon: React.ElementType; module?: string };
+
+const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Students", href: "/dashboard/students", icon: GraduationCap },
   { label: "Staff", href: "/dashboard/staff", icon: Users },
   { label: "Classes", href: "/dashboard/classes", icon: School },
-  { label: "AI Papers", href: "/dashboard/ai-papers", icon: Sparkles },
-  { label: "Attendance", href: "/dashboard/attendance", icon: ClipboardCheck },
-  { label: "Exams", href: "/dashboard/exams", icon: FileText },
-  { label: "Report Cards", href: "/dashboard/report-cards", icon: Award },
-  { label: "Timetable", href: "/dashboard/timetable", icon: CalendarDays },
-  { label: "Finance", href: "/dashboard/finance", icon: Wallet },
-  { label: "Notices", href: "/dashboard/notices", icon: Megaphone },
+  { label: "AI Papers", href: "/dashboard/ai-papers", icon: Sparkles, module: "ai_papers" },
+  { label: "Attendance", href: "/dashboard/attendance", icon: ClipboardCheck, module: "attendance" },
+  { label: "Exams", href: "/dashboard/exams", icon: FileText, module: "exams" },
+  { label: "Report Cards", href: "/dashboard/report-cards", icon: Award, module: "report_cards" },
+  { label: "Timetable", href: "/dashboard/timetable", icon: CalendarDays, module: "timetable" },
+  { label: "Finance", href: "/dashboard/finance", icon: Wallet, module: "finance" },
+  { label: "Notices", href: "/dashboard/notices", icon: Megaphone, module: "notices" },
+  { label: "Transport", href: "/dashboard/transport", icon: Bus, module: "transport" },
+  { label: "Residential", href: "/dashboard/residential", icon: BedDouble, module: "residential" },
 ];
+
+// New modules default OFF until explicitly enabled (so they don't 404 before setup).
+const DEFAULT_OFF = new Set(["transport", "residential"]);
 
 export default function DashboardLayout({
   children,
@@ -36,6 +45,7 @@ export default function DashboardLayout({
   const { user, loading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const [modules, setModules] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!loading && !user) {
@@ -43,14 +53,30 @@ export default function DashboardLayout({
     }
   }, [user, loading, router]);
 
-  // Apply the school's brand colour (per-tenant theming).
+  // Apply the school's brand colour + enabled modules (per-tenant config).
   useEffect(() => {
     if (user) {
       api("/api/v1/school/profile")
-        .then((r) => applyThemeColor(r.data?.theme_color))
+        .then((r) => {
+          applyThemeColor(r.data?.theme_color);
+          setModules(r.data?.enabled_modules || {});
+        })
         .catch(() => {});
     }
   }, [user]);
+
+  // Live update when modules are toggled in Settings.
+  useEffect(() => {
+    const onModules = (e: Event) => setModules((e as CustomEvent).detail || {});
+    window.addEventListener("sn-modules", onModules);
+    return () => window.removeEventListener("sn-modules", onModules);
+  }, []);
+
+  const moduleVisible = (m?: string) => {
+    if (!m) return true;
+    if (DEFAULT_OFF.has(m)) return modules[m] === true;
+    return modules[m] !== false;
+  };
 
   if (loading) {
     return (
@@ -79,7 +105,7 @@ export default function DashboardLayout({
         </div>
 
         <nav className="sidebar-nav">
-          {NAV_ITEMS.map((item) => {
+          {NAV_ITEMS.filter((item) => moduleVisible(item.module)).map((item) => {
             const Icon = item.icon;
             return (
               <Link

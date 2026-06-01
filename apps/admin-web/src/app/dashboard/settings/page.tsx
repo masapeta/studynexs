@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { applyThemeColor, DEFAULT_ACCENT } from "@/lib/theme";
+import { TOGGLEABLE_MODULES, isModuleOn } from "@/lib/modules";
 
 export default function SettingsPage() {
   const [profile, setProfile] = useState<any>({ name: "", board: "", contact_email: "", contact_phone: "", address: {} });
   const [years, setYears] = useState<any[]>([]);
+  const [modules, setModules] = useState<Record<string, boolean>>({});
   const [savingProfile, setSavingProfile] = useState(false);
   const [error, setError] = useState("");
   const [msg, setMsg] = useState("");
@@ -15,7 +17,10 @@ export default function SettingsPage() {
 
   useEffect(() => {
     api("/api/v1/school/profile")
-      .then((r) => setProfile({ ...(r.data || {}), address: r.data?.address || {} }))
+      .then((r) => {
+        setProfile({ ...(r.data || {}), address: r.data?.address || {} });
+        setModules(r.data?.enabled_modules || {});
+      })
       .catch((e) => setError(getApiErrorMessage(e, "Failed to load school profile")));
     loadYears();
   }, []);
@@ -49,6 +54,20 @@ export default function SettingsPage() {
       setError(getApiErrorMessage(e, "Failed to save profile"));
     } finally {
       setSavingProfile(false);
+    }
+  }
+
+  async function toggleModule(key: string, on: boolean) {
+    const next = { ...modules, [key]: on };
+    setModules(next);
+    window.dispatchEvent(new CustomEvent("sn-modules", { detail: next }));
+    try {
+      await api("/api/v1/school/profile", {
+        method: "PATCH",
+        body: JSON.stringify({ enabled_modules: next }),
+      });
+    } catch (e) {
+      setError(getApiErrorMessage(e, "Failed to update modules"));
     }
   }
 
@@ -133,6 +152,36 @@ export default function SettingsPage() {
           <button className="btn btn-primary" style={btn} onClick={saveProfile} disabled={savingProfile}>
             {savingProfile ? "Saving…" : "Save Profile"}
           </button>
+        </div>
+      </div>
+
+      {/* Modules — per-school feature flags */}
+      <div className="card" style={{ marginBottom: 24, padding: 24 }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, marginTop: 0, marginBottom: 4 }}>Modules</h2>
+        <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 0, marginBottom: 16 }}>
+          Turn features on or off for your school — changes apply immediately.
+        </p>
+        <div style={{ display: "grid", gap: 10 }}>
+          {TOGGLEABLE_MODULES.map((m) => {
+            const on = isModuleOn(modules, m);
+            return (
+              <div key={m.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", border: "1px solid var(--border-light)", borderRadius: "var(--radius-md)" }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>{m.label}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{m.desc}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => toggleModule(m.key, !on)}
+                  aria-pressed={on}
+                  title={on ? "Enabled" : "Disabled"}
+                  style={{ width: 44, height: 26, borderRadius: 999, border: "none", cursor: "pointer", position: "relative", background: on ? "var(--accent)" : "var(--border)", transition: "0.2s", flexShrink: 0 }}
+                >
+                  <span style={{ position: "absolute", top: 3, left: on ? 21 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "0.2s", boxShadow: "0 1px 2px rgba(0,0,0,0.25)" }} />
+                </button>
+              </div>
+            );
+          })}
         </div>
       </div>
 

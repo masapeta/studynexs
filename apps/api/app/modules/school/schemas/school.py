@@ -20,6 +20,7 @@ class SchoolProfileOut(BaseModel):
     contact_email: str | None = None
     contact_phone: str | None = None
     theme_color: str | None = None
+    enabled_modules: dict | None = None
 
 
 class SchoolProfileUpdate(BaseModel):
@@ -30,6 +31,7 @@ class SchoolProfileUpdate(BaseModel):
     address: dict | None = None
     logo_url: str | None = None
     theme_color: str | None = None
+    enabled_modules: dict | None = None
 
 
 class AcademicYearOut(BaseModel):
