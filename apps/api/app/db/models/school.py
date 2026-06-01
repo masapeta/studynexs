@@ -25,3 +25,8 @@ class School(BaseModel):
     contact_email: Mapped[str | None] = mapped_column(String(255))
     contact_phone: Mapped[str | None] = mapped_column(String(15))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    @property
+    def theme_color(self) -> str | None:
+        """School's brand accent colour (hex) for per-tenant theming; lives in settings."""
+        return (self.settings or {}).get("theme_color")

@@ -5,6 +5,8 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { api } from "@/lib/api";
+import { applyThemeColor } from "@/lib/theme";
 import {
   LayoutDashboard, GraduationCap, Users, School, Sparkles, ClipboardCheck,
   FileText, Award, CalendarDays, Wallet, Megaphone, Settings as SettingsIcon, LogOut,
@@ -40,6 +42,15 @@ export default function DashboardLayout({
       router.push("/");
     }
   }, [user, loading, router]);
+
+  // Apply the school's brand colour (per-tenant theming).
+  useEffect(() => {
+    if (user) {
+      api("/api/v1/school/profile")
+        .then((r) => applyThemeColor(r.data?.theme_color))
+        .catch(() => {});
+    }
+  }, [user]);
 
   if (loading) {
     return (

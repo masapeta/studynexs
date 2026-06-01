@@ -8,11 +8,12 @@
   --primary-50: #f1f5f9;
   --primary-100: #e2e8f0;
 
+  /* Accent = the school's brand colour (set --accent at runtime; shades derive from it). */
   --accent: #ee6c4d;
-  --accent-light: #f2876b;
-  --accent-dark: #d6512c;
-  --accent-50: #fff4f0;
-  --accent-100: #ffe1d6;
+  --accent-light: color-mix(in srgb, var(--accent) 78%, white);
+  --accent-dark: color-mix(in srgb, var(--accent) 82%, black);
+  --accent-50: color-mix(in srgb, var(--accent) 9%, white);
+  --accent-100: color-mix(in srgb, var(--accent) 18%, white);
 
   /* Semantic */
   --success: #0f9d6e;
@@ -356,27 +357,26 @@ textarea.form-input { resize: vertical; line-height: 1.5; }
 
 /* ── Hero Banner ───────────────────────────────────────── */
 .hero-banner {
-  background: linear-gradient(120deg, #ffffff 0%, #f5f7fb 100%);
-  border: 1px solid var(--border-light);
+  background: linear-gradient(120deg, var(--accent) 0%, var(--accent-dark) 100%);
   border-radius: var(--radius-xl);
-  padding: 24px 28px;
-  color: var(--text-primary);
+  padding: 26px 30px;
+  color: #fff;
   position: relative;
   overflow: hidden;
   margin-bottom: 24px;
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-md);
 }
 
 .hero-banner h2 {
-  font-size: 21px;
+  font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.4px;
-  color: var(--text-primary);
+  color: #fff;
 }
 
 .hero-banner p {
   font-size: 13.5px;
-  color: var(--text-secondary);
+  color: rgba(255, 255, 255, 0.85);
   margin-top: 5px;
 }
 
@@ -385,8 +385,8 @@ textarea.form-input { resize: vertical; line-height: 1.5; }
   right: 28px;
   top: 50%;
   transform: translateY(-50%);
-  opacity: 0.08;
-  color: var(--primary);
+  opacity: 0.16;
+  color: #fff;
   line-height: 0;
 }
 

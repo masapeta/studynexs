@@ -22,8 +22,14 @@ class SchoolService:
 
     async def update_profile(self, school_id: uuid.UUID, data: SchoolProfileUpdate) -> School:
         school = await self.get_profile(school_id)
-        for field, value in data.model_dump(exclude_unset=True).items():
+        payload = data.model_dump(exclude_unset=True)
+        # theme_color lives in the settings JSONB (no dedicated column); reassign the dict
+        # so SQLAlchemy detects the change.
+        theme = payload.pop("theme_color", None)
+        for field, value in payload.items():
             setattr(school, field, value)
+        if theme is not None:
+            school.settings = {**(school.settings or {}), "theme_color": theme}
         await self.db.flush()
         return school
 

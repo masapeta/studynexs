@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, getApiErrorMessage } from "@/lib/api";
+import { applyThemeColor, DEFAULT_ACCENT } from "@/lib/theme";
 
 export default function SettingsPage() {
   const [profile, setProfile] = useState<any>({ name: "", board: "", contact_email: "", contact_phone: "", address: {} });
@@ -38,9 +39,11 @@ export default function SettingsPage() {
           contact_email: profile.contact_email,
           contact_phone: profile.contact_phone,
           address: profile.address,
+          theme_color: profile.theme_color || DEFAULT_ACCENT,
         }),
       });
       setProfile({ ...(r.data || profile), address: r.data?.address || {} });
+      applyThemeColor(r.data?.theme_color || profile.theme_color);
       setMsg("School profile saved.");
     } catch (e) {
       setError(getApiErrorMessage(e, "Failed to save profile"));
@@ -95,6 +98,37 @@ export default function SettingsPage() {
           <div><label className="stat-label">State</label>
             <input className="form-input" style={inp} value={addr.state || ""} onChange={(e) => setProfile({ ...profile, address: { ...addr, state: e.target.value } })} /></div>
         </div>
+
+        {/* Brand colour — per-school theming */}
+        <div style={{ marginTop: 20, paddingTop: 18, borderTop: "1px solid var(--border-light)" }}>
+          <label className="stat-label">Brand colour</label>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8, flexWrap: "wrap" }}>
+            <input
+              type="color"
+              value={profile.theme_color || DEFAULT_ACCENT}
+              onChange={(e) => { setProfile({ ...profile, theme_color: e.target.value }); applyThemeColor(e.target.value); }}
+              style={{ width: 46, height: 38, border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", cursor: "pointer", background: "none", padding: 2 }}
+            />
+            <span style={{ fontSize: 13, color: "var(--text-secondary)", fontFamily: "monospace" }}>
+              {(profile.theme_color || DEFAULT_ACCENT).toUpperCase()}
+            </span>
+            <div style={{ display: "flex", gap: 8, marginLeft: 8 }}>
+              {["#ee6c4d", "#2563eb", "#16a34a", "#7c3aed", "#db2777", "#0891b2"].map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  title={c}
+                  onClick={() => { setProfile({ ...profile, theme_color: c }); applyThemeColor(c); }}
+                  style={{ width: 26, height: 26, borderRadius: "50%", background: c, border: "2px solid #fff", boxShadow: "0 0 0 1px var(--border)", cursor: "pointer", padding: 0 }}
+                />
+              ))}
+            </div>
+          </div>
+          <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 8 }}>
+            Sets your school&apos;s accent across the whole app — preview is live; click Save Profile to keep it.
+          </p>
+        </div>
+
         <div style={{ marginTop: 16 }}>
           <button className="btn btn-primary" style={btn} onClick={saveProfile} disabled={savingProfile}>
             {savingProfile ? "Saving…" : "Save Profile"}
