@@ -105,6 +105,22 @@ def create_app() -> FastAPI:
         all_ok = all(v == "ok" for v in checks.values())
         return {"status": "ready" if all_ok else "degraded", "checks": checks}
 
+    # ── Exception handlers ───────────────────────────────────────
+    from fastapi import Request
+    from fastapi.responses import JSONResponse
+    from sqlalchemy.exc import IntegrityError
+
+    @app.exception_handler(IntegrityError)
+    async def integrity_error_handler(request: Request, exc: IntegrityError):
+        """Map DB constraint violations to 409 instead of a 500."""
+        structlog.get_logger().warning("integrity_error", path=str(request.url.path))
+        return JSONResponse(
+            status_code=409,
+            content={
+                "detail": "This conflicts with existing data (duplicate or constraint violation)."
+            },
+        )
+
     # ── Mount Routers ────────────────────────────────────────────
     prefix = settings.API_V1_PREFIX
 

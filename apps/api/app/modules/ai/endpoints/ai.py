@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, require_roles
+from app.core.rate_limit import rate_limit
 from app.db.models.ai_usage import AIUsage
 from app.db.models.question_paper import PaperStatus, QuestionPaper
 from app.db.models.report_card import ReportCard, ReportStatus
@@ -60,6 +61,27 @@ async def ai_health(
 # Conservative estimates of manual time saved per AI-assisted artifact.
 _MINUTES_SAVED_PER_PAPER = 45
 _MINUTES_SAVED_PER_REPORT = 10
+
+# Cost guardrails for the LLM-backed generation endpoints.
+_AI_GEN_RATE = {"max_requests": 12, "window_seconds": 60}  # per (school, user)
+_AI_MONTHLY_CAP = 2000  # per-school AI generations / month
+
+
+async def _enforce_monthly_cap(db: AsyncSession, school_id: uuid.UUID) -> None:
+    """Block runaway LLM spend: cap AI generations per school per month."""
+    month_start = datetime.now(timezone.utc).replace(
+        day=1, hour=0, minute=0, second=0, microsecond=0
+    )
+    used = await db.scalar(
+        select(func.count())
+        .select_from(AIUsage)
+        .where(AIUsage.school_id == school_id, AIUsage.created_at >= month_start)
+    ) or 0
+    if used >= _AI_MONTHLY_CAP:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Monthly AI generation limit reached for this school.",
+        )
 
 
 @router.get("/usage")
@@ -142,13 +164,18 @@ async def _get_owned_paper(
     return paper
 
 
-@router.post("/question-papers/generate", response_model=QuestionPaperOut)
+@router.post(
+    "/question-papers/generate",
+    response_model=QuestionPaperOut,
+    dependencies=[rate_limit("ai_generate", **_AI_GEN_RATE)],
+)
 async def generate_question_paper(
     body: GenerateRequest,
     current_user: CurrentUser = Depends(require_roles(*_TEACH_ROLES)),
     db: AsyncSession = Depends(get_db),
 ) -> QuestionPaperOut:
     """Generate a DRAFT paper from topics. Teacher must review + approve before use."""
+    await _enforce_monthly_cap(db, uuid.UUID(current_user.school_id))
     try:
         paper = await generate_paper(
             db,
@@ -292,13 +319,18 @@ async def _get_owned_report(
     return report
 
 
-@router.post("/report-cards/generate", response_model=ReportCardOut)
+@router.post(
+    "/report-cards/generate",
+    response_model=ReportCardOut,
+    dependencies=[rate_limit("ai_generate", **_AI_GEN_RATE)],
+)
 async def generate_report_card(
     body: GenerateReportRequest,
     current_user: CurrentUser = Depends(require_roles(*_TEACH_ROLES)),
     db: AsyncSession = Depends(get_db),
 ) -> ReportCardOut:
     """Consolidate a student's marks + attendance and draft a remark (DRAFT; approve after)."""
+    await _enforce_monthly_cap(db, uuid.UUID(current_user.school_id))
     try:
         report = await generate_report_for_student(
             db,

@@ -97,7 +97,7 @@ async def process_pending_events(session: AsyncSession, batch_size: int = 20) ->
             processed += 1
         except Exception as e:
             event.retry_count += 1
-            event.last_error = traceback.format_exc()[-500]
+            event.last_error = traceback.format_exc()[-500:]
 
             if event.retry_count >= event.max_retries:
                 event.status = OutboxStatus.DEAD_LETTER

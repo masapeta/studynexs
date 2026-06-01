@@ -6,8 +6,19 @@ import uuid
 from datetime import date, datetime
 
 from sqlalchemy import (
-    BigInteger, Boolean, Date, DateTime, Enum, ForeignKey,
-    Index, Integer, Numeric, String, Text, UniqueConstraint,
+    BigInteger,
+    Boolean,
+    Date,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -144,6 +155,11 @@ class FeeReceipt(BaseModel):
         UniqueConstraint("school_id", "receipt_number", name="uq_receipt_number_per_school"),
         UniqueConstraint("school_id", "receipt_sequence", name="uq_receipt_sequence_per_school"),
         Index("ix_receipts_student", "school_id", "student_id"),
+        # Idempotency: at most one receipt per (school, transaction_id) for gateway payments.
+        Index(
+            "uq_receipt_txn_per_school", "school_id", "transaction_id",
+            unique=True, postgresql_where=text("transaction_id IS NOT NULL"),
+        ),
     )
 
 
