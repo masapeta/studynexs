@@ -57,7 +57,7 @@ export default function ReportCardsPage() {
       setReports([]);
       return;
     }
-    api(`/api/v1/academic/students?class_id=${classId}&page_size=200`)
+    api(`/api/v1/academic/students?class_id=${classId}&page_size=100`)
       .then((r) => setStudents(r.items || r.data || []))
       .catch((e) => console.error(e));
     loadReports();
