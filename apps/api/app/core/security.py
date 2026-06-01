@@ -60,14 +60,19 @@ def create_access_token(
     return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
-def create_refresh_token(user_id: str, school_id: str) -> tuple[str, str]:
-    """Create a long-lived refresh token (30 days). Returns (token, jti)."""
+def create_refresh_token(user_id: str, school_id: str, sid: str) -> tuple[str, str]:
+    """Create a long-lived refresh token (30 days). Returns (token, jti).
+
+    `sid` ties the token to one login session (one device), so multiple devices each get
+    their own rotation chain instead of clobbering a single per-user slot.
+    """
     now = datetime.now(timezone.utc)
     jti = str(uuid.uuid4())
     payload = {
         "sub": user_id,
         "school_id": school_id,
         "jti": jti,
+        "sid": sid,
         "type": "refresh",
         "iat": now,
         "exp": now + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),

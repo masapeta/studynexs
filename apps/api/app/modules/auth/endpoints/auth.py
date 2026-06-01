@@ -226,12 +226,21 @@ async def refresh_token(
 
     # Check blacklist
     jti = payload.get("jti", "")
+    sid = payload.get("sid", "")
     blacklist_key = f"{settings.REDIS_TOKEN_BLACKLIST_PREFIX}{jti}"
     if await r.exists(blacklist_key):
         clear_refresh_cookie(response)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has been revoked",
+        )
+
+    # Pre-session tokens (no sid) predate session-keyed rotation — force a fresh login.
+    if not sid:
+        clear_refresh_cookie(response)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Please log in again",
         )
 
     # Load user from DB
@@ -252,7 +261,7 @@ async def refresh_token(
     service = AuthService(db, r)
     await validate_tenant_school_match(request, db, str(user.school_id))
     try:
-        access_token, new_refresh_token = await service.rotate_refresh_session(user, jti)
+        access_token, new_refresh_token = await service.rotate_refresh_session(user, sid, jti)
     except ValueError as e:
         clear_refresh_cookie(response)
         raise HTTPException(
@@ -272,6 +281,7 @@ async def logout(
     response: Response,
     request: Request,
     current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
     r: redis.Redis = Depends(get_redis),
 ):
     """Logout — blacklist access token + clear refresh cookie."""
@@ -282,18 +292,21 @@ async def logout(
         "1",
     )
 
-    # Blacklist refresh cookie if present
+    # Blacklist refresh cookie if present + drop this session's refresh slot
     cookie_token = request.cookies.get(settings.REFRESH_COOKIE_NAME)
     if cookie_token:
         try:
             payload = decode_token(cookie_token)
             refresh_jti = payload.get("jti", "")
+            sid = payload.get("sid", "")
             if refresh_jti:
                 await r.setex(
                     f"{settings.REDIS_TOKEN_BLACKLIST_PREFIX}{refresh_jti}",
                     settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
                     "1",
                 )
+            if sid:
+                await AuthService(db, r).revoke_session(current_user.id, sid)
         except JWTError:
             pass  # Already expired — ignore
 
@@ -301,3 +314,30 @@ async def logout(
     logger.info("user_logout", user_id=current_user.id)
 
     return MessageResponse(message="Logged out successfully")
+
+
+# ── POST /auth/logout-all ───────────────────────────────────────────────────
+
+
+@router.post("/logout-all", response_model=MessageResponse)
+async def logout_all(
+    response: Response,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    r: redis.Redis = Depends(get_redis),
+):
+    """Log out of every device — drop all refresh sessions for the user.
+
+    Existing access tokens stay valid until they expire (≤15 min); new ones can't be
+    minted because every refresh session is gone.
+    """
+    await r.setex(
+        f"{settings.REDIS_TOKEN_BLACKLIST_PREFIX}{current_user.jti}",
+        settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        "1",
+    )
+    await AuthService(db, r).revoke_all_sessions(current_user.id)
+    clear_refresh_cookie(response)
+    logger.info("user_logout_all", user_id=current_user.id)
+
+    return MessageResponse(message="Logged out of all devices")

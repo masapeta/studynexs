@@ -134,9 +134,12 @@ class AuthService:
 
     # ── Token Operations ─────────────────────────────────────────
 
-    async def issue_tokens(self, user: User) -> tuple[str, str]:
+    async def issue_tokens(self, user: User, sid: str | None = None) -> tuple[str, str]:
         """
         Issue access + refresh tokens for a user.
+
+        A fresh ``sid`` (default) starts a new session — i.e. a login on a new device.
+        Passing an existing ``sid`` rotates the token within that session (refresh).
         Returns (access_token, refresh_token).
         """
         from app.db.models.school import School
@@ -152,44 +155,88 @@ class AuthService:
             role=user.role.value,
             tenant_slug=tenant_slug,
         )
+        sid = sid or str(uuid.uuid4())
         refresh_token, jti = create_refresh_token(
             user_id=str(user.id),
             school_id=str(user.school_id),
+            sid=sid,
         )
-        await self._store_refresh_jti(str(user.id), jti)
+        await self._store_refresh_jti(str(user.id), sid, jti)
         return access_token, refresh_token
 
-    async def _store_refresh_jti(self, user_id: str, jti: str) -> None:
+    def _refresh_key(self, user_id: str, sid: str) -> str:
+        return f"{settings.REDIS_REFRESH_JTI_PREFIX}{user_id}:{sid}"
+
+    async def _store_refresh_jti(self, user_id: str, sid: str, jti: str) -> None:
         ttl = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600
-        await self.redis.setex(f"{settings.REDIS_REFRESH_JTI_PREFIX}{user_id}", ttl, jti)
+        await self.redis.setex(self._refresh_key(user_id, sid), ttl, jti)
+
+    # Atomic compare-and-swap: only rotate if the stored jti still matches the presented one.
+    # Lock-free, so each device's session rotates independently (no cross-device contention).
+    _ROTATE_LUA = """
+    local cur = redis.call('GET', KEYS[1])
+    if cur == false or cur ~= ARGV[1] then
+        return 0
+    end
+    redis.call('SET', KEYS[1], ARGV[2], 'EX', tonumber(ARGV[3]))
+    return 1
+    """
 
     async def rotate_refresh_session(
-        self, user: User, presented_jti: str
+        self, user: User, sid: str, presented_jti: str
     ) -> tuple[str, str]:
         """
-        Atomic refresh rotation with per-user lock and reuse detection.
+        Rotate one session's refresh token, lock-free, with reuse detection.
+
+        The presented jti must match what is stored for ``(user, sid)``. If it doesn't —
+        a replayed/stale token, or this session was logged out — we revoke that session and
+        raise. The swap is a single atomic Lua CAS, so two concurrent rotations can't both
+        win and silently orphan a token.
         """
-        lock_key = f"{settings.REDIS_REFRESH_LOCK_PREFIX}{user.id}"
-        acquired = await self.redis.set(lock_key, "1", nx=True, ex=15)
-        if not acquired:
-            raise ValueError("Refresh already in progress")
+        key = self._refresh_key(str(user.id), sid)
+        ttl = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600
 
-        try:
-            stored = await self.redis.get(f"{settings.REDIS_REFRESH_JTI_PREFIX}{user.id}")
-            stored_jti = stored.decode() if isinstance(stored, bytes) else stored
-            if stored_jti and stored_jti != presented_jti:
-                await self.blacklist_token(
-                    presented_jti, settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600
-                )
-                await self.redis.delete(f"{settings.REDIS_REFRESH_JTI_PREFIX}{user.id}")
-                raise ValueError("Refresh token reuse detected")
+        # Mint the next token up front so the CAS can install its jti atomically.
+        from app.db.models.school import School
 
-            await self.blacklist_token(
-                presented_jti, settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600
-            )
-            return await self.issue_tokens(user)
-        finally:
-            await self.redis.delete(lock_key)
+        slug_result = await self.db.execute(
+            select(School.tenant_slug).where(School.id == user.school_id)
+        )
+        tenant_slug = slug_result.scalar_one_or_none() or ""
+        access_token = create_access_token(
+            user_id=str(user.id),
+            school_id=str(user.school_id),
+            role=user.role.value,
+            tenant_slug=tenant_slug,
+        )
+        new_refresh, new_jti = create_refresh_token(
+            user_id=str(user.id), school_id=str(user.school_id), sid=sid
+        )
+
+        won = int(await self.redis.eval(self._ROTATE_LUA, 1, key, presented_jti, new_jti, ttl))
+        if not won:
+            # The presented jti no longer matches the session's stored jti: it was already
+            # rotated away (a replay/stolen chain) or the session was logged out. Revoke the
+            # whole session so the chain can't continue. The atomic CAS is what guarantees a
+            # rotated token is dead immediately — so we deliberately do NOT blacklist on the
+            # success path (that would let a replay short-circuit here and skip this revoke).
+            # A benign concurrent double-submit also lands here; acceptable for the in-memory
+            # access-token / single-flight-refresh client this serves.
+            await self.blacklist_token(presented_jti, ttl)
+            await self.redis.delete(key)
+            raise ValueError("Refresh token reuse detected")
+
+        return access_token, new_refresh
+
+    async def revoke_session(self, user_id: str, sid: str) -> None:
+        """Log out a single device/session (drop its refresh slot)."""
+        await self.redis.delete(self._refresh_key(user_id, sid))
+
+    async def revoke_all_sessions(self, user_id: str) -> None:
+        """Log out everywhere — drop every refresh session for the user."""
+        pattern = f"{settings.REDIS_REFRESH_JTI_PREFIX}{user_id}:*"
+        async for key in self.redis.scan_iter(match=pattern):
+            await self.redis.delete(key)
 
     async def blacklist_token(self, jti: str, ttl_seconds: int) -> None:
         """Add a token JTI to the Redis blacklist."""
