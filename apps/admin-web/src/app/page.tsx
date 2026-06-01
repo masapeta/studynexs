@@ -183,7 +183,7 @@ export default function LoginPage() {
               <div className="form-group" style={{ marginBottom: 20 }}>
                 <label className="form-label" htmlFor="mobile-input">Mobile Number</label>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <div style={{ display: "flex", alignItems: "center", padding: "8px 12px", border: "1.5px solid var(--border)", borderRadius: "var(--radius-md)", color: "var(--text-secondary)", fontSize: 13.5, background: "var(--bg)", whiteSpace: "nowrap" }}>+91</div>
+                  <div style={{ display: "flex", alignItems: "center", padding: "10px 13px", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", color: "var(--text-secondary)", fontSize: 14, fontWeight: 600, background: "var(--bg)", whiteSpace: "nowrap" }}>+91</div>
                   <input
                     id="mobile-input"
                     className="form-input"

@@ -144,6 +144,37 @@ html, body {
   text-align: center;
 }
 
+/* ── Form Controls ─────────────────────────────────────── */
+.form-input {
+  width: 100%;
+  padding: 10px 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: #fff;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.form-input::placeholder { color: var(--text-muted); }
+.form-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-50);
+}
+.form-input:disabled { background: var(--bg); color: var(--text-muted); cursor: not-allowed; }
+select.form-input { cursor: pointer; }
+textarea.form-input { resize: vertical; line-height: 1.5; }
+
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+.form-group { margin-bottom: 16px; }
+
 /* ── App Layout ────────────────────────────────────────── */
 .app-layout {
   display: flex;
