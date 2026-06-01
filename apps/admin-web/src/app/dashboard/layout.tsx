@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { label: "AI Papers", href: "/dashboard/ai-papers", icon: "✨" },
   { label: "Attendance", href: "/dashboard/attendance", icon: "📋" },
   { label: "Exams", href: "/dashboard/exams", icon: "📝" },
+  { label: "Report Cards", href: "/dashboard/report-cards", icon: "🎓" },
   { label: "Timetable", href: "/dashboard/timetable", icon: "📅" },
   { label: "Finance", href: "/dashboard/finance", icon: "💰" },
   { label: "Notices", href: "/dashboard/notices", icon: "📢" },
