@@ -60,10 +60,10 @@ export default function DashboardLayout({
           <Image
             src="/studynexs.png"
             alt="StudyNexs Logo"
-            width={170}
-            height={54}
+            width={188}
+            height={60}
             priority
-            style={{ objectFit: "contain", height: 40, width: "auto" }}
+            style={{ objectFit: "contain", height: 56, width: "auto" }}
           />
         </div>
 
