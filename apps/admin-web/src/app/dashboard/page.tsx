@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/lib/auth-context";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { api } from "@/lib/api";
 
 interface DashboardStats {
@@ -163,9 +164,9 @@ export default function DashboardPage() {
       <div className="quick-actions">
         <h3>Quick Actions</h3>
         <div className="quick-actions-row">
-          <button className="btn btn-action btn-green">👨‍🎓 Add Student</button>
-          <button className="btn btn-action btn-blue">📋 Create Event</button>
-          <button className="btn btn-action btn-orange">🔔 Send Alert</button>
+          <Link href="/dashboard/students" className="btn btn-action btn-green">👨‍🎓 Add Student</Link>
+          <Link href="/dashboard/attendance" className="btn btn-action btn-blue">📋 Mark Attendance</Link>
+          <Link href="/dashboard/notices" className="btn btn-action btn-orange">📢 Post Notice</Link>
         </div>
       </div>
 
