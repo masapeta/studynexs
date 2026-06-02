@@ -59,11 +59,15 @@ export default function ClassesPage() {
               <div style={{ display: "flex", gap: 8 }}>
                 <div style={{ flex: 1, background: "var(--success-light)", borderRadius: "var(--radius-sm)", padding: "8px 12px", textAlign: "center" }}>
                   <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Attendance</div>
-                  <div style={{ fontWeight: 700, color: "var(--success)" }}>94%</div>
+                  <div style={{ fontWeight: 700, color: "var(--success)" }}>
+                    {c.attendance_pct != null ? `${c.attendance_pct}%` : "—"}
+                  </div>
                 </div>
                 <div style={{ flex: 1, background: "var(--primary-50)", borderRadius: "var(--radius-sm)", padding: "8px 12px", textAlign: "center" }}>
                   <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Avg Score</div>
-                  <div style={{ fontWeight: 700, color: "var(--primary)" }}>78%</div>
+                  <div style={{ fontWeight: 700, color: "var(--primary)" }}>
+                    {c.avg_score != null ? `${c.avg_score}%` : "—"}
+                  </div>
                 </div>
               </div>
             </div>

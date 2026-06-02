@@ -4,12 +4,13 @@ from __future__ import annotations
 import math
 import uuid
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenant_scope import TenantScope
 from app.db.models.academic import Class, Subject, TeacherSubjectMapping
-from app.db.models.attendance import Attendance
+from app.db.models.attendance import Attendance, AttendanceStatus
+from app.db.models.examination import Exam, ExamMark
 from app.db.models.fee import StudentFeeRecord
 from app.db.models.residential import ResidentialBlock, RoomAllocation
 from app.db.models.school_ops import StudentTransport, TransportRoute
@@ -42,7 +43,56 @@ class AcademicService:
         result = await self.db.execute(
             query.order_by(Class.grade, Class.section).offset(offset).limit(page_size)
         )
-        return list(result.scalars().all()), total
+        classes = list(result.scalars().all())
+        await self._attach_class_stats(school_id, classes)
+        return classes, total
+
+    async def _attach_class_stats(self, school_id: uuid.UUID, classes: list[Class]) -> None:
+        """Attach student_count + real attendance% and avg-score% to each Class (for the
+        roster cards). None for attendance/score means 'no data yet' — the UI shows '—'
+        instead of a misleading placeholder."""
+        if not classes:
+            return
+        ids = [c.id for c in classes]
+
+        counts = dict(
+            (await self.db.execute(
+                select(Student.class_id, func.count())
+                .where(Student.school_id == school_id, Student.class_id.in_(ids))
+                .group_by(Student.class_id)
+            )).all()
+        )
+
+        # Weighted attendance: present/late = 1 day, half-day = 0.5, absent = 0.
+        weight = case(
+            (Attendance.status == AttendanceStatus.HALF_DAY, 0.5),
+            (Attendance.status == AttendanceStatus.ABSENT, 0.0),
+            else_=1.0,
+        )
+        att = (await self.db.execute(
+            select(Attendance.class_id, func.count(), func.sum(weight))
+            .where(Attendance.school_id == school_id, Attendance.class_id.in_(ids))
+            .group_by(Attendance.class_id)
+        )).all()
+        att_map = {cid: round(float(credited) / n * 100, 1) for cid, n, credited in att if n}
+
+        # Average % across the class's exam marks.
+        score = (await self.db.execute(
+            select(Exam.class_id, func.avg(ExamMark.marks_obtained / Exam.total_marks * 100))
+            .join(Exam, ExamMark.exam_id == Exam.id)
+            .where(
+                Exam.school_id == school_id,
+                Exam.class_id.in_(ids),
+                Exam.total_marks > 0,
+            )
+            .group_by(Exam.class_id)
+        )).all()
+        score_map = {cid: round(float(avg), 1) for cid, avg in score if avg is not None}
+
+        for c in classes:
+            c.student_count = counts.get(c.id, 0)
+            c.attendance_pct = att_map.get(c.id)
+            c.avg_score = score_map.get(c.id)
 
     async def create_class(self, school_id: uuid.UUID, data: ClassCreate) -> Class:
         scope = TenantScope(self.db, school_id)

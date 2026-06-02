@@ -16,6 +16,10 @@ class ClassOut(BaseModel):
     class_incharge_id: uuid.UUID | None = None
     room_number: str | None = None
     created_at: datetime | None = None
+    # Computed in list_classes; None means "no data yet" (vs a misleading 0/placeholder).
+    student_count: int = 0
+    attendance_pct: float | None = None
+    avg_score: float | None = None
     model_config = ConfigDict(from_attributes=True)
 
 class ClassCreate(BaseModel):
