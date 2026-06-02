@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { FileText, CalendarDays, Clock, Sparkles, Save, Check, Printer, KeyRound } from "lucide-react";
+import { FileText, CalendarDays, Clock, Sparkles, Save, Check, Printer, KeyRound, Copy } from "lucide-react";
 import {
   api,
   API_URL,
@@ -186,6 +186,24 @@ export default function AiPapersPage() {
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) {
       setError(getApiErrorMessage(e, "Failed to load paper."));
+    }
+  }
+
+  async function duplicate() {
+    if (!paper) return;
+    setError("");
+    try {
+      // Clone into a fresh editable DRAFT (same class) — no AI call. Edit, then Approve.
+      const res = await api(`/api/v1/ai/question-papers/${paper.id}/duplicate`, {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+      setPaper(res);
+      setShowAnswers(false);
+      loadRecent();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (e) {
+      setError(getApiErrorMessage(e, "Failed to duplicate."));
     }
   }
 
@@ -375,6 +393,9 @@ export default function AiPapersPage() {
             <button className="btn btn-primary" onClick={approve} disabled={approved}
               style={{ ...btnSm, background: approved ? "var(--text-muted)" : "var(--success)" }}>
               {approved ? "Approved" : <><Check size={15} /> Approve</>}
+            </button>
+            <button className="btn btn-outline" onClick={duplicate} style={btnSm} title="Reuse this paper as a new editable draft (no AI cost)">
+              <Copy size={15} /> Duplicate
             </button>
             <button className="btn btn-outline" onClick={() => openPdf(false)} style={btnSm}>
               <Printer size={15} /> Open / print paper

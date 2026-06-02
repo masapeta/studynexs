@@ -21,6 +21,7 @@ from app.db.models.question_paper import PaperStatus, QuestionPaper
 from app.db.models.report_card import ReportCard, ReportStatus
 from app.db.models.school import School
 from app.modules.ai.schemas.question_paper import (
+    DuplicatePaperRequest,
     GenerateRequest,
     QuestionPaperOut,
     UpdatePaperRequest,
@@ -31,7 +32,7 @@ from app.modules.ai.schemas.report_card import (
     UpdateReportRequest,
 )
 from app.modules.ai.services.paper_pdf import generate_paper_pdf
-from app.modules.ai.services.question_paper_service import generate_paper
+from app.modules.ai.services.question_paper_service import duplicate_paper, generate_paper
 from app.modules.ai.services.report_card_pdf import generate_report_pdf
 from app.modules.ai.services.report_card_service import generate_report_for_student
 
@@ -236,6 +237,36 @@ async def edit_question_paper(
         paper.sections = [s.model_dump(exclude_none=True) for s in body.sections]
     await db.flush()
     return _to_out(paper)
+
+
+@router.post(
+    "/question-papers/{paper_id}/duplicate",
+    response_model=QuestionPaperOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def duplicate_question_paper(
+    paper_id: uuid.UUID,
+    body: DuplicatePaperRequest,
+    current_user: CurrentUser = Depends(require_roles(*_TEACH_ROLES)),
+    db: AsyncSession = Depends(get_db),
+) -> QuestionPaperOut:
+    """Clone a paper into a fresh editable DRAFT owned by the caller — no LLM call and no
+    AI-usage recorded. Optionally re-target to another class (subject_id required if class_id
+    changes). Deliberately NOT param-keyed caching: this is an explicit, owned, re-reviewable
+    copy, never a silent identical paper handed to two classes."""
+    source = await _get_owned_paper(db, current_user.school_id, paper_id)
+    try:
+        clone = await duplicate_paper(
+            db,
+            source=source,
+            created_by=uuid.UUID(current_user.id),
+            title=body.title,
+            class_id=body.class_id,
+            subject_id=body.subject_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return _to_out(clone)
 
 
 @router.post("/question-papers/{paper_id}/approve", response_model=QuestionPaperOut)

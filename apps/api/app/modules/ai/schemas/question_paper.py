@@ -52,3 +52,11 @@ class UpdatePaperRequest(BaseModel):
     title: str | None = None
     general_instructions: str | None = None
     sections: list[SectionOut] | None = None
+
+
+class DuplicatePaperRequest(BaseModel):
+    """Clone a paper into a fresh editable draft (zero LLM). Optionally re-target to another
+    class; subject_id is required when class_id changes (subjects are class-scoped)."""
+    title: str | None = None
+    class_id: uuid.UUID | None = None
+    subject_id: uuid.UUID | None = None

@@ -6,6 +6,7 @@ board's official blueprint or a school-provided sample to match format exactly.
 """
 from __future__ import annotations
 
+import copy
 import json
 import uuid
 from decimal import Decimal
@@ -14,6 +15,7 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.tenant_scope import TenantScope
 from app.db.models.academic import Class, Subject
 from app.db.models.question_paper import PaperStatus, QuestionPaper
 from app.modules.ai.gateway import LLMMessage, default_model, get_provider, record_usage
@@ -205,3 +207,67 @@ async def generate_paper(
         tokens_out=result.tokens_out,
     )
     return paper
+
+
+async def duplicate_paper(
+    db: AsyncSession,
+    *,
+    source: QuestionPaper,
+    created_by: uuid.UUID,
+    title: str | None = None,
+    class_id: uuid.UUID | None = None,
+    subject_id: uuid.UUID | None = None,
+) -> QuestionPaper:
+    """Clone a paper into a fresh editable DRAFT owned by ``created_by``.
+
+    Zero LLM, so it records NO AIUsage — a duplicate must not inflate the "papers generated /
+    teacher-hours saved" number the /usage dashboard reports. A copy of an APPROVED paper
+    re-enters review as a DRAFT (you can't inherit another teacher's sign-off).
+
+    Optionally re-targets to another class. Subjects are class-scoped, so changing ``class_id``
+    requires ``subject_id``; both are validated in-school (and subject-in-class) and the
+    grade/subject_name snapshots are refreshed so the clone stays self-consistent.
+    """
+    school_id = source.school_id
+    new_class_id, new_subject_id = source.class_id, source.subject_id
+    grade, subject_name = source.grade, source.subject_name
+
+    if class_id is not None:
+        if subject_id is None:
+            raise ValueError("subject_id is required when changing class_id")
+        scope = TenantScope(db, school_id)
+        cls = await scope.school_class(class_id)
+        subject = await scope.subject_in_class(subject_id, class_id)
+        new_class_id, new_subject_id = class_id, subject_id
+        grade, subject_name = cls.grade, subject.name
+    elif subject_id is not None:
+        subject = await TenantScope(db, school_id).subject_in_class(subject_id, source.class_id)
+        new_subject_id = subject_id
+        subject_name = subject.name
+
+    clone = QuestionPaper(
+        school_id=school_id,
+        class_id=new_class_id,
+        subject_id=new_subject_id,
+        created_by=created_by,
+        title=title or f"{source.title} (Copy)",
+        board=source.board,
+        grade=grade,
+        subject_name=subject_name,
+        total_marks=source.total_marks,
+        duration_minutes=source.duration_minutes,
+        topics=copy.deepcopy(source.topics),
+        difficulty_mix=copy.deepcopy(source.difficulty_mix),
+        general_instructions=source.general_instructions,
+        # deep copy so editing the clone's questions can never mutate the source paper
+        sections=copy.deepcopy(source.sections),
+        status=PaperStatus.DRAFT,
+        ai_model=source.ai_model,  # provenance of the original draft; the copy itself is free
+    )
+    db.add(clone)
+    await db.flush()
+    logger.info(
+        "question_paper_duplicated",
+        source_id=str(source.id), clone_id=str(clone.id), retargeted=class_id is not None,
+    )
+    return clone
