@@ -2,8 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { api, getApiErrorMessage } from "@/lib/api";
+import MarksGrid from "./MarksGrid";
+import QuestionSchemaEditor from "./QuestionSchemaEditor";
 
-const EXAM_TYPES = ["unit_test", "mid_term", "final", "assignment", "quiz"];
+const EXAM_TYPES = [
+  "slip_test", "unit_test", "quarterly", "half_yearly", "mid_term", "final", "assignment", "quiz",
+];
 const pretty = (s: string) => s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
 export default function ExamsPage() {
@@ -17,16 +21,20 @@ export default function ExamsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({
     subject_id: "",
-    exam_type: "unit_test",
+    exam_type: "slip_test",
     title: "",
     total_marks: 100,
     exam_date: new Date().toISOString().split("T")[0],
+    topic: "",
   });
   const [creating, setCreating] = useState(false);
 
   const [activeExam, setActiveExam] = useState<any>(null);
+  const [schemaExam, setSchemaExam] = useState<any>(null);
   const [students, setStudents] = useState<any[]>([]);
   const [marks, setMarks] = useState<Record<string, string>>({});
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [questionMarks, setQuestionMarks] = useState<Record<string, Record<string, number>>>({});
   const [savingMarks, setSavingMarks] = useState(false);
 
   useEffect(() => {
@@ -77,10 +85,11 @@ export default function ExamsPage() {
           title: form.title,
           total_marks: Number(form.total_marks),
           exam_date: form.exam_date || null,
+          topic: form.topic.trim() || null,
         }),
       });
       setShowCreate(false);
-      setForm((f) => ({ ...f, title: "" }));
+      setForm((f) => ({ ...f, title: "", topic: "" }));
       loadExams();
     } catch (e) {
       setError(getApiErrorMessage(e, "Failed to create exam"));
@@ -91,19 +100,33 @@ export default function ExamsPage() {
 
   async function openMarks(exam: any) {
     setActiveExam(exam);
+    setSchemaExam(null);
     setError("");
     try {
       const stuRes = await api(`/api/v1/academic/students?class_id=${exam.class_id}&page_size=100`);
       const stus = stuRes.items || stuRes.data || [];
       setStudents(stus);
+
       const mkRes = await api(`/api/v1/exams/${exam.id}/marks`);
       const existing = mkRes.data || [];
-      const map: Record<string, string> = {};
-      stus.forEach((s: any) => {
-        const m = existing.find((x: any) => x.student_id === s.id);
-        map[s.id] = m ? String(m.marks_obtained) : "";
-      });
-      setMarks(map);
+
+      if (exam.has_question_schema) {
+        const qRes = await api(`/api/v1/exams/${exam.id}/questions`);
+        setQuestions(qRes.data || []);
+        const qm: Record<string, Record<string, number>> = {};
+        existing.forEach((x: any) => {
+          if (x.question_marks) qm[x.student_id] = x.question_marks;
+        });
+        setQuestionMarks(qm);
+      } else {
+        setQuestions([]);
+        const map: Record<string, string> = {};
+        stus.forEach((s: any) => {
+          const m = existing.find((x: any) => x.student_id === s.id);
+          map[s.id] = m ? String(m.marks_obtained) : "";
+        });
+        setMarks(map);
+      }
     } catch (e) {
       setError(getApiErrorMessage(e, "Failed to load marks"));
     }
@@ -117,6 +140,25 @@ export default function ExamsPage() {
       const entries = Object.entries(marks)
         .filter(([, v]) => v !== "" && !isNaN(Number(v)))
         .map(([student_id, v]) => ({ student_id, marks_obtained: Number(v) }));
+      await api("/api/v1/exams/marks", {
+        method: "POST",
+        body: JSON.stringify({ exam_id: activeExam.id, entries }),
+      });
+      alert(`Saved marks for ${entries.length} students.`);
+    } catch (e) {
+      setError(getApiErrorMessage(e, "Failed to save marks"));
+    } finally {
+      setSavingMarks(false);
+    }
+  }
+
+  async function saveQuestionMarks(
+    entries: { student_id: string; question_marks: Record<string, number> }[]
+  ) {
+    if (!activeExam) return;
+    setSavingMarks(true);
+    setError("");
+    try {
       await api("/api/v1/exams/marks", {
         method: "POST",
         body: JSON.stringify({ exam_id: activeExam.id, entries }),
@@ -155,10 +197,10 @@ export default function ExamsPage() {
       {error && <div className="card" style={{ marginBottom: 16, padding: 12, color: "var(--danger)" }}>{error}</div>}
 
       {showCreate && !activeExam && (
-        <div className="card" style={{ marginBottom: 24, padding: 24, display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr auto", gap: 12, alignItems: "end" }}>
+        <div className="card" style={{ marginBottom: 24, padding: 24, display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr auto", gap: 12, alignItems: "end" }}>
           <div>
             <label className="stat-label">Title</label>
-            <input className="form-input" style={sel} value={form.title} placeholder="Unit Test 1" onChange={(e) => setForm({ ...form, title: e.target.value })} />
+            <input className="form-input" style={sel} value={form.title} placeholder="Algebra Slip Test" onChange={(e) => setForm({ ...form, title: e.target.value })} />
           </div>
           <div>
             <label className="stat-label">Subject</label>
@@ -176,10 +218,25 @@ export default function ExamsPage() {
             <label className="stat-label">Max marks</label>
             <input type="number" className="form-input" style={sel} value={form.total_marks} onChange={(e) => setForm({ ...form, total_marks: Number(e.target.value) })} />
           </div>
+          <div>
+            <label className="stat-label">Chapter / Topic</label>
+            <input className="form-input" style={sel} value={form.topic} placeholder="e.g. Algebra" onChange={(e) => setForm({ ...form, topic: e.target.value })} />
+          </div>
           <button className="btn btn-primary" style={btn} onClick={createExam} disabled={creating}>
             {creating ? "Creating…" : "Create"}
           </button>
         </div>
+      )}
+
+      {schemaExam && !activeExam && (
+        <QuestionSchemaEditor
+          exam={schemaExam}
+          onCancel={() => setSchemaExam(null)}
+          onSaved={(updated) => {
+            setSchemaExam(null);
+            setExams((es) => es.map((e) => (e.id === updated.id ? { ...e, ...updated } : e)));
+          }}
+        />
       )}
 
       {activeExam ? (
@@ -187,35 +244,51 @@ export default function ExamsPage() {
           <div style={{ padding: "14px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border)" }}>
             <div>
               <div style={{ fontWeight: 700 }}>{activeExam.title}</div>
-              <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{pretty(activeExam.exam_type)} · {subjName(activeExam.subject_id)} · Max {activeExam.total_marks}</div>
+              <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
+                {pretty(activeExam.exam_type)} · {subjName(activeExam.subject_id)} · Max {activeExam.total_marks}
+                {activeExam.topic ? ` · ${activeExam.topic}` : ""}
+                {activeExam.has_question_schema ? " · per-question" : ""}
+              </div>
             </div>
-            <button className="btn btn-primary" style={btn} onClick={saveMarks} disabled={savingMarks || students.length === 0}>
-              {savingMarks ? "Saving…" : "Save Marks"}
-            </button>
+            {!activeExam.has_question_schema && (
+              <button className="btn btn-primary" style={btn} onClick={saveMarks} disabled={savingMarks || students.length === 0}>
+                {savingMarks ? "Saving…" : "Save Marks"}
+              </button>
+            )}
           </div>
-          <table className="data-table">
-            <thead><tr><th>Roll</th><th>Student</th><th style={{ textAlign: "right" }}>Marks (/ {activeExam.total_marks})</th></tr></thead>
-            <tbody>
-              {students.length === 0 ? (
-                <tr><td colSpan={3} style={{ textAlign: "center", padding: 32, color: "var(--text-muted)" }}>No students in this class.</td></tr>
-              ) : students.map((s) => (
-                <tr key={s.id}>
-                  <td style={{ fontWeight: 600 }}>{s.roll_no || "—"}</td>
-                  <td>{s.student_name || "—"}</td>
-                  <td style={{ textAlign: "right" }}>
-                    <input
-                      type="number"
-                      value={marks[s.id] ?? ""}
-                      onChange={(e) => setMarks({ ...marks, [s.id]: e.target.value })}
-                      style={{ width: 90, padding: "6px 10px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)", textAlign: "right" }}
-                      max={activeExam.total_marks}
-                      min={0}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {students.length === 0 ? (
+            <div style={{ textAlign: "center", padding: 32, color: "var(--text-muted)" }}>No students in this class.</div>
+          ) : activeExam.has_question_schema ? (
+            <MarksGrid
+              students={students}
+              questions={questions}
+              initialMarks={questionMarks}
+              onSave={saveQuestionMarks}
+              saving={savingMarks}
+            />
+          ) : (
+            <table className="data-table">
+              <thead><tr><th>Roll</th><th>Student</th><th style={{ textAlign: "right" }}>Marks (/ {activeExam.total_marks})</th></tr></thead>
+              <tbody>
+                {students.map((s) => (
+                  <tr key={s.id}>
+                    <td style={{ fontWeight: 600 }}>{s.roll_no || "—"}</td>
+                    <td>{s.student_name || "—"}</td>
+                    <td style={{ textAlign: "right" }}>
+                      <input
+                        type="number"
+                        value={marks[s.id] ?? ""}
+                        onChange={(e) => setMarks({ ...marks, [s.id]: e.target.value })}
+                        style={{ width: 90, padding: "6px 10px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)", textAlign: "right" }}
+                        max={activeExam.total_marks}
+                        min={0}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       ) : (
         <div className="card" style={{ padding: 0, overflow: "hidden" }}>
@@ -232,7 +305,10 @@ export default function ExamsPage() {
                   <td>{pretty(e.exam_type)}</td>
                   <td>{subjName(e.subject_id)}</td>
                   <td>{e.total_marks}</td>
-                  <td style={{ textAlign: "right" }}>
+                  <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                    <button className="btn btn-ghost" style={btn} onClick={() => setSchemaExam(e)}>
+                      {e.has_question_schema ? "Questions ✓" : "Questions"}
+                    </button>{" "}
                     <button className="btn btn-ghost" style={btn} onClick={() => openMarks(e)}>Enter marks</button>
                   </td>
                 </tr>

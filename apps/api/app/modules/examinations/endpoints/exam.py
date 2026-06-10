@@ -16,6 +16,8 @@ from app.modules.examinations.schemas.exam import (
     ExamCreate,
     ExamMarkOut,
     ExamOut,
+    QuestionDef,
+    QuestionSchemaSet,
 )
 from app.modules.examinations.services.exam_service import ExamService
 from app.shared.schemas.common import APIResponse
@@ -31,7 +33,7 @@ async def create_exam(
 ):
     service = ExamService(db)
     exam = await service.create_exam(uuid.UUID(current_user.school_id), body, uuid.UUID(current_user.id))
-    return APIResponse(data=ExamOut.model_validate(exam), message="Exam created")
+    return APIResponse(data=ExamOut.from_exam(exam), message="Exam created")
 
 
 @router.get("", response_model=APIResponse[list[ExamOut]])
@@ -42,7 +44,36 @@ async def list_exams(
 ):
     service = ExamService(db)
     exams = await service.list_exams(uuid.UUID(current_user.school_id), class_id)
-    return APIResponse(data=[ExamOut.model_validate(e) for e in exams])
+    return APIResponse(data=[ExamOut.from_exam(e) for e in exams])
+
+
+@router.put("/{exam_id}/questions", response_model=APIResponse[ExamOut])
+async def set_question_schema(
+    exam_id: uuid.UUID,
+    body: QuestionSchemaSet,
+    current_user: CurrentUser = Depends(require_roles("teacher", "class_incharge", "admin", "super_admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Define per-question max marks + topic mapping (or import from an approved paper)."""
+    service = ExamService(db)
+    try:
+        exam = await service.set_question_schema(uuid.UUID(current_user.school_id), exam_id, body)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return APIResponse(data=ExamOut.from_exam(exam), message="Question schema saved")
+
+
+@router.get("/{exam_id}/questions", response_model=APIResponse[list[QuestionDef]])
+async def get_question_schema(
+    exam_id: uuid.UUID,
+    current_user: CurrentUser = Depends(require_roles("teacher", "class_incharge", "admin", "super_admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.core.tenant_scope import TenantScope
+
+    exam = await TenantScope(db, uuid.UUID(current_user.school_id)).exam(exam_id)
+    questions = [QuestionDef(**q) for q in (exam.question_schema or [])]
+    return APIResponse(data=questions)
 
 
 @router.get("/class-performance", response_model=APIResponse)
