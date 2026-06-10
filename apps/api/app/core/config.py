@@ -180,6 +180,17 @@ class Settings(BaseSettings):
         if not self.REDIS_URL or "localhost" in self.REDIS_URL:
             errors.append("REDIS_URL must point to production Redis")
 
+        provider_keys = {
+            "openai": self.OPENAI_API_KEY,
+            "anthropic": self.ANTHROPIC_API_KEY,
+            "gemini": self.GEMINI_API_KEY,
+        }
+        default_provider_key = provider_keys.get(self.AI_DEFAULT_PROVIDER)
+        if self.AI_DEFAULT_PROVIDER in provider_keys and not default_provider_key:
+            errors.append(
+                f"AI_DEFAULT_PROVIDER={self.AI_DEFAULT_PROVIDER!r} but its API key is not set"
+            )
+
         if errors:
             raise ValueError(
                 "FATAL: Production configuration errors:\n"

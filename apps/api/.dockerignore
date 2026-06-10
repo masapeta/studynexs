@@ -1,0 +1,29 @@
+# Secrets — never bake into the image
+.env
+.env.*
+!.env.example
+
+# VCS / tooling
+.git
+.gitignore
+.venv
+__pycache__/
+*.py[cod]
+*.egg-info/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Dev-only artifacts
+tests/
+tests_security/
+scripts/
+uploads/
+locustfile.py
+create_test_db.py
+security_scan.py
+memory_samples.jsonl
+
+# Docker files themselves
+Dockerfile
+.dockerignore
