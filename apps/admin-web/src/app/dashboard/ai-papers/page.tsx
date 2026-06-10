@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { FileText, CalendarDays, Clock, Sparkles, Save, Check, Printer, KeyRound, Copy } from "lucide-react";
 import {
   api,
@@ -33,15 +34,23 @@ type Paper = {
   ai_model?: string | null;
 };
 
-export default function AiPapersPage() {
+function AiPapersPageInner() {
+  // Deep-link prefill (e.g. from a mastery weakness flag):
+  // /dashboard/ai-papers?class_id=…&subject_id=…&topics=Algebra&difficulty=easy
+  const searchParams = useSearchParams();
+  const prefill = useRef({
+    classId: searchParams.get("class_id") || "",
+    subjectId: searchParams.get("subject_id") || "",
+  });
+
   const [classes, setClasses] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [classId, setClassId] = useState("");
   const [subjectId, setSubjectId] = useState("");
-  const [topics, setTopics] = useState("");
+  const [topics, setTopics] = useState(searchParams.get("topics") || "");
   const [totalMarks, setTotalMarks] = useState(80);
   const [duration, setDuration] = useState(180);
-  const [difficulty, setDifficulty] = useState("balanced");
+  const [difficulty, setDifficulty] = useState(searchParams.get("difficulty") || "balanced");
 
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -56,7 +65,10 @@ export default function AiPapersPage() {
       .then((r) => {
         const items = r.items || r.data || [];
         setClasses(items);
-        if (items[0]) setClassId(items[0].id);
+        const wanted = prefill.current.classId;
+        const match = wanted && items.find((c: any) => c.id === wanted);
+        if (match) setClassId(match.id);
+        else if (items[0]) setClassId(items[0].id);
       })
       .catch((e) => console.error(e));
     loadRecent();
@@ -72,7 +84,11 @@ export default function AiPapersPage() {
       .then((r) => {
         const items = r.items || r.data || (Array.isArray(r) ? r : []);
         setSubjects(items);
-        setSubjectId(items[0]?.id || "");
+        // Consume the subject prefill once; later class changes pick the first subject.
+        const wanted = prefill.current.subjectId;
+        prefill.current.subjectId = "";
+        const match = wanted && items.find((s: any) => s.id === wanted);
+        setSubjectId(match ? match.id : items[0]?.id || "");
       })
       .catch((e) => console.error(e));
   }, [classId]);
@@ -537,3 +553,13 @@ const btnSm: React.CSSProperties = {
   borderRadius: "var(--radius-full)",
   fontSize: 13,
 };
+
+// useSearchParams needs a Suspense boundary so the rest of the route can prerender
+// (node_modules/next/dist/docs/01-app/03-api-reference/04-functions/use-search-params.md).
+export default function AiPapersPage() {
+  return (
+    <Suspense fallback={<div className="loading-screen" style={{ minHeight: "50vh" }}><div className="spinner" /></div>}>
+      <AiPapersPageInner />
+    </Suspense>
+  );
+}
