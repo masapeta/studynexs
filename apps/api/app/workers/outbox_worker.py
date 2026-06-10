@@ -11,7 +11,7 @@ import asyncio
 import traceback
 
 import structlog
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import get_settings
@@ -38,7 +38,6 @@ def register_handler(event_type: str):
 @register_handler("fee_paid")
 async def handle_fee_paid(payload: dict, db: AsyncSession):
     """When fee is paid → create notification for parent."""
-    from app.db.models.communication import Notice
     logger.info("fee_paid_event", student_id=payload.get("student_id"))
     # In production: send SMS/push via notification service
 
@@ -57,8 +56,19 @@ async def handle_notice_published(payload: dict, db: AsyncSession):
 
 @register_handler("exam_marks_entered")
 async def handle_exam_marks(payload: dict, db: AsyncSession):
-    """When marks entered → notify parents."""
-    logger.info("exam_marks_event", exam_id=payload.get("exam_id"))
+    """When marks entered → recompute the class×subject topic-mastery ledger."""
+    import uuid as _uuid
+
+    # Lazy import — the worker module must stay importable without the app stack.
+    from app.modules.mastery.services.mastery_service import recompute_class_subject
+
+    rows = await recompute_class_subject(
+        db,
+        school_id=_uuid.UUID(payload["school_id"]),
+        class_id=_uuid.UUID(payload["class_id"]),
+        subject_id=_uuid.UUID(payload["subject_id"]),
+    )
+    logger.info("exam_marks_event", exam_id=payload.get("exam_id"), mastery_rows=rows)
 
 
 # ── Worker Loop ──────────────────────────────────────────────────────────────

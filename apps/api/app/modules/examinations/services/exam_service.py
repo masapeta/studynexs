@@ -186,6 +186,22 @@ class ExamService:
         )
         await self.db.execute(stmt)
         await self.db.flush()
+
+        # Same-transaction outbox event: the worker recomputes the topic-mastery
+        # ledger (and, later, notifies parents). No-ops for untagged exams.
+        from app.workers.outbox_helper import emit_event
+
+        await emit_event(
+            self.db,
+            "exam_marks_entered",
+            {
+                "school_id": str(school_id),
+                "exam_id": str(exam_id),
+                "class_id": str(exam.class_id),
+                "subject_id": str(exam.subject_id),
+            },
+            target_module="mastery",
+        )
         return len(rows)
 
     async def get_exam_marks(self, school_id: uuid.UUID, exam_id: uuid.UUID) -> list[ExamMark]:

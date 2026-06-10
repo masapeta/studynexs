@@ -1,0 +1,183 @@
+"""Mastery recompute orchestration — DB in, ledger rows out.
+
+Recomputes the whole class × subject on every marks save: class averages need
+everyone anyway, the workload is bounded (~60 students × ~30 tagged assessments),
+and the upsert is idempotent so reprocessing (worker retries) is always safe.
+"""
+from __future__ import annotations
+
+import uuid
+from datetime import date
+
+import structlog
+from sqlalchemy import func, or_, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.models.academic import Class
+from app.db.models.examination import Exam, ExamMark
+from app.db.models.mastery import StudentTopicMastery
+from app.modules.mastery.services.compute import (
+    Datapoint,
+    history_of,
+    topic_pcts_for_mark,
+    trend_of,
+    weighted_mastery,
+)
+from app.modules.mastery.services.topic_norm import display_topic
+
+logger = structlog.get_logger()
+
+
+async def recompute_class_subject(
+    db: AsyncSession,
+    school_id: uuid.UUID,
+    class_id: uuid.UUID,
+    subject_id: uuid.UUID,
+) -> int:
+    """Rebuild the topic-mastery ledger for one class × subject. Returns rows upserted.
+
+    Exactly three queries: class row, topic-tagged exams, all their marks.
+    Everything between is in-memory; the write is one bulk upsert.
+    """
+    school_class = (
+        await db.execute(
+            select(Class).where(Class.id == class_id, Class.school_id == school_id)
+        )
+    ).scalar_one_or_none()
+    if not school_class:
+        return 0
+
+    exams = list(
+        (
+            await db.execute(
+                select(Exam).where(
+                    Exam.school_id == school_id,
+                    Exam.class_id == class_id,
+                    Exam.subject_id == subject_id,
+                    or_(Exam.topic.is_not(None), Exam.question_schema.is_not(None)),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not exams:
+        return 0
+
+    marks = list(
+        (
+            await db.execute(
+                select(ExamMark).where(
+                    ExamMark.school_id == school_id,
+                    ExamMark.exam_id.in_([e.id for e in exams]),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not marks:
+        return 0
+
+    exams_by_id = {e.id: e for e in exams}
+
+    # (student_id, normalized_topic) -> datapoints; remember a display form per topic.
+    points: dict[tuple[uuid.UUID, str], list[Datapoint]] = {}
+    displays: dict[str, str] = {}
+
+    for mark in marks:
+        exam = exams_by_id[mark.exam_id]
+        assessed_on = exam.date or exam.created_at.date()
+        pcts = topic_pcts_for_mark(
+            question_schema=exam.question_schema,
+            question_marks=mark.question_marks,
+            exam_topic=exam.topic,
+            marks_obtained=float(mark.marks_obtained),
+            total_marks=float(exam.total_marks),
+        )
+        if pcts and exam.question_schema:
+            for q in exam.question_schema:
+                raw = q.get("topic") or exam.topic
+                if raw:
+                    displays.setdefault(display_topic(raw).casefold(), display_topic(raw))
+        if pcts and exam.topic:
+            displays.setdefault(display_topic(exam.topic).casefold(), display_topic(exam.topic))
+        for topic_key, pct in pcts.items():
+            points.setdefault((mark.student_id, topic_key), []).append(
+                Datapoint(
+                    exam_id=str(exam.id),
+                    exam_type=exam.exam_type.value,
+                    exam_title=exam.title,
+                    assessed_on=assessed_on,
+                    pct=pct,
+                )
+            )
+
+    if not points:
+        return 0
+
+    today = date.today()
+    per_student: dict[tuple[uuid.UUID, str], dict] = {}
+    topic_totals: dict[str, list[float]] = {}
+
+    for (student_id, topic_key), dps in points.items():
+        mastery = weighted_mastery(dps, today)
+        per_student[(student_id, topic_key)] = {
+            "mastery_pct": mastery,
+            "assessments_count": len(dps),
+            "last_assessed_on": max(dp.assessed_on for dp in dps),
+            "trend": trend_of(dps),
+            "history": history_of(dps),
+        }
+        topic_totals.setdefault(topic_key, []).append(mastery)
+
+    class_avg = {
+        topic_key: round(sum(vals) / len(vals), 2) for topic_key, vals in topic_totals.items()
+    }
+
+    rows = [
+        {
+            "school_id": school_id,
+            "student_id": student_id,
+            "class_id": class_id,
+            "subject_id": subject_id,
+            "academic_year_id": school_class.academic_year_id,
+            "topic": topic_key,
+            "topic_display": displays.get(topic_key, topic_key),
+            "mastery_pct": stats["mastery_pct"],
+            "class_avg_pct": class_avg[topic_key],
+            "assessments_count": stats["assessments_count"],
+            "last_assessed_on": stats["last_assessed_on"],
+            "trend": stats["trend"],
+            "history": stats["history"],
+        }
+        for (student_id, topic_key), stats in per_student.items()
+    ]
+
+    stmt = pg_insert(StudentTopicMastery).values(rows)
+    stmt = stmt.on_conflict_do_update(
+        constraint="uq_student_topic_mastery",
+        set_={
+            "class_id": stmt.excluded.class_id,
+            "topic_display": stmt.excluded.topic_display,
+            "mastery_pct": stmt.excluded.mastery_pct,
+            "class_avg_pct": stmt.excluded.class_avg_pct,
+            "assessments_count": stmt.excluded.assessments_count,
+            "last_assessed_on": stmt.excluded.last_assessed_on,
+            "trend": stmt.excluded.trend,
+            "history": stmt.excluded.history,
+            "updated_at": func.now(),
+        },
+    )
+    await db.execute(stmt)
+    await db.flush()
+
+    logger.info(
+        "mastery_recomputed",
+        school_id=str(school_id),
+        class_id=str(class_id),
+        subject_id=str(subject_id),
+        rows=len(rows),
+    )
+    return len(rows)

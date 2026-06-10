@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { ArrowLeft, Phone, Mail, Users, ClipboardCheck, Wallet, Bus, BedDouble } from "lucide-react";
+import TopicMasterySection from "./TopicMasterySection";
 
 const sectionH: React.CSSProperties = {
   fontSize: 14, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5,
@@ -118,6 +119,9 @@ export default function StudentDetailPage() {
             ))
           )}
         </div>
+
+        {/* Per-topic mastery (renders only when topic data exists) */}
+        <TopicMasterySection studentId={id} />
 
         {/* Attendance breakdown */}
         <div className="card" style={{ padding: 24 }}>
