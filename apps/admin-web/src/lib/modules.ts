@@ -7,6 +7,7 @@ export const TOGGLEABLE_MODULES: ModuleDef[] = [
   { key: "ai_papers", label: "AI Question Papers", desc: "AI-generated board-style papers" },
   { key: "attendance", label: "Attendance", desc: "Daily attendance tracking" },
   { key: "exams", label: "Exams & Marks", desc: "Exams and marks entry" },
+  { key: "mastery", label: "Topic Mastery", desc: "Per-topic tracking + weakness alerts", defaultOff: true },
   { key: "report_cards", label: "Report Cards", desc: "Consolidated report cards + AI remarks" },
   { key: "timetable", label: "Timetable", desc: "Class period scheduling" },
   { key: "finance", label: "Finance / Fees", desc: "Fee collection and receipts" },

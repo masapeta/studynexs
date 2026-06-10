@@ -35,6 +35,7 @@ from app.modules.ai.services.paper_pdf import generate_paper_pdf
 from app.modules.ai.services.question_paper_service import duplicate_paper, generate_paper
 from app.modules.ai.services.report_card_pdf import generate_report_pdf
 from app.modules.ai.services.report_card_service import generate_report_for_student
+from app.modules.ai.services.usage_caps import enforce_monthly_ai_cap
 
 settings = get_settings()
 router = APIRouter()
@@ -63,26 +64,11 @@ async def ai_health(
 _MINUTES_SAVED_PER_PAPER = 45
 _MINUTES_SAVED_PER_REPORT = 10
 
-# Cost guardrails for the LLM-backed generation endpoints.
+# Cost guardrails for the LLM-backed generation endpoints. The monthly cap lives
+# in usage_caps so every LLM feature (papers, reports, mastery narratives) shares
+# one budget.
 _AI_GEN_RATE = {"max_requests": 12, "window_seconds": 60}  # per (school, user)
-_AI_MONTHLY_CAP = 2000  # per-school AI generations / month
-
-
-async def _enforce_monthly_cap(db: AsyncSession, school_id: uuid.UUID) -> None:
-    """Block runaway LLM spend: cap AI generations per school per month."""
-    month_start = datetime.now(timezone.utc).replace(
-        day=1, hour=0, minute=0, second=0, microsecond=0
-    )
-    used = await db.scalar(
-        select(func.count())
-        .select_from(AIUsage)
-        .where(AIUsage.school_id == school_id, AIUsage.created_at >= month_start)
-    ) or 0
-    if used >= _AI_MONTHLY_CAP:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Monthly AI generation limit reached for this school.",
-        )
+_enforce_monthly_cap = enforce_monthly_ai_cap
 
 
 @router.get("/usage")

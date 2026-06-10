@@ -10,7 +10,7 @@ import { applyThemeColor } from "@/lib/theme";
 import {
   LayoutDashboard, GraduationCap, Users, School, Sparkles, ClipboardCheck,
   FileText, Award, CalendarDays, Wallet, Megaphone, Bus, BedDouble,
-  Settings as SettingsIcon, LogOut,
+  Target, Settings as SettingsIcon, LogOut,
 } from "lucide-react";
 
 // Nav items without a `module` are core (always shown). Items with a `module` key are
@@ -26,6 +26,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "AI Papers", href: "/dashboard/ai-papers", icon: Sparkles, module: "ai_papers" },
   { label: "Attendance", href: "/dashboard/attendance", icon: ClipboardCheck, module: "attendance" },
   { label: "Exams", href: "/dashboard/exams", icon: FileText, module: "exams" },
+  { label: "Topic Mastery", href: "/dashboard/mastery", icon: Target, module: "mastery" },
   { label: "Report Cards", href: "/dashboard/report-cards", icon: Award, module: "report_cards" },
   { label: "Timetable", href: "/dashboard/timetable", icon: CalendarDays, module: "timetable" },
   { label: "Finance", href: "/dashboard/finance", icon: Wallet, module: "finance" },
