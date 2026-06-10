@@ -12,6 +12,7 @@ from app.core.database import get_db
 from app.core.rate_limit import rate_limit
 
 settings = get_settings()
+from app.core.authorization import assert_can_access_student
 from app.core.dependencies import CurrentUser, get_current_user, require_roles
 from app.modules.academic.schemas.academic import (
     ClassCreate, ClassOut, ParentLinkOut, ParentLinkRequest,
@@ -102,9 +103,12 @@ async def list_students(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=100),
     search: str | None = None,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(
+        require_roles("teacher", "class_incharge", "admin", "super_admin", "operations")
+    ),
     db: AsyncSession = Depends(get_db),
 ):
+    # Roster listing is staff-only — parents/students must not enumerate the school.
     service = AcademicService(db)
     students, total = await service.list_students(
         uuid.UUID(current_user.school_id),
@@ -156,14 +160,11 @@ async def get_student_parents(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    await assert_can_access_student(current_user, db, student_id)
     service = AcademicService(db)
     links = await service.get_student_parents(
         uuid.UUID(current_user.school_id), student_id
     )
-    if not links:
-        student = await service.get_student(uuid.UUID(current_user.school_id), student_id)
-        if not student:
-            raise HTTPException(status_code=404, detail="Student not found")
     return APIResponse(data=[ParentLinkOut.model_validate(l) for l in links])
 
 
@@ -174,6 +175,7 @@ async def get_student_profile(
     db: AsyncSession = Depends(get_db),
 ):
     """Consolidated student profile: info, parents/guardians, attendance, fees, transport."""
+    await assert_can_access_student(current_user, db, student_id)
     profile = await AcademicService(db).student_profile(
         uuid.UUID(current_user.school_id), student_id
     )

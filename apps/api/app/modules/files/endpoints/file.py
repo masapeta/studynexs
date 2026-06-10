@@ -11,6 +11,7 @@ from app.core.database import get_db
 from app.core.rate_limit import rate_limit
 
 settings = get_settings()
+from app.core.authorization import assert_can_access_file
 from app.core.dependencies import CurrentUser, get_current_user
 from app.db.models.file import FileCategory
 from app.modules.files.schemas.file import FileOut
@@ -69,6 +70,9 @@ async def download_file(
     record = await service.get_file(file_id, uuid.UUID(current_user.school_id))
     if not record:
         raise HTTPException(status_code=404, detail="File not found")
+
+    # Staff see any file in their school; non-staff only their own uploads.
+    assert_can_access_file(current_user, record)
 
     return FileResponse(
         path=record.storage_path,

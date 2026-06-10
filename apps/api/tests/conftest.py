@@ -14,6 +14,7 @@ get_settings.cache_clear()
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
@@ -23,7 +24,7 @@ from app.db.models.academic import AcademicYear, Class
 from app.db.models.base import Base
 from app.db.models.fee import FeeFrequency, FeeStructure, FeeType, ReceiptCounter
 from app.db.models.school import School
-from app.db.models.student import Student
+from app.db.models.student import Parent, Relationship, Student, StudentParentMap
 from app.db.models.user import User, UserRole
 from app.main import app
 
@@ -191,5 +192,35 @@ async def student_user(db_session: AsyncSession, test_school: School, test_class
         admission_no="ADM001", roll_no="1"
     )
     db_session.add(student)
+    await db_session.flush()
+    return user
+
+
+@pytest_asyncio.fixture
+async def parent_user(
+    db_session: AsyncSession, test_school: School, student_user: User
+) -> User:
+    """A parent linked to `student_user` (via StudentParentMap)."""
+    user = User(
+        school_id=test_school.id, username="test_parent", mobile="+919876543213",
+        full_name="Test Parent", role=UserRole.PARENT,
+        password_hash=hash_password("Parent@123"), is_active=True,
+    )
+    db_session.add(user)
+    await db_session.flush()
+
+    parent = Parent(
+        school_id=test_school.id, user_id=user.id,
+        relationship_type=Relationship.FATHER,
+    )
+    db_session.add(parent)
+    await db_session.flush()
+
+    student = (
+        await db_session.execute(select(Student).where(Student.user_id == student_user.id))
+    ).scalar_one()
+    db_session.add(
+        StudentParentMap(student_id=student.id, parent_id=parent.id, is_primary=True)
+    )
     await db_session.flush()
     return user

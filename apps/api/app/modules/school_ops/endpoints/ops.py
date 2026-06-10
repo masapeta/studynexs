@@ -105,7 +105,7 @@ async def create_event(
 
 @router.get("/transport/routes", response_model=APIResponse)
 async def list_transport_routes(
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin", "operations")),
     db: AsyncSession = Depends(get_db),
 ):
     service = SchoolOpsService(db)
@@ -129,7 +129,7 @@ async def create_transport_route(
 @router.get("/transport/routes/{route_id}/students", response_model=APIResponse)
 async def list_route_students(
     route_id: uuid.UUID,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin", "operations")),
     db: AsyncSession = Depends(get_db),
 ):
     service = SchoolOpsService(db)
@@ -158,7 +158,7 @@ async def assign_transport(
 
 @router.get("/residential/blocks", response_model=APIResponse)
 async def list_residential_blocks(
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin", "operations")),
     db: AsyncSession = Depends(get_db),
 ):
     service = SchoolOpsService(db)
@@ -182,7 +182,7 @@ async def create_residential_block(
 @router.get("/residential/blocks/{block_id}/residents", response_model=APIResponse)
 async def list_block_residents(
     block_id: uuid.UUID,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin", "operations")),
     db: AsyncSession = Depends(get_db),
 ):
     service = SchoolOpsService(db)

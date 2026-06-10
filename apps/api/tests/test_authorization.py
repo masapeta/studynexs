@@ -1,18 +1,47 @@
 """Tests — object-level authorization and tenant-scoped resources."""
 
-from datetime import date
+from datetime import date, datetime, timezone
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.fee import FeeStructure, StudentFeeRecord
+from app.core.security import hash_password
+from app.db.models.academic import Class
+from app.db.models.fee import FeeReceipt, FeeStructure, PaymentMode, StudentFeeRecord
 from app.db.models.file import FileCategory, UploadedFile
 from app.db.models.school import School
 from app.db.models.student import Student
-from app.db.models.user import User
+from app.db.models.user import User, UserRole
 from tests.conftest import auth_headers, get_auth_token
+
+
+async def _make_student(
+    db: AsyncSession, school: School, test_class: Class,
+    *, admission_no: str, username: str, mobile: str,
+) -> Student:
+    """Create an unrelated student (User + Student) for negative authz cases."""
+    user = User(
+        school_id=school.id, username=username, mobile=mobile,
+        full_name="Other Student", role=UserRole.STUDENT,
+        password_hash=hash_password("Other@123"), is_active=True,
+    )
+    db.add(user)
+    await db.flush()
+    student = Student(
+        school_id=school.id, user_id=user.id, class_id=test_class.id,
+        admission_no=admission_no, roll_no="9",
+    )
+    db.add(student)
+    await db.flush()
+    return student
+
+
+async def _student_of(db: AsyncSession, student_user: User) -> Student:
+    return (
+        await db.execute(select(Student).where(Student.user_id == student_user.id))
+    ).scalar_one()
 
 
 @pytest.mark.asyncio
@@ -89,3 +118,247 @@ async def test_student_cannot_pay_fees(
         },
     )
     assert resp.status_code == 403
+
+
+# ── Academic roster / profile / parents ────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_student_roster_is_staff_only(
+    client: AsyncClient, admin_user: User, student_user: User, parent_user: User
+):
+    """Roster listing is staff-only; parents/students cannot enumerate the school."""
+    for username, password in (("test_student", "Student@123"), ("test_parent", "Parent@123")):
+        token = await get_auth_token(client, username, password)
+        resp = await client.get("/api/v1/academic/students", headers=auth_headers(token))
+        assert resp.status_code == 403, f"{username} should be denied the roster"
+
+    admin_token = await get_auth_token(client, "test_admin", "Admin@123")
+    resp = await client.get("/api/v1/academic/students", headers=auth_headers(admin_token))
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_student_profile_object_level_access(
+    client: AsyncClient,
+    admin_user: User,
+    student_user: User,
+    parent_user: User,
+    test_school: School,
+    test_class: Class,
+    db_session: AsyncSession,
+):
+    child = await _student_of(db_session, student_user)
+    other = await _make_student(
+        db_session, test_school, test_class,
+        admission_no="ADM999", username="other_student", mobile="+919000000999",
+    )
+
+    parent_token = await get_auth_token(client, "test_parent", "Parent@123")
+    student_token = await get_auth_token(client, "test_student", "Student@123")
+    admin_token = await get_auth_token(client, "test_admin", "Admin@123")
+
+    # Parent of the child + the student themselves + staff may read the profile.
+    for token in (parent_token, student_token, admin_token):
+        resp = await client.get(
+            f"/api/v1/academic/students/{child.id}/profile", headers=auth_headers(token)
+        )
+        assert resp.status_code == 200
+
+    # Parent and student must NOT read an unrelated student's profile.
+    for token in (parent_token, student_token):
+        resp = await client.get(
+            f"/api/v1/academic/students/{other.id}/profile", headers=auth_headers(token)
+        )
+        assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_student_parents_object_level_access(
+    client: AsyncClient,
+    admin_user: User,
+    student_user: User,
+    parent_user: User,
+    test_school: School,
+    test_class: Class,
+    db_session: AsyncSession,
+):
+    child = await _student_of(db_session, student_user)
+    other = await _make_student(
+        db_session, test_school, test_class,
+        admission_no="ADM998", username="other_student2", mobile="+919000000998",
+    )
+
+    parent_token = await get_auth_token(client, "test_parent", "Parent@123")
+
+    resp = await client.get(
+        f"/api/v1/academic/students/{child.id}/parents", headers=auth_headers(parent_token)
+    )
+    assert resp.status_code == 200
+
+    resp = await client.get(
+        f"/api/v1/academic/students/{other.id}/parents", headers=auth_headers(parent_token)
+    )
+    assert resp.status_code == 403
+
+
+# ── Receipt download ────────────────────────────────────────────────────────────
+
+async def _make_receipt(
+    db: AsyncSession, school: School, student: Student, number: str, seq: int
+) -> FeeReceipt:
+    receipt = FeeReceipt(
+        school_id=school.id,
+        receipt_number=number,
+        student_id=student.id,
+        student_name="Snapshot Name",
+        class_name="Grade 1-A",
+        amount_paid=1000,
+        payment_mode=PaymentMode.CASH,
+        fee_type="Tuition",
+        paid_at=datetime.now(timezone.utc),
+        school_name=school.name,
+        receipt_sequence=seq,
+    )
+    db.add(receipt)
+    await db.flush()
+    return receipt
+
+
+@pytest.mark.asyncio
+async def test_receipt_download_object_level_access(
+    client: AsyncClient,
+    student_user: User,
+    parent_user: User,
+    test_school: School,
+    test_class: Class,
+    db_session: AsyncSession,
+):
+    child = await _student_of(db_session, student_user)
+    other = await _make_student(
+        db_session, test_school, test_class,
+        admission_no="ADM997", username="other_student3", mobile="+919000000997",
+    )
+    own_receipt = await _make_receipt(db_session, test_school, child, "TST-2026-00001", 1)
+    other_receipt = await _make_receipt(db_session, test_school, other, "TST-2026-00002", 2)
+
+    parent_token = await get_auth_token(client, "test_parent", "Parent@123")
+
+    resp = await client.get(
+        f"/api/v1/fees/receipt/{own_receipt.receipt_number}", headers=auth_headers(parent_token)
+    )
+    assert resp.status_code == 200
+
+    resp = await client.get(
+        f"/api/v1/fees/receipt/{other_receipt.receipt_number}", headers=auth_headers(parent_token)
+    )
+    assert resp.status_code == 403
+
+
+# ── File download ───────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_file_download_owner_and_staff_only(
+    client: AsyncClient, admin_user: User, student_user: User, parent_user: User
+):
+    """Non-staff may download only their own uploads; staff may download any school file."""
+    parent_token = await get_auth_token(client, "test_parent", "Parent@123")
+    up = await client.post(
+        "/api/v1/files/upload",
+        headers=auth_headers(parent_token),
+        files={"file": ("note.txt", b"hello", "text/plain")},
+    )
+    assert up.status_code == 201, up.text
+    file_id = up.json()["data"]["id"]
+
+    # Uploader (parent) can download their own file.
+    own = await client.get(f"/api/v1/files/{file_id}", headers=auth_headers(parent_token))
+    assert own.status_code == 200
+
+    # A different non-staff user (student) cannot.
+    student_token = await get_auth_token(client, "test_student", "Student@123")
+    other = await client.get(f"/api/v1/files/{file_id}", headers=auth_headers(student_token))
+    assert other.status_code == 403
+
+    # Staff (admin) can download any file in the school.
+    admin_token = await get_auth_token(client, "test_admin", "Admin@123")
+    staff = await client.get(f"/api/v1/files/{file_id}", headers=auth_headers(admin_token))
+    assert staff.status_code == 200
+
+
+# ── School-ops rosters (transport / residential) ────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_ops_rosters_are_staff_only(
+    client: AsyncClient, admin_user: User, student_user: User, parent_user: User
+):
+    """Transport routes/riders and residential blocks/residents expose driver/warden
+    contacts and child rosters — readable by admin/operations only."""
+    admin_token = await get_auth_token(client, "test_admin", "Admin@123")
+
+    route = await client.post(
+        "/api/v1/ops/transport/routes",
+        headers=auth_headers(admin_token),
+        json={"route_name": "Route 1", "driver_name": "Driver", "driver_contact": "+919000000001"},
+    )
+    assert route.status_code == 201, route.text
+    route_id = route.json()["data"]["id"]
+
+    block = await client.post(
+        "/api/v1/ops/residential/blocks",
+        headers=auth_headers(admin_token),
+        json={"block_name": "Block A", "warden_name": "Warden", "warden_contact": "+919000000002"},
+    )
+    assert block.status_code == 201, block.text
+    block_id = block.json()["data"]["id"]
+
+    protected = [
+        "/api/v1/ops/transport/routes",
+        f"/api/v1/ops/transport/routes/{route_id}/students",
+        "/api/v1/ops/residential/blocks",
+        f"/api/v1/ops/residential/blocks/{block_id}/residents",
+    ]
+
+    for username, password in (("test_student", "Student@123"), ("test_parent", "Parent@123")):
+        token = await get_auth_token(client, username, password)
+        for path in protected:
+            resp = await client.get(path, headers=auth_headers(token))
+            assert resp.status_code == 403, f"{username} should be denied {path}"
+
+    for path in protected:
+        resp = await client.get(path, headers=auth_headers(admin_token))
+        assert resp.status_code == 200, f"admin should read {path}"
+
+
+# ── Timetable ───────────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_teacher_timetable_staff_only(
+    client: AsyncClient, teacher_user: User, student_user: User, test_class: Class
+):
+    """Students must not enumerate where staff are during the day; class timetable stays open."""
+    student_token = await get_auth_token(client, "test_student", "Student@123")
+    resp = await client.get(
+        f"/api/v1/timetable/teacher/{teacher_user.id}", headers=auth_headers(student_token)
+    )
+    assert resp.status_code == 403
+
+    teacher_token = await get_auth_token(client, "test_teacher", "Teacher@123")
+    resp = await client.get(
+        f"/api/v1/timetable/teacher/{teacher_user.id}", headers=auth_headers(teacher_token)
+    )
+    assert resp.status_code == 200
+
+    resp = await client.get(
+        f"/api/v1/timetable/class/{test_class.id}", headers=auth_headers(student_token)
+    )
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_teacher_can_list_students(
+    client: AsyncClient, teacher_user: User, student_user: User
+):
+    """Locks the roster role tuple: teachers keep roster access after the N1 gating."""
+    token = await get_auth_token(client, "test_teacher", "Teacher@123")
+    resp = await client.get("/api/v1/academic/students", headers=auth_headers(token))
+    assert resp.status_code == 200

@@ -28,7 +28,9 @@ async def get_class_timetable(
 @router.get("/teacher/{teacher_id}", response_model=APIResponse[list[TimetableSlotOut]])
 async def get_teacher_timetable(
     teacher_id: uuid.UUID,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(
+        require_roles("teacher", "class_incharge", "admin", "super_admin", "operations")
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     service = TimetableService(db)

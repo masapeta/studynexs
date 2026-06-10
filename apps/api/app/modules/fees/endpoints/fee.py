@@ -110,6 +110,9 @@ async def download_receipt(
     if not receipt:
         raise HTTPException(status_code=404, detail="Receipt not found")
 
+    # Object-level check: parents/students may only fetch receipts for their own student.
+    await assert_can_access_student(current_user, db, receipt.student_id)
+
     pdf_bytes = await generate_receipt_pdf(receipt)
 
     # Check if it's actual PDF or HTML fallback
@@ -119,5 +122,8 @@ async def download_receipt(
     return Response(
         content=pdf_bytes,
         media_type=content_type,
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "X-Content-Type-Options": "nosniff",
+        },
     )
