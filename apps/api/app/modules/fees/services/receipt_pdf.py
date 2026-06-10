@@ -7,14 +7,41 @@ Usage:
     pdf_bytes = await generate_receipt_pdf(receipt)
 """
 
-import io
-from datetime import datetime
+import html
+from urllib.parse import urlsplit
 
 from app.db.models.fee import FeeReceipt
 
 
+def _safe_logo_url(url: str | None) -> str | None:
+    """Allow only http(s) logo URLs, escaped for the src attribute; otherwise drop the logo."""
+    if not url:
+        return None
+    try:
+        scheme = urlsplit(url).scheme.lower()
+    except ValueError:
+        return None
+    if scheme not in ("http", "https"):
+        return None
+    return html.escape(url, quote=True)
+
+
 def render_receipt_html(receipt: FeeReceipt) -> str:
-    """Render receipt as styled HTML."""
+    """Render receipt as styled HTML. All school/student-controlled fields are escaped."""
+
+    def e(value) -> str:
+        return html.escape(str(value)) if value else ""
+
+    school_name = e(receipt.school_name)
+    school_address = e(receipt.school_address)
+    school_contact = e(receipt.school_contact)
+    student_name = e(receipt.student_name)
+    class_name = e(receipt.class_name)
+    fee_type = e(receipt.fee_type)
+    receipt_number = e(receipt.receipt_number)
+    transaction_id = e(receipt.transaction_id)
+    logo = _safe_logo_url(receipt.school_logo_url)
+
     return f"""<!DOCTYPE html>
 <html>
 <head>
@@ -39,33 +66,33 @@ def render_receipt_html(receipt: FeeReceipt) -> str:
 <body>
 <div class="receipt">
     <div class="header">
-        {'<img class="school-logo" src="' + receipt.school_logo_url + '" alt="Logo">' if receipt.school_logo_url else ''}
-        <div class="school-name">{receipt.school_name}</div>
-        <div class="school-address">{receipt.school_address or ''} | {receipt.school_contact or ''}</div>
+        {f'<img class="school-logo" src="{logo}" alt="Logo">' if logo else ''}
+        <div class="school-name">{school_name}</div>
+        <div class="school-address">{school_address} | {school_contact}</div>
     </div>
 
     <div class="receipt-title">FEE RECEIPT</div>
 
     <div class="details">
         <span class="label">Receipt No:</span>
-        <span class="value">{receipt.receipt_number}</span>
+        <span class="value">{receipt_number}</span>
 
         <span class="label">Date:</span>
         <span class="value">{receipt.paid_at.strftime('%d-%b-%Y %I:%M %p') if receipt.paid_at else ''}</span>
 
         <span class="label">Student:</span>
-        <span class="value">{receipt.student_name}</span>
+        <span class="value">{student_name}</span>
 
         <span class="label">Class:</span>
-        <span class="value">{receipt.class_name}</span>
+        <span class="value">{class_name}</span>
 
         <span class="label">Fee Type:</span>
-        <span class="value">{receipt.fee_type}</span>
+        <span class="value">{fee_type}</span>
 
         <span class="label">Payment Mode:</span>
         <span class="value">{receipt.payment_mode.value.replace('_', ' ').title() if receipt.payment_mode else ''}</span>
 
-        {f'<span class="label">Transaction ID:</span><span class="value">{receipt.transaction_id}</span>' if receipt.transaction_id else ''}
+        {f'<span class="label">Transaction ID:</span><span class="value">{transaction_id}</span>' if transaction_id else ''}
     </div>
 
     <div class="amount-row">
@@ -89,15 +116,15 @@ async def generate_receipt_pdf(receipt: FeeReceipt) -> bytes:
     Generate PDF bytes from a FeeReceipt.
     Uses weasyprint if available, otherwise returns HTML bytes.
     """
-    html = render_receipt_html(receipt)
+    html_str = render_receipt_html(receipt)
 
     try:
         from weasyprint import HTML
-        pdf_bytes = HTML(string=html).write_pdf()
+        pdf_bytes = HTML(string=html_str).write_pdf()
         return pdf_bytes
     except ImportError:
         # weasyprint not installed — return HTML as fallback
-        return html.encode("utf-8")
+        return html_str.encode("utf-8")
 
 
 async def generate_receipt_html(receipt: FeeReceipt) -> str:
