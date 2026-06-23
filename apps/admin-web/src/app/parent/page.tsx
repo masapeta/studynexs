@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, CalendarCheck, RefreshCw, Target, Users, Wallet } from "lucide-react";
+import { AlertCircle, Bell, CalendarCheck, ChevronRight, RefreshCw, Target, Users, Wallet } from "lucide-react";
 import PortalShell from "@/components/PortalShell";
-import { Card, EmptyState, SkeletonCard, StatTile } from "@/components/ui/kit";
+import { Card, EmptyState, ListRow, SectionHeader, SkeletonCard, StatTile } from "@/components/ui/kit";
 import { PARENT_NAV } from "@/lib/portal-nav";
 import { useAuth } from "@/lib/auth-context";
 import { api, getApiErrorMessage } from "@/lib/api";
@@ -18,6 +18,8 @@ type Child = {
   fee_pending: number;
   weak_topic_count: number;
 };
+
+type Notification = { id: string; title: string; body: string; link?: string | null; created_at?: string; is_read: boolean };
 
 function Avatar({ name }: { name: string }) {
   return (
@@ -38,6 +40,7 @@ export default function ParentHomePage() {
   const router = useRouter();
   const { user } = useAuth();
   const [children, setChildren] = useState<Child[] | null>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [error, setError] = useState("");
 
   function load() {
@@ -46,11 +49,15 @@ export default function ParentHomePage() {
     api("/api/v1/portal/context")
       .then((r) => setChildren(r.data?.children ?? []))
       .catch((e) => setError(getApiErrorMessage(e, "We couldn't load your children's progress.")));
+    api("/api/v1/notifications")
+      .then((r) => setNotifications((r.data || []).slice(0, 5)))
+      .catch(() => setNotifications([]));
   }
 
   useEffect(load, []);
 
   const firstName = user?.full_name?.split(" ")[0] || "there";
+  const totalPending = (children ?? []).reduce((sum, c) => sum + (c.fee_pending || 0), 0);
 
   return (
     <PortalShell title="Parent Portal" subtitle="Your children's progress" nav={PARENT_NAV}>
@@ -82,45 +89,71 @@ export default function ParentHomePage() {
           message="Your children will appear here once the school links them to your account."
         />
       ) : (
-        children.map((child) => {
-          const att = child.attendance_pct;
-          const attTone = att == null ? "default" : att >= 75 ? "success" : att >= 50 ? "warning" : "danger";
-          const feeTone = child.fee_pending > 0 ? "danger" : "success";
-          const weakTone = child.weak_topic_count > 0 ? "warning" : "success";
-          return (
-            <Card key={child.student_id} onClick={() => router.push(`/parent/child/${child.student_id}`)}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
-                <Avatar name={child.name} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 16 }}>{child.name}</div>
-                  <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-                    {child.class_label}{child.roll_no ? ` · Roll ${child.roll_no}` : ""}
+        <>
+          {/* Fee summary */}
+          <Card className="ui-fee-summary" onClick={() => router.push("/parent/fees")}>
+            <div>
+              <div className="ui-fee-label">Fee Summary</div>
+              <div className="ui-fee-amount">
+                {totalPending > 0 ? `₹${totalPending.toLocaleString("en-IN")}` : "All paid up"}
+              </div>
+              <div className="ui-fee-sub">{totalPending > 0 ? "Pending across your children" : "Nothing due right now"}</div>
+            </div>
+            <span className="ui-fee-cta">View details <ChevronRight size={16} /></span>
+          </Card>
+
+          {/* My children */}
+          <SectionHeader title="My Children" />
+          {children.map((child) => {
+            const att = child.attendance_pct;
+            const attTone = att == null ? "default" : att >= 75 ? "success" : att >= 50 ? "warning" : "danger";
+            const feeTone = child.fee_pending > 0 ? "danger" : "success";
+            const weakTone = child.weak_topic_count > 0 ? "warning" : "success";
+            return (
+              <Card key={child.student_id} onClick={() => router.push(`/parent/child/${child.student_id}`)}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+                  <Avatar name={child.name} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 16 }}>{child.name}</div>
+                    <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
+                      {child.class_label}{child.roll_no ? ` · Roll ${child.roll_no}` : ""}
+                    </div>
                   </div>
+                  <ChevronRight size={18} style={{ color: "var(--text-muted)" }} />
                 </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+                  <StatTile icon={CalendarCheck} label="Attendance" tone={attTone} value={att != null ? `${att}%` : "—"} />
+                  <StatTile icon={Wallet} label="Fees due" tone={feeTone} value={child.fee_pending > 0 ? `₹${child.fee_pending.toLocaleString("en-IN")}` : "Paid"} />
+                  <StatTile icon={Target} label="Weak topics" tone={weakTone} value={child.weak_topic_count} />
+                </div>
+              </Card>
+            );
+          })}
+
+          {/* Notifications & alerts */}
+          <SectionHeader title="Notifications & Alerts" />
+          <Card padded={false}>
+            {notifications.length === 0 ? (
+              <div style={{ padding: 20, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
+                You&apos;re all caught up.
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-                <StatTile
-                  icon={CalendarCheck}
-                  label="Attendance"
-                  tone={attTone}
-                  value={att != null ? `${att}%` : "—"}
-                />
-                <StatTile
-                  icon={Wallet}
-                  label="Fees due"
-                  tone={feeTone}
-                  value={child.fee_pending > 0 ? `₹${child.fee_pending.toLocaleString("en-IN")}` : "Paid"}
-                />
-                <StatTile
-                  icon={Target}
-                  label="Weak topics"
-                  tone={weakTone}
-                  value={child.weak_topic_count}
-                />
+            ) : (
+              <div style={{ padding: "4px 14px" }}>
+                {notifications.map((n) => (
+                  <ListRow
+                    key={n.id}
+                    icon={Bell}
+                    tone={n.is_read ? "default" : "accent"}
+                    title={n.title}
+                    subtitle={n.body}
+                    onClick={n.link ? () => router.push(n.link!) : undefined}
+                    chevron={!!n.link}
+                  />
+                ))}
               </div>
-            </Card>
-          );
-        })
+            )}
+          </Card>
+        </>
       )}
     </PortalShell>
   );
