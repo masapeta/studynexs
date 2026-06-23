@@ -1,0 +1,111 @@
+/* ── Shared mobile UI kit (clean, iOS-leaning) ──────────────────────────────
+   Primitives for the portal redesign. Built on the tokens in globals.css.
+   Tone classes set --tone / --tone-bg, consumed by icons, bars and rings. */
+
+.ui-tone-default { --tone: var(--text-secondary); --tone-bg: var(--primary-50); }
+.ui-tone-success { --tone: var(--success); --tone-bg: var(--success-light); }
+.ui-tone-warning { --tone: var(--warning); --tone-bg: var(--warning-light); }
+.ui-tone-danger  { --tone: var(--danger);  --tone-bg: var(--danger-light); }
+.ui-tone-info    { --tone: var(--info);    --tone-bg: var(--info-light); }
+.ui-tone-accent  { --tone: var(--accent);  --tone-bg: var(--accent-50); }
+
+/* Card */
+.ui-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow-card);
+}
+.ui-card-flush { padding: 0; overflow: hidden; }
+.ui-card-tap { cursor: pointer; transition: transform var(--transition), box-shadow var(--transition); }
+.ui-card-tap:active { transform: scale(0.985); box-shadow: var(--shadow-sm); }
+
+/* Section header */
+.ui-section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 18px 2px 10px;
+}
+.ui-section-title { font-size: 14px; font-weight: 700; color: var(--text-primary); margin: 0; }
+
+/* Stat tile */
+.ui-stat {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 13px 14px;
+}
+.ui-stat-top { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; }
+.ui-stat-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 8px;
+  background: var(--tone-bg); color: var(--tone);
+}
+.ui-stat-label { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
+.ui-stat-value { font-size: 21px; font-weight: 800; color: var(--text-primary); line-height: 1.1; }
+.ui-stat-hint { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+
+/* List row (>=44px tap target) */
+.ui-row {
+  display: flex; align-items: center; gap: 12px;
+  min-height: 52px; padding: 10px 4px;
+  border-bottom: 1px solid var(--border-light);
+}
+.ui-row:last-child { border-bottom: none; }
+.ui-row-tap { cursor: pointer; border-radius: var(--radius-md); transition: background var(--transition); }
+.ui-row-tap:active { background: var(--primary-50); }
+.ui-row-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0;
+  background: var(--tone-bg); color: var(--tone);
+}
+.ui-row-body { flex: 1; min-width: 0; }
+.ui-row-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.ui-row-subtitle { font-size: 13px; color: var(--text-muted); margin-top: 1px; }
+.ui-row-value { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.ui-row-chevron { color: var(--text-muted); flex-shrink: 0; }
+
+/* Progress bar */
+.ui-progress { height: 8px; background: var(--border-light); border-radius: var(--radius-full); overflow: hidden; }
+.ui-progress-fill { height: 100%; border-radius: var(--radius-full); background: var(--tone); transition: width var(--transition); }
+
+/* Ring */
+.ui-ring { position: relative; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ui-ring-track { stroke: var(--border-light); }
+.ui-ring-fill { stroke: var(--tone); transition: stroke-dashoffset var(--transition); }
+.ui-ring-label { position: absolute; font-size: 14px; font-weight: 800; color: var(--text-primary); }
+
+/* Skeleton */
+@keyframes ui-shimmer { 0% { background-position: -468px 0; } 100% { background-position: 468px 0; } }
+.ui-skel {
+  display: block;
+  background: linear-gradient(90deg, var(--border-light) 25%, var(--primary-50) 50%, var(--border-light) 75%);
+  background-size: 936px 100%;
+  animation: ui-shimmer 1.4s ease-in-out infinite;
+}
+
+/* Empty state */
+.ui-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 44px 24px; }
+.ui-empty-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 56px; height: 56px; border-radius: 18px;
+  background: var(--accent-50); color: var(--accent); margin-bottom: 14px;
+}
+.ui-empty-title { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+.ui-empty-message { font-size: 14px; color: var(--text-muted); margin-top: 6px; max-width: 280px; line-height: 1.5; }
+.ui-empty-action { margin-top: 16px; }
+
+/* Greeting band on portal home */
+.ui-greeting { padding: 4px 2px 2px; }
+.ui-greeting-hi { font-size: 22px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.3px; }
+.ui-greeting-sub { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+
+/* Bottom nav upgrade — icons + ≥44px tap targets (higher specificity to win) */
+.portal-bottom-nav .portal-nav-item {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px; min-height: 52px; padding: 7px 4px; font-size: 10.5px; font-weight: 600;
+  border-radius: 12px; transition: color var(--transition), background var(--transition);
+}
+.portal-nav-icon { display: inline-flex; }
+.portal-bottom-nav .portal-nav-item.active .portal-nav-icon { transform: translateY(-1px); }

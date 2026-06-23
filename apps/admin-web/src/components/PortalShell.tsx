@@ -4,8 +4,9 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { LogOut } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-type NavItem = { href: string; label: string; icon?: string };
+export type NavItem = { href: string; label: string; icon?: LucideIcon };
 
 export default function PortalShell({
   title,
@@ -54,12 +55,18 @@ export default function PortalShell({
           <nav className="portal-bottom-nav">
             {nav.map((item) => {
               const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const Icon = item.icon;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={`portal-nav-item${active ? " active" : ""}`}
                 >
+                  {Icon && (
+                    <span className="portal-nav-icon">
+                      <Icon size={21} strokeWidth={active ? 2.5 : 2} />
+                    </span>
+                  )}
                   <span>{item.label}</span>
                 </Link>
               );

@@ -2,14 +2,8 @@
 
 import { useEffect, useState } from "react";
 import PortalShell from "@/components/PortalShell";
+import { PARENT_NAV } from "@/lib/portal-nav";
 import { api, getApiErrorMessage } from "@/lib/api";
-
-const NAV = [
-  { href: "/parent", label: "Home" },
-  { href: "/parent/notices", label: "Notices" },
-  { href: "/parent/fees", label: "Fees" },
-  { href: "/demo/roadmap", label: "More" },
-];
 
 export default function ParentFeesPage() {
   const [ctx, setCtx] = useState<any>(null);
@@ -35,7 +29,7 @@ export default function ParentFeesPage() {
   }, []);
 
   return (
-    <PortalShell title="Fees" subtitle="Due & paid" nav={NAV}>
+    <PortalShell title="Fees" subtitle="Due & paid" nav={PARENT_NAV}>
       {error && <p style={{ color: "var(--danger)" }}>{error}</p>}
       {!ctx ? <div className="spinner" style={{ margin: "40px auto" }} /> : (
         (ctx.children || []).map((c: any) => (

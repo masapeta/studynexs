@@ -4,14 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import PortalShell from "@/components/PortalShell";
+import { PARENT_NAV } from "@/lib/portal-nav";
 import { api, getApiErrorMessage } from "@/lib/api";
-
-const NAV = [
-  { href: "/parent", label: "Home" },
-  { href: "/parent/notices", label: "Notices" },
-  { href: "/parent/fees", label: "Fees" },
-  { href: "/demo/roadmap", label: "More" },
-];
 
 export default function ParentChildPage() {
   const params = useParams();
@@ -38,7 +32,7 @@ export default function ParentChildPage() {
   );
 
   return (
-    <PortalShell title="Child profile" subtitle={profile?.student_name} nav={NAV}>
+    <PortalShell title="Child profile" subtitle={profile?.student_name} nav={PARENT_NAV}>
       <Link href="/parent" style={{ fontSize: 13, marginBottom: 12, display: "inline-block" }}>← All children</Link>
       {error && <p style={{ color: "var(--danger)" }}>{error}</p>}
       {!profile ? (

@@ -2,14 +2,8 @@
 
 import { useEffect, useState } from "react";
 import PortalShell from "@/components/PortalShell";
+import { PARENT_NAV } from "@/lib/portal-nav";
 import { api, getApiErrorMessage } from "@/lib/api";
-
-const NAV = [
-  { href: "/parent", label: "Home" },
-  { href: "/parent/notices", label: "Notices" },
-  { href: "/parent/fees", label: "Fees" },
-  { href: "/demo/roadmap", label: "More" },
-];
 
 export default function ParentNoticesPage() {
   const [notices, setNotices] = useState<any[]>([]);
@@ -22,7 +16,7 @@ export default function ParentNoticesPage() {
   }, []);
 
   return (
-    <PortalShell title="Notices" subtitle="School announcements" nav={NAV}>
+    <PortalShell title="Notices" subtitle="School announcements" nav={PARENT_NAV}>
       {error && <p style={{ color: "var(--danger)" }}>{error}</p>}
       {notices.length === 0 ? (
         <p style={{ color: "var(--text-muted)" }}>No notices yet.</p>
