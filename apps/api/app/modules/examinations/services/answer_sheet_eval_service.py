@@ -4,7 +4,6 @@ from __future__ import annotations
 import re
 import uuid
 from datetime import datetime, timezone
-from pathlib import Path
 
 import structlog
 from sqlalchemy import select
@@ -36,6 +35,7 @@ from app.modules.examinations.services.answer_sheet_vision import (
 from app.modules.examinations.services.exam_service import ExamService
 from app.modules.examinations.services.misconception_service import extract_from_evaluation
 from app.modules.files.services.file_service import FileService
+from app.modules.files.services.file_validation import read_file_bytes_bounded
 
 logger = structlog.get_logger()
 settings = get_settings()
@@ -277,7 +277,15 @@ class AnswerSheetEvalService:
             if not record:
                 raise EvalError("Answer sheet file not found")
             if is_image_mime(record.content_type):
-                image_bytes = Path(record.storage_path).read_bytes()
+                try:
+                    image_bytes = read_file_bytes_bounded(
+                        record.storage_path,
+                        size_bytes=record.size_bytes,
+                    )
+                except ValueError as exc:
+                    raise EvalError(
+                        "Answer sheet file is too large or unreadable"
+                    ) from exc
                 rubrics = await fetch_rubrics_for_paper(
                     self.db, school_id=row.school_id, paper_id=exam.source_paper_id
                 )
@@ -321,6 +329,8 @@ class AnswerSheetEvalService:
 
         credits = credits_for_purpose("exam_evaluation")
         if isinstance(vision_result, LLMResult):
+            # Provider cost is already spent; record_usage enforces caps at INSERT.
+            # Heuristic path uses assert_credits_for_charge first — asymmetry is intentional.
             await record_usage(
                 self.db,
                 feature="answer_sheet_eval",

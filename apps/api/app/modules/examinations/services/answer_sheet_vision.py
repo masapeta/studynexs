@@ -9,11 +9,10 @@ import structlog
 from app.core.config import Environment, get_settings
 from app.modules.ai.gateway import LLMImage, LLMMessage, default_model, get_provider
 from app.modules.ai.gateway.base import LLMResult
+from app.modules.files.services.file_validation import IMAGE_MIMES, normalize_mime
 
 logger = structlog.get_logger()
 settings = get_settings()
-
-_IMAGE_MIMES = frozenset({"image/jpeg", "image/png", "image/webp", "image/gif"})
 
 
 def vision_llm_available() -> bool:
@@ -21,7 +20,7 @@ def vision_llm_available() -> bool:
 
 
 def is_image_mime(mime: str) -> bool:
-    return mime.lower().split(";")[0].strip() in _IMAGE_MIMES
+    return normalize_mime(mime) in IMAGE_MIMES
 
 
 def _question_prompt(question_schema: list[dict], rubrics: dict[str, dict]) -> str:

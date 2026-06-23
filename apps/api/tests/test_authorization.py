@@ -265,7 +265,8 @@ async def test_file_download_owner_and_staff_only(
     up = await client.post(
         "/api/v1/files/upload",
         headers=auth_headers(parent_token),
-        files={"file": ("note.txt", b"hello", "text/plain")},
+        files={"file": ("note.pdf", b"%PDF-1.0\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Kids[]/Count 0>>endobj\nxref\n0 3\ntrailer<</Root 1 0 R>>\n%%EOF", "application/pdf")},
+        data={"category": "document"},
     )
     assert up.status_code == 201, up.text
     file_id = up.json()["data"]["id"]

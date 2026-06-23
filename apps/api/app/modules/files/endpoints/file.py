@@ -16,11 +16,14 @@ from app.core.dependencies import CurrentUser, get_current_user
 from app.db.models.file import FileCategory
 from app.modules.files.schemas.file import FileOut
 from app.modules.files.services.file_service import FileService
+from app.modules.files.services.file_validation import (
+    FileUploadRejected,
+    MAX_UPLOAD_BYTES,
+    validate_file_upload,
+)
 from app.shared.schemas.common import APIResponse
 
 router = APIRouter()
-
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 
 @router.post(
@@ -39,7 +42,7 @@ async def upload_file(
 ):
     """Upload a file (max 10MB)."""
     file_data = await file.read()
-    if len(file_data) > MAX_FILE_SIZE:
+    if len(file_data) > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail="File too large (max 10MB)")
 
     try:
@@ -47,12 +50,22 @@ async def upload_file(
     except ValueError:
         raise HTTPException(status_code=400, detail=f"Invalid category: {category}")
 
+    try:
+        content_type = validate_file_upload(
+            category=cat,
+            content_type=file.content_type,
+            original_name=file.filename or "unknown",
+            file_data=file_data,
+        )
+    except FileUploadRejected as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     service = FileService(db)
     record = await service.upload(
         school_id=uuid.UUID(current_user.school_id),
         file_data=file_data,
         original_name=file.filename or "unknown",
-        content_type=file.content_type or "application/octet-stream",
+        content_type=content_type,
         category=cat,
         uploaded_by=uuid.UUID(current_user.id),
     )
@@ -78,4 +91,5 @@ async def download_file(
         path=record.storage_path,
         filename=record.original_name,
         media_type=record.content_type,
+        content_disposition_type="attachment",
     )
