@@ -737,6 +737,40 @@ textarea.form-input { resize: vertical; line-height: 1.5; }
   .quick-actions-row { flex-wrap: wrap; }
   .stat-row { flex-direction: column; }
 }
+
+/* ── Figma "Admin Hub" alignment ──────────────────────────────── */
+.hero-hub {
+  background: linear-gradient(120deg, #5b9df9 0%, #2563eb 55%, #1e40af 100%);
+}
+.hero-eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 6px;
+}
+.stat-box.info { background: var(--info-light); border-color: #cfe0fb; }
+.stat-value.info { color: var(--info); }
+.stat-mini-row {
+  display: flex;
+  gap: 16px;
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.stat-mini-row span { font-weight: 600; }
+.btn-action.blue { background: var(--info); color: #fff; border-color: var(--info); }
+.btn-action.green { background: var(--success); color: #fff; border-color: var(--success); }
+.btn-action.orange { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-action.blue:hover,
+.btn-action.green:hover,
+.btn-action.orange:hover {
+  filter: brightness(1.06);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
 /* -- Split Panel Login Page -------------------------------------------------------------- */
 .login-page {
   min-height: 100vh;

@@ -3,7 +3,10 @@
 import { useAuth } from "@/lib/auth-context";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { GraduationCap, Users, BookOpen, ClipboardCheck, Megaphone } from "lucide-react";
+import {
+  GraduationCap, Users, BookOpen, ClipboardCheck, Megaphone,
+  CalendarDays, UserPlus, BellRing, Wallet,
+} from "lucide-react";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { roleLabel } from "@/lib/permissions";
 import { TeacherCommandCenter, type TeacherHome } from "@/components/TeacherCommandCenter";
@@ -28,9 +31,28 @@ type Summary = {
   notices?: { id: string; title: string; content: string; audience: string; priority: string; created_at?: string }[];
 };
 
+type EventItem = { id: string; title: string; event_date: string; event_time?: string | null; venue?: string | null };
+
+const ACTION_TONES = ["blue", "green", "orange"] as const;
+
+function actionIcon(label: string) {
+  if (/student|add/i.test(label)) return <UserPlus size={16} />;
+  if (/attendance/i.test(label)) return <ClipboardCheck size={16} />;
+  if (/notice|alert|parent/i.test(label)) return <BellRing size={16} />;
+  if (/event/i.test(label)) return <CalendarDays size={16} />;
+  return <Megaphone size={16} />;
+}
+
+function fmtDate(iso?: string) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+}
+
 export default function DashboardPage() {
   const { user, permissions, loading: authLoading } = useAuth();
   const [summary, setSummary] = useState<Summary | null>(null);
+  const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -41,6 +63,9 @@ export default function DashboardPage() {
       .then((r) => setSummary(r.data))
       .catch((e) => setError(getApiErrorMessage(e, "Could not load dashboard.")))
       .finally(() => setLoading(false));
+    api<{ data: EventItem[] }>("/api/v1/ops/events")
+      .then((r) => setEvents((r.data || []).slice(0, 3)))
+      .catch(() => setEvents([]));
   }, []);
 
   useEffect(() => {
@@ -75,15 +100,18 @@ export default function DashboardPage() {
     return <TeacherCommandCenter data={s.teacher_home} onRefresh={load} />;
   }
 
+  const hubLabel = persona === "admin" ? "Admin Hub" : "Class Hub";
+
   return (
     <>
-      <div className="hero-banner">
+      <div className="hero-banner hero-hub">
+        <div className="hero-eyebrow">StudyNexs Connect · {hubLabel}</div>
         <h2>Welcome back, {user?.full_name?.split(" ")[0] || "there"}</h2>
         <p>{s?.subtitle || "Your workspace for today."}</p>
         {permissions && (
           <p style={{ fontSize: 13, opacity: 0.85, marginTop: 6 }}>{roleLabel(permissions.role)}</p>
         )}
-        <div className="hero-decorations"><GraduationCap size={76} strokeWidth={1.1} /></div>
+        <div className="hero-decorations"><BookOpen size={76} strokeWidth={1.1} /></div>
       </div>
 
       {persona === "admin" && s && (
@@ -91,39 +119,51 @@ export default function DashboardPage() {
           <div className="card">
             <div className="card-header"><span className="card-title">Daily Overview</span></div>
             <div className="stat-row">
-              <div className="stat-box">
-                <div className="stat-label">School Attendance</div>
-                <div className="stat-value">{s.school_attendance_percent ?? 0}%</div>
+              <div className="stat-box info">
+                <div className="stat-label">Total Attendance</div>
+                <div className="stat-value info">{s.school_attendance_percent ?? 0}%</div>
               </div>
               <div className="stat-box warning">
                 <div className="stat-label">Pending Fees</div>
-                <div className="stat-value warning">₹ {(s.pending_fees ?? 0).toLocaleString()}</div>
+                <div className="stat-value warning">₹{(s.pending_fees ?? 0).toLocaleString("en-IN")}</div>
               </div>
             </div>
+            <div className="stat-mini-row">
+              <span>{s.total_students ?? 0} students</span>
+              <span>{s.total_teachers ?? 0} staff</span>
+              <span>{s.total_classes ?? 0} classes</span>
+            </div>
           </div>
+
           <div className="card">
-            <div className="card-header"><span className="card-title">School at a Glance</span></div>
-            <div className="event-item green">
-              <div className="event-icon"><GraduationCap size={18} color="var(--success)" /></div>
-              <div>
-                <div className="event-title">{s.total_students ?? 0} Students</div>
-                <div className="event-subtitle">Across {s.total_classes ?? 0} classes</div>
+            <div className="card-header"><span className="card-title">Upcoming Events</span></div>
+            {events.length > 0 ? (
+              events.map((e, i) => (
+                <div className={`event-item ${i % 2 === 0 ? "green" : "orange"}`} key={e.id}>
+                  <div className="event-icon">
+                    <CalendarDays size={18} color={i % 2 === 0 ? "var(--success)" : "var(--accent-dark)"} />
+                  </div>
+                  <div>
+                    <div className="event-title">{e.title}</div>
+                    <div className="event-subtitle">
+                      {fmtDate(e.event_date)}{e.event_time ? ` · ${e.event_time}` : ""}{e.venue ? ` · ${e.venue}` : ""}
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div style={{ color: "var(--text-muted)", fontSize: 13, padding: "8px 0" }}>
+                No upcoming events. <Link href="/dashboard/events" style={{ color: "var(--accent-dark)", fontWeight: 600 }}>Create one →</Link>
               </div>
-            </div>
-            <div className="event-item orange">
-              <div className="event-icon"><Users size={18} color="var(--accent-dark)" /></div>
-              <div>
-                <div className="event-title">{s.total_teachers ?? 0} Teaching staff</div>
-                <div className="event-subtitle">Active this academic year</div>
-              </div>
-            </div>
+            )}
           </div>
+
           <div className="card">
             <div className="card-header"><span className="card-title">Class Progress</span></div>
             {(s.class_performance ?? []).length > 0 ? (
               s.class_performance!.map((c, i) => (
                 <div className="progress-item" key={c.label}>
-                  <div className="progress-icon" style={{ background: ["var(--primary-50)", "var(--accent-50)", "var(--success-light)"][i % 3] }}>
+                  <div className="progress-icon" style={{ background: ["var(--info-light)", "var(--accent-50)", "var(--success-light)"][i % 3] }}>
                     <BookOpen size={15} />
                   </div>
                   <div className="progress-info">
@@ -148,9 +188,9 @@ export default function DashboardPage() {
             <div className="card" key={c.class_id}>
               <div className="card-header"><span className="card-title">{c.class_label}</span></div>
               <div className="stat-row">
-                <div className="stat-box">
+                <div className="stat-box info">
                   <div className="stat-label">Today&apos;s Attendance</div>
-                  <div className="stat-value">{c.attendance_percent ?? "—"}%</div>
+                  <div className="stat-value info">{c.attendance_percent ?? "—"}%</div>
                 </div>
                 <div className="stat-box warning">
                   <div className="stat-label">Papers to Approve</div>
@@ -166,14 +206,41 @@ export default function DashboardPage() {
         <div className="quick-actions">
           <h3>Quick Actions</h3>
           <div className="quick-actions-row">
-            {s!.quick_actions!.map((a) => (
-              <Link key={a.href} href={a.href} className="btn btn-action">
-                {a.label.includes("Attendance") && <ClipboardCheck size={16} />}
-                {a.label.includes("Notice") && <Megaphone size={16} />}
+            {s!.quick_actions!.map((a, i) => (
+              <Link key={a.href} href={a.href} className={`btn btn-action ${ACTION_TONES[i % ACTION_TONES.length]}`}>
+                {actionIcon(a.label)}
                 {a.label}
               </Link>
             ))}
           </div>
+        </div>
+      )}
+
+      {(s?.notices?.length ?? 0) > 0 && (
+        <div className="data-table-card">
+          <div className="card-header" style={{ padding: "16px 20px 0" }}>
+            <span className="card-title">Recent Notices</span>
+            <Link href="/dashboard/notices" style={{ fontSize: 13, color: "var(--accent-dark)", fontWeight: 600 }}>View all →</Link>
+          </div>
+          <table className="data-table">
+            <thead>
+              <tr><th>Notice</th><th>Audience</th><th>Priority</th><th style={{ textAlign: "right" }}>Date</th></tr>
+            </thead>
+            <tbody>
+              {s!.notices!.map((n) => (
+                <tr key={n.id}>
+                  <td style={{ fontWeight: 600 }}>{n.title}</td>
+                  <td style={{ textTransform: "capitalize" }}>{n.audience}</td>
+                  <td>
+                    <span className={`badge ${n.priority === "high" || n.priority === "urgent" ? "badge-danger" : "badge-info"}`} style={{ textTransform: "capitalize" }}>
+                      {n.priority}
+                    </span>
+                  </td>
+                  <td style={{ textAlign: "right", color: "var(--text-muted)" }}>{fmtDate(n.created_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </>
