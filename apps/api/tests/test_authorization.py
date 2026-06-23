@@ -356,10 +356,32 @@ async def test_teacher_timetable_staff_only(
 
 
 @pytest.mark.asyncio
-async def test_teacher_can_list_students(
-    client: AsyncClient, teacher_user: User, student_user: User
+async def test_teacher_roster_access_is_class_scoped(
+    client: AsyncClient,
+    admin_user: User,
+    teacher_user: User,
+    student_user: User,
+    test_class: Class,
+    db_session: AsyncSession,
 ):
-    """Locks the roster role tuple: teachers keep roster access after the N1 gating."""
-    token = await get_auth_token(client, "test_teacher", "Teacher@123")
-    resp = await client.get("/api/v1/academic/students", headers=auth_headers(token))
+    """Roster access is scope-gated: an unassigned teacher cannot enumerate the whole
+    school, but an incharge can list their own class; admins still see everything."""
+    teacher_token = await get_auth_token(client, "test_teacher", "Teacher@123")
+
+    # Teacher with no managed class and no class filter → must scope to a class first.
+    resp = await client.get("/api/v1/academic/students", headers=auth_headers(teacher_token))
+    assert resp.status_code == 403
+
+    # Make the teacher the incharge of test_class → may list that class's students.
+    test_class.class_incharge_id = teacher_user.id
+    await db_session.flush()
+    resp = await client.get(
+        f"/api/v1/academic/students?class_id={test_class.id}",
+        headers=auth_headers(teacher_token),
+    )
+    assert resp.status_code == 200
+
+    # Admin still sees the full roster with no class filter.
+    admin_token = await get_auth_token(client, "test_admin", "Admin@123")
+    resp = await client.get("/api/v1/academic/students", headers=auth_headers(admin_token))
     assert resp.status_code == 200
