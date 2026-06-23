@@ -12,7 +12,7 @@ import { RouteGuard } from "@/components/RouteGuard";
 import {
   LayoutDashboard, GraduationCap, Users, School, Sparkles, ClipboardCheck,
   FileText, Award, CalendarDays, Wallet, Megaphone, Bus, BedDouble,
-  Target, Settings as SettingsIcon, LogOut,
+  Target, NotebookPen, Settings as SettingsIcon, LogOut,
 } from "lucide-react";
 
 // Nav items without a `module` are core (always shown). Items with a `module` key are
@@ -29,6 +29,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Attendance", href: "/dashboard/attendance", icon: ClipboardCheck, module: "attendance" },
   { label: "Exams", href: "/dashboard/exams", icon: FileText, module: "exams" },
   { label: "Topic Mastery", href: "/dashboard/mastery", icon: Target, module: "mastery" },
+  { label: "Lesson Plans", href: "/dashboard/lesson-plans", icon: NotebookPen },
   { label: "Report Cards", href: "/dashboard/report-cards", icon: Award, module: "report_cards" },
   { label: "Timetable", href: "/dashboard/timetable", icon: CalendarDays, module: "timetable" },
   { label: "Finance", href: "/dashboard/finance", icon: Wallet, module: "finance" },
