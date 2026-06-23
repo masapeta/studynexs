@@ -1,9 +1,27 @@
 # Pilot Discovery — Questions for the School
 
-> Owner: Avinash Reddy Masapeta (ARM) · For the pilot-school meeting.
-> Goal: turn their *wishlist* into a real *buy-list* — the 3 things they'd switch for, and a price.
-> Rule: **ask about what they already do and a forced choice — not "what features do you want"** (everyone answers "everything").
-> Bring the working demo (Class 10 Maths paper) — **show first, then ask.**
+> Owner: Avinash Reddy Masapeta (ARM) · For the pilot-school meeting.  
+> **Execution checklist:** [TRACK_AB_EXECUTION.md](./TRACK_AB_EXECUTION.md)  
+> Goal: turn their *wishlist* into a real *buy-list* — the 3 things they'd switch for, and a price.  
+> Rule: **show the demo first, then ask.** Never lead with "AI features."
+
+---
+
+## Demo script (10 minutes, before questions)
+
+**Setup:** `admin-web` → Login → **AI Papers**
+
+1. Select **Class 10** + **Maths** (or pilot school's class/subject).
+2. Pick 2–3 topics from their syllabus (ask briefly: "Which unit are you testing next?").
+3. Click **Generate** — let them watch (~20 seconds).
+4. Scroll the paper: sections, marks, question types. *"Does this look like your board format?"*
+5. Edit one question live — show it's not a black box.
+6. **Approve** → export/print.
+7. One line: *"This also feeds report cards and, soon, answer-sheet checking against the same paper."*
+
+**Do not mention:** CurriculumPack, living textbook, Global Enrichment Studio, parent app, Phase 2+.
+
+**Do mention:** teachers stay in control (approve everything), built for Indian boards, saves exam-week time.
 
 ---
 
@@ -21,7 +39,21 @@
 
 6. **Willingness to pay.** For the AI question-paper + grading help specifically — would you pay around ₹___ per student per month for that? At what price does it become an easy "no"? And who actually approves that spend — you, the management/trust, or is it passed to parents?
 
+   **Plan to pitch:** Don't offer four equal choices. Say: *"For your school, the right start is **Pro+ Exam Intelligence** — one class, one subject — so you see QP quality, answer-sheet checking, and weak-topic reports before we scale."* Full tier detail: [PRICING.md](./PRICING.md).
+
 7. **Who else.** Who else should I be talking to — your exam in-charge, a couple of teachers, the office admin?
+
+8. **Pack inputs (if interest is real).** For Class 10 Maths (or your chosen subject): can you share textbook name/edition, term syllabus, index photo, and one previous question paper this week? We'll map your exact book — not generic syllabus.
+
+**After the meeting:** fill [PILOT_OUTCOME_SHEET.md](./pilot/PILOT_OUTCOME_SHEET.md) and save under `docs/pilot/<school-slug>/`.
+
+---
+
+## Pack inputs to collect after the meeting
+
+See full checklist in [TRACK_AB_EXECUTION.md](./TRACK_AB_EXECUTION.md) § A2.
+
+Minimum to start Phase 1.5: board, class/subject, book edition, TOC, term syllabus, one sample paper, HOD contact.
 
 ---
 

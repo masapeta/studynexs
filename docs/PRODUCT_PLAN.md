@@ -1,5 +1,27 @@
 # StudyNexs — Complete Product Plan & Roadmap
 
+> **⚠️ SUPERSEDED (2026-06-15)** — Do not edit for ongoing updates. Use [PRODUCT.md](./PRODUCT.md) + [STATUS.md](./STATUS.md) instead.
+
+### Finance Command Center (added 2026-06-17)
+
+Canonical spec lives in **[PRODUCT.md §14](./PRODUCT.md#14-finance-command-center-optional-module)** and build status in **[STATUS.md](./STATUS.md)** (Finance Command Center section).
+
+**Pricing tiers:** [PRICING.md](./PRICING.md) — Free / Pro / Pro+ / Enterprise, feature gates, AI credit pools.
+
+**StudyNexs Finance Command Center** — optional paid module: fee tracking, reminders, follow-up memory, salary/expense overview, management dashboard.
+
+| Phase | What |
+|-------|------|
+| **Phase 1** (early) | Fee due dashboard, overdue list, WhatsApp/SMS reminders, promise-to-pay notes, collection status, class/branch-wise pending |
+| **Phase 2** (later) | Monthly revenue, manual expenses, salary payable summary, transport expense summary, cashflow view, branch comparison — still not accounting |
+| **Phase 3** (on demand) | Payroll, vendor payments, approvals, transport route profitability, Tally export, audit reports |
+
+**Do not build:** GST engine, tax compliance, bank reconciliation, full double-entry ledger, complete payroll compliance.
+
+**Strategy:** Finance is a deal-expander, not the wedge. For the next 8 weeks, build only fee reminder + collection visibility if needed for pilot retention.
+
+---
+
 > Owner: Avinash Reddy Masapeta (ARM) · Status: **Living document v1.0** · Last updated: 2026-06-01
 > The single source of truth for what StudyNexs is, what's built, what's next, and why.
 > Companion docs: [MASTER_PLAN.md](./MASTER_PLAN.md) (architecture) · [IMPLEMENTATION_PLAN_P0_P1.md](./IMPLEMENTATION_PLAN_P0_P1.md) (build detail).
@@ -175,6 +197,19 @@ A **consumer-grade parent experience — an Instagram-style feed of their child'
 | Self-serve school onboarding + platform-operator console | ⬜ Parallel |
 | Offline / low-bandwidth mobile mode | ⬜ Phase 2+ |
 
+### 6.9 Finance Command Center (optional paid module)
+
+> Superseded detail: [PRODUCT.md §14](./PRODUCT.md#14-finance-command-center-optional-module). **Finance is a deal-expander, not the wedge.**
+
+| Feature | Status |
+|---|---|
+| Fee due dashboard, overdue list, collection status | ⬜ FC Phase 1 |
+| WhatsApp/SMS fee reminders, promise-to-pay notes | ⬜ FC Phase 1 |
+| Class-wise / branch-wise pending fees | ⬜ FC Phase 1 |
+| Monthly revenue, manual expenses, cashflow view, branch comparison | ⬜ FC Phase 2 |
+| Payroll, vendor payments, Tally export, audit reports | 🔭 FC Phase 3 (on demand) |
+| GST engine, tax compliance, bank reconciliation, full ledger | ❌ Hard boundary — do not build |
+
 ---
 
 ## 7. Key Differentiators (and enhancements I'd add)
@@ -209,10 +244,13 @@ A **consumer-grade parent experience — an Instagram-style feed of their child'
 | **Phase 1** | Teacher AI + pilot-ready core | Question-paper gen (done) → **harden**; finish the SMS modules on the school's checklist (exams/marks UI, report cards, timetable, settings); seed; close pilot | **4–8 weeks** |
 | **Phase 1.5** | Grounding + grading | RAG content packs (SSC/CBSE), objective auto-grade, subjective AI-assist (teacher-approved), 1-click student summary, WhatsApp alerts | **4–6 weeks** |
 | **Phase 2** | Student tutor + parents + mobile | Flutter app shell, **text tutor (RAG, child-safe, doubt-memory)**, **parent app — Instagram-style child-progress feed** + weekly AI report + online fee pay, digital diary | **2–3 months** |
+| **Phase 2b** | Finance Command Center Phase 1 | Fee visibility, overdue list, reminders, promise-to-pay (optional module; pilot retention only in near term) | **After pilot need** |
 | **Phase 3** | Communication + intelligence | Structured 1:1 chat (realtime), risk/early-warning (gated), personalised learning engine, skill-gap analysis, principal co-pilot | **2–3 months** |
 | **Phase 4** | Voice + engagement + scale | Voice tutor (Indian languages), gamification, multi-language UI, offline mode | **~3 months** |
 | **Phase 5** | Vision/video + AI School Brain | Image/video tutor, predictive admin (fee/teacher/infra), smart scheduling, benchmarking | **3–6 months** |
 | **Parallel** | Monetise + comply + expand | Subscription billing (Razorpay), DPDP compliance, onboarding console, more boards/regions | **Ongoing** |
+| **Finance Phase 2** | Management finance snapshot | Revenue, expenses, salary/transport summaries, cashflow, branch compare (not accounting) | **After FC Phase 1** |
+| **Finance Phase 3** | Deeper finance ops | Payroll, vendors, approvals, Tally export — only if schools repeatedly ask | **🔭 On demand** |
 
 \* *Solo, full-time. A second engineer roughly halves Phase 2+ calendar time.*
 

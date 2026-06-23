@@ -1,9 +1,9 @@
 # StudyNexs — Decision Log, Tradeoffs & Discussion Record
 
-> Owner: Avinash Reddy Masapeta (ARM) · Status: **Living record v1.0** · Last updated: 2026-06-01
+> Owner: Avinash Reddy Masapeta (ARM) · Status: **Living record v1.0** · Last updated: 2026-06-18
 > Purpose: capture *what was decided and why*, the tradeoffs weighed, what's still open, and the
 > working agreements — so decisions aren't re-litigated and the reasoning survives.
-> Companions: [PRODUCT_PLAN.md](./PRODUCT_PLAN.md) · [MASTER_PLAN.md](./MASTER_PLAN.md) · [IMPLEMENTATION_PLAN_P0_P1.md](./IMPLEMENTATION_PLAN_P0_P1.md)
+> Companions: [PRODUCT.md](./PRODUCT.md) · [STATUS.md](./STATUS.md)
 
 ---
 
@@ -131,7 +131,8 @@
 
 **Product / build:**
 - Final AI provider + model (post-benchmark).
-- RAG grounding timing (Phase 1 vs. 1.5); subjective-grading depth in P1.
+- ~~RAG grounding timing (Phase 1 vs. 1.5)~~ → **Decided:** CurriculumPack in Phase 1.5; QP/grading/mastery attach to pack, not free-text topics.
+- Subjective-grading depth in P1.
 - Real PDF (install WeasyPrint, with Windows system deps) vs. current HTML print-to-PDF.
 - Which core SMS UIs to finish first (exams/marks, report cards, timetable, settings) — driven by the checklist.
 - Multi-language (Telugu) timing.
@@ -144,6 +145,102 @@
 - Whether to keep the `avinash-data/` archive in the repo.
 - Root folder rename `academix-platform` → `studynexs-platform` (manual; then update `.claude/settings.local.json` + memory working-dir path).
 - A second engineer at Phase 2+ to keep timelines realistic.
+
+---
+
+## 7. Decision — CurriculumPack as core object (2026-06-16)
+
+**The call:** Introduce `CurriculumPack` as the versioned source of truth for each school's class × subject × academic year curriculum (book edition, chapter → topic → concept hierarchy). All academic AI — question papers, answer-sheet evaluation, rubrics, question bank, mastery, tutor RAG — runs against an approved pack. Never overwrite packs; create new versions per year and diff changes (Curriculum Change Tracker). Cross-year concept mapping preserves longitudinal history when books change.
+
+**Why:** Schools use different publishers and editions; generic "Class 7 Science" prompts produce wrong papers and unreliable grading. Pack-scoped intelligence is the moat — it connects QP generation, evaluation, mastery, and institutional memory into one compounding data model.
+
+**Alternatives considered:** (a) free-text topic list at QP time (current P1 approach); (b) central board-only content packs without per-school book mapping; (c) hardcoded SSC blueprints in code.
+
+**Tradeoff:** More onboarding work upfront (but minimal inputs + AI draft + one HOD approval). Pays off in evaluation accuracy, change tracking, and switching cost.
+
+**Status:** Documented in [PRODUCT.md](./PRODUCT.md) §4–§8. Not yet implemented — [STATUS.md](./STATUS.md) 8-week plan.
+
+### Decision — No textbook warehousing (2026-06-17)
+
+**The call:** Store structured curriculum (metadata, chapter/topic/concept map, approved Concept Cards, rubrics, references) — not full copyrighted textbooks. Raw uploads only for temporary ingestion, deduped, retention-limited. Use NCERT/ePathshala with reuse-rights checks.
+
+**Why:** Copyright risk under Indian law; operational cost of maintaining book copies; structured maps are sufficient for QP, evaluation, and tutor.
+
+**Status:** Documented in [PRODUCT.md](./PRODUCT.md) §4.8–§4.11.
+
+### Decision — Mistake Recovery Tutor as MVP (2026-06-17)
+
+**The call:** First tutor experience is post answer-sheet evaluation on weak concepts, powered by pre-approved Concept Cards — not open-ended chat requiring per-response approval.
+
+**Why:** Tighter scope, connects to exam loop, builds reusable content layer via Content Review Queue.
+
+**Status:** Week 8 of [STATUS.md](./STATUS.md) 8-week plan.
+
+### Decision — Question-level intelligence (2026-06-18)
+
+**The call:** Unit of memory is the **question item**, not the paper PDF. Split papers into `QuestionBankItem` + `RubricBankItem` with full pack metadata; similarity checker; post-gen quality checker; difficulty calibration from answer-sheet eval; structured approval/rejection memory; exam security layer; tiered reuse modes. Build order: papers saved → split items → reject reasons → bank → from-bank gen → quality check → eval linkback.
+
+**Why:** Every exam makes the next exam smarter — academic moat inside the QP wedge.
+
+**Status:** [PRODUCT.md](./PRODUCT.md) §7.5. Steps 1 + partial 3 live in repo.
+
+### Decision — Exam intelligence enhancements (2026-06-18)
+
+**The call:** Twelve extensions documented in §7.6 — blueprint intelligence, paper versioning (Set A/B…), teacher style memory, multi-layer HOD workflow, leakage prevention, answer-key confidence, misconception library, auto remedial packs, benchmarking (later), curriculum drift alerts, inspection pack, PTA pack. **Top 5 build priority:** question bank, blueprint intelligence, eval→question analytics, remedial worksheets, inspection/PTA pack.
+
+**Compounding story:** Generate better papers → correct faster → understand weakness → remediate → prove improvement.
+
+**Status:** Documented only — not implemented.
+
+### Decision — School question bank architecture (2026-06-18)
+
+**The call:** Generated QPs are **not** cache-only. **Both approved and rejected papers are assets.** Approved → trusted bank (auto-compose). Rejected → audit trail **and** manual reuse (edit, clone, resubmit → re-approve enters bank). Only approved items auto-index for `qp_from_bank`.
+
+**Why:** Cost saver (retrieve items, not whole papers), quality improver (trusted approved blocks), moat (compounding school data).
+
+**Status:** Documented in [PRODUCT.md](./PRODUCT.md) §7.4. `QuestionBankItem` entity not built — Phase 1.5 after CurriculumPack.
+
+### Decision — Pricing tier structure (2026-06-18)
+
+**The call:** Four public tiers — **Free** (controlled demo), **Pro** (exam starter), **Pro+** (main growth plan), **Enterprise** (chains / custom). No unlimited AI in any tier. Credits charge at generation, not approval. Add-ons (extra credits, WhatsApp pack, tutor pack, Finance Command Center) stay separate from base plans.
+
+**Sales motion (first 3–5 schools):** Publicly show all tiers; sell **Paid Pilot = Pro+ scoped to one class + one subject**. Don't push four equal choices.
+
+**Why:** Free creates interest without letting schools run production on it. Pro closes small schools. Pro+ is where exam intelligence + parent value live. Enterprise protects high-usage and multi-branch deals. Rupee prices still deferred until pilot WTP validation.
+
+**Status:** Documented in [PRICING.md](./PRICING.md). Razorpay SKUs and API plan gates not built yet.
+
+### Decision — Learning Companion beside textbooks (2026-06-18)
+
+**The call:** StudyNexs Learning Companion (school-customized smart workbooks) sits **beside** NCERT/private textbooks — never replaces or rewrites them. Content is curriculum-aligned and originally written from CurriculumPack + Concept Cards + exam data. Entry formats: chapter companions, revision booklets, practice workbooks, mistake recovery sheets, exam prep packs. Full living textbook is 1–2 year horizon. Layer 4 in build sequence — after QP, eval, mastery, tutor.
+
+**Why:** Copyright protects expression; schools trust physical books; revision workbooks are easier to sell than "replace your textbook."
+
+**Wow line:** *"Your school's book gets smarter every exam."*
+
+**Status:** [PRODUCT.md](./PRODUCT.md) §8.
+
+### Decision — Global Enrichment Studio (2026-06-18)
+
+**The call:** **Global Learning Inspiration Layer** shipped as product feature **Global Enrichment Studio**. Schools submit international sources or descriptions; platform classifies license risk (Green/Yellow/Red); extracts **pedagogical pattern only**; generates **original** content mapped to CurriculumPack; teacher/HOD approves. CC BY allowed with attribution; CC-NC and CC-ND block expression adaptation in commercial SaaS. Year 2 premium — after smart workbooks.
+
+**Rule:** International content can inspire. It must not be copied.
+
+**Sticky note:** *StudyNexs does not copy textbooks. It helps schools turn the world's best teaching ideas into their own approved learning material.*
+
+**Status:** [PRODUCT.md](./PRODUCT.md) §8.8.
+
+### Decision — Admin bypass of school AI hard cap (2026-06-15)
+
+**The call:** `admin` and `super_admin` roles **skip the school monthly credit hard cap** in `check_ai_credits`. Teachers and class incharges remain subject to the school pool and per-user quotas. Principal **emergency override** (`override_until` in school settings) lifts the cap for everyone for up to 72 hours.
+
+**Why:** Exam week and pilot demos cannot deadlock because the school hit 100/100 credits on day 28. The principal is the economic owner; blocking them blocks the whole school. Teacher/incharge quotas still prevent runaway individual spend.
+
+**Tradeoff:** A compromised principal account could generate without school-level brake. Mitigations: usage dashboard, operator metering, optional admin soft ceiling in Phase 1.5 if needed.
+
+**Not in scope yet:** ~~Atomic credit ledger (TOCTOU)~~ — row-locked check + charge-time enforcement (2026-06-15). IST month boundary via `school.settings.timezone` (default `Asia/Kolkata`).
+
+**Status:** Implemented in `ai_credits.py` + `metering.py`.
 
 ---
 

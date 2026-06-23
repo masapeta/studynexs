@@ -1,5 +1,7 @@
 # StudyNexs — Master Plan
 
+> **⚠️ SUPERSEDED (2026-06-15)** — Do not edit. Use [PRODUCT.md](./PRODUCT.md) + [STATUS.md](./STATUS.md) instead.
+
 > Single source of truth for the AI-native School Management product.
 > Status: **DRAFT v0.1** · Last updated: 2026-05-31 · Owner: Avinash Reddy Masapeta (ARM)
 > This is a living document — expect changes as development progresses.

@@ -1,5 +1,7 @@
 # StudyNexs — Phase 0 + Phase 1 Implementation Plan
 
+> **⚠️ SUPERSEDED (2026-06-15)** — Do not edit. Use [PRODUCT.md](./PRODUCT.md) + [STATUS.md](./STATUS.md) instead.
+
 > Owner: Avinash Reddy Masapeta (ARM) · Status: **DRAFT v0.1** · 2026-05-31
 > Derives from [MASTER_PLAN.md](./MASTER_PLAN.md). Phase 1 flagship = **Teacher AI on web**.
 

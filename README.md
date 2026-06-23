@@ -4,6 +4,8 @@
 
 ![StudyNexs](assets/Logo.png)
 
+**Documentation:** [Product bible](docs/PRODUCT.md) · [Build status](docs/STATUS.md)
+
 ---
 
 ## Architecture
@@ -14,7 +16,7 @@
 | **Database** | PostgreSQL 16 + JSONB |
 | **Cache / Auth** | Redis 7 (OTP, JWT blacklist, user cache) |
 | **Vector DB** | Qdrant (RAG, semantic cache) |
-| **Frontend** | Next.js 14 — 5 separate portals |
+| **Frontend** | Next.js 16 — admin-web (others planned) |
 | **Gateway** | Nginx (rate limiting, proxy) |
 | **Storage** | Azure Blob (PDFs, receipts, documents) |
 | **CI/CD** | GitHub Actions → Azure Container Apps |
@@ -40,11 +42,11 @@ studynexs-platform/
 │   │   ├── app/workers/     # Outbox relay, background tasks
 │   │   ├── alembic/         # Database migrations
 │   │   └── scripts/         # Seed data, utilities
-│   ├── admin-web/           # School admin portal
-│   ├── teacher-web/         # Teacher portal
-│   ├── parent-web/          # Parent portal (mobile-first)
-│   ├── student-web/         # Student portal
-│   └── platform-web/        # SaaS operator console
+│   ├── admin-web/           # School admin portal (built)
+│   ├── teacher-web/         # Teacher portal (planned)
+│   ├── parent-web/          # Parent portal (planned)
+│   ├── student-web/         # Student portal (planned)
+│   └── platform-web/        # SaaS operator console (planned)
 ├── infra/
 │   ├── docker/              # docker-compose.dev.yml
 │   ├── nginx/               # Gateway config
