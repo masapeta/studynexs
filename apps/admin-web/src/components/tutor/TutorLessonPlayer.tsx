@@ -7,19 +7,50 @@ import type { TutorLesson, TutorStep } from "@/lib/student-portal";
 
 type SpeechState = "idle" | "playing" | "paused";
 
+// Prefer a soft female Indian-English voice (e.g. Windows "Heera", Azure "Neerja",
+// Chrome "English (India)"). Avoid the male Indian voices ("Ravi" etc.).
+const FEMALE_INDIAN = /(heera|neerja|aarohi|ananya|kalpana|swara|asha|veena|priya|isha|female)/i;
+const MALE_HINT = /(ravi|prabhat|madhur|hemant|valluvar|\bmale\b)/i;
+
+function pickTeacherVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
+  if (!voices.length) return null;
+  const en = voices.filter((v) => (v.lang || "").toLowerCase().startsWith("en"));
+  const indian = en.filter(
+    (v) => (v.lang || "").toLowerCase() === "en-in" || /india/i.test(v.name)
+  );
+  return (
+    indian.find((v) => FEMALE_INDIAN.test(v.name) && !MALE_HINT.test(v.name)) ||
+    indian.find((v) => !MALE_HINT.test(v.name)) ||
+    indian[0] ||
+    en.find((v) => FEMALE_INDIAN.test(v.name) && !MALE_HINT.test(v.name)) ||
+    en[0] ||
+    null
+  );
+}
+
 export default function TutorLessonPlayer({ lesson }: { lesson: TutorLesson }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [speechState, setSpeechState] = useState<SpeechState>("idle");
   const [voiceReady, setVoiceReady] = useState(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const voiceRef = useRef<SpeechSynthesisVoice | null>(null);
 
   const steps = lesson.steps;
   const step: TutorStep | undefined = steps[stepIndex];
 
   useEffect(() => {
-    setVoiceReady(typeof window !== "undefined" && "speechSynthesis" in window);
+    const supported = typeof window !== "undefined" && "speechSynthesis" in window;
+    setVoiceReady(supported);
+    if (!supported) return;
+    // getVoices() is often empty on first call — voices arrive async via "voiceschanged".
+    const load = () => {
+      voiceRef.current = pickTeacherVoice(window.speechSynthesis.getVoices());
+    };
+    load();
+    window.speechSynthesis.addEventListener?.("voiceschanged", load);
     return () => {
-      window.speechSynthesis?.cancel();
+      window.speechSynthesis.removeEventListener?.("voiceschanged", load);
+      window.speechSynthesis.cancel();
     };
   }, []);
 
@@ -35,11 +66,11 @@ export default function TutorLessonPlayer({ lesson }: { lesson: TutorLesson }) {
       if (!s || !voiceReady) return;
       stopSpeech();
       const utter = new SpeechSynthesisUtterance(s.narration);
-      utter.rate = 0.92;
-      utter.pitch = 1;
-      const voices = window.speechSynthesis.getVoices();
-      const en = voices.find((v) => v.lang.startsWith("en-IN")) || voices.find((v) => v.lang.startsWith("en"));
-      if (en) utter.voice = en;
+      utter.rate = 0.88; // a touch slower — calmer, clearer for a young learner
+      utter.pitch = 1.08; // gently higher — softer, warmer
+      const voice = voiceRef.current ?? pickTeacherVoice(window.speechSynthesis.getVoices());
+      if (voice) utter.voice = voice;
+      utter.lang = voice?.lang || "en-IN"; // bias to Indian English even on a default voice
       utter.onend = () => setSpeechState("idle");
       utter.onerror = () => setSpeechState("idle");
       utteranceRef.current = utter;
