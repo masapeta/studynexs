@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Pause, Play, RotateCcw, SkipBack, SkipForward, Volume2 } from "lucide-react";
 import TutorVisual from "./TutorVisual";
+import { API_URL, TENANT_SLUG, api, getAccessToken } from "@/lib/api";
 import type { TutorLesson, TutorStep } from "@/lib/student-portal";
 
 type SpeechState = "idle" | "playing" | "paused";
@@ -34,6 +35,11 @@ export default function TutorLessonPlayer({ lesson }: { lesson: TutorLesson }) {
   const [voiceReady, setVoiceReady] = useState(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const voiceRef = useRef<SpeechSynthesisVoice | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const objUrlRef = useRef<string | null>(null);
+  const cloudRef = useRef(false); // cloud Neural TTS available?
+  const modeRef = useRef<"cloud" | "web">("web"); // active playback path
+  const [cloudReady, setCloudReady] = useState(false);
 
   const steps = lesson.steps;
   const step: TutorStep | undefined = steps[stepIndex];
@@ -41,30 +47,52 @@ export default function TutorLessonPlayer({ lesson }: { lesson: TutorLesson }) {
   useEffect(() => {
     const supported = typeof window !== "undefined" && "speechSynthesis" in window;
     setVoiceReady(supported);
-    if (!supported) return;
     // getVoices() is often empty on first call — voices arrive async via "voiceschanged".
     const load = () => {
       voiceRef.current = pickTeacherVoice(window.speechSynthesis.getVoices());
     };
-    load();
-    window.speechSynthesis.addEventListener?.("voiceschanged", load);
+    if (supported) {
+      load();
+      window.speechSynthesis.addEventListener?.("voiceschanged", load);
+    }
+    // Cloud Neural TTS (soft female Indian voice) when configured; else Web Speech.
+    const audio = new Audio();
+    audio.onended = () => setSpeechState("idle");
+    audio.onerror = () => setSpeechState("idle");
+    audioRef.current = audio;
+    api("/api/v1/tutor/tts/status")
+      .then((r: any) => {
+        cloudRef.current = !!r?.data?.enabled;
+        setCloudReady(cloudRef.current);
+      })
+      .catch(() => {});
     return () => {
-      window.speechSynthesis.removeEventListener?.("voiceschanged", load);
-      window.speechSynthesis.cancel();
+      if (supported) window.speechSynthesis.removeEventListener?.("voiceschanged", load);
+      window.speechSynthesis?.cancel();
+      audio.pause();
+      if (objUrlRef.current) URL.revokeObjectURL(objUrlRef.current);
     };
   }, []);
 
   const stopSpeech = useCallback(() => {
     window.speechSynthesis?.cancel();
-    setSpeechState("idle");
+    const a = audioRef.current;
+    if (a) {
+      a.pause();
+      a.currentTime = 0;
+    }
+    if (objUrlRef.current) {
+      URL.revokeObjectURL(objUrlRef.current);
+      objUrlRef.current = null;
+    }
     utteranceRef.current = null;
+    setSpeechState("idle");
   }, []);
 
-  const speakStep = useCallback(
+  const playWeb = useCallback(
     (index: number) => {
       const s = steps[index];
       if (!s || !voiceReady) return;
-      stopSpeech();
       const utter = new SpeechSynthesisUtterance(s.narration);
       utter.rate = 0.88; // a touch slower — calmer, clearer for a young learner
       utter.pitch = 1.08; // gently higher — softer, warmer
@@ -74,16 +102,55 @@ export default function TutorLessonPlayer({ lesson }: { lesson: TutorLesson }) {
       utter.onend = () => setSpeechState("idle");
       utter.onerror = () => setSpeechState("idle");
       utteranceRef.current = utter;
+      modeRef.current = "web";
       window.speechSynthesis.speak(utter);
       setSpeechState("playing");
     },
-    [steps, voiceReady, stopSpeech]
+    [steps, voiceReady]
+  );
+
+  const speakStep = useCallback(
+    async (index: number) => {
+      const s = steps[index];
+      if (!s) return;
+      stopSpeech();
+      if (!cloudRef.current) {
+        playWeb(index);
+        return;
+      }
+      // Cloud Neural TTS — soft female Indian voice; fall back to Web Speech on any error.
+      try {
+        const res = await fetch(`${API_URL}/api/v1/tutor/tts`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getAccessToken()}`,
+            "X-Tenant-Slug": TENANT_SLUG,
+          },
+          body: JSON.stringify({ text: s.narration }),
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error("tts");
+        const url = URL.createObjectURL(await res.blob());
+        objUrlRef.current = url;
+        const a = audioRef.current;
+        if (!a) throw new Error("audio");
+        a.src = url;
+        modeRef.current = "cloud";
+        await a.play();
+        setSpeechState("playing");
+      } catch {
+        cloudRef.current = false; // give up on cloud for the rest of the session
+        playWeb(index);
+      }
+    },
+    [steps, stopSpeech, playWeb]
   );
 
   const handlePlay = () => {
-    if (!voiceReady) return;
     if (speechState === "paused") {
-      window.speechSynthesis.resume();
+      if (modeRef.current === "cloud") audioRef.current?.play();
+      else window.speechSynthesis.resume();
       setSpeechState("playing");
       return;
     }
@@ -91,10 +158,10 @@ export default function TutorLessonPlayer({ lesson }: { lesson: TutorLesson }) {
   };
 
   const handlePause = () => {
-    if (speechState === "playing") {
-      window.speechSynthesis.pause();
-      setSpeechState("paused");
-    }
+    if (speechState !== "playing") return;
+    if (modeRef.current === "cloud") audioRef.current?.pause();
+    else window.speechSynthesis.pause();
+    setSpeechState("paused");
   };
 
   const handleReplay = () => speakStep(stepIndex);
@@ -179,8 +246,10 @@ export default function TutorLessonPlayer({ lesson }: { lesson: TutorLesson }) {
 
       <p className="tutor-voice-hint">
         <Volume2 size={14} style={{ verticalAlign: "middle", marginRight: 4 }} />
-        {voiceReady
-          ? "Teacher-style voice + diagram — pause or replay any step until it clicks."
+        {voiceReady || cloudReady
+          ? cloudReady
+            ? "Soft Indian teacher voice + diagram — pause or replay any step until it clicks."
+            : "Teacher-style voice + diagram — pause or replay any step until it clicks."
           : "Voice not supported in this browser — read the steps below."}
       </p>
     </div>

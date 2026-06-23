@@ -3,17 +3,25 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.authorization import assert_can_access_student
+from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, get_current_user
 from app.modules.tutor.schemas.tutor import TutorLessonOut, TutorRecommendationOut
+from app.modules.tutor.services.tts_service import synthesize_speech, tts_enabled
 from app.modules.tutor.services.tutor_service import get_lesson, list_recommendations
 from app.shared.schemas.common import APIResponse
 
 router = APIRouter()
+
+
+class TtsRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=1200)
+    voice: str | None = Field(None, max_length=60)
 
 
 @router.get(
@@ -54,3 +62,28 @@ async def tutor_lesson(
     if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
     return APIResponse(data=lesson)
+
+
+@router.get("/tts/status")
+async def tts_status(current_user: CurrentUser = Depends(get_current_user)):
+    """Whether cloud Neural TTS is available — the client uses it, else Web Speech."""
+    return APIResponse(data={"enabled": tts_enabled(), "voice": get_settings().AZURE_SPEECH_VOICE})
+
+
+@router.post("/tts")
+async def tutor_tts(
+    body: TtsRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Synthesize a lesson step to MP3 (soft female Indian voice). 503 → client falls back."""
+    if not tts_enabled():
+        raise HTTPException(status_code=503, detail="Voice synthesis is not configured")
+    try:
+        audio = await synthesize_speech(body.text, body.voice)
+    except Exception:
+        raise HTTPException(status_code=502, detail="Voice synthesis failed")
+    return Response(
+        content=audio,
+        media_type="audio/mpeg",
+        headers={"Cache-Control": "private, max-age=86400", "X-Content-Type-Options": "nosniff"},
+    )

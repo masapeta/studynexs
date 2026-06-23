@@ -147,6 +147,12 @@ class Settings(BaseSettings):
     AI_DEFAULT_MODEL: str = ""  # empty → factory picks the provider's default model
     AI_REQUEST_TIMEOUT_SECONDS: float = 120.0
 
+    # ── Azure Speech (Neural TTS for the AI-tutor voice) ─────────
+    # When unset, the tutor falls back to the browser's Web Speech voice.
+    AZURE_SPEECH_KEY: str = ""
+    AZURE_SPEECH_REGION: str = "centralindia"  # data residency: keep Indian region
+    AZURE_SPEECH_VOICE: str = "en-IN-NeerjaNeural"  # soft, natural female Indian English
+
     # ── Derived Properties ───────────────────────────────────────
     @property
     def is_development(self) -> bool:
