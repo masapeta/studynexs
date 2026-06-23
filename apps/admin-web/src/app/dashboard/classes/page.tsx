@@ -2,33 +2,94 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "@/lib/api";
+import { api, getApiErrorMessage } from "@/lib/api";
+
+const sel: React.CSSProperties = { width: "100%", padding: "8px 12px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)", background: "white", marginTop: 4 };
+const btnSm: React.CSSProperties = { width: "auto", padding: "8px 18px", borderRadius: "var(--radius-full)", fontSize: 13 };
 
 export default function ClassesPage() {
   const [classes, setClasses] = useState<any[]>([]);
+  const [years, setYears] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({ grade: "", section: "", room_number: "", academic_year_id: "" });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const router = useRouter();
 
+  function load() {
+    setLoading(true);
+    api("/api/v1/academic/classes")
+      .then((r) => setClasses(r.items || r.data || []))
+      .catch((e) => console.error(e))
+      .finally(() => setLoading(false));
+  }
+
   useEffect(() => {
-    async function fetch() {
-      try {
-        const res = await api("/api/v1/academic/classes");
-        setClasses(res.items || res.data || []);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetch();
+    load();
+    api("/api/v1/school/academic-years")
+      .then((r) => {
+        const items = r.data || r.items || [];
+        setYears(items);
+        const active = items.find((y: any) => y.is_active) || items[0];
+        if (active) setForm((f) => ({ ...f, academic_year_id: active.id }));
+      })
+      .catch(() => {});
   }, []);
+
+  async function addClass() {
+    if (!form.grade.trim() || !form.section.trim() || !form.academic_year_id) {
+      setError("Grade, section and academic year are required.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await api("/api/v1/academic/classes", {
+        method: "POST",
+        body: JSON.stringify({
+          grade: form.grade,
+          section: form.section,
+          academic_year_id: form.academic_year_id,
+          room_number: form.room_number || null,
+        }),
+      });
+      setForm((f) => ({ ...f, grade: "", section: "", room_number: "" }));
+      setShowAdd(false);
+      load();
+    } catch (e) {
+      setError(getApiErrorMessage(e, "Failed to add class"));
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700 }}>Classes</h1>
-        <button className="btn btn-primary" style={{ width: "auto", padding: "10px 20px" }}>+ Add Class</button>
+        <button className="btn btn-primary" style={{ width: "auto", padding: "10px 20px" }} onClick={() => setShowAdd((v) => !v)}>
+          {showAdd ? "Cancel" : "+ Add Class"}
+        </button>
       </div>
+
+      {error && <div className="card" style={{ marginBottom: 16, padding: 12, color: "var(--danger)" }}>{error}</div>}
+
+      {showAdd && (
+        <div className="card" style={{ marginBottom: 20, padding: 24, display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1.4fr auto", gap: 12, alignItems: "end" }}>
+          <div><label className="stat-label">Grade</label><input className="form-input" style={sel} value={form.grade} placeholder="Grade 5" onChange={(e) => setForm({ ...form, grade: e.target.value })} /></div>
+          <div><label className="stat-label">Section</label><input className="form-input" style={sel} value={form.section} placeholder="A" onChange={(e) => setForm({ ...form, section: e.target.value })} /></div>
+          <div><label className="stat-label">Room</label><input className="form-input" style={sel} value={form.room_number} onChange={(e) => setForm({ ...form, room_number: e.target.value })} /></div>
+          <div>
+            <label className="stat-label">Academic year</label>
+            <select className="form-input" style={sel} value={form.academic_year_id} onChange={(e) => setForm({ ...form, academic_year_id: e.target.value })}>
+              <option value="">Select…</option>
+              {years.map((y) => <option key={y.id} value={y.id}>{y.year_label}{y.is_active ? " (active)" : ""}</option>)}
+            </select>
+          </div>
+          <button className="btn btn-primary" style={btnSm} onClick={addClass} disabled={saving}>{saving ? "Adding…" : "Add"}</button>
+        </div>
+      )}
 
       <div className="dashboard-grid">
         {loading ? (
