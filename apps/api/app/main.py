@@ -132,8 +132,10 @@ def create_app() -> FastAPI:
     from app.modules.examinations.endpoints.exam import router as exam_router
     from app.modules.fees.endpoints.fee import router as fee_router
     from app.modules.files.endpoints.file import router as file_router
+    from app.modules.jobs.endpoints.job import router as jobs_router
     from app.modules.mastery.endpoints.mastery import router as mastery_router
     from app.modules.notifications.endpoints.notification import router as notif_router
+    from app.modules.portal.endpoints.portal import router as portal_router
     from app.modules.school.endpoints.school import router as school_router
     from app.modules.school_ops.endpoints.ops import router as ops_router
     from app.modules.timetable.endpoints.timetable import router as timetable_router
@@ -150,9 +152,21 @@ def create_app() -> FastAPI:
     app.include_router(ops_router, prefix=f"{prefix}/ops", tags=["school-operations"])
     app.include_router(notif_router, prefix=f"{prefix}/notifications", tags=["notifications"])
     app.include_router(file_router, prefix=f"{prefix}/files", tags=["files"])
+    app.include_router(jobs_router, prefix=f"{prefix}/jobs", tags=["jobs"])
     app.include_router(ai_router, prefix=f"{prefix}/ai", tags=["ai"])
     app.include_router(school_router, prefix=f"{prefix}/school", tags=["school"])
     app.include_router(mastery_router, prefix=f"{prefix}/mastery", tags=["mastery"])
+    app.include_router(portal_router, prefix=f"{prefix}/portal", tags=["portal"])
+
+    from app.modules.tutor.endpoints.tutor import router as tutor_router
+
+    app.include_router(tutor_router, prefix=f"{prefix}/tutor", tags=["tutor"])
+
+    from app.modules.dashboard.endpoints.dashboard import router as dashboard_router
+    from app.modules.curriculum.endpoints.lesson_plan import router as lesson_plan_router
+
+    app.include_router(dashboard_router, prefix=f"{prefix}/dashboard", tags=["dashboard"])
+    app.include_router(lesson_plan_router, prefix=f"{prefix}/lesson-plans", tags=["curriculum"])
 
     return app
 

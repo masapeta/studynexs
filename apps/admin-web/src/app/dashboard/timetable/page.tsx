@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, getApiErrorMessage } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 const DAY_LABEL: Record<string, string> = {
@@ -9,6 +10,8 @@ const DAY_LABEL: Record<string, string> = {
 };
 
 export default function TimetablePage() {
+  const { permissions } = useAuth();
+  const canEdit = permissions?.can_edit_timetable ?? false;
   const [classes, setClasses] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [teachers, setTeachers] = useState<any[]>([]);
@@ -30,14 +33,16 @@ export default function TimetablePage() {
         if (items[0]) setClassId(items[0].id);
       })
       .catch((e) => console.error(e));
-    api("/api/v1/users?role=teacher&page_size=100")
-      .then((r) => {
-        const items = r.items || r.data || [];
-        setTeachers(items);
-        setForm((f) => ({ ...f, teacher_id: items[0]?.id || "" }));
-      })
-      .catch((e) => console.error(e));
-  }, []);
+    if (canEdit) {
+      api("/api/v1/users?role=teacher&page_size=100")
+        .then((r) => {
+          const items = r.items || r.data || [];
+          setTeachers(items);
+          setForm((f) => ({ ...f, teacher_id: items[0]?.id || "" }));
+        })
+        .catch((e) => console.error(e));
+    }
+  }, [canEdit]);
 
   useEffect(() => {
     if (!classId) return;
@@ -88,8 +93,10 @@ export default function TimetablePage() {
     }
   }
 
-  const subjName = (id: string) => subjects.find((s) => s.id === id)?.name || "—";
-  const teachName = (id: string) => teachers.find((t) => t.id === id)?.full_name || "—";
+  const subjName = (id: string, slot?: { subject_name?: string | null }) =>
+    slot?.subject_name || subjects.find((s) => s.id === id)?.name || "—";
+  const teachName = (id: string, slot?: { teacher_name?: string | null }) =>
+    slot?.teacher_name || teachers.find((t) => t.id === id)?.full_name || "—";
 
   const maxPeriod = Math.max(8, ...slots.map((s) => s.period_number || 0));
   const periods = Array.from({ length: maxPeriod }, (_, i) => i + 1);
@@ -107,7 +114,7 @@ export default function TimetablePage() {
 
       {error && <div className="card" style={{ marginBottom: 16, padding: 12, color: "var(--danger)" }}>{error}</div>}
 
-      {/* Add slot */}
+      {canEdit && (
       <div className="card" style={{ marginBottom: 24, padding: 20, display: "grid", gridTemplateColumns: "repeat(6, 1fr) auto", gap: 10, alignItems: "end" }}>
         <div>
           <label className="stat-label">Day</label>
@@ -143,6 +150,13 @@ export default function TimetablePage() {
           {adding ? "Adding…" : "+ Add"}
         </button>
       </div>
+      )}
+
+      {!canEdit && (
+        <div className="card" style={{ marginBottom: 16, padding: 14, color: "var(--text-secondary)", fontSize: 14 }}>
+          View-only timetable. Only the principal and class incharges can add or edit slots.
+        </div>
+      )}
 
       {/* Weekly grid */}
       <div className="card" style={{ padding: 0, overflow: "auto" }}>
@@ -166,11 +180,13 @@ export default function TimetablePage() {
                       <td key={d} style={{ verticalAlign: "top" }}>
                         {s ? (
                           <div style={{ background: "var(--bg)", borderRadius: "var(--radius-sm)", padding: "6px 8px", position: "relative" }}>
-                            <div style={{ fontWeight: 600, fontSize: 13 }}>{subjName(s.subject_id)}</div>
-                            <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{teachName(s.teacher_id)}</div>
+                            <div style={{ fontWeight: 600, fontSize: 13 }}>{subjName(s.subject_id, s)}</div>
+                            <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{teachName(s.teacher_id, s)}</div>
                             <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{s.start_time}–{s.end_time}</div>
+                            {canEdit && (
                             <button onClick={() => deleteSlot(s.id)} title="Remove"
                               style={{ position: "absolute", top: 4, right: 4, border: "none", background: "none", cursor: "pointer", color: "var(--danger)", fontSize: 12 }}>✕</button>
+                            )}
                           </div>
                         ) : (
                           <span style={{ color: "var(--text-muted)" }}>—</span>

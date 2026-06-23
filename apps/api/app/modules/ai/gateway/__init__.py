@@ -7,11 +7,12 @@ Usage:
     result = await provider.generate([LLMMessage("user", "...")], model=default_model())
     await record_usage(db, feature="question_paper", result=result, school_id=..., created_by=...)
 """
-from app.modules.ai.gateway.base import LLMMessage, LLMProvider, LLMResult
+from app.modules.ai.gateway.base import LLMImage, LLMMessage, LLMProvider, LLMResult
 from app.modules.ai.gateway.factory import default_model, get_provider
 from app.modules.ai.gateway.metering import record_usage
 
 __all__ = [
+    "LLMImage",
     "LLMMessage",
     "LLMProvider",
     "LLMResult",

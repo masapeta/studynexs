@@ -41,11 +41,19 @@ export async function api<T = any>(
     headers["Authorization"] = `Bearer ${accessToken}`;
   }
 
-  const res = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers,
-    credentials: "include", // For HttpOnly cookies
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers,
+      credentials: "include", // For HttpOnly cookies
+    });
+  } catch {
+    throw new ApiError(
+      0,
+      `Cannot reach the API at ${API_URL}. Is the API server running on port 8000?`
+    );
+  }
 
   if (res.status === 401) {
     // The auth endpoints (refresh/login) returning 401 just means "no valid session
@@ -132,6 +140,50 @@ export function getApiErrorMessage(error: unknown, defaultMessage: string): stri
   if (error instanceof ApiError) return error.message;
   if (error instanceof Error) return error.message;
   return defaultMessage;
+}
+
+/** Fetch a protected PDF/HTML document; returns a blob URL for in-app preview (caller must revoke). */
+const _fetchDocInFlight = new Map<string, Promise<string>>();
+
+export async function fetchProtectedDocumentUrl(path: string): Promise<string> {
+  const inflight = _fetchDocInFlight.get(path);
+  if (inflight) return inflight;
+
+  const promise = (async () => {
+    const res = await fetch(`${API_URL}${path}`, {
+      headers: {
+        Authorization: `Bearer ${getAccessToken()}`,
+        "X-Tenant-Slug": TENANT_SLUG,
+      },
+      credentials: "include",
+    });
+
+    if (!res.ok) {
+      let message = "Could not open document.";
+      try {
+        const body = await res.json();
+        if (typeof body.detail === "string") message = body.detail;
+      } catch {
+        const text = await res.text().catch(() => "");
+        if (text) message = text.slice(0, 200);
+      }
+      throw new ApiError(res.status, message);
+    }
+
+    const rawType = res.headers.get("content-type") || "";
+    const contentType = rawType.split(";")[0].trim();
+    const buffer = await res.arrayBuffer();
+    const mime =
+      contentType === "text/html"
+        ? "text/html;charset=utf-8"
+        : contentType || "application/octet-stream";
+    return URL.createObjectURL(new Blob([buffer], { type: mime }));
+  })().finally(() => {
+    _fetchDocInFlight.delete(path);
+  });
+
+  _fetchDocInFlight.set(path, promise);
+  return promise;
 }
 
 export const apiAuth = {

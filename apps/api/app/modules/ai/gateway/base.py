@@ -12,9 +12,16 @@ from typing import Any
 
 
 @dataclass
+class LLMImage:
+    data: bytes
+    mime_type: str = "image/jpeg"
+
+
+@dataclass
 class LLMMessage:
     role: str  # "system" | "user" | "assistant"
     content: str
+    images: list[LLMImage] | None = None
 
 
 @dataclass

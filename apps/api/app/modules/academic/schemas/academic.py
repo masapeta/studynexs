@@ -30,6 +30,15 @@ class ClassCreate(BaseModel):
     room_number: str | None = None
 
 
+class ClassRosterStudentOut(BaseModel):
+    """Student row for class drill-down — includes term attendance %."""
+    id: uuid.UUID
+    admission_no: str
+    roll_no: str | None = None
+    student_name: str | None = None
+    attendance_pct: float | None = None
+
+
 # ── Subject ──────────────────────────────────────────────────────────────────
 
 class SubjectOut(BaseModel):

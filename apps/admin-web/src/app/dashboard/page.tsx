@@ -1,73 +1,54 @@
 "use client";
 
 import { useAuth } from "@/lib/auth-context";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { GraduationCap, Users, BookOpen, UserPlus, ClipboardCheck, Megaphone } from "lucide-react";
-import { api } from "@/lib/api";
+import { GraduationCap, Users, BookOpen, ClipboardCheck, Megaphone } from "lucide-react";
+import { api, getApiErrorMessage } from "@/lib/api";
+import { roleLabel } from "@/lib/permissions";
+import { TeacherCommandCenter, type TeacherHome } from "@/components/TeacherCommandCenter";
 
-interface DashboardStats {
-  totalStudents: number;
-  totalTeachers: number;
-  totalClasses: number;
-  pendingFees: number;
-}
+type Summary = {
+  persona: "admin" | "class_incharge" | "teacher";
+  subtitle: string;
+  teacher_home?: TeacherHome | null;
+  total_students?: number | null;
+  total_teachers?: number | null;
+  total_classes?: number | null;
+  pending_fees?: number | null;
+  school_attendance_percent?: number | null;
+  class_performance?: { label: string; percentage: number }[];
+  incharge_classes?: {
+    class_id: string;
+    class_label: string;
+    attendance_percent?: number | null;
+    pending_qp_approvals: number;
+  }[];
+  quick_actions?: { label: string; href: string }[];
+  notices?: { id: string; title: string; content: string; audience: string; priority: string; created_at?: string }[];
+};
 
 export default function DashboardPage() {
-  const { user } = useAuth();
-  const [stats, setStats] = useState<DashboardStats>({
-    totalStudents: 0,
-    totalTeachers: 0,
-    totalClasses: 0,
-    pendingFees: 0,
-  });
-  const [attendancePercent, setAttendancePercent] = useState<string>("0");
-  const [notices, setNotices] = useState<any[]>([]);
-  const [classPerf, setClassPerf] = useState<any[]>([]);
+  const { user, permissions, loading: authLoading } = useAuth();
+  const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const today = new Date().toISOString().split("T")[0];
-        const [studentsRes, classesRes, teachersRes, noticesRes, feesRes, attRes, perfRes] =
-          await Promise.allSettled([
-            api("/api/v1/academic/students?page_size=1"),
-            api("/api/v1/academic/classes?page_size=1"),
-            api("/api/v1/users?role=teacher&page_size=1"),
-            api("/api/v1/notices"),
-            api("/api/v1/fees/stats"),
-            api(`/api/v1/attendance/school-summary?date=${today}`),
-            api("/api/v1/exams/class-performance?limit=3"),
-          ]);
-
-        setStats({
-          totalStudents: studentsRes.status === "fulfilled" ? studentsRes.value.total || 0 : 0,
-          totalTeachers: teachersRes.status === "fulfilled" ? teachersRes.value.total || 0 : 0,
-          totalClasses: classesRes.status === "fulfilled" ? classesRes.value.total || 0 : 0,
-          pendingFees: feesRes.status === "fulfilled" ? feesRes.value.data?.pending_amount || 0 : 0,
-        });
-
-        if (attRes.status === "fulfilled" && attRes.value.data) {
-          setAttendancePercent(attRes.value.data.percentage.toString());
-        }
-        if (noticesRes.status === "fulfilled") {
-          setNotices(noticesRes.value.data?.slice(0, 4) || []);
-        }
-        if (perfRes.status === "fulfilled") {
-          setClassPerf(perfRes.value.data || []);
-        }
-      } catch (err) {
-        console.error("Dashboard fetch error:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchData();
+  const load = useCallback(() => {
+    setLoading(true);
+    setError("");
+    api<{ data: Summary }>("/api/v1/dashboard/summary")
+      .then((r) => setSummary(r.data))
+      .catch((e) => setError(getApiErrorMessage(e, "Could not load dashboard.")))
+      .finally(() => setLoading(false));
   }, []);
 
-  if (loading) {
+  useEffect(() => {
+    if (authLoading || !user) return;
+    load();
+  }, [authLoading, user, load]);
+
+  if (authLoading || loading) {
     return (
       <div className="loading-screen" style={{ minHeight: "60vh" }}>
         <div className="spinner" />
@@ -75,142 +56,126 @@ export default function DashboardPage() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="card" style={{ padding: 24, marginTop: 24 }}>
+        <h2 style={{ fontSize: 18, marginBottom: 8 }}>Dashboard unavailable</h2>
+        <p style={{ color: "var(--danger)", marginBottom: 16 }}>{error}</p>
+        <button className="btn btn-primary" type="button" onClick={load} style={{ width: "auto" }}>
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  const s = summary;
+  const persona = s?.persona ?? "teacher";
+
+  if (persona === "teacher" && s?.teacher_home) {
+    return <TeacherCommandCenter data={s.teacher_home} onRefresh={load} />;
+  }
+
   return (
     <>
-      {/* Hero Banner */}
       <div className="hero-banner">
         <h2>Welcome back, {user?.full_name?.split(" ")[0] || "there"}</h2>
-        <p>Here&apos;s your school at a glance today.</p>
+        <p>{s?.subtitle || "Your workspace for today."}</p>
+        {permissions && (
+          <p style={{ fontSize: 13, opacity: 0.85, marginTop: 6 }}>{roleLabel(permissions.role)}</p>
+        )}
         <div className="hero-decorations"><GraduationCap size={76} strokeWidth={1.1} /></div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="dashboard-grid">
-        {/* Daily Overview */}
-        <div className="card">
-          <div className="card-header">
-            <span className="card-title">Daily Overview</span>
-            <button className="card-menu">⋯</button>
-          </div>
-          <div className="stat-row">
-            <div className="stat-box">
-              <div className="stat-label">Total Attendance</div>
-              <div className="stat-value">{attendancePercent}%</div>
-            </div>
-            <div className="stat-box warning">
-              <div className="stat-label">Pending Fees</div>
-              <div className="stat-value warning">₹ {stats.pendingFees.toLocaleString()}</div>
-            </div>
-          </div>
-        </div>
-
-        {/* School at a Glance */}
-        <div className="card">
-          <div className="card-header">
-            <span className="card-title">School at a Glance</span>
-            <button className="card-menu">⋯</button>
-          </div>
-          <div className="event-item green">
-            <div className="event-icon"><GraduationCap size={18} color="var(--success)" /></div>
-            <div>
-              <div className="event-title">{stats.totalStudents} Students</div>
-              <div className="event-subtitle">Enrolled across {stats.totalClasses} classes</div>
-            </div>
-          </div>
-          <div className="event-item orange">
-            <div className="event-icon"><Users size={18} color="var(--accent-dark)" /></div>
-            <div>
-              <div className="event-title">{stats.totalTeachers} Teaching staff</div>
-              <div className="event-subtitle">Active this academic year</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Class Progress */}
-        <div className="card">
-          <div className="card-header">
-            <span className="card-title">Class Progress</span>
-            <button className="card-menu">⋯</button>
-          </div>
-          {classPerf.length > 0 ? (
-            classPerf.map((c: any, i: number) => (
-              <div className="progress-item" key={c.label}>
-                <div
-                  className="progress-icon"
-                  style={{ background: ["var(--primary-50)", "var(--accent-50)", "var(--success-light)"][i % 3] }}
-                >
-                  <BookOpen size={15} color={["var(--text-secondary)", "var(--accent-dark)", "var(--success)"][i % 3]} />
-                </div>
-                <div className="progress-info">
-                  <div className="progress-label">{c.label}</div>
-                  <div className="progress-sub">Overall average</div>
-                </div>
-                <div className="progress-bar">
-                  <div
-                    className={`progress-fill ${c.percentage >= 60 ? "green" : "orange"}`}
-                    style={{ width: `${Math.min(100, c.percentage)}%` }}
-                  />
-                </div>
+      {persona === "admin" && s && (
+        <div className="dashboard-grid">
+          <div className="card">
+            <div className="card-header"><span className="card-title">Daily Overview</span></div>
+            <div className="stat-row">
+              <div className="stat-box">
+                <div className="stat-label">School Attendance</div>
+                <div className="stat-value">{s.school_attendance_percent ?? 0}%</div>
               </div>
-            ))
-          ) : (
-            <div style={{ color: "var(--text-muted)", fontSize: 13, padding: "8px 0" }}>
-              No exam data yet.
+              <div className="stat-box warning">
+                <div className="stat-label">Pending Fees</div>
+                <div className="stat-value warning">₹ {(s.pending_fees ?? 0).toLocaleString()}</div>
+              </div>
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="quick-actions">
-        <h3>Quick Actions</h3>
-        <div className="quick-actions-row">
-          <Link href="/dashboard/students" className="btn btn-action"><UserPlus size={16} /> Add Student</Link>
-          <Link href="/dashboard/attendance" className="btn btn-action"><ClipboardCheck size={16} /> Mark Attendance</Link>
-          <Link href="/dashboard/notices" className="btn btn-action"><Megaphone size={16} /> Post Notice</Link>
-        </div>
-      </div>
-
-      {/* Recent Notices Table */}
-      <div className="data-table-card">
-        <div className="data-table-header">
-          <h3>Recent Notices</h3>
-          <button className="card-menu">⋯</button>
-        </div>
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Notice</th>
-              <th>Date</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {notices.length > 0 ? (
-              notices.map((n: any) => (
-                <tr key={n.id}>
-                  <td>
-                    <span className="status-dot green" />
-                    {n.title}
-                  </td>
-                  <td>{n.content?.substring(0, 50)}…</td>
-                  <td>{n.created_at ? new Date(n.created_at).toLocaleDateString() : "—"}</td>
-                  <td style={{ textTransform: "capitalize" }}>{n.priority}</td>
-                  <td><button className="card-menu">⋯</button></td>
-                </tr>
+          </div>
+          <div className="card">
+            <div className="card-header"><span className="card-title">School at a Glance</span></div>
+            <div className="event-item green">
+              <div className="event-icon"><GraduationCap size={18} color="var(--success)" /></div>
+              <div>
+                <div className="event-title">{s.total_students ?? 0} Students</div>
+                <div className="event-subtitle">Across {s.total_classes ?? 0} classes</div>
+              </div>
+            </div>
+            <div className="event-item orange">
+              <div className="event-icon"><Users size={18} color="var(--accent-dark)" /></div>
+              <div>
+                <div className="event-title">{s.total_teachers ?? 0} Teaching staff</div>
+                <div className="event-subtitle">Active this academic year</div>
+              </div>
+            </div>
+          </div>
+          <div className="card">
+            <div className="card-header"><span className="card-title">Class Progress</span></div>
+            {(s.class_performance ?? []).length > 0 ? (
+              s.class_performance!.map((c, i) => (
+                <div className="progress-item" key={c.label}>
+                  <div className="progress-icon" style={{ background: ["var(--primary-50)", "var(--accent-50)", "var(--success-light)"][i % 3] }}>
+                    <BookOpen size={15} />
+                  </div>
+                  <div className="progress-info">
+                    <div className="progress-label">{c.label}</div>
+                    <div className="progress-sub">Exam average</div>
+                  </div>
+                  <div className="progress-bar">
+                    <div className={`progress-fill ${c.percentage >= 60 ? "green" : "orange"}`} style={{ width: `${Math.min(100, c.percentage)}%` }} />
+                  </div>
+                </div>
               ))
             ) : (
-              <tr>
-                <td colSpan={5} style={{ color: "var(--text-muted)", textAlign: "center", padding: "16px" }}>
-                  No notices yet.
-                </td>
-              </tr>
+              <div style={{ color: "var(--text-muted)", fontSize: 13 }}>No exam data yet.</div>
             )}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        </div>
+      )}
+
+      {persona === "class_incharge" && s && (
+        <div className="dashboard-grid">
+          {(s.incharge_classes ?? []).map((c) => (
+            <div className="card" key={c.class_id}>
+              <div className="card-header"><span className="card-title">{c.class_label}</span></div>
+              <div className="stat-row">
+                <div className="stat-box">
+                  <div className="stat-label">Today&apos;s Attendance</div>
+                  <div className="stat-value">{c.attendance_percent ?? "—"}%</div>
+                </div>
+                <div className="stat-box warning">
+                  <div className="stat-label">Papers to Approve</div>
+                  <div className="stat-value warning">{c.pending_qp_approvals}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {(s?.quick_actions?.length ?? 0) > 0 && (
+        <div className="quick-actions">
+          <h3>Quick Actions</h3>
+          <div className="quick-actions-row">
+            {s!.quick_actions!.map((a) => (
+              <Link key={a.href} href={a.href} className="btn btn-action">
+                {a.label.includes("Attendance") && <ClipboardCheck size={16} />}
+                {a.label.includes("Notice") && <Megaphone size={16} />}
+                {a.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -51,3 +51,38 @@ async def test_cannot_deactivate_self(client: AsyncClient, admin_user: User):
     token = await get_auth_token(client, "test_admin", "Admin@123")
     resp = await client.delete(f"/api/v1/users/{admin_user.id}", headers=auth_headers(token))
     assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_patch_user_cannot_escalate_role(
+    client: AsyncClient, admin_user: User, teacher_user: User, db_session,
+):
+    from app.core.security import hash_password
+    from app.db.models.user import User, UserRole
+
+    limited = User(
+        school_id=admin_user.school_id,
+        username="limited_admin",
+        mobile="+919876543299",
+        full_name="Limited Admin",
+        role=UserRole.ADMIN,
+        password_hash=hash_password("Admin@123"),
+        is_active=True,
+    )
+    db_session.add(limited)
+    await db_session.flush()
+
+    token = await get_auth_token(client, "limited_admin", "Admin@123")
+    resp = await client.patch(
+        f"/api/v1/users/{teacher_user.id}",
+        headers=auth_headers(token),
+        json={"role": "super_admin"},
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_dashboard_summary_requires_staff(client: AsyncClient, student_user: User):
+    token = await get_auth_token(client, "test_student", "Student@123")
+    resp = await client.get("/api/v1/dashboard/summary", headers=auth_headers(token))
+    assert resp.status_code == 403

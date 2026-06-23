@@ -7,8 +7,9 @@ from __future__ import annotations
 
 import enum
 import uuid
+from datetime import datetime
 
-from sqlalchemy import Enum, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -16,8 +17,34 @@ from app.db.models.base import BaseModel
 
 
 class PaperStatus(str, enum.Enum):
-    DRAFT = "draft"        # AI-generated, awaiting teacher review
-    APPROVED = "approved"  # teacher reviewed/edited and signed off (human-in-the-loop gate)
+    """Approval workflow — AI credits are charged at generation, not approval."""
+
+    DRAFT = "draft"                      # AI-generated
+    EDITED = "edited"                    # teacher saved edits
+    PENDING_APPROVAL = "pending_approval"  # submitted to incharge/HOD
+    APPROVED = "approved"                # incharge signed off
+    REJECTED = "rejected"                # audit trail; manually reusable (edit/clone/resubmit); bank on re-approve
+    PUBLISHED = "published"              # used in exam / handed out
+    ARCHIVED = "archived"                # retired copy
+
+
+# Statuses where the paper body must not change.
+_LOCKED_STATUSES = frozenset(
+    {PaperStatus.PENDING_APPROVAL, PaperStatus.APPROVED, PaperStatus.PUBLISHED, PaperStatus.ARCHIVED}
+)
+
+# Awaiting teacher submit or incharge decision.
+_OPEN_REVIEW_STATUSES = frozenset(
+    {PaperStatus.DRAFT, PaperStatus.EDITED, PaperStatus.PENDING_APPROVAL, PaperStatus.REJECTED}
+)
+
+# Teacher-owned papers not yet submitted for approval.
+_TEACHER_SUBMIT_STATUSES = frozenset({PaperStatus.DRAFT, PaperStatus.EDITED, PaperStatus.REJECTED})
+
+# Papers incharge should review (includes legacy drafts not yet submitted).
+_INCHARGE_REVIEW_STATUSES = frozenset(
+    {PaperStatus.DRAFT, PaperStatus.EDITED, PaperStatus.PENDING_APPROVAL}
+)
 
 
 class QuestionPaper(BaseModel):
@@ -48,6 +75,18 @@ class QuestionPaper(BaseModel):
     # sections = paper body: list of {title, instructions, questions:[{number,text,marks,type,...}]}
     sections: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     status: Mapped[PaperStatus] = mapped_column(
-        Enum(PaperStatus), default=PaperStatus.DRAFT, nullable=False
+        Enum(PaperStatus, values_callable=lambda x: [e.value for e in x]),
+        default=PaperStatus.DRAFT,
+        nullable=False,
     )
     ai_model: Mapped[str | None] = mapped_column(String(100))    # which model drafted it
+    approved_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    rejected_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    rejected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    rejection_reason: Mapped[str | None] = mapped_column(Text)

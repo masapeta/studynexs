@@ -16,6 +16,12 @@ class GenerateRequest(BaseModel):
     title: str | None = None
 
 
+class BankSummaryOut(BaseModel):
+    count: int
+    class_id: uuid.UUID
+    subject_id: uuid.UUID
+
+
 class QuestionOut(BaseModel):
     number: str                      # "1", "2(a)", etc.
     text: str
@@ -45,6 +51,13 @@ class QuestionPaperOut(BaseModel):
     sections: list[SectionOut] = Field(default_factory=list)
     status: str
     ai_model: str | None = None
+    created_by: uuid.UUID | None = None
+    can_approve: bool = False
+    can_edit: bool = False
+    can_submit: bool = False
+    can_reject: bool = False
+    rejection_reason: str | None = None
+    credits_used: int | None = None
 
 
 class UpdatePaperRequest(BaseModel):
@@ -60,3 +73,7 @@ class DuplicatePaperRequest(BaseModel):
     title: str | None = None
     class_id: uuid.UUID | None = None
     subject_id: uuid.UUID | None = None
+
+
+class RejectPaperRequest(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=500)

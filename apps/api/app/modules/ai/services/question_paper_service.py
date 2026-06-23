@@ -18,7 +18,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.tenant_scope import TenantScope
 from app.db.models.academic import Class, Subject
 from app.db.models.question_paper import PaperStatus, QuestionPaper
-from app.modules.ai.gateway import LLMMessage, default_model, get_provider, record_usage
+from app.modules.ai.gateway import LLMMessage, LLMResult, default_model, get_provider, record_usage
+from app.modules.ai.services.question_bank_service import (
+    compose_sections_from_plan,
+    fetch_compose_candidates,
+    merge_gap_fill,
+    note_bank_items_used,
+    renumber_sections,
+)
 
 logger = structlog.get_logger()
 
@@ -87,7 +94,36 @@ def _build_messages(*, board, grade, subject, topics, total_marks, duration, dif
     return [LLMMessage("system", system), LLMMessage("user", user)]
 
 
-def _normalize_sections(raw_sections) -> list[dict]:
+def _build_gap_fill_messages(
+    *,
+    board: str,
+    grade: str,
+    subject: str,
+    topics: list[str],
+    gaps: list[dict],
+) -> list[LLMMessage]:
+    gap_lines = "\n".join(
+        f"- {g['section_title']}: {g['count']} x {g['marks']} marks ({g['type']})"
+        for g in gaps
+    )
+    topic_str = ", ".join(topics) if topics else "the prescribed syllabus"
+    system = (
+        f"You are an experienced {board} board examiner. Generate ONLY the missing "
+        f"questions listed below — do not repeat or rephrase provided bank content. "
+        f"Return JSON only."
+    )
+    user = (
+        f"Class: {grade}. Subject: {subject}. Topics: {topic_str}.\n"
+        f"Generate these missing questions only:\n{gap_lines}\n\n"
+        'Return JSON: {"fills": [{"section_title": str, "questions": ['
+        '{"number": str, "text": str, "marks": number, "type": str, '
+        '"options": [str] (mcq only), "answer_key": str}]}]}\n'
+        "Every MCQ needs exactly 4 options and an answer_key for every question."
+    )
+    return [LLMMessage("system", system), LLMMessage("user", user)]
+
+
+def normalize_sections(raw_sections) -> list[dict]:
     out: list[dict] = []
     for s in raw_sections or []:
         questions = []
@@ -123,6 +159,9 @@ async def generate_paper(
     duration_minutes: int,
     difficulty: str,
     title: str | None = None,
+    role: str = "teacher",
+    purpose_tag: str = "qp_full",
+    credits_charged: int | None = None,
 ) -> QuestionPaper:
     """Generate a DRAFT question paper via the LLM gateway. Teacher reviews/approves after."""
     cls = (
@@ -160,9 +199,6 @@ async def generate_paper(
     result = await provider.generate(
         messages, model=model, json_mode=True, max_tokens=8000, temperature=0.4
     )
-    await record_usage(
-        db, feature="question_paper", result=result, school_id=school_id, created_by=created_by
-    )
 
     try:
         data = json.loads(result.text)
@@ -170,7 +206,7 @@ async def generate_paper(
         logger.error("question_paper_parse_failed", error=str(exc), raw=(result.text or "")[:400])
         raise ValueError("The AI returned an unreadable paper. Please try generating again.")
 
-    sections = _normalize_sections(data.get("sections", []))
+    sections = normalize_sections(data.get("sections", []))
     general_instructions = data.get("general_instructions")
     if isinstance(general_instructions, list):
         general_instructions = "\n".join(str(x) for x in general_instructions)
@@ -199,12 +235,159 @@ async def generate_paper(
     )
     db.add(paper)
     await db.flush()
+
+    await record_usage(
+        db,
+        feature="question_paper",
+        result=result,
+        school_id=school_id,
+        created_by=created_by,
+        role=role,
+        purpose_tag=purpose_tag,
+        credits_charged=credits_charged,
+        ref_type="question_paper",
+        ref_id=paper.id,
+    )
     logger.info(
         "question_paper_generated",
         paper_id=str(paper.id),
         marks=computed_total,
         tokens_in=result.tokens_in,
         tokens_out=result.tokens_out,
+    )
+    return paper
+
+
+async def generate_paper_from_bank(
+    db: AsyncSession,
+    *,
+    school_id: uuid.UUID,
+    created_by: uuid.UUID,
+    class_id: uuid.UUID,
+    subject_id: uuid.UUID,
+    topics: list[str],
+    total_marks: int,
+    duration_minutes: int,
+    difficulty: str,
+    title: str | None = None,
+    role: str = "teacher",
+    purpose_tag: str = "qp_from_bank",
+    credits_charged: int | None = None,
+) -> QuestionPaper:
+    """Compose a draft paper from the school question bank; LLM fills only missing slots."""
+    cls = (
+        await db.execute(select(Class).where(Class.id == class_id, Class.school_id == school_id))
+    ).scalar_one_or_none()
+    if cls is None:
+        raise ValueError("Class not found")
+    subject = (
+        await db.execute(
+            select(Subject).where(
+                Subject.id == subject_id,
+                Subject.school_id == school_id,
+                Subject.class_id == class_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if subject is None:
+        raise ValueError("Subject not found for this class")
+
+    from app.db.models.school import School
+
+    school = (await db.execute(select(School).where(School.id == school_id))).scalar_one()
+    board = school.board or "SSC"
+    grade = cls.grade
+
+    candidates = await fetch_compose_candidates(
+        db,
+        school_id=school_id,
+        class_id=class_id,
+        subject_id=subject_id,
+        topics=topics,
+    )
+    if not candidates:
+        raise ValueError(
+            "No approved questions in the bank for this class and subject. "
+            "Approve a paper first or use full AI generate."
+        )
+
+    plan = _ssc_blueprint(total_marks)
+    official_total = sum(s["marks_per_q"] * s.get("answer_any", s["count"]) for s in plan)
+    sections, used_item_ids, gaps = compose_sections_from_plan(plan, candidates)
+
+    llm_result: LLMResult | None = None
+    if gaps:
+        provider = get_provider()
+        model = default_model()
+        messages = _build_gap_fill_messages(
+            board=board,
+            grade=grade,
+            subject=subject.name,
+            topics=topics,
+            gaps=gaps,
+        )
+        llm_result = await provider.generate(
+            messages, model=model, json_mode=True, max_tokens=4000, temperature=0.4
+        )
+        try:
+            fill_data = json.loads(llm_result.text)
+        except (json.JSONDecodeError, TypeError) as exc:
+            logger.error("bank_gap_fill_parse_failed", error=str(exc))
+            raise ValueError(
+                "Could not fill missing questions from the bank. Please try again."
+            ) from exc
+        sections = merge_gap_fill(sections, fill_data.get("fills") or [])
+
+    sections = renumber_sections(normalize_sections(sections))
+    if not any(q for s in sections for q in s.get("questions") or []):
+        raise ValueError("Could not compose a paper from the bank — not enough matching questions.")
+
+    paper = QuestionPaper(
+        school_id=school_id,
+        class_id=class_id,
+        subject_id=subject_id,
+        created_by=created_by,
+        title=title or f"{subject.name} — {grade} (from bank)",
+        board=board,
+        grade=grade,
+        subject_name=subject.name,
+        total_marks=Decimal(str(official_total)),
+        duration_minutes=duration_minutes,
+        topics=topics or None,
+        difficulty_mix=_DIFFICULTY_MIX.get(difficulty, _DIFFICULTY_MIX["balanced"]),
+        general_instructions=None,
+        sections=sections,
+        status=PaperStatus.DRAFT,
+        ai_model=(
+            f"{llm_result.provider}:{llm_result.model}"
+            if llm_result
+            else "bank:compose"
+        ),
+    )
+    db.add(paper)
+    await db.flush()
+    await note_bank_items_used(db, used_item_ids, paper.id)
+
+    usage_result = llm_result or LLMResult(
+        text="", provider="bank", model="compose", tokens_in=0, tokens_out=0
+    )
+    await record_usage(
+        db,
+        feature="question_paper",
+        result=usage_result,
+        school_id=school_id,
+        created_by=created_by,
+        role=role,
+        purpose_tag=purpose_tag,
+        credits_charged=credits_charged,
+        ref_type="question_paper",
+        ref_id=paper.id,
+    )
+    logger.info(
+        "question_paper_from_bank",
+        paper_id=str(paper.id),
+        bank_items=len(used_item_ids),
+        gaps_filled=sum(g["count"] for g in gaps),
     )
     return paper
 

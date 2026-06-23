@@ -7,6 +7,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { api } from "@/lib/api";
 import { applyThemeColor } from "@/lib/theme";
+import { navAllowed, roleLabel } from "@/lib/permissions";
+import { RouteGuard } from "@/components/RouteGuard";
 import {
   LayoutDashboard, GraduationCap, Users, School, Sparkles, ClipboardCheck,
   FileText, Award, CalendarDays, Wallet, Megaphone, Bus, BedDouble,
@@ -43,7 +45,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, loading, logout } = useAuth();
+  const { user, permissions, loading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [modules, setModules] = useState<Record<string, boolean>>({});
@@ -106,7 +108,9 @@ export default function DashboardLayout({
         </div>
 
         <nav className="sidebar-nav">
-          {NAV_ITEMS.filter((item) => moduleVisible(item.module)).map((item) => {
+          {NAV_ITEMS.filter(
+            (item) => moduleVisible(item.module) && navAllowed(item.href, permissions)
+          ).map((item) => {
             const Icon = item.icon;
             return (
               <Link
@@ -122,10 +126,12 @@ export default function DashboardLayout({
         </nav>
 
         <div className="sidebar-footer">
+          {navAllowed("/dashboard/settings", permissions) && (
           <Link href="/dashboard/settings" className={`nav-item ${pathname === "/dashboard/settings" ? "active" : ""}`}>
             <SettingsIcon className="nav-icon" size={19} strokeWidth={1.9} />
             Settings
           </Link>
+          )}
           <button
             className="nav-item"
             onClick={logout}
@@ -154,12 +160,14 @@ export default function DashboardLayout({
             </div>
             <div>
               <div className="header-name">{user.full_name}</div>
-              <div className="header-role">{user.role.replace("_", " ")}</div>
+              <div className="header-role">{roleLabel(user.role)}</div>
             </div>
           </div>
         </header>
 
-        <div className="page-content">{children}</div>
+        <div className="page-content">
+          <RouteGuard>{children}</RouteGuard>
+        </div>
       </main>
     </div>
   );

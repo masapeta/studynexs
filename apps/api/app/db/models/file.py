@@ -15,6 +15,7 @@ class FileCategory(str, enum.Enum):
     RECEIPT_PDF = "receipt_pdf"
     DOCUMENT = "document"
     REPORT_CARD = "report_card"
+    ANSWER_SHEET = "answer_sheet"
 
 
 class UploadedFile(BaseModel):

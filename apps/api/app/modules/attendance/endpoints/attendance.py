@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, require_roles
+from app.core.staff_permissions import assert_attendance_access, get_staff_scope
 from app.core.rate_limit import rate_limit
 
 settings = get_settings()
@@ -37,6 +38,8 @@ async def mark_attendance(
     ),
     db: AsyncSession = Depends(get_db),
 ):
+    scope = await get_staff_scope(db, current_user)
+    assert_attendance_access(scope, body.class_id)
     service = AttendanceService(db)
     count = await service.mark_bulk(
         school_id=uuid.UUID(current_user.school_id),
@@ -57,6 +60,8 @@ async def get_class_attendance(
     ),
     db: AsyncSession = Depends(get_db),
 ):
+    scope = await get_staff_scope(db, current_user)
+    assert_attendance_access(scope, class_id)
     service = AttendanceService(db)
     records = await service.get_class_attendance(
         uuid.UUID(current_user.school_id), class_id, att_date
@@ -73,6 +78,8 @@ async def get_summary(
     ),
     db: AsyncSession = Depends(get_db),
 ):
+    scope = await get_staff_scope(db, current_user)
+    assert_attendance_access(scope, class_id)
     service = AttendanceService(db)
     summary = await service.get_summary(uuid.UUID(current_user.school_id), class_id, att_date)
     return APIResponse(data=AttendanceSummary(**summary))

@@ -105,6 +105,10 @@ class Settings(BaseSettings):
         "http://localhost:3001",
         "http://localhost:3002",
         "http://localhost:3003",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+        "http://127.0.0.1:3002",
+        "http://127.0.0.1:3003",
     ]
 
     # ── Cookie Config ────────────────────────────────────────────
@@ -141,7 +145,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     AI_DEFAULT_PROVIDER: str = "gemini"  # default only; benchmark decides the real one
     AI_DEFAULT_MODEL: str = ""  # empty → factory picks the provider's default model
-    AI_REQUEST_TIMEOUT_SECONDS: float = 60.0
+    AI_REQUEST_TIMEOUT_SECONDS: float = 120.0
 
     # ── Derived Properties ───────────────────────────────────────
     @property

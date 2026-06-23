@@ -37,6 +37,7 @@ class UserUpdate(BaseModel):
     full_name: str | None = None
     profile_photo: str | None = None
     username: str | None = None
+    role: UserRole | None = None
 
 
 class UserListParams(BaseModel):

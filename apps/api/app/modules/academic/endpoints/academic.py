@@ -14,10 +14,19 @@ from app.core.rate_limit import rate_limit
 settings = get_settings()
 from app.core.authorization import assert_can_access_student
 from app.core.dependencies import CurrentUser, get_current_user, require_roles
+from app.core.staff_permissions import assert_class_access, assert_class_roster, get_staff_scope
 from app.modules.academic.schemas.academic import (
-    ClassCreate, ClassOut, ParentLinkOut, ParentLinkRequest,
-    StudentEnroll, StudentOut, SubjectCreate, SubjectOut,
-    TeacherMappingCreate, TeacherMappingOut,
+    ClassCreate,
+    ClassOut,
+    ClassRosterStudentOut,
+    ParentLinkOut,
+    ParentLinkRequest,
+    StudentEnroll,
+    StudentOut,
+    SubjectCreate,
+    SubjectOut,
+    TeacherMappingCreate,
+    TeacherMappingOut,
 )
 from app.modules.academic.services.academic_service import AcademicService
 from app.shared.schemas.common import APIResponse, PaginatedResponse
@@ -36,6 +45,11 @@ async def list_classes(
 ):
     service = AcademicService(db)
     classes, total = await service.list_classes(uuid.UUID(current_user.school_id), page, page_size)
+    scope = await get_staff_scope(db, current_user)
+    allowed = scope.all_class_ids()
+    if allowed is not None:
+        classes = [c for c in classes if c.id in allowed]
+        total = len(classes)
     return PaginatedResponse(
         items=[ClassOut.model_validate(c) for c in classes],
         total=total, page=page, page_size=page_size,
@@ -60,11 +74,32 @@ async def get_class(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    scope = await get_staff_scope(db, current_user)
+    assert_class_roster(scope, class_id)
     service = AcademicService(db)
     cls = await service.get_class(uuid.UUID(current_user.school_id), class_id)
     if not cls:
         raise HTTPException(status_code=404, detail="Class not found")
     return APIResponse(data=ClassOut.model_validate(cls))
+
+
+@router.get(
+    "/classes/{class_id}/roster",
+    response_model=APIResponse[list[ClassRosterStudentOut]],
+)
+async def get_class_roster(
+    class_id: uuid.UUID,
+    current_user: CurrentUser = Depends(
+        require_roles("teacher", "class_incharge", "admin", "super_admin", "operations")
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Class drill-down: students with individual attendance % for the term."""
+    scope = await get_staff_scope(db, current_user)
+    assert_class_roster(scope, class_id)
+    service = AcademicService(db)
+    roster = await service.list_class_roster(uuid.UUID(current_user.school_id), class_id)
+    return APIResponse(data=roster)
 
 
 # ── Subjects ─────────────────────────────────────────────────────────────────
@@ -77,6 +112,24 @@ async def list_subjects(
 ):
     service = AcademicService(db)
     subjects = await service.list_subjects(uuid.UUID(current_user.school_id), class_id)
+    scope = await get_staff_scope(db, current_user)
+    if class_id:
+        assert_class_access(scope, class_id)
+        allowed_subjects = scope.subject_ids_for_class(class_id)
+        if allowed_subjects is not None:
+            subjects = [s for s in subjects if s.id in allowed_subjects]
+    elif scope.scoped_only:
+        allowed = scope.all_class_ids() or set()
+        subjects = [s for s in subjects if s.class_id in allowed]
+        allowed_subjects_union: set[uuid.UUID] = set()
+        for cid in allowed:
+            ids = scope.subject_ids_for_class(cid)
+            if ids is None:
+                allowed_subjects_union = set()
+                break
+            allowed_subjects_union |= ids
+        else:
+            subjects = [s for s in subjects if s.id in allowed_subjects_union]
     return APIResponse(data=[SubjectOut.model_validate(s) for s in subjects])
 
 
@@ -109,6 +162,14 @@ async def list_students(
     db: AsyncSession = Depends(get_db),
 ):
     # Roster listing is staff-only — parents/students must not enumerate the school.
+    scope = await get_staff_scope(db, current_user)
+    if class_id:
+        assert_class_roster(scope, class_id)
+    elif scope.is_subject_only or scope.scoped_only:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Select a class you manage to view students",
+        )
     service = AcademicService(db)
     students, total = await service.list_students(
         uuid.UUID(current_user.school_id),
@@ -117,6 +178,10 @@ async def list_students(
         page_size,
         search=search,
     )
+    if scope.scoped_only and class_id is None:
+        allowed = scope.all_class_ids() or set()
+        students = [s for s in students if s.class_id in allowed]
+        total = len(students)
     return PaginatedResponse(
         items=students,
         total=total,

@@ -14,8 +14,11 @@ from app.core.rate_limit import rate_limit
 
 settings = get_settings()
 from app.core.dependencies import CurrentUser, get_current_user, get_redis, require_roles
+from app.modules.users.schemas.permissions import UserPermissionsOut
 from app.modules.users.schemas.user import UserCreate, UserListParams, UserOut, UserUpdate
+from app.modules.users.services.permissions_service import permissions_from_scope, portal_permissions
 from app.modules.users.services.user_service import UserService, can_assign_role
+from app.core.staff_permissions import get_staff_scope
 from app.shared.schemas.common import APIResponse, PaginatedResponse
 
 router = APIRouter()
@@ -32,11 +35,13 @@ async def list_users(
     role: str | None = None,
     search: str | None = None,
     is_active: bool | None = None,
-    current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
+    current_user: CurrentUser = Depends(
+        require_roles("admin", "super_admin", "class_incharge")
+    ),
     db: AsyncSession = Depends(get_db),
     r: redis.Redis = Depends(get_redis),
 ):
-    """List users for this school (admin only)."""
+    """List users for this school (admin + class incharge for staff pickers)."""
     params = UserListParams(
         page=page, page_size=page_size, role=role, search=search, is_active=is_active
     )
@@ -63,6 +68,18 @@ async def get_my_profile(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return APIResponse(data=UserOut.model_validate(user))
+
+
+@router.get("/me/permissions", response_model=APIResponse[UserPermissionsOut])
+async def get_my_permissions(
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Feature and class-scope permissions for the current user (drives admin-web RBAC)."""
+    if current_user.role in ("parent", "student"):
+        return APIResponse(data=portal_permissions(current_user.role))
+    scope = await get_staff_scope(db, current_user)
+    return APIResponse(data=permissions_from_scope(scope))
 
 
 @router.get("/{user_id}", response_model=APIResponse[UserOut])
@@ -106,6 +123,11 @@ async def update_user(
     r: redis.Redis = Depends(get_redis),
 ):
     """Update a user (admin only)."""
+    if body.role is not None and not can_assign_role(current_user.role, body.role):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You cannot assign a role higher than your own.",
+        )
     service = UserService(db, r)
     user = await service.update_user(uuid.UUID(current_user.school_id), user_id, body)
     if not user:

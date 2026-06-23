@@ -13,6 +13,7 @@ class FileCategory(str, Enum):
     RECEIPT_PDF = "receipt_pdf"
     DOCUMENT = "document"
     REPORT_CARD = "report_card"
+    ANSWER_SHEET = "answer_sheet"
 
 
 class FileOut(BaseModel):

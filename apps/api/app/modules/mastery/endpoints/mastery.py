@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.authorization import assert_can_access_student
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, get_current_user, require_roles
+from app.core.staff_permissions import assert_mastery_flag_review, get_staff_scope
 from app.core.tenant_scope import TenantScope
 from app.db.models.academic import Class, Subject
 from app.db.models.mastery import FlagStatus, MasteryFlag, StudentTopicMastery
@@ -195,6 +196,13 @@ async def _get_school_flag(
     return flag
 
 
+async def _assert_flag_mutation_scope(
+    db: AsyncSession, current_user: CurrentUser, flag: MasteryFlag
+) -> None:
+    scope = await get_staff_scope(db, current_user)
+    assert_mastery_flag_review(scope, flag.class_id, flag.subject_id)
+
+
 @router.get("/flags", response_model=APIResponse[list[FlagOut]])
 async def list_flags(
     status: FlagStatus | None = None,
@@ -205,7 +213,8 @@ async def list_flags(
     current_user: CurrentUser = Depends(require_roles(*_STAFF)),
     db: AsyncSession = Depends(get_db),
 ):
-    """Weakness flags for review — newest first, filterable by status/class/subject."""
+    """Weakness flags for review — scoped to teacher's assigned subjects."""
+    scope = await get_staff_scope(db, current_user)
     query = (
         select(MasteryFlag, User.full_name, Class.grade, Class.section)
         .join(Student, Student.id == MasteryFlag.student_id)
@@ -222,6 +231,12 @@ async def list_flags(
         query = query.where(MasteryFlag.class_id == class_id)
     if subject_id:
         query = query.where(MasteryFlag.subject_id == subject_id)
+    elif scope.teaching_pairs and not scope.is_admin:
+        subject_ids = {sid for _, sid in scope.teaching_pairs}
+        query = query.where(MasteryFlag.subject_id.in_(subject_ids))
+    if class_id and scope.scoped_only and not scope.is_admin:
+        if class_id not in scope.teaching_class_ids and class_id not in scope.incharge_class_ids:
+            return APIResponse(data=[])
 
     rows = (await db.execute(query)).all()
     data = [
@@ -240,12 +255,26 @@ async def approve_flag(
     """Teacher approves the flag → the LLM drafts the parent note (editable before send)."""
     school_id = uuid.UUID(current_user.school_id)
     flag = await _get_school_flag(db, school_id, flag_id)
+    await _assert_flag_mutation_scope(db, current_user, flag)
     if flag.status != FlagStatus.PENDING_REVIEW:
         raise HTTPException(status_code=409, detail=f"Flag is {flag.status.value}, not pending")
 
-    await enforce_monthly_ai_cap(db, school_id)
+    credits = await enforce_monthly_ai_cap(
+        db,
+        school_id,
+        user_id=uuid.UUID(current_user.id),
+        role=current_user.role,
+        feature="mastery_flag",
+        purpose_tag="mastery_narrative",
+    )
     try:
-        narrative, model = await draft_narrative(db, flag, created_by=uuid.UUID(current_user.id))
+        narrative, model = await draft_narrative(
+            db,
+            flag,
+            created_by=uuid.UUID(current_user.id),
+            role=current_user.role,
+            credits_charged=credits,
+        )
     except ValueError as e:
         raise HTTPException(status_code=502, detail=str(e))
 
@@ -266,6 +295,7 @@ async def edit_narrative(
     db: AsyncSession = Depends(get_db),
 ):
     flag = await _get_school_flag(db, uuid.UUID(current_user.school_id), flag_id)
+    await _assert_flag_mutation_scope(db, current_user, flag)
     if flag.status != FlagStatus.APPROVED:
         raise HTTPException(status_code=409, detail="Narrative is editable only after approval")
     flag.narrative = body.narrative.strip()
@@ -281,6 +311,7 @@ async def dismiss_flag(
     db: AsyncSession = Depends(get_db),
 ):
     flag = await _get_school_flag(db, uuid.UUID(current_user.school_id), flag_id)
+    await _assert_flag_mutation_scope(db, current_user, flag)
     if flag.status not in (FlagStatus.PENDING_REVIEW, FlagStatus.APPROVED):
         raise HTTPException(status_code=409, detail=f"Flag is {flag.status.value}")
     flag.status = FlagStatus.DISMISSED
@@ -304,6 +335,7 @@ async def notify_parents(
     """
     school_id = uuid.UUID(current_user.school_id)
     flag = await _get_school_flag(db, school_id, flag_id)
+    await _assert_flag_mutation_scope(db, current_user, flag)
     if flag.status != FlagStatus.APPROVED or not (flag.narrative or "").strip():
         raise HTTPException(
             status_code=409, detail="Approve the flag and review its note before sending"

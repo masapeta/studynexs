@@ -101,6 +101,8 @@ class ExamService:
             }
             for q in questions
         ]
+        if data.source_paper_id:
+            exam.source_paper_id = data.source_paper_id
         await self.db.flush()
         return exam
 

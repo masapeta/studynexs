@@ -1,18 +1,21 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { apiAuth, getAccessTokenFromAuthResponse, getApiErrorMessage } from "@/lib/api";
+import { DEMO_LOGINS, DemoPortalKey, homePathAfterLogin } from "@/lib/portal";
 import { Smartphone, Lock, ChevronRight, RotateCcw } from "lucide-react";
 
 type Step = "method" | "mobile" | "otp" | "password";
 
-export default function LoginPage() {
+function LoginPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login, loginWithTokens } = useAuth();
 
   const [step, setStep] = useState<Step>("method");
+  const [portalTab, setPortalTab] = useState<DemoPortalKey>("staff");
   const [mobile, setMobile] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [username, setUsername] = useState("");
@@ -24,7 +27,31 @@ export default function LoginPage() {
 
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+  useEffect(() => {
+    const p = searchParams.get("portal");
+    if (p === "parent" || p === "student" || p === "teacher" || p === "staff") {
+      setPortalTab(p);
+      setStep("password");
+      const creds = DEMO_LOGINS[p];
+      setUsername(creds.username);
+      setPassword(creds.password);
+    }
+  }, [searchParams]);
+
+  const applyPortalTab = (key: DemoPortalKey) => {
+    setPortalTab(key);
+    const creds = DEMO_LOGINS[key];
+    setUsername(creds.username);
+    setPassword(creds.password);
+    setStep("password");
+    clearError();
+  };
+
   const clearError = () => setError("");
+
+  const redirectHome = async () => {
+    router.push(await homePathAfterLogin());
+  };
 
   // ── Step 1: Send OTP ──────────────────────────────────────────────────────
   const handleSendOtp = async () => {
@@ -63,7 +90,7 @@ export default function LoginPage() {
         setError(getApiErrorMessage(e, "Login succeeded but profile could not be loaded. Please try again."));
         return;
       }
-      router.push("/dashboard");
+      router.push(await homePathAfterLogin());
     } catch (e: unknown) {
       setError(getApiErrorMessage(e, "Could not verify OTP. Please try again."));
     } finally { setLoading(false); }
@@ -76,7 +103,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(username, password);
-      router.push("/dashboard");
+      await redirectHome();
     } catch (e: unknown) {
       setError(getApiErrorMessage(e, "Invalid credentials"));
     } finally { setLoading(false); }
@@ -255,7 +282,23 @@ export default function LoginPage() {
                 ← Back
               </button>
               <h1 className="login-heading">Sign In</h1>
-              <p className="login-subheading">Enter your username and password</p>
+              <p className="login-subheading">Demo logins — tap a portal, then sign in</p>
+
+              <div className="portal-login-tabs">
+                {(Object.keys(DEMO_LOGINS) as DemoPortalKey[]).map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className={`portal-login-tab${portalTab === key ? " active" : ""}`}
+                    onClick={() => applyPortalTab(key)}
+                  >
+                    {key === "staff" ? "Admin" : key.charAt(0).toUpperCase() + key.slice(1)}
+                  </button>
+                ))}
+              </div>
+              <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>
+                {DEMO_LOGINS[portalTab].label} · <code>{DEMO_LOGINS[portalTab].username}</code>
+              </p>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 20 }}>
                 <div className="form-group">
@@ -283,5 +326,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: 40, textAlign: "center" }}><div className="spinner" style={{ margin: "0 auto" }} /></div>}>
+      <LoginPageInner />
+    </Suspense>
   );
 }

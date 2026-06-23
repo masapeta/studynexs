@@ -178,6 +178,7 @@ export default function ExamsPage() {
       <div className="card bento-glass" style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 24px" }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Exams &amp; Marks</h1>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <a href="/dashboard/exams/corrections" className="btn btn-ghost" style={btn}>Past corrections</a>
           <select className="form-input" value={classId} onChange={(e) => setClassId(e.target.value)} style={sel}>
             {classes.map((c) => (
               <option key={c.id} value={c.id}>{c.grade} - {c.section}</option>
@@ -309,6 +310,9 @@ export default function ExamsPage() {
                     <button className="btn btn-ghost" style={btn} onClick={() => setSchemaExam(e)}>
                       {e.has_question_schema ? "Questions ✓" : "Questions"}
                     </button>{" "}
+                    {e.can_evaluate_sheets && (
+                      <a className="btn btn-ghost" style={btn} href={`/dashboard/exams/${e.id}/evaluate`}>Evaluate</a>
+                    )}{" "}
                     <button className="btn btn-ghost" style={btn} onClick={() => openMarks(e)}>Enter marks</button>
                   </td>
                 </tr>

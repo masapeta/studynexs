@@ -46,6 +46,35 @@ async def _flag_of(db_session, student_id):
     ).scalar_one()
 
 
+async def _out_of_scope_maths_flag_and_science_teacher_token(
+    client, db_session, test_school, test_class, student_user, teacher_user,
+):
+    """Maths weakness flag + teacher who only teaches Science in the same class."""
+    from app.db.models.academic import Subject, TeacherSubjectMapping
+
+    weak, _maths_subject, _ = await _seed_flagging_scenario(
+        client, db_session, test_school, test_class, student_user
+    )
+    flag = await _flag_of(db_session, weak.id)
+    science = Subject(
+        school_id=test_school.id, class_id=test_class.id, name="Science", code="SCI"
+    )
+    db_session.add(science)
+    await db_session.flush()
+    db_session.add(
+        TeacherSubjectMapping(
+            school_id=test_school.id,
+            teacher_id=teacher_user.id,
+            subject_id=science.id,
+            class_id=test_class.id,
+            is_primary=True,
+        )
+    )
+    await db_session.flush()
+    token = await get_auth_token(client, "test_teacher", "Teacher@123")
+    return flag, token
+
+
 @pytest.mark.asyncio
 async def test_approve_drafts_narrative_then_edit_then_notify(
     client, admin_user, student_user, parent_user, test_school, test_class, db_session,
@@ -132,6 +161,59 @@ async def test_flags_list_and_role_gates(
             f"/api/v1/mastery/flags/{flags[0]['id']}/approve", headers=auth_headers(bad_token)
         )
         assert resp.status_code == 403, username
+
+
+@pytest.mark.asyncio
+async def test_teacher_cannot_approve_flag_outside_teaching_scope(
+    client, admin_user, teacher_user, student_user, test_school, test_class, db_session,
+):
+    """Regression: mastery mutations require class+subject teaching scope."""
+    flag, token = await _out_of_scope_maths_flag_and_science_teacher_token(
+        client, db_session, test_school, test_class, student_user, teacher_user
+    )
+    resp = await client.post(
+        f"/api/v1/mastery/flags/{flag.id}/approve",
+        headers=auth_headers(token),
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_teacher_cannot_dismiss_flag_outside_teaching_scope(
+    client, admin_user, teacher_user, student_user, test_school, test_class, db_session,
+):
+    """Wiring guard: dismiss must call _assert_flag_mutation_scope."""
+    flag, token = await _out_of_scope_maths_flag_and_science_teacher_token(
+        client, db_session, test_school, test_class, student_user, teacher_user
+    )
+    resp = await client.post(
+        f"/api/v1/mastery/flags/{flag.id}/dismiss",
+        headers=auth_headers(token),
+        json={"reason": "not my subject"},
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_teacher_cannot_notify_flag_outside_teaching_scope(
+    client, admin_user, teacher_user, student_user, test_school, test_class, db_session,
+):
+    """Wiring guard: notify_parents must call _assert_flag_mutation_scope."""
+    flag, wrong_token = await _out_of_scope_maths_flag_and_science_teacher_token(
+        client, db_session, test_school, test_class, student_user, teacher_user
+    )
+    admin_token = await get_auth_token(client, "test_admin", "Admin@123")
+    approve = await client.post(
+        f"/api/v1/mastery/flags/{flag.id}/approve",
+        headers=auth_headers(admin_token),
+    )
+    assert approve.status_code == 200, approve.text
+
+    resp = await client.post(
+        f"/api/v1/mastery/flags/{flag.id}/notify",
+        headers=auth_headers(wrong_token),
+    )
+    assert resp.status_code == 403
 
 
 @pytest.mark.asyncio

@@ -46,6 +46,10 @@ class Exam(BaseModel):
     # per-question max marks + topic mapping; re-tagging here retroactively fixes
     # topic attribution without touching mark rows. Takes precedence over `topic`.
     question_schema: Mapped[list | None] = mapped_column(JSONB)
+    # Set when question schema is imported from an approved AI question paper.
+    source_paper_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("question_papers.id"), nullable=True
+    )
     created_by: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
     )

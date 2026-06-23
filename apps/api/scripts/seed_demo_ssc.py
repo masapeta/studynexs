@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import random
+import uuid
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
@@ -18,7 +19,7 @@ from sqlalchemy import select
 
 from app.core.database import async_session_factory
 from app.core.security import hash_password
-from app.db.models.academic import AcademicYear, Class, Subject
+from app.db.models.academic import AcademicYear, Class, Subject, TeacherSubjectMapping
 from app.db.models.attendance import Attendance, AttendanceStatus
 from app.db.models.fee import (
     FeeFrequency,
@@ -85,12 +86,22 @@ async def main() -> None:
             password_hash=hash_password("Demo@1234"), is_active=True,
         )
         db.add(principal)
-        teachers = []
-        for i in range(8):
+        # Named teachers for believable demo logins (password: Demo@1234)
+        teacher_specs = [
+            ("teacher1", "Lakshmi Devi", UserRole.CLASS_INCHARGE),   # Class 10-A incharge
+            ("teacher2", "Ramesh Kumar", UserRole.CLASS_INCHARGE),   # Class 10-B incharge
+            ("teacher3", "Sunitha Rao", UserRole.CLASS_INCHARGE),    # Class 9-A incharge
+            ("teacher4", "Venkat Reddy", UserRole.CLASS_INCHARGE),  # Class 9-B incharge
+            ("teacher5", "Anjali Sharma", UserRole.CLASS_INCHARGE), # Class 8-A incharge
+            ("teacher6", "Kiran Naidu", UserRole.TEACHER),          # Maths subject teacher
+            ("teacher7", "Priya Goud", UserRole.TEACHER),           # Science subject teacher
+            ("teacher8", "Mahesh Varma", UserRole.TEACHER),         # English subject teacher
+        ]
+        teachers: list[User] = []
+        for i, (uname, name, role) in enumerate(teacher_specs):
             t = User(
-                school_id=school.id, username=f"teacher{i + 1}", mobile=f"+9198100000{i + 10}",
-                full_name=f"{random.choice(MALE + FEMALE)} {random.choice(SURNAMES)}",
-                role=UserRole.TEACHER, password_hash=hash_password("Demo@1234"), is_active=True,
+                school_id=school.id, username=uname, mobile=f"+9198100000{i + 10}",
+                full_name=name, role=role, password_hash=hash_password("Demo@1234"), is_active=True,
             )
             teachers.append(t)
         db.add_all(teachers)
@@ -109,13 +120,47 @@ async def main() -> None:
         db.add_all(classes)
         await db.flush()
 
-        # Subjects per class
+        # Class incharges (sub-admins for their class)
+        incharge_by_grade = {
+            ("Class 10", "A"): teachers[0],
+            ("Class 10", "B"): teachers[1],
+            ("Class 9", "A"): teachers[2],
+            ("Class 9", "B"): teachers[3],
+            ("Class 8", "A"): teachers[4],
+        }
+        for c in classes:
+            incharge = incharge_by_grade.get((c.grade, c.section))
+            if incharge:
+                c.class_incharge_id = incharge.id
+
+        # Subjects per class + subject-teacher mappings for demo RBAC
+        subject_index: dict[tuple[uuid.UUID, str], Subject] = {}
         for c in classes:
             for name in SUBJECTS:
-                db.add(Subject(
+                subj = Subject(
                     school_id=school.id, name=name,
                     code=f"{name[:3].upper()}{c.grade.split()[-1]}", class_id=c.id,
-                ))
+                )
+                db.add(subj)
+                subject_index[(c.id, name)] = subj
+        await db.flush()
+
+        def _map(teacher: User, grade: str, section: str, subject_name: str) -> None:
+            cls = next(x for x in classes if x.grade == grade and x.section == section)
+            subj = subject_index[(cls.id, subject_name)]
+            db.add(TeacherSubjectMapping(
+                school_id=school.id, teacher_id=teacher.id,
+                subject_id=subj.id, class_id=cls.id, is_primary=True,
+            ))
+
+        # Class 10 pilot wedge: teacher6 Maths, teacher7 Science, teacher8 English (both sections)
+        for section in ("A", "B"):
+            _map(teachers[5], "Class 10", section, "Mathematics")
+            _map(teachers[6], "Class 10", section, "Science")
+            _map(teachers[7], "Class 10", section, "English")
+        # Incharges also teach a subject in their class
+        _map(teachers[0], "Class 10", "A", "Telugu")
+        _map(teachers[1], "Class 10", "B", "Telugu")
         await db.flush()
 
         # Students (+ their user rows), attendance, fees
@@ -204,7 +249,9 @@ async def main() -> None:
         print(f"  classes={len(classes)}  students={total_students}  "
               f"attendance_rows={total_attendance}  receipts={receipts}")
         print("  LOGIN  ->  tenant: test   username: principal   password: Demo@1234")
-        print("  Demo the AI generator on: Class 10 · Mathematics")
+        print("  Class incharge (10-A): teacher1 / Demo@1234  — attendance, notices, approve QPs")
+        print("  Subject teacher (Maths): teacher6 / Demo@1234  — generate QP only (teacher1 approves)")
+        print("  Demo the AI generator on: Class 10 · Mathematics (login as teacher6)")
 
 
 if __name__ == "__main__":

@@ -31,11 +31,14 @@ class ExamOut(BaseModel):
     exam_date: Optional[date_type] = Field(None, validation_alias="date")
     topic: Optional[str] = None
     has_question_schema: bool = False
+    source_paper_id: Optional[uuid.UUID] = None
+    can_evaluate_sheets: bool = False
 
     @classmethod
     def from_exam(cls, exam) -> "ExamOut":
         out = cls.model_validate(exam)
         out.has_question_schema = bool(exam.question_schema)
+        out.can_evaluate_sheets = bool(exam.source_paper_id and exam.question_schema)
         return out
 
 
@@ -73,4 +76,6 @@ class ExamMarkOut(BaseModel):
     question_marks: dict[str, float] | None = None
     grade_letter: str | None = None
     remarks: str | None = None
+    ai_feedback: str | None = None
+    ai_graded: bool = False
     model_config = ConfigDict(from_attributes=True)

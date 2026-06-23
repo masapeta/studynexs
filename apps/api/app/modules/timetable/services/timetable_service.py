@@ -56,6 +56,17 @@ class TimetableService:
         await self.db.flush()
         return slot
 
+    async def get_slot(
+        self, school_id: uuid.UUID, slot_id: uuid.UUID
+    ) -> TimetableSlot | None:
+        result = await self.db.execute(
+            select(TimetableSlot).where(
+                TimetableSlot.id == slot_id,
+                TimetableSlot.school_id == school_id,
+            )
+        )
+        return result.scalar_one_or_none()
+
     async def delete_slot(self, school_id: uuid.UUID, slot_id: uuid.UUID) -> bool:
         result = await self.db.execute(
             select(TimetableSlot).where(

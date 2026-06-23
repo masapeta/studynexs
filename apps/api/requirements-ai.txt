@@ -1,0 +1,9 @@
+# Optional LLM provider SDKs (lazy-imported by the AI gateway).
+# Preferred: pip install -e ".[ai]"
+# Or: pip install -r requirements-ai.txt
+
+-r requirements.txt
+
+anthropic>=0.39.0
+openai>=1.50.0
+google-genai>=0.3.0

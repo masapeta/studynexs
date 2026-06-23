@@ -22,7 +22,15 @@ class AIUsage(BaseModel):
     tokens_out: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     cost_usd: Mapped[float] = mapped_column(Numeric(12, 6), default=0, nullable=False)
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Credit metering — schools see credits, operators see cost_usd
+    role: Mapped[str | None] = mapped_column(String(30))
+    purpose_tag: Mapped[str | None] = mapped_column(String(50))
+    credits_charged: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    ref_type: Mapped[str | None] = mapped_column(String(50))
+    ref_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    image_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     __table_args__ = (
         Index("ix_ai_usage_school_feature", "school_id", "feature"),
+        Index("ix_ai_usage_school_purpose", "school_id", "purpose_tag"),
     )

@@ -70,7 +70,11 @@ async def assert_can_access_student(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     if current_user.role in ("teacher", "class_incharge"):
-        # Teachers may view roster students in their school (class checks can be added later).
+        from app.core.staff_permissions import get_staff_scope
+
+        scope = await get_staff_scope(db, current_user)
+        if not scope.is_class_incharge(student.class_id):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
         return student
 
     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")

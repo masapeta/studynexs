@@ -36,7 +36,19 @@ class GeminiProvider(LLMProvider):
         from google.genai import types
 
         system = "\n".join(m.content for m in messages if m.role == "system") or None
-        contents = [m.content for m in messages if m.role != "system"]
+        contents: list = []
+        for m in messages:
+            if m.role == "system":
+                continue
+            parts: list = []
+            for img in m.images or []:
+                parts.append(types.Part.from_bytes(data=img.data, mime_type=img.mime_type))
+            if m.content:
+                parts.append(types.Part.from_text(text=m.content))
+            if len(parts) == 1:
+                contents.append(parts[0])
+            elif parts:
+                contents.append(types.Content(role="user", parts=parts))
 
         config = types.GenerateContentConfig(
             temperature=temperature,

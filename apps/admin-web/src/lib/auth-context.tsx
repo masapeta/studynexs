@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { api, getAccessTokenFromAuthResponse, setAccessToken } from "@/lib/api";
+import { EMPTY_PERMISSIONS, UserPermissions } from "@/lib/permissions";
 
 interface User {
   id: string;
@@ -14,6 +15,7 @@ interface User {
 
 interface AuthState {
   user: User | null;
+  permissions: UserPermissions | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
   loginWithTokens: (tokens: { access_token: string }) => Promise<void>;
@@ -22,6 +24,7 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState>({
   user: null,
+  permissions: null,
   loading: true,
   login: async () => {},
   loginWithTokens: async () => {},
@@ -30,7 +33,19 @@ const AuthContext = createContext<AuthState>({
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [permissions, setPermissions] = useState<UserPermissions | null>(null);
   const [loading, setLoading] = useState(true);
+
+  async function loadProfile() {
+    const profile = await api<{ data: User }>("/api/v1/users/me");
+    setUser(profile.data);
+    try {
+      const permsRes = await api<{ data: UserPermissions }>("/api/v1/users/me/permissions");
+      setPermissions(permsRes.data);
+    } catch {
+      setPermissions(EMPTY_PERMISSIONS);
+    }
+  }
 
   // Try to restore session on mount
   useEffect(() => {
@@ -42,8 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const token = getAccessTokenFromAuthResponse(res);
         if (token) {
           setAccessToken(token);
-          const profile = await api<{ data: User }>("/api/v1/users/me");
-          setUser(profile.data);
+          await loadProfile();
         }
       } catch {
         setAccessToken(null);
@@ -56,8 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithTokens = async (tokens: { access_token: string }) => {
     setAccessToken(tokens.access_token);
-    const profile = await api<{ data: User }>("/api/v1/users/me");
-    setUser(profile.data);
+    await loadProfile();
   };
 
   const login = async (username: string, password: string) => {
@@ -78,10 +91,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {}
     setAccessToken(null);
     setUser(null);
+    setPermissions(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, loginWithTokens, logout }}>
+    <AuthContext.Provider value={{ user, permissions, loading, login, loginWithTokens, logout }}>
       {children}
     </AuthContext.Provider>
   );

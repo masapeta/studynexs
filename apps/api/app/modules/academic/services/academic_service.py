@@ -18,6 +18,7 @@ from app.db.models.student import Parent, Relationship, Student, StudentParentMa
 from app.db.models.user import User
 from app.modules.academic.schemas.academic import (
     ClassCreate,
+    ClassRosterStudentOut,
     ParentLinkRequest,
     StudentEnroll,
     StudentOut,
@@ -115,7 +116,52 @@ class AcademicService:
         result = await self.db.execute(
             select(Class).where(Class.id == class_id, Class.school_id == school_id)
         )
-        return result.scalar_one_or_none()
+        cls = result.scalar_one_or_none()
+        if cls:
+            await self._attach_class_stats(school_id, [cls])
+        return cls
+
+    async def list_class_roster(
+        self, school_id: uuid.UUID, class_id: uuid.UUID
+    ) -> list[ClassRosterStudentOut]:
+        """Students in a class with individual attendance % (present/late/half-day credited)."""
+        await TenantScope(self.db, school_id).school_class(class_id)
+
+        weight = case(
+            (Attendance.status == AttendanceStatus.HALF_DAY, 0.5),
+            (Attendance.status == AttendanceStatus.ABSENT, 0.0),
+            else_=1.0,
+        )
+        att_rows = (
+            await self.db.execute(
+                select(Attendance.student_id, func.count(), func.sum(weight))
+                .where(
+                    Attendance.school_id == school_id,
+                    Attendance.class_id == class_id,
+                )
+                .group_by(Attendance.student_id)
+            )
+        ).all()
+        att_map = {
+            sid: round(float(credited) / n * 100, 1) for sid, n, credited in att_rows if n
+        }
+
+        rows = await self.db.execute(
+            select(Student, User.full_name)
+            .join(User, User.id == Student.user_id)
+            .where(Student.school_id == school_id, Student.class_id == class_id)
+            .order_by(Student.roll_no.nulls_last(), Student.admission_no)
+        )
+        return [
+            ClassRosterStudentOut(
+                id=student.id,
+                admission_no=student.admission_no,
+                roll_no=student.roll_no,
+                student_name=full_name,
+                attendance_pct=att_map.get(student.id),
+            )
+            for student, full_name in rows.all()
+        ]
 
     # ── Subjects ─────────────────────────────────────────────────
 

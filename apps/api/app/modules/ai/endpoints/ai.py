@@ -9,21 +9,33 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, require_roles
 from app.core.rate_limit import rate_limit
+from app.core.staff_permissions import (
+    StaffScope,
+    assert_qp_approve,
+    assert_qp_download,
+    assert_qp_edit,
+    assert_qp_generate,
+    assert_report_cards,
+    get_staff_scope,
+)
+from app.core.authorization import get_student_in_school
 from app.db.models.ai_usage import AIUsage
 from app.db.models.question_paper import PaperStatus, QuestionPaper
 from app.db.models.report_card import ReportCard, ReportStatus
 from app.db.models.school import School
 from app.modules.ai.schemas.question_paper import (
+    BankSummaryOut,
     DuplicatePaperRequest,
     GenerateRequest,
     QuestionPaperOut,
+    RejectPaperRequest,
     UpdatePaperRequest,
 )
 from app.modules.ai.schemas.report_card import (
@@ -32,10 +44,34 @@ from app.modules.ai.schemas.report_card import (
     UpdateReportRequest,
 )
 from app.modules.ai.services.paper_pdf import generate_paper_pdf
-from app.modules.ai.services.question_paper_service import duplicate_paper, generate_paper
+from app.modules.ai.services.question_bank_service import (
+    BankIngestError,
+    count_compose_candidates,
+    ingest_from_paper,
+)
+from app.modules.ai.services.question_paper_service import (
+    duplicate_paper,
+    generate_paper,
+    generate_paper_from_bank,
+)
 from app.modules.ai.services.report_card_pdf import generate_report_pdf
 from app.modules.ai.services.report_card_service import generate_report_for_student
+from app.modules.ai.schemas.credits import (
+    CreditStatusOut,
+    OverrideRequest,
+    SchoolAIReportOut,
+    UsageLogEntry,
+    UsageLogOut,
+)
+from app.modules.ai.services.ai_credits import (
+    get_credit_status,
+    get_school_ai_budget,
+    month_start_for_school,
+    set_principal_override,
+)
 from app.modules.ai.services.usage_caps import enforce_monthly_ai_cap
+from app.modules.ai.services.usage_log import list_question_paper_usage_log
+from app.shared.schemas.common import APIResponse
 
 settings = get_settings()
 router = APIRouter()
@@ -73,34 +109,38 @@ _enforce_monthly_cap = enforce_monthly_ai_cap
 
 @router.get("/usage")
 async def ai_usage_summary(
-    current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
+    current_user: CurrentUser = Depends(require_roles(*_TEACH_ROLES)),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    """School-facing AI value summary: papers + report cards generated, teacher-hours saved.
-
-    Deliberately does NOT expose provider cost — that is our cost-of-goods (operator-only;
-    see scripts/ai_cost_report.py). Schools see value, never our margins.
-    """
+    """AI value summary — school-wide for admins/incharges, own papers for subject teachers."""
+    scope = await get_staff_scope(db, current_user)
     school_id = uuid.UUID(current_user.school_id)
-    month_start = datetime.now(timezone.utc).replace(
-        day=1, hour=0, minute=0, second=0, microsecond=0
-    )
+    user_id = uuid.UUID(current_user.id)
+    school = (
+        await db.execute(select(School).where(School.id == school_id))
+    ).scalar_one()
+    billing_month_start = month_start_for_school(school)
+    scoped_user = not scope.is_admin and not scope.incharge_class_ids
 
     def _base(feature: str):
-        return (
-            select(func.count())
-            .select_from(AIUsage)
-            .where(AIUsage.school_id == school_id, AIUsage.feature == feature)
+        q = select(func.count()).select_from(AIUsage).where(
+            AIUsage.school_id == school_id, AIUsage.feature == feature
         )
+        if scoped_user:
+            q = q.where(AIUsage.created_by == user_id)
+        return q
 
     papers_total = await db.scalar(_base("question_paper")) or 0
     papers_month = await db.scalar(
-        _base("question_paper").where(AIUsage.created_at >= month_start)
+        _base("question_paper").where(AIUsage.created_at >= billing_month_start)
     ) or 0
     reports_total = await db.scalar(_base("report_card")) or 0
     reports_month = await db.scalar(
-        _base("report_card").where(AIUsage.created_at >= month_start)
+        _base("report_card").where(AIUsage.created_at >= billing_month_start)
     ) or 0
+    if scoped_user:
+        reports_total = 0
+        reports_month = 0
     est_hours = round(
         (papers_total * _MINUTES_SAVED_PER_PAPER + reports_total * _MINUTES_SAVED_PER_REPORT)
         / 60,
@@ -115,7 +155,137 @@ async def ai_usage_summary(
     }
 
 
-def _to_out(p: QuestionPaper) -> QuestionPaperOut:
+@router.get("/credits", response_model=CreditStatusOut)
+async def ai_credit_status(
+    current_user: CurrentUser = Depends(require_roles(*_TEACH_ROLES)),
+    db: AsyncSession = Depends(get_db),
+) -> CreditStatusOut:
+    """Credits remaining for the caller — schools see credits, not provider cost."""
+    school = (
+        await db.execute(select(School).where(School.id == uuid.UUID(current_user.school_id)))
+    ).scalar_one()
+    status_row = await get_credit_status(
+        db, school, user_id=uuid.UUID(current_user.id), role=current_user.role
+    )
+    billing_month_start = month_start_for_school(school)
+    papers_month = await db.scalar(
+        select(func.count())
+        .select_from(AIUsage)
+        .where(
+            AIUsage.school_id == school.id,
+            AIUsage.feature == "question_paper",
+            AIUsage.created_at >= billing_month_start,
+        )
+    ) or 0
+    est_hours = round(
+        (status_row.usage_counts.get("qp_full", 0) * _MINUTES_SAVED_PER_PAPER) / 60, 1
+    )
+    data = status_row.to_dict()
+    data["papers_this_month"] = int(papers_month)
+    data["est_hours_saved"] = est_hours
+    return CreditStatusOut(**data)
+
+
+@router.get("/credits/school-report", response_model=SchoolAIReportOut)
+async def ai_school_report(
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
+    db: AsyncSession = Depends(get_db),
+) -> SchoolAIReportOut:
+    """Principal/admin monthly AI usage — value metrics + credit burn."""
+    school = (
+        await db.execute(select(School).where(School.id == uuid.UUID(current_user.school_id)))
+    ).scalar_one()
+    budget = get_school_ai_budget(school)
+    status_row = await get_credit_status(
+        db, school, user_id=uuid.UUID(current_user.id), role=current_user.role
+    )
+    billing_month_start = month_start_for_school(school)
+    papers_total = await db.scalar(
+        select(func.count())
+        .select_from(AIUsage)
+        .where(AIUsage.school_id == school.id, AIUsage.feature == "question_paper")
+    ) or 0
+    papers_month = await db.scalar(
+        select(func.count())
+        .select_from(AIUsage)
+        .where(
+            AIUsage.school_id == school.id,
+            AIUsage.feature == "question_paper",
+            AIUsage.created_at >= billing_month_start,
+        )
+    ) or 0
+    reports_month = await db.scalar(
+        select(func.count())
+        .select_from(AIUsage)
+        .where(
+            AIUsage.school_id == school.id,
+            AIUsage.feature == "report_card",
+            AIUsage.created_at >= billing_month_start,
+        )
+    ) or 0
+    est_hours = round(
+        (papers_total * _MINUTES_SAVED_PER_PAPER + reports_month * _MINUTES_SAVED_PER_REPORT) / 60,
+        1,
+    )
+    return SchoolAIReportOut(
+        monthly_limit=status_row.monthly_limit,
+        credits_used=status_row.credits_used,
+        credits_remaining=status_row.credits_remaining,
+        at_soft_limit=status_row.at_soft_limit,
+        at_hard_limit=status_row.at_hard_limit,
+        override_active=status_row.override_active,
+        usage_counts=status_row.usage_counts,
+        papers_total=int(papers_total),
+        papers_this_month=int(papers_month),
+        reports_this_month=int(reports_month),
+        est_hours_saved=est_hours,
+        plan=str(budget.get("plan") or "pilot"),
+    )
+
+
+@router.get("/credits/usage-log", response_model=UsageLogOut)
+async def ai_usage_log(
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
+    db: AsyncSession = Depends(get_db),
+) -> UsageLogOut:
+    """Principal/admin log — credits charged at generation vs current approval status."""
+    school_id = uuid.UUID(current_user.school_id)
+    school = (
+        await db.execute(select(School).where(School.id == school_id))
+    ).scalar_one()
+    billing_month_start = month_start_for_school(school)
+    rows = await list_question_paper_usage_log(db, school_id, since=billing_month_start)
+    return UsageLogOut(items=[UsageLogEntry(**r) for r in rows])
+
+
+@router.post("/credits/override", response_model=APIResponse)
+async def ai_emergency_override(
+    body: OverrideRequest,
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Principal emergency override — unblocks generation until override expires."""
+    school = (
+        await db.execute(select(School).where(School.id == uuid.UUID(current_user.school_id)))
+    ).scalar_one()
+    budget = await set_principal_override(db, school, hours=body.hours)
+    await db.commit()
+    return APIResponse(
+        message=f"AI override active until {budget.get('override_until')}",
+        data={"override_until": budget.get("override_until")},
+    )
+
+
+def _to_out(
+    p: QuestionPaper,
+    scope: StaffScope | None = None,
+    *,
+    credits_used: int | None = None,
+) -> QuestionPaperOut:
+    can_edit = scope.can_edit_question_paper(p) if scope else True
+    can_approve = scope.can_approve_question_paper(p) if scope else True
+    can_submit = scope.can_submit_question_paper(p) if scope else False
+    can_reject = scope.can_reject_question_paper(p) if scope else False
     return QuestionPaperOut(
         id=p.id,
         title=p.title,
@@ -130,7 +300,69 @@ def _to_out(p: QuestionPaper) -> QuestionPaperOut:
         sections=p.sections or [],
         status=p.status.value,
         ai_model=p.ai_model,
+        created_by=p.created_by,
+        can_approve=can_approve,
+        can_edit=can_edit,
+        can_submit=can_submit,
+        can_reject=can_reject,
+        rejection_reason=p.rejection_reason,
+        credits_used=credits_used,
     )
+
+
+async def _credits_by_paper_ids(
+    db: AsyncSession, paper_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    if not paper_ids:
+        return {}
+    rows = (
+        await db.execute(
+            select(AIUsage.ref_id, func.coalesce(func.sum(AIUsage.credits_charged), 0))
+            .where(
+                AIUsage.ref_type == "question_paper",
+                AIUsage.ref_id.in_(paper_ids),
+            )
+            .group_by(AIUsage.ref_id)
+        )
+    ).all()
+    return {rid: int(total) for rid, total in rows if rid}
+
+
+async def _to_out_async(
+    db: AsyncSession, paper: QuestionPaper, scope: StaffScope | None
+) -> QuestionPaperOut:
+    credits_map = await _credits_by_paper_ids(db, [paper.id])
+    return _to_out(paper, scope, credits_used=credits_map.get(paper.id))
+
+
+def _paper_visibility_filter(scope: StaffScope):
+    """SQLAlchemy filter for question papers visible to scoped staff."""
+    if scope.is_admin:
+        return None
+    clauses = []
+    if scope.incharge_class_ids:
+        clauses.append(QuestionPaper.class_id.in_(scope.incharge_class_ids))
+    clauses.append(QuestionPaper.created_by == scope.user_id)
+    for class_id, subject_id in scope.teaching_pairs:
+        clauses.append(
+            and_(
+                QuestionPaper.class_id == class_id,
+                QuestionPaper.subject_id == subject_id,
+                or_(
+                    QuestionPaper.created_by == scope.user_id,
+                    QuestionPaper.status == PaperStatus.APPROVED,
+                ),
+            )
+        )
+    return or_(*clauses) if clauses else QuestionPaper.id.is_(None)
+
+
+def _report_visibility_filter(scope: StaffScope):
+    if scope.is_admin:
+        return None
+    if scope.incharge_class_ids:
+        return ReportCard.class_id.in_(scope.incharge_class_ids)
+    return ReportCard.id.is_(None)
 
 
 async def _get_owned_paper(
@@ -162,7 +394,16 @@ async def generate_question_paper(
     db: AsyncSession = Depends(get_db),
 ) -> QuestionPaperOut:
     """Generate a DRAFT paper from topics. Teacher must review + approve before use."""
-    await _enforce_monthly_cap(db, uuid.UUID(current_user.school_id))
+    scope = await get_staff_scope(db, current_user)
+    assert_qp_generate(scope, body.class_id, body.subject_id)
+    credits = await _enforce_monthly_cap(
+        db,
+        uuid.UUID(current_user.school_id),
+        user_id=uuid.UUID(current_user.id),
+        role=current_user.role,
+        feature="question_paper",
+        purpose_tag="qp_full",
+    )
     try:
         paper = await generate_paper(
             db,
@@ -175,10 +416,106 @@ async def generate_question_paper(
             duration_minutes=body.duration_minutes,
             difficulty=body.difficulty,
             title=body.title,
+            role=current_user.role,
+            purpose_tag="qp_full",
+            credits_charged=credits,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
-    return _to_out(paper)
+    except ModuleNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail='AI provider SDK not installed. Run: pip install -e ".[ai]"',
+        )
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        )
+    except Exception as exc:
+        if type(exc).__name__ in ("APITimeoutError", "TimeoutError", "ReadTimeout"):
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail="AI generation timed out. Please try again — large papers can take up to 2 minutes.",
+            )
+        raise
+    return _to_out(paper, scope, credits_used=credits)
+
+
+@router.get("/question-bank/summary", response_model=BankSummaryOut)
+async def question_bank_summary(
+    class_id: uuid.UUID,
+    subject_id: uuid.UUID,
+    current_user: CurrentUser = Depends(require_roles(*_TEACH_ROLES)),
+    db: AsyncSession = Depends(get_db),
+) -> BankSummaryOut:
+    """How many approved bank items exist for compose-from-bank generation."""
+    scope = await get_staff_scope(db, current_user)
+    assert_qp_generate(scope, class_id, subject_id)
+    school_id = uuid.UUID(current_user.school_id)
+    count = await count_compose_candidates(
+        db, school_id=school_id, class_id=class_id, subject_id=subject_id
+    )
+    return BankSummaryOut(count=count, class_id=class_id, subject_id=subject_id)
+
+
+@router.post(
+    "/question-papers/generate-from-bank",
+    response_model=QuestionPaperOut,
+    dependencies=[rate_limit("ai_generate", **_AI_GEN_RATE)],
+)
+async def generate_question_paper_from_bank(
+    body: GenerateRequest,
+    current_user: CurrentUser = Depends(require_roles(*_TEACH_ROLES)),
+    db: AsyncSession = Depends(get_db),
+) -> QuestionPaperOut:
+    """Compose a DRAFT from the school question bank; LLM fills only missing blueprint slots."""
+    scope = await get_staff_scope(db, current_user)
+    assert_qp_generate(scope, body.class_id, body.subject_id)
+    credits = await _enforce_monthly_cap(
+        db,
+        uuid.UUID(current_user.school_id),
+        user_id=uuid.UUID(current_user.id),
+        role=current_user.role,
+        feature="question_paper",
+        purpose_tag="qp_from_bank",
+    )
+    try:
+        paper = await generate_paper_from_bank(
+            db,
+            school_id=uuid.UUID(current_user.school_id),
+            created_by=uuid.UUID(current_user.id),
+            class_id=body.class_id,
+            subject_id=body.subject_id,
+            topics=body.topics,
+            total_marks=body.total_marks,
+            duration_minutes=body.duration_minutes,
+            difficulty=body.difficulty,
+            title=body.title,
+            role=current_user.role,
+            purpose_tag="qp_from_bank",
+            credits_charged=credits,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    except ModuleNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail='AI provider SDK not installed. Run: pip install -e ".[ai]"',
+        )
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        )
+    except Exception as exc:
+        if type(exc).__name__ in ("APITimeoutError", "TimeoutError", "ReadTimeout"):
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail="AI generation timed out. Please try again.",
+            )
+        raise
+    return _to_out(paper, scope, credits_used=credits)
 
 
 @router.get("/question-papers", response_model=list[QuestionPaperOut])
@@ -187,14 +524,19 @@ async def list_question_papers(
     current_user: CurrentUser = Depends(require_roles(*_TEACH_ROLES)),
     db: AsyncSession = Depends(get_db),
 ) -> list[QuestionPaperOut]:
+    scope = await get_staff_scope(db, current_user)
     q = select(QuestionPaper).where(
         QuestionPaper.school_id == uuid.UUID(current_user.school_id)
     )
+    vis = _paper_visibility_filter(scope)
+    if vis is not None:
+        q = q.where(vis)
     if class_id:
         q = q.where(QuestionPaper.class_id == class_id)
     q = q.order_by(QuestionPaper.created_at.desc()).limit(50)
     rows = (await db.execute(q)).scalars().all()
-    return [_to_out(p) for p in rows]
+    credits_map = await _credits_by_paper_ids(db, [p.id for p in rows])
+    return [_to_out(p, scope, credits_used=credits_map.get(p.id)) for p in rows]
 
 
 @router.get("/question-papers/{paper_id}", response_model=QuestionPaperOut)
@@ -203,7 +545,10 @@ async def get_question_paper(
     current_user: CurrentUser = Depends(require_roles(*_TEACH_ROLES)),
     db: AsyncSession = Depends(get_db),
 ) -> QuestionPaperOut:
-    return _to_out(await _get_owned_paper(db, current_user.school_id, paper_id))
+    scope = await get_staff_scope(db, current_user)
+    paper = await _get_owned_paper(db, current_user.school_id, paper_id)
+    assert_qp_download(scope, paper)
+    return await _to_out_async(db, paper, scope)
 
 
 @router.put("/question-papers/{paper_id}", response_model=QuestionPaperOut)
@@ -214,15 +559,22 @@ async def edit_question_paper(
     db: AsyncSession = Depends(get_db),
 ) -> QuestionPaperOut:
     """Teacher edits (title/instructions/sections) before approval."""
+    scope = await get_staff_scope(db, current_user)
     paper = await _get_owned_paper(db, current_user.school_id, paper_id)
+    assert_qp_edit(scope, paper)
     if body.title is not None:
         paper.title = body.title
     if body.general_instructions is not None:
         paper.general_instructions = body.general_instructions
     if body.sections is not None:
         paper.sections = [s.model_dump(exclude_none=True) for s in body.sections]
+    if paper.status in (PaperStatus.DRAFT, PaperStatus.REJECTED):
+        paper.status = PaperStatus.EDITED
+        paper.rejection_reason = None
+        paper.rejected_by = None
+        paper.rejected_at = None
     await db.flush()
-    return _to_out(paper)
+    return await _to_out_async(db, paper, scope)
 
 
 @router.post(
@@ -240,7 +592,12 @@ async def duplicate_question_paper(
     AI-usage recorded. Optionally re-target to another class (subject_id required if class_id
     changes). Deliberately NOT param-keyed caching: this is an explicit, owned, re-reviewable
     copy, never a silent identical paper handed to two classes."""
+    scope = await get_staff_scope(db, current_user)
     source = await _get_owned_paper(db, current_user.school_id, paper_id)
+    assert_qp_download(scope, source)
+    target_class = body.class_id or source.class_id
+    target_subject = body.subject_id or source.subject_id
+    assert_qp_generate(scope, target_class, target_subject)
     try:
         clone = await duplicate_paper(
             db,
@@ -252,7 +609,27 @@ async def duplicate_question_paper(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
-    return _to_out(clone)
+    return _to_out(clone, scope, credits_used=0)
+
+
+@router.post("/question-papers/{paper_id}/submit", response_model=QuestionPaperOut)
+async def submit_question_paper(
+    paper_id: uuid.UUID,
+    current_user: CurrentUser = Depends(require_roles(*_TEACH_ROLES)),
+    db: AsyncSession = Depends(get_db),
+) -> QuestionPaperOut:
+    """Subject teacher submits draft for class-incharge / HOD approval."""
+    scope = await get_staff_scope(db, current_user)
+    paper = await _get_owned_paper(db, current_user.school_id, paper_id)
+    if not scope.can_submit_question_paper(paper):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot submit this paper")
+    paper.status = PaperStatus.PENDING_APPROVAL
+    paper.submitted_at = datetime.now(timezone.utc)
+    paper.rejection_reason = None
+    paper.rejected_by = None
+    paper.rejected_at = None
+    await db.flush()
+    return await _to_out_async(db, paper, scope)
 
 
 @router.post("/question-papers/{paper_id}/approve", response_model=QuestionPaperOut)
@@ -261,11 +638,55 @@ async def approve_question_paper(
     current_user: CurrentUser = Depends(require_roles(*_TEACH_ROLES)),
     db: AsyncSession = Depends(get_db),
 ) -> QuestionPaperOut:
-    """Mark the paper teacher-approved (the human-in-the-loop sign-off)."""
+    """Class incharge (or admin) approves — credits were already charged at generation."""
+    scope = await get_staff_scope(db, current_user)
     paper = await _get_owned_paper(db, current_user.school_id, paper_id)
+    assert_qp_approve(scope, paper)
+    approved_by = uuid.UUID(current_user.id)
+    approved_at = datetime.now(timezone.utc)
+    try:
+        await ingest_from_paper(
+            db,
+            paper,
+            approved_by=approved_by,
+            approved_at=approved_at,
+        )
+    except BankIngestError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
     paper.status = PaperStatus.APPROVED
+    paper.approved_by = approved_by
+    paper.approved_at = approved_at
+    paper.rejection_reason = None
+    paper.rejected_by = None
+    paper.rejected_at = None
     await db.flush()
-    return _to_out(paper)
+    return await _to_out_async(db, paper, scope)
+
+
+@router.post("/question-papers/{paper_id}/reject", response_model=QuestionPaperOut)
+async def reject_question_paper(
+    paper_id: uuid.UUID,
+    body: RejectPaperRequest,
+    current_user: CurrentUser = Depends(require_roles(*_TEACH_ROLES)),
+    db: AsyncSession = Depends(get_db),
+) -> QuestionPaperOut:
+    """Class incharge rejects — credits already consumed at generation.
+    Paper kept as audit + salvage asset: editable, clonable, resubmittable; bank ingest only on (re-)approve."""
+    scope = await get_staff_scope(db, current_user)
+    paper = await _get_owned_paper(db, current_user.school_id, paper_id)
+    if not scope.can_reject_question_paper(paper):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot reject this paper")
+    paper.status = PaperStatus.REJECTED
+    paper.rejected_by = uuid.UUID(current_user.id)
+    paper.rejected_at = datetime.now(timezone.utc)
+    paper.rejection_reason = body.reason.strip()
+    paper.approved_by = None
+    paper.approved_at = None
+    await db.flush()
+    return await _to_out_async(db, paper, scope)
 
 
 @router.get("/question-papers/{paper_id}/pdf")
@@ -277,7 +698,9 @@ async def download_question_paper(
 ) -> Response:
     """Render the paper for printing (PDF if WeasyPrint present, else print-ready HTML).
     `answers=true` returns the teacher-only answer-key version."""
+    scope = await get_staff_scope(db, current_user)
     paper = await _get_owned_paper(db, current_user.school_id, paper_id)
+    assert_qp_download(scope, paper)
     school = (
         await db.execute(select(School).where(School.id == paper.school_id))
     ).scalar_one_or_none()
@@ -347,7 +770,20 @@ async def generate_report_card(
     db: AsyncSession = Depends(get_db),
 ) -> ReportCardOut:
     """Consolidate a student's marks + attendance and draft a remark (DRAFT; approve after)."""
-    await _enforce_monthly_cap(db, uuid.UUID(current_user.school_id))
+    school_id = uuid.UUID(current_user.school_id)
+    student = await get_student_in_school(db, school_id, body.student_id)
+    if not student:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
+    scope = await get_staff_scope(db, current_user)
+    assert_report_cards(scope, student.class_id)
+    credits = await _enforce_monthly_cap(
+        db,
+        school_id,
+        user_id=uuid.UUID(current_user.id),
+        role=current_user.role,
+        feature="report_card",
+        purpose_tag="report_card",
+    )
     try:
         report = await generate_report_for_student(
             db,
@@ -355,6 +791,8 @@ async def generate_report_card(
             created_by=uuid.UUID(current_user.id),
             student_id=body.student_id,
             title=body.title,
+            role=current_user.role,
+            credits_charged=credits,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
@@ -368,7 +806,11 @@ async def list_report_cards(
     current_user: CurrentUser = Depends(require_roles(*_TEACH_ROLES)),
     db: AsyncSession = Depends(get_db),
 ) -> list[ReportCardOut]:
+    scope = await get_staff_scope(db, current_user)
     q = select(ReportCard).where(ReportCard.school_id == uuid.UUID(current_user.school_id))
+    vis = _report_visibility_filter(scope)
+    if vis is not None:
+        q = q.where(vis)
     if class_id:
         q = q.where(ReportCard.class_id == class_id)
     if student_id:
@@ -384,7 +826,11 @@ async def get_report_card(
     current_user: CurrentUser = Depends(require_roles(*_TEACH_ROLES)),
     db: AsyncSession = Depends(get_db),
 ) -> ReportCardOut:
-    return _to_report_out(await _get_owned_report(db, current_user.school_id, report_id))
+    scope = await get_staff_scope(db, current_user)
+    report = await _get_owned_report(db, current_user.school_id, report_id)
+    if not scope.can_access_report_card(report):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    return _to_report_out(report)
 
 
 @router.put("/report-cards/{report_id}", response_model=ReportCardOut)
@@ -395,7 +841,10 @@ async def edit_report_card(
     db: AsyncSession = Depends(get_db),
 ) -> ReportCardOut:
     """Teacher edits the remark (or title) before approving."""
+    scope = await get_staff_scope(db, current_user)
     report = await _get_owned_report(db, current_user.school_id, report_id)
+    if not scope.can_edit_report_card(report):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     if body.title is not None:
         report.title = body.title
     if body.ai_remark is not None:
@@ -410,8 +859,14 @@ async def approve_report_card(
     current_user: CurrentUser = Depends(require_roles(*_TEACH_ROLES)),
     db: AsyncSession = Depends(get_db),
 ) -> ReportCardOut:
-    """Mark the report card teacher-approved (the human-in-the-loop sign-off)."""
+    """Class incharge approves the report card."""
+    scope = await get_staff_scope(db, current_user)
     report = await _get_owned_report(db, current_user.school_id, report_id)
+    if not scope.can_approve_report_card(report):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only class incharge can approve report cards",
+        )
     report.status = ReportStatus.APPROVED
     await db.flush()
     return _to_report_out(report)
@@ -424,7 +879,10 @@ async def download_report_card(
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     """Render the report card for printing (PDF if WeasyPrint present, else print-ready HTML)."""
+    scope = await get_staff_scope(db, current_user)
     report = await _get_owned_report(db, current_user.school_id, report_id)
+    if not scope.can_access_report_card(report):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     school = (
         await db.execute(select(School).where(School.id == report.school_id))
     ).scalar_one_or_none()

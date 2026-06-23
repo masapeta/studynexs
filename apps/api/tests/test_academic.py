@@ -6,7 +6,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.academic import AcademicYear
+from app.db.models.academic import AcademicYear, Class
 from app.db.models.user import User
 from tests.conftest import auth_headers, get_auth_token
 
@@ -55,3 +55,21 @@ async def test_list_students(client: AsyncClient, admin_user: User):
     resp = await client.get("/api/v1/academic/students", headers=auth_headers(token))
     assert resp.status_code == 200
     assert "items" in resp.json()
+
+
+@pytest.mark.asyncio
+async def test_class_roster(
+    client: AsyncClient, admin_user: User, test_class: Class, student_user: User
+):
+    token = await get_auth_token(client, "test_admin", "Admin@123")
+    resp = await client.get(
+        f"/api/v1/academic/classes/{test_class.id}/roster",
+        headers=auth_headers(token),
+    )
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert isinstance(data, list)
+    assert len(data) >= 1
+    row = next(r for r in data if r["student_name"])
+    assert "attendance_pct" in row
+    assert row["admission_no"]

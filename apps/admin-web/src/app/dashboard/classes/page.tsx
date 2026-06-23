@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 
 export default function ClassesPage() {
   const [classes, setClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     async function fetch() {
@@ -39,7 +41,20 @@ export default function ClassesPage() {
           </div>
         ) : (
           classes.map((c: any) => (
-            <div key={c.id} className="card" style={{ cursor: "pointer" }}>
+            <div
+              key={c.id}
+              className="card"
+              role="button"
+              tabIndex={0}
+              onClick={() => router.push(`/dashboard/classes/${c.id}`)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  router.push(`/dashboard/classes/${c.id}`);
+                }
+              }}
+              style={{ cursor: "pointer" }}
+            >
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
                 <div style={{
                   width: 44, height: 44, borderRadius: "var(--radius-md)",

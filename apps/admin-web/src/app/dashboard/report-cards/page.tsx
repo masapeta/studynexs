@@ -1,14 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Award, CalendarDays, Clock, Save, Check, Printer } from "lucide-react";
-import {
-  api,
-  API_URL,
-  TENANT_SLUG,
-  getAccessToken,
-  getApiErrorMessage,
-} from "@/lib/api";
+import { api, fetchProtectedDocumentUrl, getApiErrorMessage } from "@/lib/api";
+import { DocumentPreviewModal } from "@/components/DocumentPreviewModal";
 
 type SubjectRow = { subject: string; marks_obtained: number; total_marks: number };
 type Report = {
@@ -41,6 +36,9 @@ export default function ReportCardsPage() {
   const [error, setError] = useState("");
   const [report, setReport] = useState<Report | null>(null);
   const [usage, setUsage] = useState<any>(null);
+  const [docPreview, setDocPreview] = useState<{ url: string; title: string } | null>(null);
+  const [openingDoc, setOpeningDoc] = useState(false);
+  const openDocRef = useRef(false);
 
   useEffect(() => {
     api("/api/v1/academic/classes?page_size=100")
@@ -64,6 +62,19 @@ export default function ReportCardsPage() {
       .catch((e) => console.error(e));
     loadReports();
   }, [classId]);
+
+  useEffect(() => {
+    return () => {
+      if (docPreview?.url) URL.revokeObjectURL(docPreview.url);
+    };
+  }, [docPreview?.url]);
+
+  function closeDocPreview() {
+    setDocPreview((prev) => {
+      if (prev?.url) URL.revokeObjectURL(prev.url);
+      return null;
+    });
+  }
 
   function loadReports() {
     if (!classId) return;
@@ -135,16 +146,23 @@ export default function ReportCardsPage() {
   }
 
   async function openPdf() {
-    if (!report) return;
+    if (!report || openingDoc || openDocRef.current) return;
+    openDocRef.current = true;
+    setOpeningDoc(true);
+    setError("");
     try {
-      const res = await fetch(`${API_URL}/api/v1/ai/report-cards/${report.id}/pdf`, {
-        headers: { Authorization: `Bearer ${getAccessToken()}`, "X-Tenant-Slug": TENANT_SLUG },
-        credentials: "include",
+      const url = await fetchProtectedDocumentUrl(
+        `/api/v1/ai/report-cards/${report.id}/pdf`
+      );
+      setDocPreview((prev) => {
+        if (prev?.url) URL.revokeObjectURL(prev.url);
+        return { url, title: `Report card — ${report.student_name}` };
       });
-      const blob = await res.blob();
-      window.open(URL.createObjectURL(blob), "_blank");
-    } catch {
-      setError("Could not open the report card.");
+    } catch (e) {
+      setError(getApiErrorMessage(e, "Could not open the report card."));
+    } finally {
+      openDocRef.current = false;
+      setOpeningDoc(false);
     }
   }
 
@@ -152,6 +170,13 @@ export default function ReportCardsPage() {
 
   return (
     <>
+      {docPreview && (
+        <DocumentPreviewModal
+          title={docPreview.title}
+          blobUrl={docPreview.url}
+          onClose={closeDocPreview}
+        />
+      )}
       <div className="card bento-glass" style={{ marginBottom: 24, padding: "16px 24px" }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Report Cards</h1>
         <p style={{ margin: "4px 0 0", color: "var(--text-muted)", fontSize: 13 }}>
@@ -294,8 +319,8 @@ export default function ReportCardsPage() {
             >
               {approved ? "Approved" : <><Check size={15} /> Approve</>}
             </button>
-            <button className="btn btn-outline" onClick={openPdf} style={btnSm}>
-              <Printer size={15} /> Open / print
+            <button type="button" className="btn btn-outline" onClick={openPdf} disabled={openingDoc} style={btnSm}>
+              <Printer size={15} /> {openingDoc ? "Opening…" : "Open / print"}
             </button>
             <button className="btn btn-ghost" onClick={() => setReport(null)} style={btnSm}>
               Close

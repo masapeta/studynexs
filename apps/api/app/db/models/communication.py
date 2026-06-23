@@ -19,6 +19,12 @@ class NoticePriority(str, enum.Enum):
     URGENT = "urgent"
 
 
+class NoticeAudience(str, enum.Enum):
+    """Who the notice is for — staff circulars vs parent/student communications."""
+    INTERNAL = "internal"   # staff-only (admin, incharges, teachers)
+    EXTERNAL = "external"  # students / parents
+
+
 class Notice(BaseModel):
     __tablename__ = "notices"
 
@@ -27,13 +33,23 @@ class Notice(BaseModel):
     )
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    target_roles: Mapped[dict] = mapped_column(JSONB, nullable=False)  # ["student", "parent"]
+    target_roles: Mapped[dict] = mapped_column(JSONB, nullable=False)  # role slugs
+    audience: Mapped[NoticeAudience] = mapped_column(
+        Enum(NoticeAudience, values_callable=lambda x: [e.value for e in x]),
+        default=NoticeAudience.EXTERNAL,
+        nullable=False,
+    )
     priority: Mapped[NoticePriority] = mapped_column(
-        Enum(NoticePriority), default=NoticePriority.MEDIUM
+        Enum(NoticePriority),
+        default=NoticePriority.MEDIUM,
     )
     is_ai_generated: Mapped[bool] = mapped_column(Boolean, default=False)
     created_by: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
+    )
+    # When set, notice is class-scoped (published by class incharge). Null = school-wide.
+    class_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("classes.id"), nullable=True
     )
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

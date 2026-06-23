@@ -872,3 +872,219 @@ textarea.form-input { resize: vertical; line-height: 1.5; }
   .login-left { display: none; }
   .login-right { width: 100%; }
 }
+
+/* ── Mobile-first portal shells (teacher / parent / student) ── */
+.portal-device-stage {
+  min-height: 100dvh;
+}
+.portal-device-caption {
+  display: none;
+}
+.portal-device-frame {
+  min-height: 100dvh;
+}
+.portal-device-notch {
+  display: none;
+}
+.portal-shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+}
+.portal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.portal-main {
+  flex: 1;
+  padding: 16px 20px 24px;
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+}
+.portal-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-around;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+  padding: 8px 4px calc(8px + env(safe-area-inset-bottom, 0px));
+  z-index: 20;
+}
+.portal-nav-item {
+  flex: 1;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 8px 4px;
+  text-decoration: none;
+  border-radius: var(--radius-md);
+}
+.portal-nav-item.active {
+  color: var(--accent);
+  background: var(--accent-50);
+}
+.portal-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.portal-stat {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+}
+.portal-stat-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.portal-stat-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+.portal-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.portal-login-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.portal-login-tab {
+  padding: 10px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: white;
+  cursor: pointer;
+}
+.portal-login-tab.active {
+  border-color: var(--accent);
+  background: var(--accent-50);
+  color: var(--accent-dark);
+}
+
+/* ── AI Tutor lesson player ── */
+.tutor-player { margin-bottom: 24px; }
+.tutor-player-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.tutor-badge {
+  font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px;
+  background: var(--accent-50); color: var(--accent-dark);
+}
+.tutor-badge.muted { background: var(--bg); color: var(--text-muted); }
+.tutor-lesson-title { font-size: 18px; font-weight: 800; margin: 0 0 8px; line-height: 1.3; }
+.tutor-mistake-hint { font-size: 13px; color: var(--warning); margin: 0 0 12px; }
+.tutor-visual-wrap {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.tutor-svg { width: 100%; height: auto; display: block; }
+.tutor-visual-caption { font-size: 12px; color: var(--text-muted); text-align: center; margin: 10px 0 0; }
+.tutor-step-dots { display: flex; justify-content: center; gap: 8px; margin-bottom: 12px; }
+.tutor-dot {
+  width: 10px; height: 10px; border-radius: 50%; border: none;
+  background: var(--border); cursor: pointer; padding: 0;
+}
+.tutor-dot.active { background: var(--accent); transform: scale(1.2); }
+.tutor-step-card { margin-bottom: 12px; }
+.tutor-step-label { font-size: 12px; font-weight: 700; color: var(--accent); margin-bottom: 8px; }
+.tutor-narration { font-size: 15px; line-height: 1.55; margin: 0; color: var(--text-primary); }
+.tutor-controls {
+  display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 12px;
+}
+.tutor-ctrl { padding: 10px !important; min-width: 44px; }
+.tutor-ctrl-main {
+  flex: 1; max-width: 200px; display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.tutor-voice-hint { font-size: 12px; color: var(--text-muted); text-align: center; margin: 0; }
+.tutor-rec-card.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-50); }
+
+/* Laptop / projector: show portals inside a phone frame */
+@media (min-width: 900px) {
+  .portal-device-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+    background: linear-gradient(160deg, #0f172a 0%, #1e293b 45%, #334155 100%);
+  }
+  .portal-device-caption {
+    display: block;
+    margin: 20px 0 0;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.65);
+    text-align: center;
+    max-width: 390px;
+  }
+  .portal-device-frame {
+    position: relative;
+    width: 390px;
+    height: min(844px, calc(100dvh - 80px));
+    min-height: 0;
+    border-radius: 44px;
+    border: 10px solid #0f172a;
+    box-shadow:
+      0 0 0 2px #475569,
+      0 24px 64px rgba(0, 0, 0, 0.45);
+    overflow: hidden;
+    background: var(--bg);
+  }
+  .portal-device-notch {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 28px;
+    background: #0f172a;
+    border-radius: 0 0 18px 18px;
+    z-index: 30;
+  }
+  .portal-device-frame .portal-shell {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    padding-bottom: 64px;
+  }
+  .portal-device-frame .portal-main {
+    flex: 1;
+    overflow-y: auto;
+    max-width: none;
+    margin: 0;
+  }
+  .portal-device-frame .portal-bottom-nav {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+  }
+}

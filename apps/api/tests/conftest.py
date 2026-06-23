@@ -19,7 +19,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import NullPool
 
 from app.core.database import get_db
-from app.core.security import hash_password
+from app.core.dependencies import get_redis
+from app.core.security import hash_password, create_access_token
 from app.db.models.academic import AcademicYear, Class
 from app.db.models.base import Base
 from app.db.models.fee import FeeFrequency, FeeStructure, FeeType, ReceiptCounter
@@ -32,11 +33,57 @@ settings = get_settings()
 
 db_url = settings.DATABASE_URL
 base_url = db_url.rsplit("/", 1)[0]
-TEST_DB_URL = f"{base_url}/studynexs_test"
+TEST_DB_NAME = "studynexs_test"
+TEST_DB_URL = f"{base_url}/{TEST_DB_NAME}"
+
+
+async def _ensure_test_database() -> None:
+    """Create studynexs_test if missing (connect via postgres maintenance DB)."""
+    import asyncpg
+
+    conn = await asyncpg.connect(
+        user=settings.POSTGRES_USER,
+        password=settings.POSTGRES_PASSWORD,
+        host=settings.POSTGRES_HOST,
+        port=settings.POSTGRES_PORT,
+        database="postgres",
+    )
+    try:
+        exists = await conn.fetchval(
+            "SELECT 1 FROM pg_database WHERE datname = $1", TEST_DB_NAME
+        )
+        if not exists:
+            await conn.execute(f'CREATE DATABASE "{TEST_DB_NAME}"')
+    finally:
+        await conn.close()
+
+
+class _FakeRedis:
+    """Minimal in-memory Redis for tests — no server required."""
+
+    def __init__(self) -> None:
+        self._store: dict[str, str] = {}
+
+    async def setex(self, key: str, _ttl: int, value: str) -> None:
+        self._store[key] = value
+
+    async def get(self, key: str) -> str | None:
+        return self._store.get(key)
+
+    async def exists(self, key: str) -> int:
+        return 1 if key in self._store else 0
+
+    async def eval(self, _script: str, _numkeys: int, _key: str, *_args) -> int:
+        return 1
+
+    async def aclose(self) -> None:
+        return None
+
 
 @pytest_asyncio.fixture
 async def engine():
     """Function-scoped engine — avoids asyncpg 'different loop' errors with httpx."""
+    await _ensure_test_database()
     _engine = create_async_engine(TEST_DB_URL, poolclass=NullPool)
     async with _engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -78,10 +125,16 @@ async def reset_redis_pool():
 @pytest_asyncio.fixture
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """Async test client with DB override."""
+    fake_redis = _FakeRedis()
+
     async def override_get_db():
         yield db_session
 
+    async def override_get_redis():
+        return fake_redis
+
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_redis] = override_get_redis
     transport = ASGITransport(app=app)
     async with AsyncClient(
         transport=transport,
@@ -100,6 +153,16 @@ async def get_auth_token(client: AsyncClient, username: str, password: str) -> s
 
 def auth_headers(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
+
+
+def access_token_for(user: User, *, tenant_slug: str = "test") -> str:
+    """Issue a bearer token without hitting /auth/login (avoids Redis in unit tests)."""
+    return create_access_token(
+        user_id=str(user.id),
+        school_id=str(user.school_id),
+        role=user.role.value,
+        tenant_slug=tenant_slug,
+    )
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
 

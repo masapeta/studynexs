@@ -1,6 +1,7 @@
 """OpenAI adapter. SDK imported lazily; needs a live smoke test with a key."""
 from __future__ import annotations
 
+import base64
 import time
 
 from app.core.config import get_settings
@@ -31,7 +32,19 @@ class OpenAIProvider(LLMProvider):
         max_tokens: int = 2048,
         json_mode: bool = False,
     ) -> LLMResult:
-        convo = [{"role": m.role, "content": m.content} for m in messages]
+        convo = []
+        for m in messages:
+            if m.images:
+                parts: list[dict] = [{"type": "text", "text": m.content}]
+                for img in m.images:
+                    b64 = base64.b64encode(img.data).decode("ascii")
+                    parts.append({
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{img.mime_type};base64,{b64}"},
+                    })
+                convo.append({"role": m.role, "content": parts})
+            else:
+                convo.append({"role": m.role, "content": m.content})
         kwargs: dict = {
             "model": model,
             "messages": convo,

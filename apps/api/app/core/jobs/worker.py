@@ -80,6 +80,8 @@ class WorkerSettings:
 
 
 if __name__ == "__main__":
+    import app.modules.examinations.jobs.answer_sheet_eval_job  # noqa: F401 — register handlers
+
     from arq import run_worker
 
     run_worker(WorkerSettings)  # type: ignore[arg-type]

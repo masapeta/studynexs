@@ -3,13 +3,9 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { FileText, CalendarDays, Clock, Sparkles, Save, Check, Printer, KeyRound, Copy } from "lucide-react";
-import {
-  api,
-  API_URL,
-  TENANT_SLUG,
-  getAccessToken,
-  getApiErrorMessage,
-} from "@/lib/api";
+import { api, fetchProtectedDocumentUrl, getApiErrorMessage } from "@/lib/api";
+import { DocumentPreviewModal } from "@/components/DocumentPreviewModal";
+import { useAuth } from "@/lib/auth-context";
 
 type Question = {
   number: string;
@@ -32,9 +28,16 @@ type Paper = {
   sections: Section[];
   status: string;
   ai_model?: string | null;
+  can_approve?: boolean;
+  can_edit?: boolean;
+  can_submit?: boolean;
+  can_reject?: boolean;
+  rejection_reason?: string | null;
+  credits_used?: number | null;
 };
 
 function AiPapersPageInner() {
+  const { permissions } = useAuth();
   // Deep-link prefill (e.g. from a mastery weakness flag):
   // /dashboard/ai-papers?class_id=…&subject_id=…&topics=Algebra&difficulty=easy
   const searchParams = useSearchParams();
@@ -51,14 +54,30 @@ function AiPapersPageInner() {
   const [totalMarks, setTotalMarks] = useState(80);
   const [duration, setDuration] = useState(180);
   const [difficulty, setDifficulty] = useState(searchParams.get("difficulty") || "balanced");
+  const [generateMode, setGenerateMode] = useState<"full" | "from_bank">("full");
+  const [bankCount, setBankCount] = useState<number | null>(null);
 
   const [generating, setGenerating] = useState(false);
+  const [openingDoc, setOpeningDoc] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [paper, setPaper] = useState<Paper | null>(null);
   const [showAnswers, setShowAnswers] = useState(false);
   const [recent, setRecent] = useState<any[]>([]);
   const [usage, setUsage] = useState<any>(null);
+  const [credits, setCredits] = useState<{
+    credits_remaining: number;
+    monthly_limit: number;
+    user_credits_remaining?: number | null;
+    user_monthly_limit?: number | null;
+    at_soft_limit?: boolean;
+    at_hard_limit?: boolean;
+    purpose_costs?: Record<string, number>;
+  } | null>(null);
+  const [usageLog, setUsageLog] = useState<any[]>([]);
+  const [docPreview, setDocPreview] = useState<{ url: string; title: string } | null>(null);
+  const openDocRef = useRef(false);
+  const isAdmin = permissions?.role === "admin" || permissions?.role === "super_admin";
 
   useEffect(() => {
     api("/api/v1/academic/classes?page_size=100")
@@ -73,7 +92,13 @@ function AiPapersPageInner() {
       .catch((e) => console.error(e));
     loadRecent();
     api("/api/v1/ai/usage").then(setUsage).catch(() => {});
-  }, []);
+    api("/api/v1/ai/credits").then(setCredits).catch(() => {});
+    if (permissions?.role === "admin" || permissions?.role === "super_admin") {
+      api("/api/v1/ai/credits/usage-log")
+        .then((r) => setUsageLog(r.items || []))
+        .catch(() => {});
+    }
+  }, [permissions?.role]);
 
   useEffect(() => {
     if (!classId) {
@@ -93,6 +118,29 @@ function AiPapersPageInner() {
       .catch((e) => console.error(e));
   }, [classId]);
 
+  useEffect(() => {
+    if (!classId || !subjectId) {
+      setBankCount(null);
+      return;
+    }
+    api(`/api/v1/ai/question-bank/summary?class_id=${classId}&subject_id=${subjectId}`)
+      .then((r) => setBankCount(typeof r.count === "number" ? r.count : 0))
+      .catch(() => setBankCount(null));
+  }, [classId, subjectId]);
+
+  useEffect(() => {
+    return () => {
+      if (docPreview?.url) URL.revokeObjectURL(docPreview.url);
+    };
+  }, [docPreview?.url]);
+
+  function closeDocPreview() {
+    setDocPreview((prev) => {
+      if (prev?.url) URL.revokeObjectURL(prev.url);
+      return null;
+    });
+  }
+
   function loadRecent() {
     api("/api/v1/ai/question-papers")
       .then((r) => setRecent(Array.isArray(r) ? r : r.items || []))
@@ -104,6 +152,34 @@ function AiPapersPageInner() {
       setError("Pick a class and subject first.");
       return;
     }
+    const cost =
+      generateMode === "from_bank"
+        ? (credits?.purpose_costs?.qp_from_bank ?? 2)
+        : (credits?.purpose_costs?.qp_full ?? 5);
+    const remaining = credits?.user_credits_remaining ?? credits?.credits_remaining;
+    if (remaining !== undefined && remaining !== null && remaining < cost) {
+      setError("Not enough AI credits remaining this month. Contact your class incharge or principal.");
+      return;
+    }
+    if (generateMode === "from_bank" && (bankCount === 0 || bankCount === null)) {
+      setError(
+        bankCount === 0
+          ? "No approved questions in the bank for this class and subject. Approve a paper first."
+          : "Could not load question bank status. Try again."
+      );
+      return;
+    }
+    const modeLabel =
+      generateMode === "from_bank"
+        ? "From question bank (reuses approved questions; AI fills gaps only)"
+        : "Full AI generate";
+    if (
+      !window.confirm(
+        `Mode: ${modeLabel}\nThis will use ${cost} AI credits.\n\nGenerated drafts consume credits even if not approved.\n\nDraft papers need class-incharge approval before use in exams.\n\nGenerate paper?`
+      )
+    ) {
+      return;
+    }
     setError("");
     setGenerating(true);
     setPaper(null);
@@ -112,7 +188,11 @@ function AiPapersPageInner() {
         .split(/[\n,]/)
         .map((t) => t.trim())
         .filter(Boolean);
-      const res = await api("/api/v1/ai/question-papers/generate", {
+      const endpoint =
+        generateMode === "from_bank"
+          ? "/api/v1/ai/question-papers/generate-from-bank"
+          : "/api/v1/ai/question-papers/generate";
+      const res = await api(endpoint, {
         method: "POST",
         body: JSON.stringify({
           class_id: classId,
@@ -126,6 +206,8 @@ function AiPapersPageInner() {
       setPaper(res);
       setShowAnswers(false);
       loadRecent();
+      api("/api/v1/ai/credits").then(setCredits).catch(() => {});
+      api("/api/v1/ai/usage").then(setUsage).catch(() => {});
     } catch (e) {
       setError(getApiErrorMessage(e, "Failed to generate paper. Please try again."));
     } finally {
@@ -166,6 +248,38 @@ function AiPapersPageInner() {
     }
   }
 
+  async function submitForApproval() {
+    if (!paper) return;
+    try {
+      const res = await api(`/api/v1/ai/question-papers/${paper.id}/submit`, { method: "POST" });
+      setPaper(res);
+      loadRecent();
+    } catch (e) {
+      setError(getApiErrorMessage(e, "Failed to submit for approval."));
+    }
+  }
+
+  async function rejectPaper() {
+    if (!paper) return;
+    const reason = window.prompt("Reason for rejection (shown to teacher):", "Difficulty too high");
+    if (!reason?.trim()) return;
+    try {
+      const res = await api(`/api/v1/ai/question-papers/${paper.id}/reject`, {
+        method: "POST",
+        body: JSON.stringify({ reason: reason.trim() }),
+      });
+      setPaper(res);
+      loadRecent();
+      if (isAdmin) {
+        api("/api/v1/ai/credits/usage-log")
+          .then((r) => setUsageLog(r.items || []))
+          .catch(() => {});
+      }
+    } catch (e) {
+      setError(getApiErrorMessage(e, "Failed to reject."));
+    }
+  }
+
   async function approve() {
     if (!paper) return;
     try {
@@ -178,19 +292,26 @@ function AiPapersPageInner() {
   }
 
   async function openPdf(answers: boolean) {
-    if (!paper) return;
+    if (!paper || openingDoc || openDocRef.current) return;
+    openDocRef.current = true;
+    setOpeningDoc(true);
+    setError("");
     try {
-      const res = await fetch(
-        `${API_URL}/api/v1/ai/question-papers/${paper.id}/pdf?answers=${answers}`,
-        {
-          headers: { Authorization: `Bearer ${getAccessToken()}`, "X-Tenant-Slug": TENANT_SLUG },
-          credentials: "include",
-        }
+      const url = await fetchProtectedDocumentUrl(
+        `/api/v1/ai/question-papers/${paper.id}/pdf?answers=${answers}`
       );
-      const blob = await res.blob();
-      window.open(URL.createObjectURL(blob), "_blank");
-    } catch {
-      setError("Could not open the paper.");
+      setDocPreview((prev) => {
+        if (prev?.url) URL.revokeObjectURL(prev.url);
+        return {
+          url,
+          title: answers ? "Answer key (teacher)" : "Question paper",
+        };
+      });
+    } catch (e) {
+      setError(getApiErrorMessage(e, "Could not open the paper."));
+    } finally {
+      openDocRef.current = false;
+      setOpeningDoc(false);
     }
   }
 
@@ -223,20 +344,79 @@ function AiPapersPageInner() {
     }
   }
 
-  const approved = paper?.status === "approved";
+  const approved = paper?.status === "approved" || paper?.status === "published";
+  const rejected = paper?.status === "rejected";
+  const pending = paper?.status === "pending_approval";
+  const locked = approved || pending;
+  const canApprove = paper?.can_approve ?? permissions?.can_approve_question_papers ?? false;
+  const canReject = paper?.can_reject ?? false;
+  const canSubmit = paper?.can_submit ?? false;
+  const canEdit = paper?.can_edit !== false && !locked;
+
+  function statusBadgeClass(status: string) {
+    if (status === "approved" || status === "published") return "badge-success";
+    if (status === "rejected") return "badge-danger";
+    if (status === "pending_approval") return "badge-info";
+    return "badge-warning";
+  }
 
   return (
     <>
+      {docPreview && (
+        <DocumentPreviewModal
+          title={docPreview.title}
+          blobUrl={docPreview.url}
+          onClose={closeDocPreview}
+        />
+      )}
       <div
         className="card bento-glass"
         style={{ marginBottom: 24, padding: "16px 24px" }}
       >
         <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>AI Question Paper Generator</h1>
         <p style={{ margin: "4px 0 0", color: "var(--text-muted)", fontSize: 13 }}>
-          Draft a board-style paper from your syllabus in seconds — then review, edit, and approve
-          before it reaches students.
+          Draft a board-style paper from your syllabus — review, edit, submit for approval.
+          AI credits are charged when you generate, not when the paper is approved.
         </p>
       </div>
+
+      {credits && (
+        <div
+          className="card"
+          style={{
+            marginBottom: 16,
+            padding: "14px 20px",
+            borderLeft: `4px solid ${credits.at_soft_limit ? "var(--warning)" : "var(--accent)"}`,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 12,
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>
+              AI Credits Remaining
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 800 }}>
+              {credits.user_credits_remaining ?? credits.credits_remaining}
+              <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text-muted)" }}>
+                {" "}/ {credits.user_monthly_limit ?? credits.monthly_limit} this month
+              </span>
+            </div>
+            {credits.at_soft_limit && !credits.at_hard_limit && (
+              <div style={{ fontSize: 12, color: "var(--warning)", marginTop: 4 }}>
+                School is above 80% of monthly AI budget — principal has been notified.
+              </div>
+            )}
+          </div>
+          <div style={{ fontSize: 13, color: "var(--text-secondary)", maxWidth: 420 }}>
+            Full paper: <strong>{credits.purpose_costs?.qp_full ?? 5} credits</strong>
+            {" · "}Regen section: {credits.purpose_costs?.qp_regen_section ?? 2}
+            {" · "}Generated drafts consume credits even if rejected
+          </div>
+        </div>
+      )}
 
       {usage && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
@@ -312,7 +492,26 @@ function AiPapersPageInner() {
           />
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 16, alignItems: "end" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr auto", gap: 16, alignItems: "end" }}>
+          <div>
+            <label className="stat-label">Generation mode</label>
+            <select
+              className="form-input"
+              value={generateMode}
+              onChange={(e) => setGenerateMode(e.target.value as "full" | "from_bank")}
+              style={selStyle}
+            >
+              <option value="full">Full AI ({credits?.purpose_costs?.qp_full ?? 5} credits)</option>
+              <option value="from_bank">
+                From question bank ({credits?.purpose_costs?.qp_from_bank ?? 2} credits)
+              </option>
+            </select>
+            {generateMode === "from_bank" && bankCount !== null && (
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
+                {bankCount} approved question{bankCount === 1 ? "" : "s"} in bank
+              </div>
+            )}
+          </div>
           <div>
             <label className="stat-label">Total marks</label>
             <input
@@ -352,7 +551,7 @@ function AiPapersPageInner() {
             disabled={generating}
             style={{ width: "auto", padding: "10px 24px", borderRadius: "var(--radius-full)" }}
           >
-            {generating ? "Generating…" : <><Sparkles size={16} /> Generate Paper</>}
+            {generating ? "Generating…" : <><Sparkles size={16} /> {generateMode === "from_bank" ? "Compose from bank" : "Generate Paper"}</>}
           </button>
         </div>
 
@@ -362,7 +561,7 @@ function AiPapersPageInner() {
         {generating && (
           <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 12, color: "var(--text-muted)" }}>
             <div className="spinner" style={{ width: 20, height: 20 }} />
-            Drafting your paper with AI — this usually takes 15–30 seconds…
+            Drafting your paper{generateMode === "from_bank" ? " from the bank" : " with AI"} — this usually takes 15–30 seconds…
           </div>
         )}
       </div>
@@ -382,19 +581,32 @@ function AiPapersPageInner() {
             }}
           >
             {approved
-              ? "Teacher-approved — ready to print and hand out."
-              : "AI-generated draft. Review and edit anything, then Approve — nothing reaches students until you do."}
+              ? "Class teacher approved — ready to print and hand out."
+              : rejected
+                ? `Rejected${paper.rejection_reason ? `: ${paper.rejection_reason}` : ""}. Saved for audit — you can still edit, duplicate, or resubmit. Re-approval adds it to the question bank.`
+                : pending
+                  ? "Awaiting class-incharge approval."
+                  : canApprove
+                    ? "Draft ready for review. Approve or reject — credits were charged at generation."
+                    : "Edit if needed, then submit for class-incharge approval."}
           </div>
+
+          {paper.credits_used != null && paper.credits_used > 0 && (
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>
+              AI credits used for this paper: <strong>{paper.credits_used}</strong> (charged at generation)
+            </div>
+          )}
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
             <input
               className="form-input"
               value={paper.title}
               onChange={(e) => setPaper({ ...paper, title: e.target.value })}
+              disabled={!canEdit}
               style={{ ...selStyle, fontSize: 18, fontWeight: 700, flex: 1 }}
             />
-            <span className={`badge ${approved ? "badge-success" : "badge-warning"}`} style={{ whiteSpace: "nowrap" }}>
-              {paper.status.toUpperCase()}
+            <span className={`badge ${statusBadgeClass(paper.status)}`} style={{ whiteSpace: "nowrap" }}>
+              {paper.status.replace(/_/g, " ")}
             </span>
           </div>
 
@@ -404,19 +616,33 @@ function AiPapersPageInner() {
           </div>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20 }}>
+            {canEdit && (
             <button className="btn btn-primary" onClick={saveEdits} disabled={saving}
               style={btnSm}>{saving ? "Saving…" : <><Save size={15} /> Save edits</>}</button>
+            )}
+            {canSubmit && (
+            <button className="btn btn-primary" onClick={submitForApproval} style={btnSm}>
+              Submit for approval
+            </button>
+            )}
+            {canApprove && (
             <button className="btn btn-primary" onClick={approve} disabled={approved}
               style={{ ...btnSm, background: approved ? "var(--text-muted)" : "var(--success)" }}>
               {approved ? "Approved" : <><Check size={15} /> Approve</>}
             </button>
+            )}
+            {canReject && !approved && (
+            <button className="btn btn-outline" onClick={rejectPaper} style={{ ...btnSm, color: "var(--danger)", borderColor: "var(--danger)" }}>
+              Reject
+            </button>
+            )}
             <button className="btn btn-outline" onClick={duplicate} style={btnSm} title="Reuse this paper as a new editable draft (no AI cost)">
               <Copy size={15} /> Duplicate
             </button>
-            <button className="btn btn-outline" onClick={() => openPdf(false)} style={btnSm}>
-              <Printer size={15} /> Open / print paper
+            <button type="button" className="btn btn-outline" onClick={() => openPdf(false)} disabled={openingDoc} style={btnSm}>
+              <Printer size={15} /> {openingDoc ? "Opening…" : "Open / print paper"}
             </button>
-            <button className="btn btn-outline" onClick={() => openPdf(true)} style={btnSm}>
+            <button type="button" className="btn btn-outline" onClick={() => openPdf(true)} disabled={openingDoc} style={btnSm}>
               <KeyRound size={15} /> Answer key (teacher)
             </button>
             <button className="btn btn-ghost" onClick={() => setShowAnswers((v) => !v)} style={btnSm}>
@@ -519,8 +745,8 @@ function AiPapersPageInner() {
                   <td>{p.grade} · {p.subject_name}</td>
                   <td>{p.total_marks}</td>
                   <td>
-                    <span className={`badge ${p.status === "approved" ? "badge-success" : "badge-warning"}`}>
-                      {p.status}
+                    <span className={`badge ${statusBadgeClass(p.status)}`}>
+                      {p.status.replace(/_/g, " ")}
                     </span>
                   </td>
                   <td style={{ textAlign: "right" }}>
@@ -528,6 +754,42 @@ function AiPapersPageInner() {
                       Open
                     </button>
                   </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {isAdmin && usageLog.length > 0 && (
+        <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 24 }}>
+          <div style={{ padding: "14px 24px", fontWeight: 700, borderBottom: "1px solid var(--border)" }}>
+            AI usage log (this month)
+          </div>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Generated by</th>
+                <th>Class</th>
+                <th>Subject</th>
+                <th>Credits</th>
+                <th>Status</th>
+                <th>Reason</th>
+              </tr>
+            </thead>
+            <tbody>
+              {usageLog.map((row) => (
+                <tr key={row.usage_id}>
+                  <td>{row.generated_by}</td>
+                  <td>{row.class_label}</td>
+                  <td>{row.subject}</td>
+                  <td>{row.credits_used}</td>
+                  <td>
+                    <span className={`badge ${statusBadgeClass(row.approval_status)}`}>
+                      {row.approval_status.replace(/_/g, " ")}
+                    </span>
+                  </td>
+                  <td style={{ fontSize: 13, color: "var(--text-muted)" }}>{row.rejection_reason || "—"}</td>
                 </tr>
               ))}
             </tbody>

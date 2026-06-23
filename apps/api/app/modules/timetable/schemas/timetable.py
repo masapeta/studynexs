@@ -28,6 +28,9 @@ class TimetableSlotOut(BaseModel):
     start_time: str
     end_time: str
 
+    teacher_name: str | None = None
+    subject_name: str | None = None
+
     @field_validator("start_time", "end_time", mode="before")
     @classmethod
     def _coerce_time(cls, v):

@@ -50,6 +50,8 @@ async def draft_narrative(
     flag: MasteryFlag,
     *,
     created_by: uuid.UUID,
+    role: str = "teacher",
+    credits_charged: int | None = None,
 ) -> tuple[str, str]:
     """Draft the parent-facing note for an approved flag. Returns (text, model)."""
     provider = get_provider()
@@ -58,8 +60,16 @@ async def draft_narrative(
         _build_messages(flag), model=model, max_tokens=300, temperature=0.4
     )
     await record_usage(
-        db, feature="mastery_flag", result=result,
-        school_id=flag.school_id, created_by=created_by,
+        db,
+        feature="mastery_flag",
+        result=result,
+        school_id=flag.school_id,
+        created_by=created_by,
+        role=role,
+        purpose_tag="mastery_narrative",
+        credits_charged=credits_charged,
+        ref_type="mastery_flag",
+        ref_id=flag.id,
     )
     text = (result.text or "").strip()
     if not text:

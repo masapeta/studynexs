@@ -159,6 +159,8 @@ async def generate_report_for_student(
     created_by: uuid.UUID,
     student_id: uuid.UUID,
     title: str | None = None,
+    role: str = "teacher",
+    credits_charged: int | None = None,
 ) -> ReportCard:
     """Consolidate one student's results + attendance and draft a remark. Returns a DRAFT."""
     student = (
@@ -196,9 +198,6 @@ async def generate_report_for_student(
     provider = get_provider()
     model = default_model()
     result = await provider.generate(messages, model=model, max_tokens=300, temperature=0.5)
-    await record_usage(
-        db, feature="report_card", result=result, school_id=school_id, created_by=created_by
-    )
     remark = (result.text or "").strip() or None
 
     report = ReportCard(
@@ -224,6 +223,19 @@ async def generate_report_for_student(
     )
     db.add(report)
     await db.flush()
+
+    await record_usage(
+        db,
+        feature="report_card",
+        result=result,
+        school_id=school_id,
+        created_by=created_by,
+        role=role,
+        purpose_tag="report_card",
+        credits_charged=credits_charged,
+        ref_type="report_card",
+        ref_id=report.id,
+    )
     logger.info(
         "report_card_generated",
         report_id=str(report.id),
