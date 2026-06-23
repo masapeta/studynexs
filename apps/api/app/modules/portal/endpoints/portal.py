@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, get_current_user
 from app.modules.portal.schemas.portal import FeatureTeaserOut, PortalContextOut
-from app.modules.portal.services.portal_service import PRODUCT_FEATURES, build_portal_context
+from app.modules.portal.services.portal_service import build_portal_context, features_for_role
 from app.shared.schemas.common import APIResponse
 
 router = APIRouter()
@@ -34,5 +34,6 @@ async def portal_context(
 async def product_features(
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    """Product roadmap teasers for demo / principal walkthrough."""
-    return APIResponse(data=PRODUCT_FEATURES)
+    """Product roadmap teasers, scoped to the caller's audience — parents/students
+    never see staff-only features (and their 'Open' links)."""
+    return APIResponse(data=features_for_role(current_user.role))

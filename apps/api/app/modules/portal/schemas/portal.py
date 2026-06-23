@@ -32,3 +32,5 @@ class FeatureTeaserOut(BaseModel):
     description: str
     status: str  # live | preview | coming_soon
     href: Optional[str] = None
+    # Which audience buckets may see this teaser. Default: everyone.
+    audiences: list[str] = Field(default_factory=lambda: ["staff", "parent", "student"])

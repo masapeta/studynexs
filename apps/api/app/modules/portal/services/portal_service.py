@@ -147,6 +147,7 @@ PRODUCT_FEATURES: list[FeatureTeaserOut] = [
         description="Generate and approve board-style papers in minutes.",
         status="live",
         href="/dashboard/ai-papers",
+        audiences=["staff"],
     ),
     FeatureTeaserOut(
         id="answer_eval",
@@ -154,6 +155,7 @@ PRODUCT_FEATURES: list[FeatureTeaserOut] = [
         description="Snap, AI-grade, teacher approves — marks flow to reports.",
         status="live",
         href="/dashboard/exams",
+        audiences=["staff"],
     ),
     FeatureTeaserOut(
         id="mastery",
@@ -161,6 +163,7 @@ PRODUCT_FEATURES: list[FeatureTeaserOut] = [
         description="See weak concepts from real exam data.",
         status="live",
         href="/dashboard/mastery",
+        audiences=["staff"],
     ),
     FeatureTeaserOut(
         id="report_cards",
@@ -168,6 +171,7 @@ PRODUCT_FEATURES: list[FeatureTeaserOut] = [
         description="Draft remarks teachers approve before sharing.",
         status="live",
         href="/dashboard/report-cards",
+        audiences=["staff"],
     ),
     FeatureTeaserOut(
         id="parent_feed",
@@ -175,6 +179,7 @@ PRODUCT_FEATURES: list[FeatureTeaserOut] = [
         description="Weekly AI summaries and weak-concept alerts.",
         status="live",
         href="/parent",
+        audiences=["staff", "parent"],
     ),
     FeatureTeaserOut(
         id="tutor",
@@ -182,11 +187,29 @@ PRODUCT_FEATURES: list[FeatureTeaserOut] = [
         description="Voice + visuals — teacher explains your exam mistakes; pause & replay.",
         status="live",
         href="/student/tutor",
+        audiences=["staff", "student"],
     ),
     FeatureTeaserOut(
         id="whatsapp",
         title="WhatsApp Alerts",
         description="Fee reminders and result notifications.",
         status="preview",
+        audiences=["staff", "parent", "student"],
     ),
 ]
+
+
+def _audience_for_role(role: str) -> str:
+    """Collapse a role into a teaser audience bucket."""
+    if role == "parent":
+        return "parent"
+    if role == "student":
+        return "student"
+    return "staff"  # teacher / class_incharge / admin / super_admin / operations
+
+
+def features_for_role(role: str) -> list[FeatureTeaserOut]:
+    """Roadmap teasers a given role may see — keeps staff-only features out of the
+    parent/student apps (a parent must not get an 'Open' link to a teacher page)."""
+    audience = _audience_for_role(role)
+    return [f for f in PRODUCT_FEATURES if audience in f.audiences]

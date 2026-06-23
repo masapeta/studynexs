@@ -114,11 +114,19 @@ class LessonPlanService:
     def can_edit(self, scope: StaffScope, plan: LessonPlan) -> bool:
         if scope.is_admin:
             return True
-        return plan.created_by == scope.user_id and plan.status == LessonPlanStatus.DRAFT
+        if plan.status != LessonPlanStatus.DRAFT or plan.created_by != scope.user_id:
+            return False
+        # Re-check current assignment — a teacher pulled off this class/subject
+        # loses edit rights even on their own old drafts (no stale authorization).
+        return (
+            scope.teaches(plan.class_id, plan.subject_id)
+            or scope.is_class_incharge(plan.class_id)
+        )
 
     def can_approve(self, scope: StaffScope, plan: LessonPlan) -> bool:
         if plan.status == LessonPlanStatus.APPROVED:
             return False
-        if scope.is_admin:
-            return True
-        return plan.created_by == scope.user_id
+        # Segregation of duties: approval needs the class incharge (or admin), not the
+        # author — mirrors question-paper and report-card approval. A subject teacher
+        # cannot rubber-stamp their own plan.
+        return scope.is_class_incharge(plan.class_id)

@@ -73,6 +73,11 @@ async def ingest_from_paper(
     paper_id_str = str(paper.id)
     items: list[QuestionBankItem] = []
     pending_rubrics: list[tuple[QuestionBankItem, str]] = []
+    # The bank's unique key is (source_paper_id, section_title, question_number).
+    # A malformed paper (LLM emitting a duplicate number, or a blank number whose
+    # positional fallback collides) would otherwise raise IntegrityError and fail the
+    # whole approval with a confusing 409. Disambiguate within each section instead.
+    seen_numbers: set[tuple[str, str]] = set()
 
     for section in sections:
         section_title = section["title"] or "Section"
@@ -83,6 +88,12 @@ async def ingest_from_paper(
             q_type = str(question.get("type") or "short")
             marks = float(question.get("marks") or 0)
             number = _question_number(question, q_idx + 1)
+            if (section_title, number) in seen_numbers:
+                suffix = 1
+                while (section_title, f"{number}.{suffix}") in seen_numbers:
+                    suffix += 1
+                number = f"{number}.{suffix}"
+            seen_numbers.add((section_title, number))
 
             item = QuestionBankItem(
                 school_id=paper.school_id,
