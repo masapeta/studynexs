@@ -18,7 +18,9 @@ from app.modules.files.schemas.file import FileOut
 from app.modules.files.services.file_service import FileService
 from app.modules.files.services.file_validation import (
     FileUploadRejected,
-    MAX_UPLOAD_BYTES,
+    format_max_upload,
+    max_upload_bytes,
+    read_upload_bounded,
     validate_file_upload,
 )
 from app.shared.schemas.common import APIResponse
@@ -40,15 +42,21 @@ async def upload_file(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Upload a file (max 10MB)."""
-    file_data = await file.read()
-    if len(file_data) > MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail="File too large (max 10MB)")
-
+    """Upload a file (size limit depends on category; documents max 1MB)."""
     try:
         cat = FileCategory(category)
     except ValueError:
         raise HTTPException(status_code=400, detail=f"Invalid category: {category}")
+
+    try:
+        file_data = await read_upload_bounded(file, max_upload_bytes(cat))
+    except FileUploadRejected as exc:
+        if "too large" in str(exc).lower():
+            raise HTTPException(
+                status_code=413,
+                detail=f"File too large (max {format_max_upload(cat)})",
+            ) from exc
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     try:
         content_type = validate_file_upload(
@@ -58,6 +66,11 @@ async def upload_file(
             file_data=file_data,
         )
     except FileUploadRejected as exc:
+        if "too large" in str(exc).lower():
+            raise HTTPException(
+                status_code=413,
+                detail=f"File too large (max {format_max_upload(cat)})",
+            ) from exc
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     service = FileService(db)

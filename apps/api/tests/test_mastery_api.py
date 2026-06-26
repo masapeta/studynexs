@@ -27,14 +27,16 @@ class _FakeProvider:
 
 @pytest.fixture(autouse=True)
 def mock_llm(monkeypatch):
-    """No real LLM calls in tests — patch the gateway factory + metering."""
+    """No real LLM calls in tests — patch generate_llm + metering."""
     import app.modules.mastery.services.narrative_service as ns
 
     async def fake_record_usage(db, **kwargs):
         return None
 
-    monkeypatch.setattr(ns, "get_provider", lambda *a, **k: _FakeProvider())
-    monkeypatch.setattr(ns, "default_model", lambda: "fake-model")
+    async def fake_generate_llm(*_args, **_kwargs):
+        return _FakeResult()
+
+    monkeypatch.setattr(ns, "generate_llm", fake_generate_llm)
     monkeypatch.setattr(ns, "record_usage", fake_record_usage)
 
 

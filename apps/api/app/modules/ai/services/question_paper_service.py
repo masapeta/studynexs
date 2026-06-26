@@ -17,8 +17,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenant_scope import TenantScope
 from app.db.models.academic import Class, Subject
+from app.db.models.ai_usage import AIUsage
 from app.db.models.question_paper import PaperStatus, QuestionPaper
-from app.modules.ai.gateway import LLMMessage, LLMResult, default_model, get_provider, record_usage
+from app.modules.ai.gateway import LLMMessage, LLMResult, generate_llm, record_usage
+from app.modules.ai.services.ai_credits import credits_for_purpose, reserve_ai_credits
 from app.modules.ai.services.question_bank_service import (
     compose_sections_from_plan,
     fetch_compose_candidates,
@@ -147,6 +149,24 @@ def normalize_sections(raw_sections) -> list[dict]:
     return out
 
 
+async def _record_qp_llm_usage(
+    db: AsyncSession,
+    *,
+    result: LLMResult,
+    reserved_row: AIUsage,
+    ref_id: uuid.UUID | None = None,
+) -> AIUsage:
+    """Finalize a reserved row as soon as the provider returns."""
+    return await record_usage(
+        db,
+        feature="question_paper",
+        result=result,
+        reserved_row=reserved_row,
+        ref_type="question_paper",
+        ref_id=ref_id,
+    )
+
+
 async def generate_paper(
     db: AsyncSession,
     *,
@@ -194,11 +214,29 @@ async def generate_paper(
         total_marks=total_marks, duration=duration_minutes, difficulty=difficulty, plan=plan,
     )
 
-    provider = get_provider()
-    model = default_model()
-    result = await provider.generate(
-        messages, model=model, json_mode=True, max_tokens=8000, temperature=0.4
+    cost = credits_charged if credits_charged is not None else credits_for_purpose(purpose_tag)
+    reserved: AIUsage | None = None
+    if cost > 0:
+        reserved = await reserve_ai_credits(
+            db,
+            school_id,
+            user_id=created_by,
+            role=role,
+            purpose_tag=purpose_tag,
+            feature="question_paper",
+            credits=cost,
+            ref_type="question_paper",
+        )
+
+    result = await generate_llm(
+        messages, json_mode=True, max_tokens=8000, temperature=0.4,
+        feature="question_paper", caller="generate_paper",
     )
+    usage_row = await _record_qp_llm_usage(
+        db,
+        result=result,
+        reserved_row=reserved,
+    ) if reserved else None
 
     try:
         data = json.loads(result.text)
@@ -235,19 +273,10 @@ async def generate_paper(
     )
     db.add(paper)
     await db.flush()
+    if usage_row is not None:
+        usage_row.ref_id = paper.id
+        await db.flush()
 
-    await record_usage(
-        db,
-        feature="question_paper",
-        result=result,
-        school_id=school_id,
-        created_by=created_by,
-        role=role,
-        purpose_tag=purpose_tag,
-        credits_charged=credits_charged,
-        ref_type="question_paper",
-        ref_id=paper.id,
-    )
     logger.info(
         "question_paper_generated",
         paper_id=str(paper.id),
@@ -315,10 +344,22 @@ async def generate_paper_from_bank(
     official_total = sum(s["marks_per_q"] * s.get("answer_any", s["count"]) for s in plan)
     sections, used_item_ids, gaps = compose_sections_from_plan(plan, candidates)
 
+    cost = credits_charged if credits_charged is not None else credits_for_purpose(purpose_tag)
+    reserved: AIUsage | None = None
+    if cost > 0:
+        reserved = await reserve_ai_credits(
+            db,
+            school_id,
+            user_id=created_by,
+            role=role,
+            purpose_tag=purpose_tag,
+            feature="question_paper",
+            credits=cost,
+            ref_type="question_paper",
+        )
+
     llm_result: LLMResult | None = None
     if gaps:
-        provider = get_provider()
-        model = default_model()
         messages = _build_gap_fill_messages(
             board=board,
             grade=grade,
@@ -326,9 +367,12 @@ async def generate_paper_from_bank(
             topics=topics,
             gaps=gaps,
         )
-        llm_result = await provider.generate(
-            messages, model=model, json_mode=True, max_tokens=4000, temperature=0.4
+        llm_result = await generate_llm(
+            messages, json_mode=True, max_tokens=4000, temperature=0.4,
+            feature="question_paper", caller="generate_paper_from_bank",
         )
+        if reserved:
+            await _record_qp_llm_usage(db, result=llm_result, reserved_row=reserved)
         try:
             fill_data = json.loads(llm_result.text)
         except (json.JSONDecodeError, TypeError) as exc:
@@ -368,21 +412,21 @@ async def generate_paper_from_bank(
     await db.flush()
     await note_bank_items_used(db, used_item_ids, paper.id)
 
-    usage_result = llm_result or LLMResult(
-        text="", provider="bank", model="compose", tokens_in=0, tokens_out=0
-    )
-    await record_usage(
-        db,
-        feature="question_paper",
-        result=usage_result,
-        school_id=school_id,
-        created_by=created_by,
-        role=role,
-        purpose_tag=purpose_tag,
-        credits_charged=credits_charged,
-        ref_type="question_paper",
-        ref_id=paper.id,
-    )
+    if reserved is not None and not gaps:
+        usage_result = LLMResult(
+            text="", provider="bank", model="compose", tokens_in=0, tokens_out=0
+        )
+        await record_usage(
+            db,
+            feature="question_paper",
+            result=usage_result,
+            reserved_row=reserved,
+            ref_type="question_paper",
+            ref_id=paper.id,
+        )
+    elif reserved is not None and gaps:
+        reserved.ref_id = paper.id
+        await db.flush()
     logger.info(
         "question_paper_from_bank",
         paper_id=str(paper.id),

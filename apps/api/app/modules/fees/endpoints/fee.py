@@ -30,6 +30,16 @@ async def get_fee_stats(
     return APIResponse(data=stats)
 
 
+@router.get("/roster", response_model=APIResponse)
+async def get_fee_roster(
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    service = FeeService(db)
+    roster = await service.list_fee_roster(uuid.UUID(current_user.school_id))
+    return APIResponse(data=roster)
+
+
 @router.get("/recent", response_model=APIResponse[list[ReceiptOut]])
 async def get_recent_payments(
     limit: int = 10,

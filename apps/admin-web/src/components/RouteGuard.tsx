@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { routeAllowed } from "@/lib/permissions";
+import { routeAllowed, portalHomeForRole } from "@/lib/permissions";
 
 /** Redirects when a user navigates directly to a route their role cannot access. */
 export function RouteGuard({ children }: { children: React.ReactNode }) {
@@ -18,7 +18,7 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
       pathname.startsWith("/dashboard") &&
       !routeAllowed(pathname, permissions);
     if (blocked) {
-      router.replace("/dashboard");
+      router.replace(portalHomeForRole(permissions.role));
     }
   }, [loading, permissions, pathname, router]);
 

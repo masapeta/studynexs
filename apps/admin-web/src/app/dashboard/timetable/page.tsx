@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { AppSelect } from "@/components/ui/AppSelect";
+import { formatClassLabel, sortClasses } from "@/lib/format";
 
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 const DAY_LABEL: Record<string, string> = {
@@ -29,7 +31,7 @@ export default function TimetablePage() {
     api("/api/v1/academic/classes?page_size=100")
       .then((r) => {
         const items = r.items || r.data || [];
-        setClasses(items);
+        setClasses(sortClasses<any>(items));
         if (items[0]) setClassId(items[0].id);
       })
       .catch((e) => console.error(e));
@@ -107,9 +109,16 @@ export default function TimetablePage() {
     <>
       <div className="card bento-glass" style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 24px" }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Timetable</h1>
-        <select className="form-input" value={classId} onChange={(e) => setClassId(e.target.value)} style={sel}>
-          {classes.map((c) => <option key={c.id} value={c.id}>{c.grade} - {c.section}</option>)}
-        </select>
+        <AppSelect
+          variant="pill"
+          value={classId}
+          onChange={setClassId}
+          aria-label="Select class"
+          options={classes.map((c) => ({
+            value: c.id,
+            label: formatClassLabel(c.grade, c.section),
+          }))}
+        />
       </div>
 
       {error && <div className="card" style={{ marginBottom: 16, padding: 12, color: "var(--danger)" }}>{error}</div>}
@@ -118,9 +127,13 @@ export default function TimetablePage() {
       <div className="card" style={{ marginBottom: 24, padding: 20, display: "grid", gridTemplateColumns: "repeat(6, 1fr) auto", gap: 10, alignItems: "end" }}>
         <div>
           <label className="stat-label">Day</label>
-          <select className="form-input" style={sel} value={form.day_of_week} onChange={(e) => setForm({ ...form, day_of_week: e.target.value })}>
-            {DAYS.map((d) => <option key={d} value={d}>{DAY_LABEL[d]}</option>)}
-          </select>
+          <AppSelect
+            variant="field"
+            value={form.day_of_week}
+            onChange={(v) => setForm({ ...form, day_of_week: v })}
+            aria-label="Day"
+            options={DAYS.map((d) => ({ value: d, label: DAY_LABEL[d] }))}
+          />
         </div>
         <div>
           <label className="stat-label">Period</label>
@@ -128,15 +141,23 @@ export default function TimetablePage() {
         </div>
         <div>
           <label className="stat-label">Subject</label>
-          <select className="form-input" style={sel} value={form.subject_id} onChange={(e) => setForm({ ...form, subject_id: e.target.value })}>
-            {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
+          <AppSelect
+            variant="field"
+            value={form.subject_id}
+            onChange={(v) => setForm({ ...form, subject_id: v })}
+            aria-label="Subject"
+            options={subjects.map((s) => ({ value: s.id, label: s.name }))}
+          />
         </div>
         <div>
           <label className="stat-label">Teacher</label>
-          <select className="form-input" style={sel} value={form.teacher_id} onChange={(e) => setForm({ ...form, teacher_id: e.target.value })}>
-            {teachers.map((t) => <option key={t.id} value={t.id}>{t.full_name}</option>)}
-          </select>
+          <AppSelect
+            variant="field"
+            value={form.teacher_id}
+            onChange={(v) => setForm({ ...form, teacher_id: v })}
+            aria-label="Teacher"
+            options={teachers.map((t) => ({ value: t.id, label: t.full_name }))}
+          />
         </div>
         <div>
           <label className="stat-label">Start</label>

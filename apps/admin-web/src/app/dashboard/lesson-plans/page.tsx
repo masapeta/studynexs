@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { Check, Clock, NotebookPen, RefreshCw, Sparkles } from "lucide-react";
 import { api, getApiErrorMessage } from "@/lib/api";
+import { AppSelect } from "@/components/ui/AppSelect";
+import { formatClassLabel, sortClasses } from "@/lib/format";
 
 type Segment = { duration_min: number; activity: string };
 type Plan = {
@@ -34,7 +36,7 @@ export default function LessonPlansPage() {
   useEffect(() => {
     api("/api/v1/academic/classes?page_size=100")
       .then((r) => {
-        const items = r.items || r.data || [];
+        const items = sortClasses<any>(r.items || r.data || []);
         setClasses(items);
         if (items[0]) setClassId(items[0].id);
       })
@@ -104,15 +106,26 @@ export default function LessonPlansPage() {
       <div className="card" style={{ marginBottom: 24, padding: 24, display: "grid", gridTemplateColumns: "1fr 1fr 1.5fr auto", gap: 12, alignItems: "end" }}>
         <div>
           <label className="stat-label">Class</label>
-          <select className="form-input" style={sel} value={classId} onChange={(e) => setClassId(e.target.value)}>
-            {classes.map((c) => <option key={c.id} value={c.id}>{c.grade} - {c.section}</option>)}
-          </select>
+          <AppSelect
+            variant="field"
+            value={classId}
+            onChange={setClassId}
+            aria-label="Class"
+            options={classes.map((c) => ({
+              value: c.id,
+              label: formatClassLabel(c.grade, c.section),
+            }))}
+          />
         </div>
         <div>
           <label className="stat-label">Subject</label>
-          <select className="form-input" style={sel} value={subjectId} onChange={(e) => setSubjectId(e.target.value)}>
-            {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
+          <AppSelect
+            variant="field"
+            value={subjectId}
+            onChange={setSubjectId}
+            aria-label="Subject"
+            options={subjects.map((s) => ({ value: s.id, label: s.name }))}
+          />
         </div>
         <div>
           <label className="stat-label">Topic (optional — defaults to weakest)</label>

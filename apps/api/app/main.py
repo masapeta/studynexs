@@ -20,6 +20,9 @@ logger = structlog.get_logger()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup/shutdown lifecycle."""
+    from app.core.otel import setup_opentelemetry, shutdown_opentelemetry
+
+    setup_opentelemetry(settings)
     logger.info("StudyNexs API starting", environment=settings.ENVIRONMENT.value)
 
     outbox_task: asyncio.Task | None = None
@@ -45,6 +48,7 @@ async def lifespan(app: FastAPI):
         logger.info("outbox_worker_embedded_stopped")
 
     logger.info("StudyNexs API shutting down")
+    shutdown_opentelemetry()
 
 
 def create_app() -> FastAPI:
@@ -57,6 +61,10 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    from app.core.otel import instrument_fastapi
+
+    instrument_fastapi(app, settings)
+
     # ── CORS ─────────────────────────────────────────────────────
     app.add_middleware(
         CORSMiddleware,
@@ -68,10 +76,12 @@ def create_app() -> FastAPI:
 
     # BaseHTTPMiddleware breaks async DB under pytest; skip in testing.
     if settings.ENVIRONMENT != Environment.TESTING:
+        from app.core.ai_telemetry_middleware import AITelemetryMiddleware
         from app.core.audit_middleware import AuditMiddleware
         from app.core.metrics_middleware import MetricsMiddleware
         from app.core.tenant_middleware import TenantMiddleware
 
+        app.add_middleware(AITelemetryMiddleware)
         app.add_middleware(AuditMiddleware)
         app.add_middleware(TenantMiddleware)
         app.add_middleware(MetricsMiddleware)
@@ -104,6 +114,18 @@ def create_app() -> FastAPI:
 
         all_ok = all(v == "ok" for v in checks.values())
         return {"status": "ready" if all_ok else "degraded", "checks": checks}
+
+    @app.get("/metrics", tags=["system"])
+    async def prometheus_metrics():
+        """Prometheus scrape endpoint — LLM counters, latency histograms, fallback rates."""
+        from fastapi.responses import PlainTextResponse
+
+        from app.modules.ai.telemetry import ai_metrics
+
+        return PlainTextResponse(
+            ai_metrics.prometheus_text(),
+            media_type="text/plain; version=0.0.4; charset=utf-8",
+        )
 
     # ── Exception handlers ───────────────────────────────────────
     from fastapi import Request
@@ -156,6 +178,10 @@ def create_app() -> FastAPI:
     app.include_router(ai_router, prefix=f"{prefix}/ai", tags=["ai"])
     app.include_router(school_router, prefix=f"{prefix}/school", tags=["school"])
     app.include_router(mastery_router, prefix=f"{prefix}/mastery", tags=["mastery"])
+
+    from app.modules.curriculum.endpoints.pack import router as curriculum_pack_router
+
+    app.include_router(curriculum_pack_router, prefix=f"{prefix}/curriculum", tags=["curriculum"])
     app.include_router(portal_router, prefix=f"{prefix}/portal", tags=["portal"])
 
     from app.modules.tutor.endpoints.tutor import router as tutor_router

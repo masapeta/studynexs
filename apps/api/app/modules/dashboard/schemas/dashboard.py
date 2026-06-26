@@ -46,6 +46,8 @@ class DashboardSummaryOut(BaseModel):
     total_classes: int | None = None
     pending_fees: float | None = None
     school_attendance_percent: float | None = None
+    admissions_pipeline: int | None = None
+    expenses_this_month: float | None = None
     class_performance: list[dict] = Field(default_factory=list)
     # Class incharge
     incharge_classes: list[InchargeClassSummaryOut] = Field(default_factory=list)

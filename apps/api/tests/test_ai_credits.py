@@ -14,6 +14,7 @@ from app.modules.ai.services.ai_credits import (
     credits_for_purpose,
     get_school_ai_budget,
     month_start_for_school,
+    _validate_credit_charge,
 )
 
 
@@ -41,7 +42,7 @@ def test_default_pilot_budget():
 
 
 @pytest.mark.asyncio
-async def test_teacher_blocked_at_pilot_qp_cap():
+async def test_teacher_blocked_at_pilot_qp_cap(monkeypatch):
     school = MagicMock()
     school.id = uuid.uuid4()
     school.settings = {
@@ -53,8 +54,7 @@ async def test_teacher_blocked_at_pilot_qp_cap():
     user_id = uuid.uuid4()
     db = AsyncMock()
 
-    from app.modules.ai.services import ai_credits as mod
-    from app.modules.ai.services.ai_credits import UsageSnapshot
+    from app.modules.ai.services.ai_credits import UsageSnapshot, check_ai_credits
 
     async def fake_lock(_db, _sid):
         return school
@@ -74,8 +74,14 @@ async def test_teacher_blocked_at_pilot_qp_cap():
         },
     )
 
-    mod._lock_school_row = fake_lock
-    mod._build_usage_snapshot = AsyncMock(return_value=snap)
+    monkeypatch.setattr(
+        "app.modules.ai.services.ai_credits._lock_school_row",
+        fake_lock,
+    )
+    monkeypatch.setattr(
+        "app.modules.ai.services.ai_credits._build_usage_snapshot",
+        AsyncMock(return_value=snap),
+    )
     with pytest.raises(HTTPException) as exc:
         await check_ai_credits(
             db, school, user_id=user_id, role="teacher", purpose_tag="qp_full"
@@ -130,4 +136,26 @@ async def test_charge_blocked_when_school_cap_exceeded(db_session, test_school, 
             purpose_tag="qp_full",
             credits=5,
         )
+    assert exc.value.status_code == 429
+
+
+@pytest.mark.asyncio
+async def test_admin_blocked_at_school_cap():
+    from unittest.mock import MagicMock
+
+    from app.modules.ai.services.ai_credits import UsageSnapshot, _validate_credit_charge
+
+    school = MagicMock()
+    school.settings = {"ai_budget": {"monthly_credits": 10}}
+    snap = UsageSnapshot(
+        budget=get_school_ai_budget(school),
+        since=month_start_for_school(school),
+        monthly_limit=10,
+        school_used=10,
+        user_limit=None,
+        user_used=0,
+        usage_counts={"qp_full": 0, "qp_regen_full": 0, "qp_regen_section": 0, "qp_regen_question": 0},
+    )
+    with pytest.raises(HTTPException) as exc:
+        _validate_credit_charge(snap, role="admin", purpose_tag="qp_full", cost=1)
     assert exc.value.status_code == 429

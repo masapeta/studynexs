@@ -7,9 +7,13 @@ from __future__ import annotations
 
 import enum
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_API_ROOT = Path(__file__).resolve().parents[2]
+_ENV_FILE = _API_ROOT / ".env"
 
 
 class Environment(str, enum.Enum):
@@ -22,7 +26,7 @@ class Settings(BaseSettings):
     """Central configuration — loaded from environment variables / .env file."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_ENV_FILE if _ENV_FILE.is_file() else ".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -133,6 +137,8 @@ class Settings(BaseSettings):
     # ── File Storage ─────────────────────────────────────────────
     AZURE_STORAGE_CONNECTION_STRING: str = ""
     AZURE_STORAGE_CONTAINER: str = "studynexs-files"
+    # Path to tesseract binary when not on PATH (Windows: ...\Tesseract-OCR\tesseract.exe)
+    TESSERACT_CMD: str = ""
 
     # ── Qdrant (Vector DB) ───────────────────────────────────────
     QDRANT_HOST: str = "localhost"
@@ -145,7 +151,19 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     AI_DEFAULT_PROVIDER: str = "gemini"  # default only; benchmark decides the real one
     AI_DEFAULT_MODEL: str = ""  # empty → factory picks the provider's default model
+    AI_FALLBACK_PROVIDER: str = ""  # e.g. ollama — used when primary provider fails
+    OLLAMA_BASE_URL: str = ""  # e.g. http://host.docker.internal:11434 (Docker → host Ollama)
+    OLLAMA_MODEL: str = "gemma4:cloud"
+    OLLAMA_API_KEY: str = ""  # optional — Ollama cloud / authenticated endpoints
     AI_REQUEST_TIMEOUT_SECONDS: float = 120.0
+
+    # ── OpenTelemetry (metrics + traces → OTLP collector) ───────
+    OTEL_ENABLED: bool = False
+    OTEL_SERVICE_NAME: str = "studynexs-api"
+    OTEL_EXPORTER_OTLP_ENDPOINT: str = ""  # e.g. http://otel-collector:4317
+    OTEL_EXPORTER_OTLP_PROTOCOL: str = "grpc"  # grpc | http
+    OTEL_TRACES_SAMPLE_RATE: float = 1.0  # 0.0–1.0; lower in high-traffic prod
+    OTEL_METRIC_EXPORT_INTERVAL_MS: int = 15000
 
     # ── Azure Speech (Neural TTS for the AI-tutor voice) ─────────
     # When unset, the tutor falls back to the browser's Web Speech voice.
@@ -200,6 +218,8 @@ class Settings(BaseSettings):
             errors.append(
                 f"AI_DEFAULT_PROVIDER={self.AI_DEFAULT_PROVIDER!r} but its API key is not set"
             )
+        if self.AI_DEFAULT_PROVIDER == "stub":
+            errors.append("AI_DEFAULT_PROVIDER cannot be 'stub' in production")
 
         if errors:
             raise ValueError(

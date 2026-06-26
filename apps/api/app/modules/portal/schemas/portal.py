@@ -17,6 +17,47 @@ class ChildSummaryOut(BaseModel):
     weak_topic_count: int = 0
 
 
+class ParentWeakTopicOut(BaseModel):
+    subject_name: str
+    topic: str
+    topic_display: str
+    mastery_pct: float
+
+
+class ParentFeedbackOut(BaseModel):
+    topic: str
+    topic_display: str
+    subject_name: str
+    narrative: str
+    notified_at: Optional[str] = None
+
+
+class ParentChildProgressOut(BaseModel):
+    student_id: uuid.UUID
+    name: str
+    class_label: str
+    roll_no: Optional[str] = None
+    attendance_pct: Optional[float] = None
+    fee_pending: float = 0
+    weak_topic_count: int = 0
+    weak_topics: list[ParentWeakTopicOut] = Field(default_factory=list)
+    feedbacks: list[ParentFeedbackOut] = Field(default_factory=list)
+
+
+class ParentChildFeesOut(BaseModel):
+    student_id: uuid.UUID
+    name: str
+    records: list["FeeRecordSummaryOut"] = Field(default_factory=list)
+
+
+class FeeRecordSummaryOut(BaseModel):
+    id: uuid.UUID
+    fee_type: Optional[str] = None
+    amount: float
+    status: str
+    due_date: Optional[str] = None
+
+
 class PortalContextOut(BaseModel):
     portal: str  # staff | teacher | parent | student
     role: str

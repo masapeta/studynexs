@@ -15,6 +15,31 @@ from app.modules.ai.services.ai_credits import (
 )
 
 
+async def finalize_llm_usage(
+    db: AsyncSession,
+    reserved_row: AIUsage,
+    result: LLMResult,
+    *,
+    ref_id: uuid.UUID | None = None,
+    image_count: int = 0,
+) -> AIUsage:
+    """Update a reserved usage row after the provider returns. No cap re-check."""
+    reserved_row.provider = result.provider
+    reserved_row.model = result.model
+    reserved_row.tokens_in = result.tokens_in
+    reserved_row.tokens_out = result.tokens_out
+    reserved_row.cost_usd = estimate_cost_usd(result.model, result.tokens_in, result.tokens_out)
+    reserved_row.latency_ms = result.latency_ms
+    reserved_row.image_count = image_count
+    reserved_row.status = "fallback_success" if result.used_fallback else "success"
+    reserved_row.primary_provider = result.primary_provider
+    reserved_row.used_fallback = result.used_fallback
+    if ref_id is not None:
+        reserved_row.ref_id = ref_id
+    await db.flush()
+    return reserved_row
+
+
 async def record_usage(
     db: AsyncSession,
     *,
@@ -28,8 +53,23 @@ async def record_usage(
     ref_type: str | None = None,
     ref_id: uuid.UUID | None = None,
     image_count: int = 0,
+    reserved_row: AIUsage | None = None,
 ) -> AIUsage:
-    """Record one LLM call for billing/analysis. Call after every gateway.generate()."""
+    """Record one LLM call for billing/analysis.
+
+    When ``reserved_row`` is supplied (credit reservation before the provider call),
+    finalize that row without re-running cap checks. Otherwise insert a new row and
+    enforce caps first — for non-LLM billing paths only.
+    """
+    if reserved_row is not None:
+        return await finalize_llm_usage(
+            db,
+            reserved_row,
+            result,
+            ref_id=ref_id,
+            image_count=image_count,
+        )
+
     tag = purpose_tag or FEATURE_DEFAULT_PURPOSE.get(feature, feature)
     credits = credits_charged if credits_charged is not None else credits_for_purpose(tag)
     if school_id is not None and created_by is not None and role is not None and credits > 0:
@@ -57,6 +97,9 @@ async def record_usage(
         ref_type=ref_type,
         ref_id=ref_id,
         image_count=image_count,
+        status="fallback_success" if result.used_fallback else "success",
+        primary_provider=result.primary_provider,
+        used_fallback=result.used_fallback,
     )
     db.add(row)
     await db.flush()

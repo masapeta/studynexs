@@ -29,8 +29,8 @@ export default function FinancePage() {
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700 }}>Finance</h1>
+      <div className="sn-page-toolbar">
+        <h1 className="sn-page-title">Finance</h1>
       </div>
 
       {/* Fee Summary Cards */}

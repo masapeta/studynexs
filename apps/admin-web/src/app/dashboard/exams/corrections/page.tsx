@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, getApiErrorMessage } from "@/lib/api";
+import { AppSelect } from "@/components/ui/AppSelect";
+import { formatClassLabel, sortClasses } from "@/lib/format";
 
 export default function CorrectionsPage() {
   const [classes, setClasses] = useState<any[]>([]);
@@ -16,7 +18,7 @@ export default function CorrectionsPage() {
   useEffect(() => {
     api("/api/v1/academic/classes?page_size=100")
       .then((r) => {
-        const items = r.items || r.data || [];
+        const items = sortClasses<any>(r.items || r.data || []);
         setClasses(items);
         if (items[0]) setClassId(items[0].id);
       })
@@ -57,11 +59,17 @@ export default function CorrectionsPage() {
 
       <div className="card" style={{ marginBottom: 16, padding: 16 }}>
         <label className="stat-label">Class</label>
-        <select className="form-input" value={classId} onChange={(e) => setClassId(e.target.value)} style={{ maxWidth: 280 }}>
-          {classes.map((c) => (
-            <option key={c.id} value={c.id}>{c.grade} - {c.section}</option>
-          ))}
-        </select>
+        <AppSelect
+          variant="field"
+          value={classId}
+          onChange={setClassId}
+          aria-label="Class"
+          style={{ maxWidth: 280 }}
+          options={classes.map((c) => ({
+            value: c.id,
+            label: formatClassLabel(c.grade, c.section),
+          }))}
+        />
       </div>
 
       {error && <div className="card" style={{ marginBottom: 16, padding: 12, color: "var(--danger)" }}>{error}</div>}

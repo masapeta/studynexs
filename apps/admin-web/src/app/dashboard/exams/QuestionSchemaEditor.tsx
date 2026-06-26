@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, getApiErrorMessage } from "@/lib/api";
+import { AppSelect } from "@/components/ui/AppSelect";
 
 type QuestionRow = { no: string; max_marks: string; topic: string };
 
@@ -115,18 +116,16 @@ export default function QuestionSchemaEditor({
           </div>
         </div>
         {papers.length > 0 && (
-          <select
-            className="form-input"
-            style={{ width: 260, padding: "8px 12px" }}
-            defaultValue=""
-            onChange={(e) => importFromPaper(e.target.value)}
+          <AppSelect
+            variant="field"
+            style={{ width: 260 }}
+            value=""
+            onChange={(v) => importFromPaper(v)}
             disabled={saving}
-          >
-            <option value="">Import from approved AI paper…</option>
-            {papers.map((p) => (
-              <option key={p.id} value={p.id}>{p.title}</option>
-            ))}
-          </select>
+            aria-label="Import from approved AI paper"
+            placeholder="Import from approved AI paper…"
+            options={papers.map((p) => ({ value: p.id, label: p.title }))}
+          />
         )}
       </div>
 

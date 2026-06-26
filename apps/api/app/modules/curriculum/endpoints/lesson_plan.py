@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, require_roles
+from app.core.rate_limit import rate_limit
 from app.core.staff_permissions import get_staff_scope
 from app.db.models.lesson_plan import LessonPlan, LessonPlanStatus
 from app.modules.curriculum.schemas.lesson_plan import (
@@ -22,6 +23,7 @@ from app.shared.schemas.common import APIResponse
 
 router = APIRouter()
 _TEACH = ("teacher", "class_incharge", "admin", "super_admin")
+_LP_RATE = {"max_requests": 20, "window_seconds": 60}
 
 
 def _out(plan: LessonPlan, scope, svc: LessonPlanService) -> LessonPlanOut:
@@ -55,7 +57,12 @@ async def _get_plan(db: AsyncSession, school_id: str, plan_id: uuid.UUID) -> Les
     return plan
 
 
-@router.post("/generate", response_model=LessonPlanOut, status_code=201)
+@router.post(
+    "/generate",
+    response_model=LessonPlanOut,
+    status_code=201,
+    dependencies=[rate_limit("lesson_plan_generate", **_LP_RATE)],
+)
 async def generate_lesson_plan(
     body: GenerateLessonPlanRequest,
     current_user: CurrentUser = Depends(require_roles(*_TEACH)),
@@ -132,7 +139,12 @@ async def approve_lesson_plan(
     return _out(plan, scope, svc)
 
 
-@router.post("/{plan_id}/regenerate", response_model=LessonPlanOut, status_code=201)
+@router.post(
+    "/{plan_id}/regenerate",
+    response_model=LessonPlanOut,
+    status_code=201,
+    dependencies=[rate_limit("lesson_plan_generate", **_LP_RATE)],
+)
 async def regenerate_lesson_plan(
     plan_id: uuid.UUID,
     current_user: CurrentUser = Depends(require_roles(*_TEACH)),

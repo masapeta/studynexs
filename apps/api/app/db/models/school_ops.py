@@ -5,7 +5,7 @@ import enum
 import uuid
 from datetime import date, datetime, time
 
-from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text, Time
+from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text, Time, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -23,6 +23,7 @@ class TransportRoute(BaseModel):
     driver_name: Mapped[str | None] = mapped_column(String(100))
     driver_contact: Mapped[str | None] = mapped_column(String(15))
     stops: Mapped[dict | None] = mapped_column(JSONB, default=list)
+    capacity: Mapped[int] = mapped_column(Integer, default=30, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
@@ -90,6 +91,139 @@ class Event(BaseModel):
     event_time: Mapped[time | None] = mapped_column(Time)
     venue: Mapped[str | None] = mapped_column(String(200))
     target_roles: Mapped[dict | None] = mapped_column(JSONB)
+    created_by: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
+    )
+
+
+class AdmissionStage(str, enum.Enum):
+    ENQUIRY = "enquiry"
+    APPLIED = "applied"
+    INTERVIEW = "interview"
+    OFFER = "offer"
+    ENROLLED = "enrolled"
+
+
+ADMISSION_STAGE_ORDER = [
+    AdmissionStage.ENQUIRY,
+    AdmissionStage.APPLIED,
+    AdmissionStage.INTERVIEW,
+    AdmissionStage.OFFER,
+    AdmissionStage.ENROLLED,
+]
+
+
+class AdmissionCandidate(BaseModel):
+    __tablename__ = "admission_candidates"
+
+    school_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("schools.id"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    grade_applied: Mapped[str] = mapped_column(String(40), nullable=False)
+    stage: Mapped[AdmissionStage] = mapped_column(
+        Enum(AdmissionStage, values_callable=lambda obj: [e.value for e in obj]),
+        default=AdmissionStage.ENQUIRY,
+        nullable=False,
+    )
+    enquiry_date: Mapped[date] = mapped_column(Date, nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text)
+    date_of_birth: Mapped[date | None] = mapped_column(Date)
+    gender: Mapped[str | None] = mapped_column(String(20))
+    parent_name: Mapped[str | None] = mapped_column(String(120))
+    parent_relation: Mapped[str | None] = mapped_column(String(20))
+    parent_occupation: Mapped[str | None] = mapped_column(String(120))
+    parent_mobile: Mapped[str | None] = mapped_column(String(20))
+    parent_email: Mapped[str | None] = mapped_column(String(120))
+    address_line: Mapped[str | None] = mapped_column(String(300))
+    city: Mapped[str | None] = mapped_column(String(80))
+    previous_school_name: Mapped[str | None] = mapped_column(String(200))
+    previous_grade: Mapped[str | None] = mapped_column(String(40))
+    enquiry_source: Mapped[str | None] = mapped_column(String(40))
+    aadhaar_number: Mapped[str | None] = mapped_column(String(12))
+    birth_certificate_number: Mapped[str | None] = mapped_column(String(40))
+    apaar_number: Mapped[str | None] = mapped_column(String(30))
+    stage_details: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+
+
+class PayrollStatus(str, enum.Enum):
+    PENDING = "pending"
+    PAID = "paid"
+
+
+class StaffPayrollEntry(BaseModel):
+    __tablename__ = "staff_payroll_entries"
+    __table_args__ = (
+        UniqueConstraint("school_id", "user_id", "period_month", name="uq_payroll_user_month"),
+    )
+
+    school_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("schools.id"), nullable=False
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
+    )
+    period_month: Mapped[date] = mapped_column(Date, nullable=False)
+    gross_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    status: Mapped[PayrollStatus] = mapped_column(
+        Enum(PayrollStatus, values_callable=lambda obj: [e.value for e in obj]),
+        default=PayrollStatus.PENDING,
+        nullable=False,
+    )
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class StaffProfile(BaseModel):
+    """HR onboarding record for school staff (all staff roles)."""
+
+    __tablename__ = "staff_profiles"
+    __table_args__ = (UniqueConstraint("user_id", name="uq_staff_profiles_user"),)
+
+    school_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("schools.id"), nullable=False
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
+    )
+    first_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    last_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    date_of_birth: Mapped[date | None] = mapped_column(Date)
+    gender: Mapped[str | None] = mapped_column(String(10))
+    aadhaar_number: Mapped[str | None] = mapped_column(String(12))
+    address_line: Mapped[str | None] = mapped_column(String(300))
+    city: Mapped[str | None] = mapped_column(String(80))
+    qualification: Mapped[str | None] = mapped_column(Text)
+    department: Mapped[str | None] = mapped_column(String(100))
+    employee_id: Mapped[str | None] = mapped_column(String(50))
+    joining_date: Mapped[date | None] = mapped_column(Date)
+    previous_experience: Mapped[str | None] = mapped_column(Text)
+    aadhaar_document_file_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("uploaded_files.id"), nullable=True
+    )
+    experience_document_file_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("uploaded_files.id"), nullable=True
+    )
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+
+
+class SchoolExpense(BaseModel):
+    __tablename__ = "school_expenses"
+
+    school_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("schools.id"), nullable=False
+    )
+    vendor: Mapped[str] = mapped_column(String(200), nullable=False)
+    category: Mapped[str] = mapped_column(String(60), nullable=False)
+    amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    expense_date: Mapped[date] = mapped_column(Date, nullable=False)
+    receipt_file_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("uploaded_files.id"), nullable=True
+    )
     created_by: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
     )

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Eye } from "lucide-react";
 import { api, getApiErrorMessage } from "@/lib/api";
 
 type ClassInfo = {
@@ -34,6 +34,7 @@ export default function ClassDetailPage() {
   const router = useRouter();
   const [cls, setCls] = useState<ClassInfo | null>(null);
   const [roster, setRoster] = useState<RosterRow[]>([]);
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -73,6 +74,14 @@ export default function ClassDetailPage() {
   }
 
   const title = `${cls.grade} - ${cls.section}`;
+  const query = search.trim().toLowerCase();
+  const filteredRoster = query
+    ? roster.filter(
+        (s) =>
+          s.student_name?.toLowerCase().includes(query) ||
+          s.admission_no?.toLowerCase().includes(query),
+      )
+    : roster;
 
   return (
     <>
@@ -85,13 +94,36 @@ export default function ClassDetailPage() {
         <ArrowLeft size={16} /> Back to classes
       </button>
 
-      <div className="card bento-glass" style={{ marginBottom: 20, padding: "16px 24px" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{title}</h1>
-        <p style={{ margin: "6px 0 0", color: "var(--text-muted)", fontSize: 13 }}>
-          {roster.length} students · class attendance{" "}
-          {cls.attendance_pct != null ? `${cls.attendance_pct}%` : "—"}
-          {cls.avg_score != null ? ` · avg score ${cls.avg_score}%` : ""}
-        </p>
+      <div className="card bento-glass sn-section-gap" style={{ padding: "12px 18px" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: 16,
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <h1 className="sn-page-title">{title}</h1>
+            <p style={{ margin: "6px 0 0", color: "var(--text-muted)", fontSize: 13 }}>
+              {query
+                ? `${filteredRoster.length} of ${roster.length} students`
+                : `${roster.length} students`}
+              {" · class attendance "}
+              {cls.attendance_pct != null ? `${cls.attendance_pct}%` : "—"}
+              {cls.avg_score != null ? ` · avg score ${cls.avg_score}%` : ""}
+            </p>
+          </div>
+          <input
+            className="form-input"
+            placeholder="Search by name or admission no..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ width: 260 }}
+            aria-label="Search students by name or admission number"
+          />
+        </div>
       </div>
 
       <div className="data-table-card">
@@ -112,8 +144,14 @@ export default function ClassDetailPage() {
                   No students in this class.
                 </td>
               </tr>
+            ) : filteredRoster.length === 0 ? (
+              <tr>
+                <td colSpan={5} style={{ textAlign: "center", padding: 40, color: "var(--text-muted)" }}>
+                  No students match &ldquo;{search.trim()}&rdquo;.
+                </td>
+              </tr>
             ) : (
-              roster.map((s) => (
+              filteredRoster.map((s) => (
                 <tr
                   key={s.id}
                   onClick={() => router.push(`/dashboard/students/${s.id}`)}
@@ -127,7 +165,19 @@ export default function ClassDetailPage() {
                       {s.attendance_pct != null ? `${s.attendance_pct}%` : "—"}
                     </span>
                   </td>
-                  <td style={{ color: "var(--accent-dark)", fontWeight: 600, fontSize: 13 }}>View →</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="gw-table-icon-btn"
+                      aria-label={`View ${s.student_name || s.admission_no}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/dashboard/students/${s.id}`);
+                      }}
+                    >
+                      <Eye size={16} />
+                    </button>
+                  </td>
                 </tr>
               ))
             )}

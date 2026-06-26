@@ -93,6 +93,19 @@ class DashboardService:
         )
         fee_stats = await FeeService(self.db).get_fee_stats(school_id)
 
+        from app.db.models.school_ops import AdmissionCandidate, AdmissionStage
+        from app.modules.school_ops.services.ops_service import SchoolOpsService
+
+        pipeline_count = await self.db.scalar(
+            select(func.count())
+            .select_from(AdmissionCandidate)
+            .where(
+                AdmissionCandidate.school_id == school_id,
+                AdmissionCandidate.stage != AdmissionStage.ENROLLED,
+            )
+        )
+        expenses_month = await SchoolOpsService(self.db).expenses_month_total(school_id)
+
         today = date.today()
         att = await self.db.execute(
             select(
@@ -131,6 +144,8 @@ class DashboardService:
             total_classes=classes or 0,
             pending_fees=float(fee_stats.get("pending_amount") or 0),
             school_attendance_percent=att_pct,
+            admissions_pipeline=pipeline_count or 0,
+            expenses_this_month=expenses_month,
             class_performance=class_perf,
             quick_actions=[
                 QuickActionOut(label="Add Student", href="/dashboard/students"),

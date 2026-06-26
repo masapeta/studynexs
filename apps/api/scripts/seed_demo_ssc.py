@@ -93,9 +93,13 @@ async def main() -> None:
             ("teacher3", "Sunitha Rao", UserRole.CLASS_INCHARGE),    # Class 9-A incharge
             ("teacher4", "Venkat Reddy", UserRole.CLASS_INCHARGE),  # Class 9-B incharge
             ("teacher5", "Anjali Sharma", UserRole.CLASS_INCHARGE), # Class 8-A incharge
-            ("teacher6", "Kiran Naidu", UserRole.TEACHER),          # Maths subject teacher
-            ("teacher7", "Priya Goud", UserRole.TEACHER),           # Science subject teacher
-            ("teacher8", "Mahesh Varma", UserRole.TEACHER),         # English subject teacher
+            ("teacher6", "Kiran Naidu", UserRole.TEACHER),          # Class 5-A incharge + Maths
+            ("teacher7", "Priya Goud", UserRole.TEACHER),           # Class 6-A incharge + Science
+            ("teacher8", "Mahesh Varma", UserRole.TEACHER),         # Class 7-A incharge + English
+            ("teacher9", "Sravani Reddy", UserRole.CLASS_INCHARGE),  # Class 1-A incharge
+            ("teacher10", "Deepak Kumar", UserRole.CLASS_INCHARGE),  # Class 2-A incharge
+            ("teacher11", "Swathi Goud", UserRole.CLASS_INCHARGE),   # Class 3-A incharge
+            ("teacher12", "Naveen Sharma", UserRole.CLASS_INCHARGE), # Class 4-A incharge
         ]
         teachers: list[User] = []
         for i, (uname, name, role) in enumerate(teacher_specs):
@@ -120,13 +124,20 @@ async def main() -> None:
         db.add_all(classes)
         await db.flush()
 
-        # Class incharges (sub-admins for their class)
+        # Class incharges — one unique homeroom teacher per class
         incharge_by_grade = {
-            ("Class 10", "A"): teachers[0],
-            ("Class 10", "B"): teachers[1],
+            ("Class 1", "A"): teachers[8],
+            ("Class 2", "A"): teachers[9],
+            ("Class 3", "A"): teachers[10],
+            ("Class 4", "A"): teachers[11],
+            ("Class 5", "A"): teachers[5],
+            ("Class 6", "A"): teachers[6],
+            ("Class 7", "A"): teachers[7],
+            ("Class 8", "A"): teachers[4],
             ("Class 9", "A"): teachers[2],
             ("Class 9", "B"): teachers[3],
-            ("Class 8", "A"): teachers[4],
+            ("Class 10", "A"): teachers[0],
+            ("Class 10", "B"): teachers[1],
         }
         for c in classes:
             incharge = incharge_by_grade.get((c.grade, c.section))

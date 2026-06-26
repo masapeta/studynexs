@@ -25,6 +25,11 @@ export default function MasteryFlagsPage() {
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [credits, setCredits] = useState<{
+    user_credits_remaining?: number | null;
+    credits_remaining?: number;
+    purpose_costs?: { mastery_narrative?: number };
+  } | null>(null);
 
   function load(status = tab) {
     setLoading(true);
@@ -37,6 +42,7 @@ export default function MasteryFlagsPage() {
   useEffect(() => {
     load(tab);
     setError("");
+    api("/api/v1/ai/credits").then(setCredits).catch(() => {});
   }, [tab]);
 
   async function act(flag: any, action: "approve" | "dismiss" | "notify") {
@@ -44,9 +50,16 @@ export default function MasteryFlagsPage() {
     setError("");
     try {
       if (action === "approve") {
+        const cost = credits?.purpose_costs?.mastery_narrative ?? 1;
+        const remaining = credits?.user_credits_remaining ?? credits?.credits_remaining;
+        if (remaining !== undefined && remaining !== null && remaining < cost) {
+          setError("Not enough AI credits remaining this month. Contact your class incharge or principal.");
+          return;
+        }
         const res = await api(`/api/v1/mastery/flags/${flag.id}/approve`, { method: "POST" });
         // Show the drafted note immediately for editing.
         setDrafts((d) => ({ ...d, [flag.id]: res.data.narrative }));
+        api("/api/v1/ai/credits").then(setCredits).catch(() => {});
         setTab("approved");
       } else if (action === "dismiss") {
         const reason = window.prompt("Why dismiss? (optional — helps tune the alerts)") || undefined;

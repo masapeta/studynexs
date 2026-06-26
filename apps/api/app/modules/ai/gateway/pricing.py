@@ -13,6 +13,8 @@ PRICING: dict[str, tuple[float, float]] = {
     "claude-sonnet-4-6": (0.00300, 0.01500),
     "gpt-4o-mini": (0.00015, 0.00060),
     "gpt-4o": (0.00250, 0.01000),
+    "gemma4:cloud": (0.0, 0.0),  # Ollama cloud — meter tokens; cost tracked separately
+    "gemma4:31b-cloud": (0.0, 0.0),
 }
 
 

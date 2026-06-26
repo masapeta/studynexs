@@ -1,8 +1,11 @@
-export const STUDENT_NAV = [
-  { href: "/student", label: "Home" },
-  { href: "/student/tutor", label: "AI Tutor" },
-  { href: "/student/mastery", label: "Mastery" },
-  { href: "/student/notices", label: "Notices" },
+import { Bell, BookOpen, Home, Sparkles } from "lucide-react";
+import type { NavItem } from "@/components/PortalShell";
+
+export const STUDENT_NAV: NavItem[] = [
+  { href: "/student", label: "Home", icon: Home },
+  { href: "/student/tutor", label: "AI Tutor", icon: Sparkles },
+  { href: "/student/mastery", label: "Mastery", icon: BookOpen },
+  { href: "/student/notices", label: "Notices", icon: Bell },
 ];
 
 export type TutorStep = {

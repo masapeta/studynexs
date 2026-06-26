@@ -5,7 +5,23 @@ from pathlib import Path
 
 from app.db.models.file import FileCategory
 
-MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB default
+
+MAX_UPLOAD_BYTES_BY_CATEGORY: dict[FileCategory, int] = {
+    FileCategory.DOCUMENT: 1 * 1024 * 1024,
+    FileCategory.REPORT_CARD: 1 * 1024 * 1024,
+}
+
+
+def max_upload_bytes(category: FileCategory) -> int:
+    return MAX_UPLOAD_BYTES_BY_CATEGORY.get(category, MAX_UPLOAD_BYTES)
+
+
+def format_max_upload(category: FileCategory) -> str:
+    limit = max_upload_bytes(category)
+    if limit % (1024 * 1024) == 0:
+        return f"{limit // (1024 * 1024)}MB"
+    return f"{limit // 1024}KB"
 
 IMAGE_MIMES = frozenset({"image/jpeg", "image/png", "image/webp"})
 
@@ -52,8 +68,9 @@ def validate_file_upload(
     file_data: bytes,
 ) -> str:
     """Return normalized allowed MIME or raise FileUploadRejected."""
-    if len(file_data) > MAX_UPLOAD_BYTES:
-        raise FileUploadRejected("File too large (max 10MB)")
+    limit = max_upload_bytes(category)
+    if len(file_data) > limit:
+        raise FileUploadRejected(f"File too large (max {format_max_upload(category)})")
 
     ext = Path(original_name).suffix.lower()
     if ext in _BLOCKED_EXTENSIONS:
@@ -97,3 +114,18 @@ def read_file_bytes_bounded(
         raise ValueError(f"File exceeds maximum size ({max_bytes} bytes)")
 
     return data
+
+
+async def read_upload_bounded(upload, max_bytes: int) -> bytes:
+    """Read an upload stream without buffering more than max_bytes (+1) into memory."""
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await upload.read(64 * 1024)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > max_bytes:
+            raise FileUploadRejected(f"File too large (max {max_bytes} bytes)")
+        chunks.append(chunk)
+    return b"".join(chunks)

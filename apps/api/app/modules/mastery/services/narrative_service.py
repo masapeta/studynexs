@@ -11,7 +11,8 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.mastery import MasteryFlag
-from app.modules.ai.gateway import LLMMessage, default_model, get_provider, record_usage
+from app.modules.ai.gateway import LLMMessage, generate_llm, record_usage
+from app.modules.ai.services.ai_credits import credits_for_purpose, reserve_ai_credits
 
 logger = structlog.get_logger()
 
@@ -54,20 +55,30 @@ async def draft_narrative(
     credits_charged: int | None = None,
 ) -> tuple[str, str]:
     """Draft the parent-facing note for an approved flag. Returns (text, model)."""
-    provider = get_provider()
-    model = default_model()
-    result = await provider.generate(
-        _build_messages(flag), model=model, max_tokens=300, temperature=0.4
+    cost = credits_charged if credits_charged is not None else credits_for_purpose("mastery_narrative")
+    reserved = None
+    if cost > 0:
+        reserved = await reserve_ai_credits(
+            db,
+            flag.school_id,
+            user_id=created_by,
+            role=role,
+            purpose_tag="mastery_narrative",
+            feature="mastery_flag",
+            credits=cost,
+            ref_type="mastery_flag",
+        )
+
+    result = await generate_llm(
+        _build_messages(flag), max_tokens=300, temperature=0.4,
+        feature="mastery_flag", caller="draft_narrative",
     )
+    model = result.model
     await record_usage(
         db,
         feature="mastery_flag",
         result=result,
-        school_id=flag.school_id,
-        created_by=created_by,
-        role=role,
-        purpose_tag="mastery_narrative",
-        credits_charged=credits_charged,
+        reserved_row=reserved,
         ref_type="mastery_flag",
         ref_id=flag.id,
     )

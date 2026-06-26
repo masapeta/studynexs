@@ -12,6 +12,7 @@ from datetime import time
 from sqlalchemy import delete, select
 
 from app.core.database import async_session_factory
+from app.core.security import hash_password
 from app.db.models.academic import Class, Subject, TeacherSubjectMapping
 from app.db.models.timetable import DayOfWeek, TimetableSlot
 from app.db.models.school import School
@@ -26,14 +27,26 @@ TEACHER_SPECS = [
     ("teacher6", "Kiran Naidu", UserRole.TEACHER),
     ("teacher7", "Priya Goud", UserRole.TEACHER),
     ("teacher8", "Mahesh Varma", UserRole.TEACHER),
+    ("teacher9", "Sravani Reddy", UserRole.CLASS_INCHARGE),
+    ("teacher10", "Deepak Kumar", UserRole.CLASS_INCHARGE),
+    ("teacher11", "Swathi Goud", UserRole.CLASS_INCHARGE),
+    ("teacher12", "Naveen Sharma", UserRole.CLASS_INCHARGE),
 ]
 
+# One unique homeroom teacher per class.
 INCHARGE_BY_GRADE = {
-    ("Class 10", "A"): "teacher1",
-    ("Class 10", "B"): "teacher2",
+    ("Class 1", "A"): "teacher9",
+    ("Class 2", "A"): "teacher10",
+    ("Class 3", "A"): "teacher11",
+    ("Class 4", "A"): "teacher12",
+    ("Class 5", "A"): "teacher6",
+    ("Class 6", "A"): "teacher7",
+    ("Class 7", "A"): "teacher8",
+    ("Class 8", "A"): "teacher5",
     ("Class 9", "A"): "teacher3",
     ("Class 9", "B"): "teacher4",
-    ("Class 8", "A"): "teacher5",
+    ("Class 10", "A"): "teacher1",
+    ("Class 10", "B"): "teacher2",
 }
 
 
@@ -47,17 +60,28 @@ async def main() -> None:
             return
 
         teachers: dict[str, User] = {}
-        for uname, full_name, role in TEACHER_SPECS:
+        for i, (uname, full_name, role) in enumerate(TEACHER_SPECS):
             user = (
                 await db.execute(
                     select(User).where(User.school_id == school.id, User.username == uname)
                 )
             ).scalar_one_or_none()
             if not user:
-                print(f"  Skip: {uname} not found")
-                continue
-            user.full_name = full_name
-            user.role = role
+                user = User(
+                    school_id=school.id,
+                    username=uname,
+                    mobile=f"+919810000{i + 10}",
+                    full_name=full_name,
+                    role=role,
+                    password_hash=hash_password("Demo@1234"),
+                    is_active=True,
+                )
+                db.add(user)
+                await db.flush()
+                print(f"  Created {uname} ({full_name})")
+            else:
+                user.full_name = full_name
+                user.role = role
             teachers[uname] = user
 
         classes = list(
@@ -72,6 +96,10 @@ async def main() -> None:
             cls = next((x for x in classes if x.grade == grade and x.section == section), None)
             if cls:
                 cls.class_incharge_id = t.id
+
+        assigned = [c.class_incharge_id for c in classes if c.class_incharge_id]
+        if len(assigned) != len(set(assigned)):
+            raise RuntimeError("Duplicate homeroom teacher assignment detected — fix INCHARGE_BY_GRADE")
 
         await db.execute(
             delete(TeacherSubjectMapping).where(TeacherSubjectMapping.school_id == school.id)
@@ -151,7 +179,7 @@ async def main() -> None:
 
         await db.commit()
         print("Patched demo RBAC for tenant 'test'.")
-        print("  teacher1 = Class 10-A incharge | teacher6 = Maths subject teacher")
+        print("  Each class has a unique homeroom teacher (teacher1–teacher12).")
 
 
 if __name__ == "__main__":

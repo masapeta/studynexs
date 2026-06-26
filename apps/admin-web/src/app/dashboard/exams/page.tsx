@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Plus } from "lucide-react";
 import { api, getApiErrorMessage } from "@/lib/api";
+import { formatClassLabel, sortClasses } from "@/lib/format";
+import { AppSelect } from "@/components/ui/AppSelect";
 import MarksGrid from "./MarksGrid";
 import QuestionSchemaEditor from "./QuestionSchemaEditor";
 
@@ -40,7 +44,8 @@ export default function ExamsPage() {
   useEffect(() => {
     api("/api/v1/academic/classes?page_size=100")
       .then((r) => {
-        const items = r.items || r.data || [];
+        const raw: any[] = r.items || r.data || [];
+        const items = sortClasses(raw);
         setClasses(items);
         if (items[0]) setClassId(items[0].id);
       })
@@ -175,22 +180,46 @@ export default function ExamsPage() {
 
   return (
     <>
-      <div className="card bento-glass" style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 24px" }}>
-        <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Exams &amp; Marks</h1>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <a href="/dashboard/exams/corrections" className="btn btn-ghost" style={btn}>Past corrections</a>
-          <select className="form-input" value={classId} onChange={(e) => setClassId(e.target.value)} style={sel}>
-            {classes.map((c) => (
-              <option key={c.id} value={c.id}>{c.grade} - {c.section}</option>
-            ))}
-          </select>
+      <div className="card bento-glass gw-toolbar">
+        <h1 className="gw-toolbar-title">Exams &amp; Marks</h1>
+        <div className="gw-toolbar-actions">
+          <Link href="/dashboard/exams/corrections" className="gw-toolbar-link">
+            Past corrections
+          </Link>
+          <AppSelect
+            variant="pill"
+            value={classId}
+            onChange={setClassId}
+            aria-label="Select class and section"
+            options={classes.map((c) => ({
+              value: c.id,
+              label: formatClassLabel(c.grade, c.section),
+            }))}
+          />
           {!activeExam && (
-            <button className="btn btn-primary" style={btn} onClick={() => setShowCreate((v) => !v)}>
-              {showCreate ? "Cancel" : "+ New Exam"}
+            <button
+              type="button"
+              className="btn btn-primary gw-btn-sm gw-toolbar-btn"
+              onClick={() => setShowCreate((v) => !v)}
+            >
+              {showCreate ? (
+                "Cancel"
+              ) : (
+                <>
+                  <Plus size={16} aria-hidden />
+                  New exam
+                </>
+              )}
             </button>
           )}
           {activeExam && (
-            <button className="btn btn-ghost" style={btn} onClick={() => setActiveExam(null)}>← Back to exams</button>
+            <button
+              type="button"
+              className="btn btn-ghost gw-btn-sm gw-toolbar-btn"
+              onClick={() => setActiveExam(null)}
+            >
+              ← Back to exams
+            </button>
           )}
         </div>
       </div>
@@ -205,15 +234,23 @@ export default function ExamsPage() {
           </div>
           <div>
             <label className="stat-label">Subject</label>
-            <select className="form-input" style={sel} value={form.subject_id} onChange={(e) => setForm({ ...form, subject_id: e.target.value })}>
-              {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
+            <AppSelect
+              variant="field"
+              value={form.subject_id}
+              onChange={(v) => setForm({ ...form, subject_id: v })}
+              aria-label="Subject"
+              options={subjects.map((s) => ({ value: s.id, label: s.name }))}
+            />
           </div>
           <div>
             <label className="stat-label">Type</label>
-            <select className="form-input" style={sel} value={form.exam_type} onChange={(e) => setForm({ ...form, exam_type: e.target.value })}>
-              {EXAM_TYPES.map((t) => <option key={t} value={t}>{pretty(t)}</option>)}
-            </select>
+            <AppSelect
+              variant="field"
+              value={form.exam_type}
+              onChange={(v) => setForm({ ...form, exam_type: v })}
+              aria-label="Exam type"
+              options={EXAM_TYPES.map((t) => ({ value: t, label: pretty(t) }))}
+            />
           </div>
           <div>
             <label className="stat-label">Max marks</label>

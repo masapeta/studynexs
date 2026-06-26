@@ -16,6 +16,8 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, require_roles
 from app.core.rate_limit import rate_limit
+from app.modules.ai.telemetry import ai_metrics, bind_ai_context
+from app.modules.ai.gateway.errors import raise_http_for_llm_error
 from app.core.staff_permissions import (
     StaffScope,
     assert_qp_approve,
@@ -71,6 +73,7 @@ from app.modules.ai.services.ai_credits import (
 )
 from app.modules.ai.services.usage_caps import enforce_monthly_ai_cap
 from app.modules.ai.services.usage_log import list_question_paper_usage_log
+from app.modules.ai.services.telemetry_summary import db_telemetry_summary, school_month_telemetry
 from app.shared.schemas.common import APIResponse
 
 settings = get_settings()
@@ -88,11 +91,37 @@ async def ai_health(
         "status": "ok",
         "module": "ai",
         "default_provider": settings.AI_DEFAULT_PROVIDER,
+        "fallback_provider": (settings.AI_FALLBACK_PROVIDER or "").strip() or None,
         "providers_configured": {
             "gemini": bool(settings.GEMINI_API_KEY),
             "anthropic": bool(settings.ANTHROPIC_API_KEY),
             "openai": bool(settings.OPENAI_API_KEY),
+            "ollama": bool((settings.OLLAMA_BASE_URL or "").strip()),
         },
+    }
+
+
+@router.get("/telemetry")
+async def ai_telemetry(
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
+    db: AsyncSession = Depends(get_db),
+    scope: str = "month",
+) -> dict:
+    """AI telemetry snapshot — in-process metrics + persisted usage rollups."""
+    school_id = uuid.UUID(current_user.school_id)
+    bind_ai_context(
+        school_id=current_user.school_id,
+        user_id=current_user.id,
+        feature="telemetry",
+    )
+    if scope == "all":
+        db_summary = await db_telemetry_summary(db, school_id=school_id)
+    else:
+        db_summary = await school_month_telemetry(db, school_id)
+    return {
+        "status": "ok",
+        "runtime": ai_metrics.snapshot(),
+        "database": db_summary,
     }
 
 
@@ -394,6 +423,11 @@ async def generate_question_paper(
     db: AsyncSession = Depends(get_db),
 ) -> QuestionPaperOut:
     """Generate a DRAFT paper from topics. Teacher must review + approve before use."""
+    bind_ai_context(
+        school_id=current_user.school_id,
+        user_id=current_user.id,
+        feature="question_paper",
+    )
     scope = await get_staff_scope(db, current_user)
     assert_qp_generate(scope, body.class_id, body.subject_id)
     credits = await _enforce_monthly_cap(
@@ -420,25 +454,15 @@ async def generate_question_paper(
             purpose_tag="qp_full",
             credits_charged=credits,
         )
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
-    except ModuleNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail='AI provider SDK not installed. Run: pip install -e ".[ai]"',
-        )
-    except RuntimeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
-        )
     except Exception as exc:
-        if type(exc).__name__ in ("APITimeoutError", "TimeoutError", "ReadTimeout"):
-            raise HTTPException(
-                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-                detail="AI generation timed out. Please try again — large papers can take up to 2 minutes.",
-            )
-        raise
+        raise_http_for_llm_error(
+            exc,
+            log_event="question_paper_generate_failed",
+            timeout_detail=(
+                "AI generation timed out. Please try again — large papers can take up to 2 minutes."
+            ),
+            generic_detail="AI paper generation failed. Please try again later.",
+        )
     return _to_out(paper, scope, credits_used=credits)
 
 
@@ -496,25 +520,13 @@ async def generate_question_paper_from_bank(
             purpose_tag="qp_from_bank",
             credits_charged=credits,
         )
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
-    except ModuleNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail='AI provider SDK not installed. Run: pip install -e ".[ai]"',
-        )
-    except RuntimeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
-        )
     except Exception as exc:
-        if type(exc).__name__ in ("APITimeoutError", "TimeoutError", "ReadTimeout"):
-            raise HTTPException(
-                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-                detail="AI generation timed out. Please try again.",
-            )
-        raise
+        raise_http_for_llm_error(
+            exc,
+            log_event="question_paper_from_bank_failed",
+            timeout_detail="AI generation timed out. Please try again.",
+            generic_detail="AI paper generation failed. Please try again later.",
+        )
     return _to_out(paper, scope, credits_used=credits)
 
 
@@ -770,6 +782,11 @@ async def generate_report_card(
     db: AsyncSession = Depends(get_db),
 ) -> ReportCardOut:
     """Consolidate a student's marks + attendance and draft a remark (DRAFT; approve after)."""
+    bind_ai_context(
+        school_id=current_user.school_id,
+        user_id=current_user.id,
+        feature="report_card",
+    )
     school_id = uuid.UUID(current_user.school_id)
     student = await get_student_in_school(db, school_id, body.student_id)
     if not student:
@@ -794,8 +811,13 @@ async def generate_report_card(
             role=current_user.role,
             credits_charged=credits,
         )
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    except Exception as exc:
+        raise_http_for_llm_error(
+            exc,
+            log_event="report_card_generate_failed",
+            timeout_detail="AI generation timed out. Please try again.",
+            generic_detail="AI remark generation failed. Check your provider API key or try again.",
+        )
     return _to_report_out(report)
 
 

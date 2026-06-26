@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, getApiErrorMessage } from "@/lib/api";
-import { applyThemeColor, DEFAULT_ACCENT } from "@/lib/theme";
+import { applyThemeColor, DEFAULT_ACCENT, getStoredThemeColor, normalizeThemeColor, themeColorForUi } from "@/lib/theme";
 import { TOGGLEABLE_MODULES, isModuleOn } from "@/lib/modules";
 
 export default function SettingsPage() {
@@ -18,11 +18,21 @@ export default function SettingsPage() {
   useEffect(() => {
     api("/api/v1/school/profile")
       .then((r) => {
-        setProfile({ ...(r.data || {}), address: r.data?.address || {} });
+        const theme = themeColorForUi(r.data?.theme_color);
+        setProfile({ ...(r.data || {}), address: r.data?.address || {}, theme_color: theme });
         setModules(r.data?.enabled_modules || {});
+        if (normalizeThemeColor(r.data?.theme_color)) {
+          applyThemeColor(r.data.theme_color, { persist: true });
+        } else {
+          applyThemeColor(theme, { persist: false });
+        }
       })
       .catch((e) => setError(getApiErrorMessage(e, "Failed to load school profile")));
     loadYears();
+    return () => {
+      const saved = getStoredThemeColor();
+      applyThemeColor(saved ?? DEFAULT_ACCENT, { persist: false });
+    };
   }, []);
 
   function loadYears() {
@@ -47,8 +57,8 @@ export default function SettingsPage() {
           theme_color: profile.theme_color || DEFAULT_ACCENT,
         }),
       });
-      setProfile({ ...(r.data || profile), address: r.data?.address || {} });
-      applyThemeColor(r.data?.theme_color || profile.theme_color);
+      setProfile({ ...(r.data || profile), address: r.data?.address || profile.address || {}, theme_color: themeColorForUi(r.data?.theme_color) });
+      applyThemeColor(r.data?.theme_color ?? profile.theme_color, { persist: true });
       setMsg("School profile saved.");
     } catch (e) {
       setError(getApiErrorMessage(e, "Failed to save profile"));
@@ -125,7 +135,7 @@ export default function SettingsPage() {
             <input
               type="color"
               value={profile.theme_color || DEFAULT_ACCENT}
-              onChange={(e) => { setProfile({ ...profile, theme_color: e.target.value }); applyThemeColor(e.target.value); }}
+              onChange={(e) => { setProfile({ ...profile, theme_color: e.target.value }); applyThemeColor(e.target.value, { persist: false }); }}
               style={{ width: 46, height: 38, border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", cursor: "pointer", background: "none", padding: 2 }}
             />
             <span style={{ fontSize: 13, color: "var(--text-secondary)", fontFamily: "monospace" }}>
@@ -137,7 +147,7 @@ export default function SettingsPage() {
                   key={c}
                   type="button"
                   title={c}
-                  onClick={() => { setProfile({ ...profile, theme_color: c }); applyThemeColor(c); }}
+                  onClick={() => { setProfile({ ...profile, theme_color: c }); applyThemeColor(c, { persist: false }); }}
                   style={{ width: 26, height: 26, borderRadius: "50%", background: c, border: "2px solid #fff", boxShadow: "0 0 0 1px var(--border)", cursor: "pointer", padding: 0 }}
                 />
               ))}

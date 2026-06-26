@@ -2,18 +2,24 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, get_current_user, require_roles
+from app.db.models.school_ops import AdmissionStage
 from app.modules.school_ops.schemas.ops import (
+    AdmissionCandidateCreate,
+    AdmissionDocumentExtractRequest,
+    AdmissionStageUpdate,
     EventCreate,
     EventOut,
     LibraryBookCreate,
     LibraryBookOut,
     ResidentialAllocateRequest,
     ResidentialBlockCreate,
+    SchoolExpenseCreate,
+    StaffOnboardCreate,
     TransportAssignRequest,
     TransportRouteCreate,
 )
@@ -25,7 +31,7 @@ router = APIRouter()
 
 # ── Library ──────────────────────────────────────────────────────────────────
 
-@router.get("/library/books", response_model=APIResponse[list[LibraryBookOut]])
+@router.get("/library/books", response_model=APIResponse)
 async def list_books(
     search: str | None = None,
     current_user: CurrentUser = Depends(get_current_user),
@@ -33,7 +39,7 @@ async def list_books(
 ):
     service = SchoolOpsService(db)
     books = await service.list_books(uuid.UUID(current_user.school_id), search)
-    return APIResponse(data=[LibraryBookOut.model_validate(b) for b in books])
+    return APIResponse(data=books)
 
 
 @router.post("/library/books", response_model=APIResponse[LibraryBookOut], status_code=201)
@@ -205,3 +211,201 @@ async def allocate_resident(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return APIResponse(message="Student allocated to block")
+
+
+# ── Admissions ────────────────────────────────────────────────────────────────
+
+@router.get("/admissions", response_model=APIResponse)
+async def list_admissions(
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    service = SchoolOpsService(db)
+    rows = await service.list_admissions(uuid.UUID(current_user.school_id))
+    return APIResponse(
+        data={
+            "candidates": rows,
+            "pipeline": service.admission_pipeline_counts(rows),
+        }
+    )
+
+
+@router.post("/admissions", response_model=APIResponse, status_code=201)
+async def create_admission(
+    body: AdmissionCandidateCreate,
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    service = SchoolOpsService(db)
+    row = await service.create_admission(
+        uuid.UUID(current_user.school_id), body, uuid.UUID(current_user.id)
+    )
+    return APIResponse(
+        data={"id": str(row.id), "stage": row.stage.value},
+        message="Admission enquiry recorded",
+    )
+
+
+@router.post("/admissions/{candidate_id}/advance", response_model=APIResponse)
+async def advance_admission(
+    candidate_id: uuid.UUID,
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    service = SchoolOpsService(db)
+    try:
+        row = await service.advance_admission(uuid.UUID(current_user.school_id), candidate_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return APIResponse(data={"id": str(row.id), "stage": row.stage.value})
+
+
+@router.post("/admissions/{candidate_id}/revert", response_model=APIResponse)
+async def revert_admission(
+    candidate_id: uuid.UUID,
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    service = SchoolOpsService(db)
+    try:
+        row = await service.revert_admission(uuid.UUID(current_user.school_id), candidate_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return APIResponse(data={"id": str(row.id), "stage": row.stage.value})
+
+
+@router.post("/admissions/extract-document-number", response_model=APIResponse)
+async def extract_admission_document_number(
+    body: AdmissionDocumentExtractRequest,
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    service = SchoolOpsService(db)
+    try:
+        number = await service.extract_admission_document_number(
+            uuid.UUID(current_user.school_id),
+            body.file_id,
+            body.document_type,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return APIResponse(data={"number": number})
+
+
+@router.patch("/admissions/{candidate_id}/stage", response_model=APIResponse)
+async def update_admission_stage(
+    candidate_id: uuid.UUID,
+    body: AdmissionStageUpdate,
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    service = SchoolOpsService(db)
+    try:
+        row = await service.update_admission_stage(
+            uuid.UUID(current_user.school_id),
+            candidate_id,
+            AdmissionStage(body.stage),
+            body.details,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return APIResponse(data=service.admission_to_dict(row, mask_stage_pii=False))
+
+
+# ── Payroll ───────────────────────────────────────────────────────────────────
+
+@router.get("/payroll", response_model=APIResponse)
+async def list_payroll(
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    service = SchoolOpsService(db)
+    rows = await service.list_payroll(uuid.UUID(current_user.school_id))
+    total = sum(r["gross_amount"] for r in rows)
+    paid = sum(r["gross_amount"] for r in rows if r["status"] == "paid")
+    return APIResponse(data={"entries": rows, "total_gross": total, "paid_gross": paid})
+
+
+@router.post("/payroll/{entry_id}/mark-paid", response_model=APIResponse)
+async def mark_payroll_paid(
+    entry_id: uuid.UUID,
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    service = SchoolOpsService(db)
+    try:
+        await service.mark_payroll_paid(uuid.UUID(current_user.school_id), entry_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return APIResponse(message="Marked paid")
+
+
+# ── Expenses ──────────────────────────────────────────────────────────────────
+
+@router.get("/expenses", response_model=APIResponse)
+async def list_expenses(
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin", "operations")),
+    db: AsyncSession = Depends(get_db),
+):
+    service = SchoolOpsService(db)
+    rows = await service.list_expenses(uuid.UUID(current_user.school_id))
+    month_total = await service.expenses_month_total(uuid.UUID(current_user.school_id))
+    return APIResponse(data={"expenses": rows, "month_total": month_total})
+
+
+@router.post("/expenses", response_model=APIResponse, status_code=201)
+async def create_expense(
+    body: SchoolExpenseCreate,
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin", "operations")),
+    db: AsyncSession = Depends(get_db),
+):
+    service = SchoolOpsService(db)
+    row = await service.add_expense(
+        uuid.UUID(current_user.school_id), body, uuid.UUID(current_user.id)
+    )
+    return APIResponse(data={"id": str(row.id)}, message="Expense recorded")
+
+
+# ── Staff directory ───────────────────────────────────────────────────────────
+
+@router.post("/staff/onboard", response_model=APIResponse, status_code=201)
+async def onboard_staff(
+    body: StaffOnboardCreate,
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.modules.users.services.user_service import can_assign_role
+
+    if not can_assign_role(current_user.role, body.role):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You cannot assign this role.",
+        )
+    service = SchoolOpsService(db)
+    try:
+        row = await service.onboard_staff(
+            uuid.UUID(current_user.school_id), body, uuid.UUID(current_user.id)
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return APIResponse(data=row, message="Staff member onboarded")
+
+
+@router.get("/staff-directory", response_model=APIResponse)
+async def staff_directory(
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin", "class_incharge")),
+    db: AsyncSession = Depends(get_db),
+):
+    service = SchoolOpsService(db)
+    rows = await service.list_staff_directory(uuid.UUID(current_user.school_id))
+    return APIResponse(data={"staff": rows, "count": len(rows)})
+
+
+@router.get("/parents-directory", response_model=APIResponse)
+async def parents_directory(
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin", "class_incharge")),
+    db: AsyncSession = Depends(get_db),
+):
+    service = SchoolOpsService(db)
+    rows = await service.list_parents_directory(uuid.UUID(current_user.school_id))
+    return APIResponse(data={"parents": rows, "count": len(rows)})

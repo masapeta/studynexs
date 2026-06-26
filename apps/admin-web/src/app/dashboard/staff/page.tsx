@@ -1,128 +1,220 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { UserPlus } from "lucide-react";
 import { api, getApiErrorMessage } from "@/lib/api";
+import { PageShell } from "@/components/layout/PageShell";
+import {
+  StaffDirectoryCard,
+  type StaffDirectoryMember,
+} from "@/components/staff/StaffDirectoryCard";
+import {
+  StaffOnboardModal,
+  type StaffOnboardFormData,
+} from "@/components/staff/StaffOnboardModal";
+import { StaffProfileModal } from "@/components/staff/StaffProfileModal";
 
-const sel: React.CSSProperties = { width: "100%", padding: "8px 12px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)", background: "white", marginTop: 4 };
-const btnSm: React.CSSProperties = { width: "auto", padding: "8px 18px", borderRadius: "var(--radius-full)", fontSize: 13 };
+type StaffMember = StaffDirectoryMember & {
+  staff_category?: string;
+};
+
+const FILTERS = [
+  { key: "all", label: "All staff" },
+  { key: "homeroom", label: "Homeroom" },
+  { key: "subject_teacher", label: "Subject teachers" },
+  { key: "admin", label: "Admin" },
+] as const;
+
+function buildOnboardPayload(form: StaffOnboardFormData) {
+  const aadhaar = form.aadhaar_number.replace(/\D/g, "");
+  return {
+    first_name: form.first_name.trim(),
+    last_name: form.last_name.trim(),
+    date_of_birth: form.date_of_birth || null,
+    gender: form.gender || null,
+    mobile: form.mobile.trim(),
+    email: form.email.trim() || null,
+    address_line: form.address_line.trim() || null,
+    city: form.city.trim() || null,
+    role: form.role,
+    employee_id: form.employee_id.trim() || null,
+    department: form.department.trim() || null,
+    qualification: form.qualification.trim() || null,
+    joining_date: form.joining_date || null,
+    previous_experience: form.previous_experience.trim() || null,
+    aadhaar_number: aadhaar.length === 12 ? aadhaar : null,
+    aadhaar_document_file_id: form.aadhaar_document_file_id || null,
+    experience_document_file_id: form.experience_document_file_id || null,
+  };
+}
 
 export default function StaffPage() {
-  const [users, setUsers] = useState<any[]>([]);
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [filter, setFilter] = useState<(typeof FILTERS)[number]["key"]>("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ full_name: "", mobile: "", email: "", role: "teacher" });
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalError, setModalError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [profileMember, setProfileMember] = useState<StaffMember | null>(null);
 
-  useEffect(() => { fetchStaff(); /* eslint-disable-next-line */ }, []);
-
-  async function fetchStaff() {
+  const load = useCallback(async () => {
     setLoading(true);
+    setError("");
     try {
-      const res = await api(`/api/v1/users?role=teacher&search=${search}&page_size=20`);
-      setUsers(res.items || res.data || []);
-    } catch (err) {
-      console.error(err);
+      const res = await api<{ data: { staff: StaffMember[]; count: number } }>(
+        "/api/v1/ops/staff-directory"
+      );
+      setStaff(res.data?.staff || []);
+    } catch (e) {
+      setError(getApiErrorMessage(e, "Failed to load staff"));
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
-  async function addStaff() {
-    if (!form.full_name.trim() || !form.mobile.trim()) {
-      setError("Name and mobile are required.");
-      return;
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const filtered = useMemo(() => {
+    let list = staff;
+    if (filter !== "all") {
+      list = list.filter((s) => s.staff_category === filter);
     }
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter((s) => {
+      const hay = [
+        s.name,
+        s.role,
+        s.department,
+        s.email,
+        s.mobile,
+        s.subject,
+        s.role_label,
+        s.classes,
+        s.subtitle,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [staff, filter, searchQuery]);
+
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { all: staff.length };
+    staff.forEach((s) => {
+      const cat = s.staff_category || "admin";
+      c[cat] = (c[cat] || 0) + 1;
+    });
+    return c;
+  }, [staff]);
+
+  async function onboardStaff(form: StaffOnboardFormData) {
     setSaving(true);
-    setError("");
+    setModalError("");
     try {
-      await api("/api/v1/users", {
+      await api("/api/v1/ops/staff/onboard", {
         method: "POST",
-        body: JSON.stringify({ full_name: form.full_name, mobile: form.mobile, email: form.email || null, role: form.role }),
+        body: JSON.stringify(buildOnboardPayload(form)),
       });
-      setForm({ full_name: "", mobile: "", email: "", role: "teacher" });
-      setShowAdd(false);
-      fetchStaff();
+      setModalOpen(false);
+      await load();
     } catch (e) {
-      setError(getApiErrorMessage(e, "Failed to add staff"));
+      setModalError(getApiErrorMessage(e, "Failed to onboard staff member"));
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700 }}>Staff Management</h1>
-        <div style={{ display: "flex", gap: 12 }}>
+    <PageShell
+      title="Staff & HR"
+      subtitle="Staff directory, assignments, and roles"
+      action={
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <input
             className="form-input"
             placeholder="Search staff..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && fetchStaff()}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             style={{ width: 260 }}
+            aria-label="Search staff"
           />
-          <button className="btn btn-primary" style={{ width: "auto", padding: "10px 20px" }} onClick={() => setShowAdd((v) => !v)}>
-            {showAdd ? "Cancel" : "+ Add Staff"}
+          <button
+            type="button"
+            className="gw-table-icon-btn"
+            aria-label="Onboard staff"
+            title="Onboard staff"
+            onClick={() => {
+              setModalOpen(true);
+              setModalError("");
+            }}
+          >
+            <UserPlus size={20} />
           </button>
         </div>
+      }
+    >
+      {error && <div className="gw-alert gw-alert-error">{error}</div>}
+
+      <div className="gw-pipeline" role="tablist" aria-label="Filter by staff category">
+        {FILTERS.map((f) => {
+          const active = filter === f.key;
+          const count = f.key === "all" ? counts.all || 0 : counts[f.key] || 0;
+          return (
+            <button
+              key={f.key}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              className={`gw-pipeline-stage${active ? " gw-pipeline-stage-active" : ""}`}
+              onClick={() => setFilter(f.key)}
+            >
+              <span className="gw-pipeline-count">{count}</span>
+              <span className="gw-pipeline-label">{f.label}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {error && <div className="card" style={{ marginBottom: 16, padding: 12, color: "var(--danger)" }}>{error}</div>}
-
-      {showAdd && (
-        <div className="card" style={{ marginBottom: 20, padding: 24, display: "grid", gridTemplateColumns: "1.5fr 1fr 1.5fr 1fr auto", gap: 12, alignItems: "end" }}>
-          <div><label className="stat-label">Full name</label><input className="form-input" style={sel} value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
-          <div><label className="stat-label">Mobile</label><input className="form-input" style={sel} value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} /></div>
-          <div><label className="stat-label">Email</label><input className="form-input" style={sel} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
-          <div>
-            <label className="stat-label">Role</label>
-            <select className="form-input" style={sel} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-              <option value="teacher">Teacher</option>
-              <option value="class_incharge">Class Incharge</option>
-              <option value="operations">Operations</option>
-            </select>
-          </div>
-          <button className="btn btn-primary" style={btnSm} onClick={addStaff} disabled={saving}>{saving ? "Adding…" : "Add"}</button>
+      {loading ? (
+        <div className="gw-center" style={{ padding: 60 }}>
+          <div className="spinner" />
+        </div>
+      ) : filtered.length === 0 ? (
+        <p className="gw-muted">
+          {searchQuery.trim()
+            ? `No staff match "${searchQuery.trim()}".`
+            : "No staff in this category."}
+        </p>
+      ) : (
+        <div className="gw-staff-grid">
+          {filtered.map((s) => (
+            <StaffDirectoryCard
+              key={s.id}
+              member={s}
+              onProfileClick={setProfileMember}
+            />
+          ))}
         </div>
       )}
 
-      <div className="data-table-card">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Role</th>
-              <th>Email</th>
-              <th>Mobile</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={5} style={{ textAlign: "center", padding: 40 }}>
-                <div className="spinner" style={{ margin: "0 auto" }} />
-              </td></tr>
-            ) : users.length === 0 ? (
-              <tr><td colSpan={5} style={{ textAlign: "center", padding: 40, color: "var(--text-muted)" }}>
-                No staff found
-              </td></tr>
-            ) : (
-              users.map((u: any) => (
-                <tr key={u.id}>
-                  <td style={{ fontWeight: 600 }}>{u.full_name}</td>
-                  <td style={{ textTransform: "capitalize" }}>{u.role?.replace("_", " ")}</td>
-                  <td>{u.email || "—"}</td>
-                  <td>{u.mobile || "—"}</td>
-                  <td><span className={`status-dot ${u.is_active ? "green" : "red"}`} />{u.is_active ? "Active" : "Inactive"}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </>
+      <StaffOnboardModal
+        open={modalOpen}
+        saving={saving}
+        error={modalError}
+        onClose={() => !saving && setModalOpen(false)}
+        onSubmit={onboardStaff}
+      />
+
+      <StaffProfileModal
+        member={profileMember}
+        onClose={() => setProfileMember(null)}
+      />
+    </PageShell>
   );
 }

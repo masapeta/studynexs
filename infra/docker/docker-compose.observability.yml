@@ -1,0 +1,81 @@
+# Observability overlay — run with the dev stack:
+#
+#   docker compose -f infra/docker/docker-compose.dev.yml \
+#                  -f infra/docker/docker-compose.observability.yml up -d
+#
+# Grafana:    http://localhost:3001  (admin / studynexs_dev)
+# Prometheus: http://localhost:9090
+# Tempo:      http://localhost:3200
+
+services:
+  api:
+    environment:
+      OTEL_ENABLED: "true"
+      OTEL_SERVICE_NAME: studynexs-api
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_TRACES_SAMPLE_RATE: "1.0"
+    depends_on:
+      otel-collector:
+        condition: service_started
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.96.0
+    container_name: studynexs-otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ../observability/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "8889:8889"
+
+  tempo:
+    image: grafana/tempo:2.3.1
+    container_name: studynexs-tempo
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ../observability/tempo.yaml:/etc/tempo.yaml:ro
+      - tempodata:/var/tempo
+    ports:
+      - "3200:3200"
+
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: studynexs-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    volumes:
+      - ../observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../observability/prometheus-alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheusdata:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - api
+      - otel-collector
+
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: studynexs-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: studynexs_dev
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - ../observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafanadata:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+      - tempo
+
+volumes:
+  prometheusdata:
+  tempodata:
+  grafanadata:

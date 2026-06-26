@@ -1,5 +1,6 @@
 """Tests — object-level authorization and tenant-scoped resources."""
 
+import uuid
 from datetime import date, datetime, timezone
 
 import pytest
@@ -14,7 +15,7 @@ from app.db.models.file import FileCategory, UploadedFile
 from app.db.models.school import School
 from app.db.models.student import Student
 from app.db.models.user import User, UserRole
-from tests.conftest import auth_headers, get_auth_token
+from tests.conftest import auth_headers, get_auth_token, access_token_for
 
 
 async def _make_student(
@@ -256,24 +257,66 @@ async def test_receipt_download_object_level_access(
 
 # ── File download ───────────────────────────────────────────────────────────────
 
+_MIN_PDF = (
+    b"%PDF-1.0\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj "
+    b"2 0 obj<</Type/Pages/Kids[]/Count 0>>endobj\n"
+    b"xref\n0 3\ntrailer<</Root 1 0 R>>\n%%EOF"
+)
+
+
 @pytest.mark.asyncio
-async def test_file_download_owner_and_staff_only(
-    client: AsyncClient, admin_user: User, student_user: User, parent_user: User
+async def test_identity_document_staff_download_admin_only(
+    client: AsyncClient, admin_user: User, teacher_user: User
 ):
-    """Non-staff may download only their own uploads; staff may download any school file."""
-    parent_token = await get_auth_token(client, "test_parent", "Parent@123")
+    """Admission identity scans (document/report_card) are admin-only — teachers denied."""
+    admin_token = await get_auth_token(client, "test_admin", "Admin@123")
     up = await client.post(
         "/api/v1/files/upload",
-        headers=auth_headers(parent_token),
-        files={"file": ("note.pdf", b"%PDF-1.0\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Kids[]/Count 0>>endobj\nxref\n0 3\ntrailer<</Root 1 0 R>>\n%%EOF", "application/pdf")},
+        headers=auth_headers(admin_token),
+        files={"file": ("aadhaar.pdf", _MIN_PDF, "application/pdf")},
         data={"category": "document"},
     )
     assert up.status_code == 201, up.text
     file_id = up.json()["data"]["id"]
 
+    teacher_token = await get_auth_token(client, "test_teacher", "Teacher@123")
+    denied = await client.get(f"/api/v1/files/{file_id}", headers=auth_headers(teacher_token))
+    assert denied.status_code == 403
+
+    allowed = await client.get(f"/api/v1/files/{file_id}", headers=auth_headers(admin_token))
+    assert allowed.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_file_download_owner_and_staff_only(
+    client: AsyncClient, admin_user: User, student_user: User, parent_user: User,
+    db_session: AsyncSession,
+):
+    """Non-staff may download only their own non-identity uploads; staff may download school files."""
+    parent_token = access_token_for(parent_user)
+    _MIN_PNG = bytes.fromhex(
+        "89504e470d0a1a0a0000000d494844520000000100000001"
+        "08060000001f15c4890000000a49444154789c6300010000050001"
+    )
+    up = await client.post(
+        "/api/v1/files/upload",
+        headers=auth_headers(parent_token),
+        params={"category": "profile_photo"},
+        files={"file": ("photo.png", _MIN_PNG, "image/png")},
+    )
+    assert up.status_code == 201, up.text
+    file_id = up.json()["data"]["id"]
+
+    row = (
+        await db_session.execute(
+            select(UploadedFile).where(UploadedFile.id == uuid.UUID(file_id))
+        )
+    ).scalar_one()
+    assert row.category == FileCategory.PROFILE_PHOTO
+
     # Uploader (parent) can download their own file.
     own = await client.get(f"/api/v1/files/{file_id}", headers=auth_headers(parent_token))
-    assert own.status_code == 200
+    assert own.status_code == 200, own.text
 
     # A different non-staff user (student) cannot.
     student_token = await get_auth_token(client, "test_student", "Student@123")

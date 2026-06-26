@@ -18,8 +18,12 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import Environment, get_settings
+from app.core.database import async_session_factory
 from app.db.models.ai_usage import AIUsage
 from app.db.models.school import School
+
+settings = get_settings()
 
 # Credits per action (purpose_tag). Charged when the LLM call completes.
 # Clone/duplicate uses no LLM — zero credits (see duplicate_question_paper endpoint).
@@ -243,18 +247,16 @@ def _validate_credit_charge(
     if override_active(snap.budget):
         return
 
-    # Principals/admins bypass the school monthly hard cap — see DECISION_LOG.
-    if role not in _ADMIN_ROLES:
-        if snap.at_hard_limit or snap.credits_remaining < cost:
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=(
-                    "School AI credit limit reached for this month. "
-                    "Contact your principal for an emergency override."
-                )
-                if snap.at_hard_limit
-                else f"Not enough school AI credits ({snap.credits_remaining} left, need {cost}).",
+    if snap.at_hard_limit or snap.credits_remaining < cost:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=(
+                "School AI credit limit reached for this month. "
+                "Contact your principal for an emergency override."
             )
+            if snap.at_hard_limit
+            else f"Not enough school AI credits ({snap.credits_remaining} left, need {cost}).",
+        )
 
     if role in ("teacher", "class_incharge"):
         if snap.user_credits_remaining is not None and snap.user_credits_remaining < cost:
@@ -362,9 +364,23 @@ async def check_ai_credits(
 ) -> int:
     """Pre-flight credit check (row-locked). Returns credits that will be charged."""
     cost = credits_for_purpose(purpose_tag)
-    locked = await _lock_school_row(db, school.id)
-    snap = await _build_usage_snapshot(db, locked, user_id=user_id, role=role)
-    _validate_credit_charge(snap, role=role, purpose_tag=purpose_tag, cost=cost)
+
+    async def _run_check(session: AsyncSession) -> None:
+        locked = await _lock_school_row(session, school.id)
+        snap = await _build_usage_snapshot(session, locked, user_id=user_id, role=role)
+        _validate_credit_charge(snap, role=role, purpose_tag=purpose_tag, cost=cost)
+
+    if settings.ENVIRONMENT == Environment.TESTING:
+        await _run_check(db)
+        return cost
+
+    async with async_session_factory() as meter_session:
+        try:
+            await _run_check(meter_session)
+            await meter_session.commit()
+        except Exception:
+            await meter_session.rollback()
+            raise
     return cost
 
 
@@ -381,6 +397,43 @@ async def assert_credits_for_charge(
     locked = await _lock_school_row(db, school_id)
     snap = await _build_usage_snapshot(db, locked, user_id=user_id, role=role)
     _validate_credit_charge(snap, role=role, purpose_tag=purpose_tag, cost=credits)
+
+
+async def reserve_ai_credits(
+    db: AsyncSession,
+    school_id: uuid.UUID,
+    *,
+    user_id: uuid.UUID,
+    role: str,
+    purpose_tag: str,
+    feature: str,
+    credits: int | None = None,
+    ref_type: str | None = None,
+) -> AIUsage:
+    """Reserve credits before an LLM call — lock, validate, insert placeholder usage row.
+
+    The row is finalized after the provider returns (see finalize_llm_usage). This prevents
+    spending provider cost when caps are already exhausted and closes the concurrent
+    overspend race without re-checking caps after the LLM has run.
+    """
+    cost = credits if credits is not None else credits_for_purpose(purpose_tag)
+    locked = await _lock_school_row(db, school_id)
+    snap = await _build_usage_snapshot(db, locked, user_id=user_id, role=role)
+    _validate_credit_charge(snap, role=role, purpose_tag=purpose_tag, cost=cost)
+    row = AIUsage(
+        school_id=school_id,
+        created_by=user_id,
+        feature=feature,
+        provider="reserved",
+        model="reserved",
+        purpose_tag=purpose_tag,
+        credits_charged=cost,
+        role=role,
+        ref_type=ref_type,
+    )
+    db.add(row)
+    await db.flush()
+    return row
 
 
 async def set_principal_override(

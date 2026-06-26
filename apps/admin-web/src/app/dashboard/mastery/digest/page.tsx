@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, getApiErrorMessage } from "@/lib/api";
+import { AppSelect } from "@/components/ui/AppSelect";
+import { formatClassLabel, sortClasses } from "@/lib/format";
 
 /** Printable per-student digest of approved/sent weakness notes —
  * the delivery vehicle for parent-teacher meetings until the parent portal ships. */
@@ -15,7 +17,7 @@ export default function MasteryDigestPage() {
 
   useEffect(() => {
     api("/api/v1/academic/classes?page_size=100")
-      .then((r) => setClasses(r.items || r.data || []))
+      .then((r) => setClasses(sortClasses<any>(r.items || r.data || [])))
       .catch(() => {});
   }, []);
 
@@ -38,12 +40,21 @@ export default function MasteryDigestPage() {
       <div className="card no-print" style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 24px", gap: 12, flexWrap: "wrap" }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Parent Meeting Digest</h1>
         <div style={{ display: "flex", gap: 12 }}>
-          <select className="form-input" style={{ width: 200, padding: "8px 12px" }} value={classId} onChange={(e) => setClassId(e.target.value)}>
-            <option value="">All classes</option>
-            {classes.map((c) => (
-              <option key={c.id} value={c.id}>{c.grade} - {c.section}</option>
-            ))}
-          </select>
+          <AppSelect
+            variant="pill"
+            value={classId}
+            onChange={setClassId}
+            aria-label="Filter by class"
+            style={{ width: 200 }}
+            placeholder="All classes"
+            options={[
+              { value: "", label: "All classes" },
+              ...classes.map((c) => ({
+                value: c.id,
+                label: formatClassLabel(c.grade, c.section),
+              })),
+            ]}
+          />
           <button className="btn btn-ghost" style={btn} onClick={() => router.push("/dashboard/mastery")}>← Back</button>
           <button className="btn btn-primary" style={btn} onClick={() => window.print()}>Print</button>
         </div>

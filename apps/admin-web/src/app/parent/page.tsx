@@ -21,6 +21,12 @@ type Child = {
 
 type Notification = { id: string; title: string; body: string; link?: string | null; created_at?: string; is_read: boolean };
 
+function safeParentNotificationLink(link: string | null | undefined): string | undefined {
+  if (!link) return undefined;
+  if (link.startsWith("/parent/")) return link;
+  return undefined;
+}
+
 function Avatar({ name }: { name: string }) {
   return (
     <div
@@ -43,18 +49,35 @@ export default function ParentHomePage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [error, setError] = useState("");
 
-  function load() {
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const retry = () => {
     setError("");
     setChildren(null);
-    api("/api/v1/portal/context")
-      .then((r) => setChildren(r.data?.children ?? []))
-      .catch((e) => setError(getApiErrorMessage(e, "We couldn't load your children's progress.")));
-    api("/api/v1/notifications")
-      .then((r) => setNotifications((r.data || []).slice(0, 5)))
-      .catch(() => setNotifications([]));
-  }
+    setRefreshKey((key) => key + 1);
+  };
 
-  useEffect(load, []);
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      api<{ data: { children?: Child[] } }>("/api/v1/portal/context"),
+      api<{ data: Notification[] }>("/api/v1/notifications"),
+    ])
+      .then(([ctxRes, notifRes]) => {
+        if (!active) return;
+        setChildren(ctxRes.data?.children ?? []);
+        setNotifications((notifRes.data || []).slice(0, 5));
+      })
+      .catch((e) => {
+        if (!active) return;
+        setError(getApiErrorMessage(e, "We couldn't load your children's progress."));
+        setChildren([]);
+        setNotifications([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [refreshKey]);
 
   const firstName = user?.full_name?.split(" ")[0] || "there";
   const totalPending = (children ?? []).reduce((sum, c) => sum + (c.fee_pending || 0), 0);
@@ -63,7 +86,7 @@ export default function ParentHomePage() {
     <PortalShell title="Parent Portal" subtitle="Your children's progress" nav={PARENT_NAV}>
       <div className="ui-greeting">
         <div className="ui-greeting-hi">Hi, {firstName} 👋</div>
-        <div className="ui-greeting-sub">Here's how your {children && children.length === 1 ? "child is" : "children are"} doing.</div>
+        <div className="ui-greeting-sub">Here&apos;s how your {children && children.length === 1 ? "child is" : "children are"} doing.</div>
       </div>
 
       {error ? (
@@ -72,7 +95,7 @@ export default function ParentHomePage() {
           title="Couldn't load"
           message={error}
           action={
-            <button className="btn btn-primary" style={{ width: "auto", padding: "8px 18px", borderRadius: "var(--radius-full)" }} onClick={load}>
+            <button className="btn btn-primary" style={{ width: "auto", padding: "8px 18px", borderRadius: "var(--radius-full)" }} onClick={retry}>
               <RefreshCw size={15} style={{ marginRight: 6 }} /> Try again
             </button>
           }
@@ -103,7 +126,26 @@ export default function ParentHomePage() {
           </Card>
 
           {/* My children */}
-          <SectionHeader title="My Children" />
+          <SectionHeader
+            title="My Children"
+            action={
+              <button
+                type="button"
+                onClick={() => router.push("/parent/children")}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--accent)",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  padding: 0,
+                }}
+              >
+                View all
+              </button>
+            }
+          />
           {children.map((child) => {
             const att = child.attendance_pct;
             const attTone = att == null ? "default" : att >= 75 ? "success" : att >= 50 ? "warning" : "danger";
@@ -146,8 +188,12 @@ export default function ParentHomePage() {
                     tone={n.is_read ? "default" : "accent"}
                     title={n.title}
                     subtitle={n.body}
-                    onClick={n.link ? () => router.push(n.link!) : undefined}
-                    chevron={!!n.link}
+                    onClick={
+                      safeParentNotificationLink(n.link)
+                        ? () => router.push(safeParentNotificationLink(n.link)!)
+                        : undefined
+                    }
+                    chevron={!!safeParentNotificationLink(n.link)}
                   />
                 ))}
               </div>

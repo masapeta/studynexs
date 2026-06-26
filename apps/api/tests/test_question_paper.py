@@ -7,12 +7,15 @@ from decimal import Decimal
 import pytest
 from sqlalchemy import func, select
 
+from fastapi import HTTPException
+
 from app.db.models.academic import AcademicYear, Class, Subject
 from app.db.models.ai_usage import AIUsage
 from app.db.models.question_paper import PaperStatus, QuestionPaper
 from app.db.models.school import School
 from app.db.models.user import User, UserRole
-from app.modules.ai.services.question_paper_service import duplicate_paper
+from app.modules.ai.gateway import LLMResult
+from app.modules.ai.services.question_paper_service import duplicate_paper, generate_paper
 
 SECTIONS = [{
     "title": "Section A",
@@ -106,3 +109,104 @@ async def test_duplicate_retarget_without_subject_is_rejected(db_session):
             db_session, source=ids["paper"], created_by=ids["dup"].id,
             class_id=ids["cls_b"].id,  # class change with no subject_id → must reject
         )
+
+
+@pytest.mark.asyncio
+async def test_generate_blocks_before_llm_when_qp_cap_reached(db_session, monkeypatch):
+    """Credits must be reserved before the provider runs — never after cost is spent."""
+    ids = await _seed(db_session)
+    paper = ids["paper"]
+    author = paper.created_by
+
+    for _ in range(5):
+        db_session.add(
+            AIUsage(
+                school_id=paper.school_id,
+                created_by=author,
+                feature="question_paper",
+                provider="test",
+                model="test",
+                purpose_tag="qp_full",
+                credits_charged=5,
+                role="teacher",
+            )
+        )
+    await db_session.flush()
+
+    llm_called = False
+
+    async def fake_generate_llm(*_args, **_kwargs):
+        nonlocal llm_called
+        llm_called = True
+        return LLMResult(
+            text="{}",
+            provider="test",
+            model="test-model",
+            tokens_in=1,
+            tokens_out=1,
+            latency_ms=1,
+        )
+
+    monkeypatch.setattr(
+        "app.modules.ai.services.question_paper_service.generate_llm",
+        fake_generate_llm,
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        await generate_paper(
+            db_session,
+            school_id=paper.school_id,
+            created_by=author,
+            class_id=paper.class_id,
+            subject_id=paper.subject_id,
+            topics=["Algebra"],
+            total_marks=80,
+            duration_minutes=180,
+            difficulty="balanced",
+            role="teacher",
+        )
+    assert exc.value.status_code == 429
+    assert llm_called is False
+
+
+@pytest.mark.asyncio
+async def test_generate_records_usage_when_json_parse_fails(db_session, monkeypatch):
+    """LLM cost is incurred even when the model returns unreadable JSON."""
+    ids = await _seed(db_session)
+
+    async def fake_generate_llm(*_args, **_kwargs):
+        return LLMResult(
+            text="not valid json",
+            provider="test",
+            model="test-model",
+            tokens_in=100,
+            tokens_out=50,
+            latency_ms=10,
+        )
+
+    monkeypatch.setattr(
+        "app.modules.ai.services.question_paper_service.generate_llm",
+        fake_generate_llm,
+    )
+
+    paper = ids["paper"]
+    with pytest.raises(ValueError, match="unreadable"):
+        await generate_paper(
+            db_session,
+            school_id=paper.school_id,
+            created_by=paper.created_by,
+            class_id=paper.class_id,
+            subject_id=paper.subject_id,
+            topics=["Algebra"],
+            total_marks=80,
+            duration_minutes=180,
+            difficulty="balanced",
+            credits_charged=5,
+        )
+
+    n_usage = await db_session.scalar(select(func.count()).select_from(AIUsage))
+    assert n_usage == 1
+    usage = (await db_session.execute(select(AIUsage))).scalar_one()
+    assert usage.credits_charged == 5
+    assert usage.ref_id is None
+    assert usage.purpose_tag == "qp_full"

@@ -15,14 +15,17 @@ import structlog
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.db.models.academic import Subject
 from app.db.models.attendance import Attendance, AttendanceStatus
 from app.db.models.examination import Exam, ExamMark
 from app.db.models.report_card import ReportCard, ReportStatus
 from app.db.models.student import Student
-from app.modules.ai.gateway import LLMMessage, default_model, get_provider, record_usage
+from app.modules.ai.gateway import LLMMessage, generate_llm, record_usage
+from app.modules.ai.services.ai_credits import credits_for_purpose, reserve_ai_credits
 
 logger = structlog.get_logger()
+settings = get_settings()
 
 # Percentage -> letter grade (CBSE/SSC 9-point style).
 _GRADE_BANDS = [
@@ -195,9 +198,35 @@ async def generate_report_for_student(
         percentage=percentage, grade=grade, attendance_pct=attendance_pct,
         not_assessed=not_assessed,
     )
-    provider = get_provider()
-    model = default_model()
-    result = await provider.generate(messages, model=model, max_tokens=300, temperature=0.5)
+    cost = credits_charged if credits_charged is not None else credits_for_purpose("report_card")
+    reserved = None
+    if cost > 0:
+        reserved = await reserve_ai_credits(
+            db,
+            school_id,
+            user_id=created_by,
+            role=role,
+            purpose_tag="report_card",
+            feature="report_card",
+            credits=cost,
+            ref_type="report_card",
+        )
+
+    try:
+        result = await generate_llm(
+            messages, max_tokens=300, temperature=0.5,
+            feature="report_card", caller="generate_report_for_student",
+        )
+    except Exception as exc:
+        if settings.is_development and not (settings.AI_FALLBACK_PROVIDER or "").strip():
+            logger.warning("report_card_llm_failed_using_stub", error=str(exc))
+            from app.modules.ai.gateway.stub import StubProvider
+
+            result = await StubProvider().generate(
+                messages, model="dev-stub", max_tokens=300, temperature=0.5
+            )
+        else:
+            raise
     remark = (result.text or "").strip() or None
 
     report = ReportCard(
@@ -228,11 +257,7 @@ async def generate_report_for_student(
         db,
         feature="report_card",
         result=result,
-        school_id=school_id,
-        created_by=created_by,
-        role=role,
-        purpose_tag="report_card",
-        credits_charged=credits_charged,
+        reserved_row=reserved,
         ref_type="report_card",
         ref_id=report.id,
     )

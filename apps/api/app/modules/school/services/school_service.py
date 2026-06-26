@@ -5,6 +5,7 @@ import uuid
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.db.models.academic import AcademicYear
 from app.db.models.school import School
@@ -30,7 +31,9 @@ class SchoolService:
             setattr(school, field, value)
         if theme is not None:
             school.settings = {**(school.settings or {}), "theme_color": theme}
+            flag_modified(school, "settings")
         await self.db.flush()
+        await self.db.refresh(school)
         return school
 
     async def list_years(self, school_id: uuid.UUID) -> list[AcademicYear]:

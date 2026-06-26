@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, API_URL, getAccessToken, getApiErrorMessage, TENANT_SLUG } from "@/lib/api";
+import { AppSelect } from "@/components/ui/AppSelect";
+import { AppFileInput } from "@/components/ui/AppFileInput";
 
 async function uploadAnswerSheet(file: File): Promise<string> {
   const form = new FormData();
@@ -45,7 +47,6 @@ export default function EvaluateExamPage() {
   const params = useParams();
   const router = useRouter();
   const examId = params.examId as string;
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const [exam, setExam] = useState<any>(null);
   const [students, setStudents] = useState<any[]>([]);
@@ -207,12 +208,21 @@ export default function EvaluateExamPage() {
       <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 20 }}>
         <div className="card" style={{ padding: 16 }}>
           <div className="stat-label" style={{ marginBottom: 8 }}>Students</div>
-          <select className="form-input" value={selectedStudent} onChange={(e) => setSelectedStudent(e.target.value)} style={{ width: "100%", marginBottom: 12 }}>
-            <option value="">Select student…</option>
-            {students.map((s) => (
-              <option key={s.id} value={s.id}>{s.roll_no ? `${s.roll_no} · ` : ""}{s.student_name || s.full_name || "Student"}</option>
-            ))}
-          </select>
+          <AppSelect
+            variant="field"
+            value={selectedStudent}
+            onChange={setSelectedStudent}
+            aria-label="Select student"
+            placeholder="Select student…"
+            style={{ marginBottom: 12 }}
+            options={[
+              { value: "", label: "Select student…" },
+              ...students.map((s) => ({
+                value: s.id,
+                label: `${s.roll_no ? `${s.roll_no} · ` : ""}${s.student_name || s.full_name || "Student"}`,
+              })),
+            ]}
+          />
           <div className="stat-label" style={{ marginBottom: 8 }}>Recent evaluations</div>
           {evaluations.length === 0 ? (
             <p style={{ fontSize: 13, color: "var(--text-muted)" }}>None yet.</p>
@@ -233,17 +243,18 @@ export default function EvaluateExamPage() {
           {!activeEval || activeEval.status === "processing" ? (
             <>
               <div style={{ marginBottom: 16 }}>
-                <div className="stat-label">Answer sheet photo</div>
-                <input
-                  ref={fileRef}
-                  type="file"
+                <div className="stat-label" style={{ marginBottom: 8 }}>Answer sheet photo</div>
+                <AppFileInput
+                  variant="field"
                   accept="image/jpeg,image/png,image/webp"
-                  onChange={(e) => setSheetFile(e.target.files?.[0] || null)}
-                  style={{ marginTop: 8 }}
+                  file={sheetFile}
+                  onChange={setSheetFile}
+                  placeholder="Choose JPEG, PNG, or WebP"
+                  aria-label="Answer sheet photo"
                 />
                 {sheetFile && (
                   <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 6 }}>
-                    {sheetFile.name} — vision OCR will transcribe answers
+                    Vision OCR will transcribe answers from this sheet.
                   </p>
                 )}
               </div>

@@ -27,15 +27,20 @@ export function getAccessToken() {
   return accessToken;
 }
 
+// Callers should pass an explicit `T`; default stays loose for legacy pages.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function api<T = any>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
+  const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
     "X-Tenant-Slug": TENANT_SLUG,
     ...(options.headers as Record<string, string>),
   };
+  if (!isFormData) {
+    headers["Content-Type"] = "application/json";
+  }
 
   if (accessToken) {
     headers["Authorization"] = `Bearer ${accessToken}`;
@@ -74,8 +79,8 @@ export async function api<T = any>(
         return retry.json();
       }
       // Session truly gone — bounce to login, but only if we aren't already there.
-      if (typeof window !== "undefined" && window.location.pathname !== "/") {
-        window.location.href = "/";
+      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+        window.location.href = "/login";
       }
     }
     throw new ApiError(401, "Unauthorized");

@@ -149,11 +149,10 @@ async def test_generate_from_bank_without_llm_when_bank_covers_plan(
         "app.modules.ai.services.question_paper_service._ssc_blueprint",
         lambda _total: MINI_PLAN,
     )
-    mock_provider = MagicMock()
-    mock_provider.generate = AsyncMock()
+    mock_generate_llm = AsyncMock()
     monkeypatch.setattr(
-        "app.modules.ai.services.question_paper_service.get_provider",
-        lambda: mock_provider,
+        "app.modules.ai.services.question_paper_service.generate_llm",
+        mock_generate_llm,
     )
 
     paper = await generate_paper_from_bank(
@@ -170,7 +169,7 @@ async def test_generate_from_bank_without_llm_when_bank_covers_plan(
     )
     assert paper.ai_model == "bank:compose"
     assert len(paper.sections[0]["questions"]) == 2
-    mock_provider.generate.assert_not_called()
+    mock_generate_llm.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -186,8 +185,7 @@ async def test_generate_from_bank_calls_llm_for_gaps(db_session, monkeypatch):
         "app.modules.ai.services.question_paper_service._ssc_blueprint",
         lambda _total: MINI_PLAN,
     )
-    mock_provider = MagicMock()
-    mock_provider.generate = AsyncMock(return_value=LLMResult(
+    mock_generate_llm = AsyncMock(return_value=LLMResult(
         text='{"fills": [{"section_title": "Section A", "questions": ['
         '{"number": "2", "text": "LLM gap Q", "marks": 2, "type": "short", "answer_key": "X"}]}]}',
         provider="openai",
@@ -196,12 +194,8 @@ async def test_generate_from_bank_calls_llm_for_gaps(db_session, monkeypatch):
         tokens_out=20,
     ))
     monkeypatch.setattr(
-        "app.modules.ai.services.question_paper_service.get_provider",
-        lambda: mock_provider,
-    )
-    monkeypatch.setattr(
-        "app.modules.ai.services.question_paper_service.default_model",
-        lambda: "gpt-test",
+        "app.modules.ai.services.question_paper_service.generate_llm",
+        mock_generate_llm,
     )
 
     paper = await generate_paper_from_bank(
@@ -220,7 +214,7 @@ async def test_generate_from_bank_calls_llm_for_gaps(db_session, monkeypatch):
     texts = {q["text"] for q in paper.sections[0]["questions"]}
     assert "Only one bank Q" in texts
     assert "LLM gap Q" in texts
-    mock_provider.generate.assert_called_once()
+    mock_generate_llm.assert_called_once()
 
 
 @pytest.mark.asyncio

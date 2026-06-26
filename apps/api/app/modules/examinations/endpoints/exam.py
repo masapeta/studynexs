@@ -71,34 +71,18 @@ async def list_exams(
     return APIResponse(data=[ExamOut.from_exam(e) for e in exams])
 
 
-@router.put("/{exam_id}/questions", response_model=APIResponse[ExamOut])
-async def set_question_schema(
-    exam_id: uuid.UUID,
-    body: QuestionSchemaSet,
+@router.get("/gradebook", response_model=APIResponse)
+async def gradebook(
+    class_id: uuid.UUID,
     current_user: CurrentUser = Depends(require_roles(*_STAFF)),
     db: AsyncSession = Depends(get_db),
 ):
-    """Define per-question max marks + topic mapping (or import from an approved paper)."""
-    await _scoped_exam(db, current_user, exam_id)
+    scope = await get_staff_scope(db, current_user)
+    assert_exams_access(scope)
+    assert_exam_class(scope, class_id)
     service = ExamService(db)
-    try:
-        exam = await service.set_question_schema(
-            uuid.UUID(current_user.school_id), exam_id, body
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    return APIResponse(data=ExamOut.from_exam(exam), message="Question schema saved")
-
-
-@router.get("/{exam_id}/questions", response_model=APIResponse[list[QuestionDef]])
-async def get_question_schema(
-    exam_id: uuid.UUID,
-    current_user: CurrentUser = Depends(require_roles(*_STAFF)),
-    db: AsyncSession = Depends(get_db),
-):
-    exam = await _scoped_exam(db, current_user, exam_id)
-    questions = [QuestionDef(**q) for q in (exam.question_schema or [])]
-    return APIResponse(data=questions)
+    data = await service.get_gradebook(uuid.UUID(current_user.school_id), class_id)
+    return APIResponse(data=data)
 
 
 @router.get("/class-performance", response_model=APIResponse)
@@ -131,6 +115,36 @@ async def class_performance(
         for grade, section, pct in rows
     ]
     return APIResponse(data=data)
+
+
+@router.put("/{exam_id}/questions", response_model=APIResponse[ExamOut])
+async def set_question_schema(
+    exam_id: uuid.UUID,
+    body: QuestionSchemaSet,
+    current_user: CurrentUser = Depends(require_roles(*_STAFF)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Define per-question max marks + topic mapping (or import from an approved paper)."""
+    await _scoped_exam(db, current_user, exam_id)
+    service = ExamService(db)
+    try:
+        exam = await service.set_question_schema(
+            uuid.UUID(current_user.school_id), exam_id, body
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return APIResponse(data=ExamOut.from_exam(exam), message="Question schema saved")
+
+
+@router.get("/{exam_id}/questions", response_model=APIResponse[list[QuestionDef]])
+async def get_question_schema(
+    exam_id: uuid.UUID,
+    current_user: CurrentUser = Depends(require_roles(*_STAFF)),
+    db: AsyncSession = Depends(get_db),
+):
+    exam = await _scoped_exam(db, current_user, exam_id)
+    questions = [QuestionDef(**q) for q in (exam.question_schema or [])]
+    return APIResponse(data=questions)
 
 
 @router.post("/marks", response_model=APIResponse)

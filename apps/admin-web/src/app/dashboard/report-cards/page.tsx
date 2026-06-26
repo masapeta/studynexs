@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Award, CalendarDays, Clock, Save, Check, Printer } from "lucide-react";
+import { Award, CalendarDays, Clock, Save, Check, Printer, Sparkles } from "lucide-react";
 import { api, fetchProtectedDocumentUrl, getApiErrorMessage } from "@/lib/api";
 import { DocumentPreviewModal } from "@/components/DocumentPreviewModal";
+import { AppSelect } from "@/components/ui/AppSelect";
+import { formatClassLabel } from "@/lib/format";
 
 type SubjectRow = { subject: string; marks_obtained: number; total_marks: number };
 type Report = {
@@ -36,6 +38,11 @@ export default function ReportCardsPage() {
   const [error, setError] = useState("");
   const [report, setReport] = useState<Report | null>(null);
   const [usage, setUsage] = useState<any>(null);
+  const [credits, setCredits] = useState<{
+    user_credits_remaining?: number | null;
+    credits_remaining?: number;
+    purpose_costs?: { report_card?: number };
+  } | null>(null);
   const [docPreview, setDocPreview] = useState<{ url: string; title: string } | null>(null);
   const [openingDoc, setOpeningDoc] = useState(false);
   const openDocRef = useRef(false);
@@ -49,6 +56,7 @@ export default function ReportCardsPage() {
       })
       .catch((e) => console.error(e));
     api("/api/v1/ai/usage").then(setUsage).catch(() => {});
+    api("/api/v1/ai/credits").then(setCredits).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -88,6 +96,12 @@ export default function ReportCardsPage() {
   }
 
   async function generate(studentId: string) {
+    const cost = credits?.purpose_costs?.report_card ?? 3;
+    const remaining = credits?.user_credits_remaining ?? credits?.credits_remaining;
+    if (remaining !== undefined && remaining !== null && remaining < cost) {
+      setError("Not enough AI credits remaining this month. Contact your class incharge or principal.");
+      return;
+    }
     setError("");
     setGeneratingId(studentId);
     try {
@@ -98,6 +112,7 @@ export default function ReportCardsPage() {
       setReport(res);
       loadReports();
       api("/api/v1/ai/usage").then(setUsage).catch(() => {});
+      api("/api/v1/ai/credits").then(setCredits).catch(() => {});
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) {
       setError(getApiErrorMessage(e, "Failed to generate report card."));
@@ -184,6 +199,36 @@ export default function ReportCardsPage() {
           remark written for you — review, edit, and approve before issuing.
         </p>
       </div>
+
+      {credits && (
+        <div
+          className="card"
+          style={{
+            marginBottom: 16,
+            padding: "14px 20px",
+            display: "flex",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 16,
+          }}
+        >
+          <div className="stat-icon-container icon-blue">
+            <Sparkles size={20} />
+          </div>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>
+              AI Credits Remaining
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 800 }}>
+              {credits.user_credits_remaining ?? credits.credits_remaining}
+              <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text-muted)" }}>
+                {" "}
+                · {credits.purpose_costs?.report_card ?? 3} credits per report card
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {usage && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
@@ -334,13 +379,16 @@ export default function ReportCardsPage() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
           <div>
             <label className="stat-label">Class</label>
-            <select className="form-input" value={classId} onChange={(e) => setClassId(e.target.value)} style={selStyle}>
-              {classes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.grade} - {c.section}
-                </option>
-              ))}
-            </select>
+            <AppSelect
+              variant="field"
+              value={classId}
+              onChange={setClassId}
+              aria-label="Class"
+              options={classes.map((c) => ({
+                value: c.id,
+                label: formatClassLabel(c.grade, c.section),
+              }))}
+            />
           </div>
           <div>
             <label className="stat-label">Report title</label>

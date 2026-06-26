@@ -33,6 +33,8 @@ class LLMResult:
     tokens_out: int = 0
     latency_ms: int = 0
     raw: Any | None = None
+    primary_provider: str | None = None
+    used_fallback: bool = False
 
 
 class LLMProvider(ABC):

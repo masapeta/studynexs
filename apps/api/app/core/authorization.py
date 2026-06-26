@@ -11,11 +11,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import CurrentUser
 from app.db.models.fee import StudentFeeRecord
-from app.db.models.file import UploadedFile
+from app.db.models.file import FileCategory, UploadedFile
 from app.db.models.student import Parent, Student, StudentParentMap
 
-# Roles that may access any file within their own school.
+# Roles that may access any non-identity file within their own school.
 _STAFF_FILE_ROLES = ("admin", "super_admin", "operations", "teacher", "class_incharge")
+# Admission identity documents (Aadhaar, birth certificate scans) — admin only.
+# REPORT_CARD files are used for academic PDFs elsewhere; admission uploads use DOCUMENT.
+_IDENTITY_DOC_ROLES = frozenset({"admin", "super_admin"})
+_IDENTITY_DOC_CATEGORIES = frozenset({FileCategory.DOCUMENT})
 
 
 async def get_student_in_school(
@@ -111,13 +115,13 @@ async def assert_can_pay_fee(
 
 
 def assert_can_access_file(current_user: CurrentUser, record: UploadedFile) -> None:
-    """Authorize a file download. The caller has already enforced school scope.
+    """Authorize a file download. The caller has already enforced school scope."""
+    # SECURITY-REVIEW: identity document uploads are restricted to admissions admins.
+    if record.category in _IDENTITY_DOC_CATEGORIES:
+        if current_user.role not in _IDENTITY_DOC_ROLES:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+        return
 
-    Staff (admin/super_admin/operations/teacher/class_incharge) may access any file in their
-    school. Parents/students may only access files they uploaded themselves — sensitive
-    categories (receipts, report cards) are served to them via their owning record endpoints,
-    never by raw file id.
-    """
     if current_user.role in _STAFF_FILE_ROLES:
         return
     if str(record.uploaded_by) == current_user.id:

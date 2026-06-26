@@ -215,3 +215,110 @@ class ExamService:
             )
         )
         return list(result.scalars().all())
+
+    async def get_gradebook(self, school_id: uuid.UUID, class_id: uuid.UUID) -> dict:
+        """Class-wise subject marks matrix for the latest exam per subject."""
+        from app.db.models.academic import Subject
+        from app.db.models.student import Student
+        from app.db.models.user import User
+
+        await TenantScope(self.db, school_id).school_class(class_id)
+
+        student_rows = (
+            await self.db.execute(
+                select(Student.id, User.full_name)
+                .join(User, User.id == Student.user_id)
+                .where(Student.school_id == school_id, Student.class_id == class_id)
+                .order_by(User.full_name)
+            )
+        ).all()
+        if not student_rows:
+            return {"subjects": [], "students": []}
+
+        exams = (
+            await self.db.execute(
+                select(Exam)
+                .where(Exam.school_id == school_id, Exam.class_id == class_id)
+                .order_by(Exam.date.desc().nullslast(), Exam.created_at.desc())
+            )
+        ).scalars().all()
+        latest_by_subject: dict[uuid.UUID, Exam] = {}
+        for ex in exams:
+            if ex.subject_id not in latest_by_subject:
+                latest_by_subject[ex.subject_id] = ex
+        if not latest_by_subject:
+            return {
+                "subjects": [],
+                "students": [
+                    {"student_id": str(sid), "name": name, "marks": {}, "average": None, "grade_letter": None}
+                    for sid, name in student_rows
+                ],
+            }
+
+        subject_ids = list(latest_by_subject.keys())
+        subjects = (
+            await self.db.execute(
+                select(Subject).where(Subject.id.in_(subject_ids)).order_by(Subject.name)
+            )
+        ).scalars().all()
+        subject_map = {s.id: s for s in subjects}
+        exam_ids = [e.id for e in latest_by_subject.values()]
+
+        mark_rows = (
+            await self.db.execute(
+                select(ExamMark.student_id, Exam.subject_id, ExamMark.marks_obtained, Exam.total_marks)
+                .join(Exam, Exam.id == ExamMark.exam_id)
+                .where(
+                    ExamMark.school_id == school_id,
+                    ExamMark.exam_id.in_(exam_ids),
+                )
+            )
+        ).all()
+        marks_lookup: dict[tuple[uuid.UUID, uuid.UUID], float] = {}
+        pct_lookup: dict[tuple[uuid.UUID, uuid.UUID], float] = {}
+        for student_id, subject_id, obtained, total in mark_rows:
+            marks_lookup[(student_id, subject_id)] = float(obtained)
+            if total:
+                pct_lookup[(student_id, subject_id)] = float(obtained) / float(total) * 100
+
+        def _letter(pct: float) -> str:
+            if pct >= 90:
+                return "A+"
+            if pct >= 80:
+                return "A"
+            if pct >= 70:
+                return "B"
+            if pct >= 60:
+                return "C"
+            if pct >= 50:
+                return "D"
+            return "F"
+
+        subject_out = []
+        for sid in sorted(subject_ids, key=lambda x: subject_map.get(x).name if subject_map.get(x) else ""):
+            sub = subject_map.get(sid)
+            if not sub:
+                continue
+            short = sub.name[:4] if len(sub.name) > 4 else sub.name
+            subject_out.append({"id": str(sid), "name": sub.name, "short": short})
+
+        students_out = []
+        for student_id, name in student_rows:
+            subject_marks: dict[str, float] = {}
+            pcts: list[float] = []
+            for sid in subject_ids:
+                if (student_id, sid) in marks_lookup:
+                    val = marks_lookup[(student_id, sid)]
+                    subject_marks[str(sid)] = val
+                    if (student_id, sid) in pct_lookup:
+                        pcts.append(pct_lookup[(student_id, sid)])
+            avg = round(sum(pcts) / len(pcts), 1) if pcts else None
+            students_out.append({
+                "student_id": str(student_id),
+                "name": name,
+                "marks": subject_marks,
+                "average": avg,
+                "grade_letter": _letter(avg) if avg is not None else None,
+            })
+
+        return {"subjects": subject_out, "students": students_out}

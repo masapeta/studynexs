@@ -32,7 +32,7 @@ export const EMPTY_PERMISSIONS: UserPermissions = {
   scoped_only: true,
   incharge_class_ids: [],
   teaching_class_ids: [],
-  can_view_dashboard: true,
+  can_view_dashboard: false,
   can_view_classes: false,
   can_manage_students: false,
   can_manage_staff: false,
@@ -67,23 +67,38 @@ export const NAV_PERMISSION: Record<string, NavGate | undefined> = {
   "/dashboard/mastery": "can_use_mastery",
   "/dashboard/report-cards": "can_use_report_cards",
   "/dashboard/timetable": "can_view_timetable",
+  "/dashboard/fees": "can_use_finance",
+  "/dashboard/payroll": "can_use_finance",
+  "/dashboard/expenses": "can_use_finance",
   "/dashboard/finance": "can_use_finance",
+  "/dashboard/admissions": "can_manage_students",
+  "/dashboard/parents": "can_manage_students",
+  "/dashboard/reports": "can_view_dashboard",
+  "/dashboard/gradebook": "can_use_exams",
+  "/dashboard/library": "can_view_notices",
   "/dashboard/notices": "can_view_notices",
-  "/dashboard/transport": undefined,
-  "/dashboard/residential": undefined,
+  "/dashboard/events": "can_view_notices",
+  "/dashboard/transport": "can_view_timetable",
+  "/dashboard/residential": "can_view_timetable",
+  "/dashboard/lesson-plans": "can_use_exams",
   "/dashboard/settings": "can_use_settings",
 };
+
+export const PORTAL_ROLES = new Set(["parent", "student"]);
 
 export function navAllowed(href: string, perms: UserPermissions | null): boolean {
   if (!perms) return false;
   const gate = NAV_PERMISSION[href];
-  if (!gate) return true;
+  if (!gate) return false;
   return Boolean(perms[gate]);
 }
 
 /** Check access for nested routes like /dashboard/classes/abc-123 */
 export function routeAllowed(pathname: string, perms: UserPermissions | null): boolean {
   if (!perms) return false;
+  if (PORTAL_ROLES.has(perms.role)) {
+    return false;
+  }
   if (pathname === "/dashboard") return navAllowed("/dashboard", perms);
   const prefixes = Object.keys(NAV_PERMISSION).sort((a, b) => b.length - a.length);
   for (const href of prefixes) {
@@ -91,7 +106,14 @@ export function routeAllowed(pathname: string, perms: UserPermissions | null): b
       return navAllowed(href, perms);
     }
   }
-  return true;
+  return false;
+}
+
+export function portalHomeForRole(role: string): string {
+  if (role === "parent") return "/parent";
+  if (role === "student") return "/student";
+  if (role === "teacher" || role === "class_incharge") return "/teacher";
+  return "/dashboard";
 }
 
 export function roleLabel(role: string): string {

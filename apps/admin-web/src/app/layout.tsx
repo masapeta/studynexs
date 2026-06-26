@@ -1,10 +1,20 @@
 import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
+import "@/styles/sn-app-premium.css";
+import "@/styles/app-select.css";
+import "@/styles/app-file-input.css";
 import { AuthProvider } from "@/lib/auth-context";
 
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-marketing",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "StudyNexs | School Portal",
-  description: "School management — admin, teacher, parent, and student",
+  title: "StudyNexs | AI School Operating System",
+  description: "School management — admin, teacher, parent, and student portals powered by AI",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -14,7 +24,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#1e293b",
+  themeColor: "#f8fafc",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -27,7 +37,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={inter.variable}>
       <body>
         <AuthProvider>{children}</AuthProvider>
       </body>

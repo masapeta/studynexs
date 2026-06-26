@@ -14,6 +14,7 @@ class ClassOut(BaseModel):
     section: str
     academic_year_id: uuid.UUID
     class_incharge_id: uuid.UUID | None = None
+    class_incharge_name: str | None = None
     room_number: str | None = None
     created_at: datetime | None = None
     # Computed in list_classes; None means "no data yet" (vs a misleading 0/placeholder).
@@ -66,6 +67,7 @@ class StudentOut(BaseModel):
     gender: str | None = None
     student_name: str | None = None
     class_name: str | None = None
+    parent_phone: str | None = None
     model_config = ConfigDict(from_attributes=True)
 
 class StudentEnroll(BaseModel):

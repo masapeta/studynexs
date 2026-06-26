@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, getApiErrorMessage } from "@/lib/api";
+import { AppSelect } from "@/components/ui/AppSelect";
 import { BedDouble, Plus } from "lucide-react";
 
 const inp: React.CSSProperties = { marginTop: 4 };
@@ -76,11 +77,17 @@ export default function ResidentialPage() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <div><label className="stat-label">Block name</label><input className="form-input" style={inp} value={form.block_name} onChange={(e) => setForm({ ...form, block_name: e.target.value })} placeholder="Nehru Block (Boys)" /></div>
             <div><label className="stat-label">Type</label>
-              <select className="form-input" style={inp} value={form.block_gender} onChange={(e) => setForm({ ...form, block_gender: e.target.value })}>
-                <option value="boys">Boys</option>
-                <option value="girls">Girls</option>
-                <option value="mixed">Mixed</option>
-              </select>
+              <AppSelect
+                variant="field"
+                value={form.block_gender}
+                onChange={(v) => setForm({ ...form, block_gender: v })}
+                aria-label="Block type"
+                options={[
+                  { value: "boys", label: "Boys" },
+                  { value: "girls", label: "Girls" },
+                  { value: "mixed", label: "Mixed" },
+                ]}
+              />
             </div>
             <div><label className="stat-label">Warden name</label><input className="form-input" style={inp} value={form.warden_name} onChange={(e) => setForm({ ...form, warden_name: e.target.value })} /></div>
             <div><label className="stat-label">Warden contact</label><input className="form-input" style={inp} value={form.warden_contact} onChange={(e) => setForm({ ...form, warden_contact: e.target.value })} /></div>

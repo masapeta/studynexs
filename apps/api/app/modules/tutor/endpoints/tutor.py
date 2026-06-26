@@ -11,12 +11,15 @@ from app.core.authorization import assert_can_access_student
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, get_current_user
+from app.core.rate_limit import rate_limit
 from app.modules.tutor.schemas.tutor import TutorLessonOut, TutorRecommendationOut
 from app.modules.tutor.services.tts_service import synthesize_speech, tts_enabled
 from app.modules.tutor.services.tutor_service import get_lesson, list_recommendations
 from app.shared.schemas.common import APIResponse
 
 router = APIRouter()
+
+_TTS_RATE = {"max_requests": 40, "window_seconds": 60}
 
 
 class TtsRequest(BaseModel):
@@ -70,7 +73,7 @@ async def tts_status(current_user: CurrentUser = Depends(get_current_user)):
     return APIResponse(data={"enabled": tts_enabled(), "voice": get_settings().AZURE_SPEECH_VOICE})
 
 
-@router.post("/tts")
+@router.post("/tts", dependencies=[rate_limit("tutor_tts", **_TTS_RATE)])
 async def tutor_tts(
     body: TtsRequest,
     current_user: CurrentUser = Depends(get_current_user),

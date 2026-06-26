@@ -12,6 +12,7 @@ export const TOGGLEABLE_MODULES: ModuleDef[] = [
   { key: "timetable", label: "Timetable", desc: "Class period scheduling" },
   { key: "finance", label: "Finance / Fees", desc: "Fee collection and receipts" },
   { key: "notices", label: "Notices", desc: "Announcements to students/parents" },
+  { key: "library", label: "Library", desc: "Book catalog, borrowing, and returns" },
   { key: "transport", label: "Transport", desc: "Bus routes and student transport", defaultOff: true },
   { key: "residential", label: "Residential / Hostel", desc: "Boarding and room allocation", defaultOff: true },
 ];

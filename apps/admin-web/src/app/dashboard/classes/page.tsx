@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, getApiErrorMessage } from "@/lib/api";
+import { AppSelect } from "@/components/ui/AppSelect";
+import { PersonMono } from "@/components/briefing/PersonMono";
+import { formatClassLabel } from "@/lib/format";
 
 const sel: React.CSSProperties = { width: "100%", padding: "8px 12px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)", background: "white", marginTop: 4 };
 const btnSm: React.CSSProperties = { width: "auto", padding: "8px 18px", borderRadius: "var(--radius-full)", fontSize: 13 };
@@ -66,8 +69,8 @@ export default function ClassesPage() {
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700 }}>Classes</h1>
+      <div className="sn-page-toolbar">
+        <h1 className="sn-page-title">Classes</h1>
         <button className="btn btn-primary" style={{ width: "auto", padding: "10px 20px" }} onClick={() => setShowAdd((v) => !v)}>
           {showAdd ? "Cancel" : "+ Add Class"}
         </button>
@@ -76,16 +79,26 @@ export default function ClassesPage() {
       {error && <div className="card" style={{ marginBottom: 16, padding: 12, color: "var(--danger)" }}>{error}</div>}
 
       {showAdd && (
-        <div className="card" style={{ marginBottom: 20, padding: 24, display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1.4fr auto", gap: 12, alignItems: "end" }}>
+        <div className="card sn-section-gap" style={{ padding: 18, display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1.4fr auto", gap: 12, alignItems: "end" }}>
           <div><label className="stat-label">Grade</label><input className="form-input" style={sel} value={form.grade} placeholder="Grade 5" onChange={(e) => setForm({ ...form, grade: e.target.value })} /></div>
           <div><label className="stat-label">Section</label><input className="form-input" style={sel} value={form.section} placeholder="A" onChange={(e) => setForm({ ...form, section: e.target.value })} /></div>
           <div><label className="stat-label">Room</label><input className="form-input" style={sel} value={form.room_number} onChange={(e) => setForm({ ...form, room_number: e.target.value })} /></div>
           <div>
             <label className="stat-label">Academic year</label>
-            <select className="form-input" style={sel} value={form.academic_year_id} onChange={(e) => setForm({ ...form, academic_year_id: e.target.value })}>
-              <option value="">Select…</option>
-              {years.map((y) => <option key={y.id} value={y.id}>{y.year_label}{y.is_active ? " (active)" : ""}</option>)}
-            </select>
+            <AppSelect
+              variant="field"
+              value={form.academic_year_id}
+              onChange={(v) => setForm({ ...form, academic_year_id: v })}
+              aria-label="Academic year"
+              placeholder="Select…"
+              options={[
+                { value: "", label: "Select…" },
+                ...years.map((y) => ({
+                  value: y.id,
+                  label: `${y.year_label}${y.is_active ? " (active)" : ""}`,
+                })),
+              ]}
+            />
           </div>
           <button className="btn btn-primary" style={btnSm} onClick={addClass} disabled={saving}>{saving ? "Adding…" : "Add"}</button>
         </div>
@@ -117,18 +130,22 @@ export default function ClassesPage() {
               style={{ cursor: "pointer" }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-                <div style={{
-                  width: 44, height: 44, borderRadius: "var(--radius-md)",
-                  background: "linear-gradient(135deg, var(--primary), #8b5cf6)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  color: "white", fontWeight: 700, fontSize: 16
-                }}>
-                  {c.grade?.charAt(0) || "C"}
-                </div>
+                <PersonMono
+                  name={c.class_incharge_name || "?"}
+                  size={44}
+                  title={
+                    c.class_incharge_name
+                      ? `Class teacher: ${c.class_incharge_name}`
+                      : "No homeroom teacher assigned"
+                  }
+                />
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 16 }}>{c.grade} - {c.section}</div>
+                  <div style={{ fontWeight: 700, fontSize: 16 }}>
+                    {formatClassLabel(c.grade, c.section)}
+                  </div>
                   <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                     {c.student_count || 0} students
+                    {c.class_incharge_name ? ` · ${c.class_incharge_name}` : ""}
                   </div>
                 </div>
               </div>

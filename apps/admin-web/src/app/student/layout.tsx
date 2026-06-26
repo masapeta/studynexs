@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { homePathForRole, portalFromRole } from "@/lib/portal";
+import { AppBackground } from "@/components/AppBackground";
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -12,7 +13,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   useEffect(() => {
     if (loading) return;
     if (!user) {
-      router.replace("/?portal=student");
+      router.replace("/login?portal=student");
       return;
     }
     const portal = portalFromRole(user.role);
@@ -22,7 +23,12 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   }, [user, loading, router]);
 
   if (loading || !user) {
-    return <div style={{ padding: 40, textAlign: "center" }}><div className="spinner" style={{ margin: "0 auto" }} /></div>;
+    return (
+      <div className="sn-app loading-screen">
+        <AppBackground />
+        <div className="spinner" style={{ margin: "0 auto" }} />
+      </div>
+    );
   }
 
   return <>{children}</>;

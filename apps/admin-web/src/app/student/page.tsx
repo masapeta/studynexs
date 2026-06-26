@@ -5,13 +5,14 @@ import Link from "next/link";
 import PortalShell from "@/components/PortalShell";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { STUDENT_NAV } from "@/lib/student-portal";
+import type { PortalContext } from "@/lib/portal-types";
 
 export default function StudentHomePage() {
-  const [ctx, setCtx] = useState<any>(null);
+  const [ctx, setCtx] = useState<PortalContext | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    api("/api/v1/portal/context")
+    api<{ data: PortalContext }>("/api/v1/portal/context")
       .then((r) => setCtx(r.data))
       .catch((e) => setError(getApiErrorMessage(e, "Failed to load")));
   }, []);

@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -233,3 +233,82 @@ class FeeService:
             ).order_by(FeeReceipt.paid_at.desc()).limit(limit)
         )
         return list(result.scalars().all())
+
+    async def list_fee_roster(self, school_id: uuid.UUID) -> dict:
+        """Per-student fee summary for admin fees screen."""
+        from datetime import date as date_cls
+
+        from app.db.models.academic import Class
+        from app.db.models.student import Student
+        from app.db.models.user import User
+
+        today = date_cls.today()
+        rows = (
+            await self.db.execute(
+                select(
+                    Student.id,
+                    User.full_name,
+                    Class.grade,
+                    Class.section,
+                    func.coalesce(func.sum(StudentFeeRecord.amount), 0).label("total_due"),
+                    func.coalesce(func.sum(StudentFeeRecord.paid_amount), 0).label("total_paid"),
+                    func.min(StudentFeeRecord.id).label("sample_record_id"),
+                )
+                .join(User, User.id == Student.user_id)
+                .join(Class, Class.id == Student.class_id)
+                .outerjoin(
+                    StudentFeeRecord,
+                    (StudentFeeRecord.student_id == Student.id)
+                    & (StudentFeeRecord.school_id == school_id),
+                )
+                .where(Student.school_id == school_id)
+                .group_by(Student.id, User.full_name, Class.grade, Class.section)
+                .order_by(User.full_name)
+            )
+        ).all()
+
+        overdue_exists = (
+            await self.db.execute(
+                select(StudentFeeRecord.student_id)
+                .where(
+                    StudentFeeRecord.school_id == school_id,
+                    StudentFeeRecord.status == FeeStatus.OVERDUE,
+                )
+            )
+        ).scalars().all()
+        overdue_set = set(overdue_exists)
+
+        students_out = []
+        total_due_all = 0.0
+        total_paid_all = 0.0
+        for sid, name, grade, section, total_due, total_paid, record_id in rows:
+            due = float(total_due or 0)
+            paid = float(total_paid or 0)
+            total_due_all += due
+            total_paid_all += paid
+            if due <= 0:
+                status = "paid"
+            elif paid >= due:
+                status = "paid"
+            elif sid in overdue_set or (due > paid and paid == 0):
+                status = "overdue" if sid in overdue_set else "partial"
+            elif paid > 0:
+                status = "partial"
+            else:
+                status = "pending"
+            students_out.append({
+                "student_id": str(sid),
+                "name": name,
+                "class_label": f"{grade} {section}".strip(),
+                "total_due": due,
+                "paid_amount": paid,
+                "status": status,
+                "fee_record_id": str(record_id) if record_id else None,
+            })
+
+        return {
+            "students": students_out,
+            "total_due": total_due_all,
+            "total_collected": total_paid_all,
+            "term_label": "Term 1",
+        }

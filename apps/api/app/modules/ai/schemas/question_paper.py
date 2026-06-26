@@ -9,7 +9,10 @@ from pydantic import BaseModel, Field
 class GenerateRequest(BaseModel):
     class_id: uuid.UUID
     subject_id: uuid.UUID
-    topics: list[str] = Field(default_factory=list, description="Chapters/topics to cover")
+    topics: list[str] = Field(
+        default_factory=list,
+        description="Chapters/topics to cover (Phase 1 free-text; CurriculumPack grounding in Phase 1.5)",
+    )
     total_marks: int = Field(default=80, ge=1, le=200)
     duration_minutes: int = Field(default=180, ge=15, le=360)
     difficulty: str = Field(default="balanced", description="easy | balanced | hard")

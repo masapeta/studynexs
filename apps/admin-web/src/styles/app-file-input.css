@@ -1,0 +1,117 @@
+/* Custom file input — hides native OS "Choose File" button */
+
+.app-file-input {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+.app-file-input-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 40px;
+  margin: 0;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--text-muted, #64748b);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s, color 0.2s;
+}
+
+.app-file-input--field .app-file-input-trigger {
+  min-height: 44px;
+  border-style: dashed;
+  border-color: rgba(148, 163, 184, 0.45);
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.app-file-input-trigger:hover {
+  border-color: rgb(var(--accent-rgb) / 0.28);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text-primary, #0f172a);
+}
+
+.app-file-input--field .app-file-input-trigger:hover {
+  border-color: rgb(var(--accent-rgb) / 0.35);
+  background: rgba(239, 246, 255, 0.65);
+}
+
+.app-file-input-trigger:focus-within {
+  outline: none;
+  border-color: rgb(var(--accent-rgb) / 0.45);
+  box-shadow: 0 0 0 3px rgb(var(--accent-rgb) / 0.12);
+  color: var(--text-primary, #0f172a);
+}
+
+.app-file-input--disabled .app-file-input-trigger {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.app-file-input-icon {
+  flex-shrink: 0;
+  color: var(--text-muted, #64748b);
+}
+
+.app-file-input-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-file-input:has(.app-file-input-text:not(:empty)) .app-file-input-text {
+  color: var(--text-primary, #0f172a);
+}
+
+.app-file-input-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.16);
+  color: var(--text-secondary, #475569);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.app-file-input-clear:hover {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+}
+
+.app-file-input-native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.sn-app .app-file-input-trigger {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: var(--sn-glass-border-soft, rgba(148, 163, 184, 0.22));
+}
+
+.sn-app .app-file-input--field .app-file-input-trigger {
+  background: rgba(248, 250, 252, 0.72);
+}

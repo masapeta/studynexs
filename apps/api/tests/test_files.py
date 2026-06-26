@@ -53,6 +53,16 @@ def test_validate_rejects_blocked_extension():
         )
 
 
+def test_validate_rejects_oversized_document():
+    with pytest.raises(Exception, match="too large"):
+        validate_file_upload(
+            category=FileCategory.DOCUMENT,
+            content_type="application/pdf",
+            original_name="big.pdf",
+            file_data=_MIN_PDF + (b"x" * (1024 * 1024)),
+        )
+
+
 def test_validate_accepts_pdf_for_document():
     mime = validate_file_upload(
         category=FileCategory.DOCUMENT,
@@ -71,6 +81,21 @@ def test_validate_accepts_png_for_answer_sheet():
         file_data=_MIN_PNG,
     )
     assert mime == "image/png"
+
+
+@pytest.mark.asyncio
+async def test_read_upload_bounded_rejects_oversized_stream():
+    from io import BytesIO
+    from unittest.mock import AsyncMock
+
+    from app.modules.files.services.file_validation import read_upload_bounded
+
+    huge = BytesIO(b"x" * (1024 * 1024 + 1))
+    upload = AsyncMock()
+    upload.read = AsyncMock(side_effect=lambda n: huge.read(n))
+
+    with pytest.raises(Exception, match="too large"):
+        await read_upload_bounded(upload, max_bytes=1024 * 1024)
 
 
 def test_read_file_bytes_bounded_rejects_oversized_metadata(tmp_path):

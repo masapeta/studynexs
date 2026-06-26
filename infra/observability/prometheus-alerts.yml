@@ -1,0 +1,35 @@
+groups:
+  - name: studynexs_ai
+    rules:
+      - alert: AI_LLM_ErrorRateHigh
+        expr: |
+          sum(rate(studynexs_ai_llm_requests_total{status="error"}[5m]))
+          /
+          sum(rate(studynexs_ai_llm_requests_total[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "AI LLM error rate above 10%"
+          description: "More than 10% of LLM calls are failing over the last 5 minutes."
+
+      - alert: AI_LLM_FallbackSpike
+        expr: sum(rate(studynexs_ai_llm_fallback_success_total[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "AI fallback provider usage spike"
+          description: "Primary LLM provider may be degraded; Ollama fallback is active."
+
+      - alert: AI_LLM_LatencyP95High
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(studynexs_ai_llm_latency_seconds_bucket[5m])) by (le, feature)
+          ) > 30
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "AI LLM p95 latency above 30s"
+          description: "Feature {{ $labels.feature }} LLM p95 latency is high."

@@ -7,7 +7,7 @@ import re
 import structlog
 
 from app.core.config import Environment, get_settings
-from app.modules.ai.gateway import LLMImage, LLMMessage, default_model, get_provider
+from app.modules.ai.gateway import LLMImage, LLMMessage, default_model, generate_llm
 from app.modules.ai.gateway.base import LLMResult
 from app.modules.files.services.file_validation import IMAGE_MIMES, normalize_mime
 
@@ -16,7 +16,11 @@ settings = get_settings()
 
 
 def vision_llm_available() -> bool:
-    return bool(settings.GEMINI_API_KEY or settings.OPENAI_API_KEY)
+    return bool(
+        settings.GEMINI_API_KEY
+        or settings.OPENAI_API_KEY
+        or (settings.OLLAMA_BASE_URL or "").strip()
+    )
 
 
 def is_image_mime(mime: str) -> bool:
@@ -69,10 +73,13 @@ async def extract_answers_from_image(
         return {}, None
 
     prompt = _question_prompt(question_schema, rubrics)
-    provider_name = "gemini" if settings.GEMINI_API_KEY else "openai"
-    try:
-        provider = get_provider(provider_name)
-    except (RuntimeError, ValueError):
+    if settings.GEMINI_API_KEY:
+        provider_name = "gemini"
+    elif settings.OPENAI_API_KEY:
+        provider_name = "openai"
+    elif (settings.OLLAMA_BASE_URL or "").strip():
+        provider_name = "ollama"
+    else:
         return {}, None
 
     messages = [
@@ -82,11 +89,17 @@ async def extract_answers_from_image(
             images=[LLMImage(data=image_bytes, mime_type=mime_type.split(";")[0])],
         )
     ]
-    result = await provider.generate(
-        messages,
-        model=default_model(provider_name),
-        temperature=0.1,
-        max_tokens=4096,
-        json_mode=True,
-    )
+    try:
+        result = await generate_llm(
+            messages,
+            model=default_model(provider_name),
+            provider_name=provider_name,
+            temperature=0.1,
+            max_tokens=4096,
+            json_mode=True,
+            feature="answer_sheet_vision",
+            caller="extract_answers_from_image",
+        )
+    except (RuntimeError, ValueError):
+        return {}, None
     return _parse_answers_json(result.text), result

@@ -4,6 +4,8 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { FileText, CalendarDays, Clock, Sparkles, Save, Check, Printer, KeyRound, Copy } from "lucide-react";
 import { api, fetchProtectedDocumentUrl, getApiErrorMessage } from "@/lib/api";
+import { AppSelect } from "@/components/ui/AppSelect";
+import { formatClassLabel, sortClasses } from "@/lib/format";
 import { DocumentPreviewModal } from "@/components/DocumentPreviewModal";
 import { useAuth } from "@/lib/auth-context";
 
@@ -82,7 +84,7 @@ function AiPapersPageInner() {
   useEffect(() => {
     api("/api/v1/academic/classes?page_size=100")
       .then((r) => {
-        const items = r.items || r.data || [];
+        const items = sortClasses<any>(r.items || r.data || []);
         setClasses(items);
         const wanted = prefill.current.classId;
         const match = wanted && items.find((c: any) => c.id === wanted);
@@ -386,15 +388,18 @@ function AiPapersPageInner() {
           style={{
             marginBottom: 16,
             padding: "14px 20px",
-            borderLeft: `4px solid ${credits.at_soft_limit ? "var(--warning)" : "var(--accent)"}`,
             display: "flex",
-            justifyContent: "space-between",
             alignItems: "center",
             flexWrap: "wrap",
-            gap: 12,
+            gap: 16,
           }}
         >
-          <div>
+          <div
+            className={`stat-icon-container ${credits.at_soft_limit ? "icon-orange" : "icon-blue"}`}
+          >
+            <Sparkles size={20} />
+          </div>
+          <div style={{ flex: 1, minWidth: 200 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>
               AI Credits Remaining
             </div>
@@ -449,39 +454,35 @@ function AiPapersPageInner() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
           <div>
             <label className="stat-label">Class</label>
-            <select
-              className="form-input"
+            <AppSelect
+              variant="field"
               value={classId}
-              onChange={(e) => setClassId(e.target.value)}
-              style={selStyle}
-            >
-              {classes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.grade} - {c.section}
-                </option>
-              ))}
-            </select>
+              onChange={setClassId}
+              aria-label="Class"
+              options={classes.map((c) => ({
+                value: c.id,
+                label: formatClassLabel(c.grade, c.section),
+              }))}
+            />
           </div>
           <div>
             <label className="stat-label">Subject</label>
-            <select
-              className="form-input"
+            <AppSelect
+              variant="field"
               value={subjectId}
-              onChange={(e) => setSubjectId(e.target.value)}
-              style={selStyle}
-            >
-              {subjects.length === 0 && <option value="">No subjects for this class</option>}
-              {subjects.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+              onChange={setSubjectId}
+              aria-label="Subject"
+              placeholder={subjects.length === 0 ? "No subjects for this class" : "Select…"}
+              options={subjects.map((s) => ({ value: s.id, label: s.name }))}
+            />
           </div>
         </div>
 
         <div style={{ marginBottom: 16 }}>
           <label className="stat-label">Topics / chapters (one per line or comma-separated)</label>
+          <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "0 0 6px" }}>
+            Phase 1: enter topics manually. CurriculumPack selection comes in Phase 1.5.
+          </p>
           <textarea
             className="form-input"
             value={topics}
@@ -495,17 +496,19 @@ function AiPapersPageInner() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr auto", gap: 16, alignItems: "end" }}>
           <div>
             <label className="stat-label">Generation mode</label>
-            <select
-              className="form-input"
+            <AppSelect
+              variant="field"
               value={generateMode}
-              onChange={(e) => setGenerateMode(e.target.value as "full" | "from_bank")}
-              style={selStyle}
-            >
-              <option value="full">Full AI ({credits?.purpose_costs?.qp_full ?? 5} credits)</option>
-              <option value="from_bank">
-                From question bank ({credits?.purpose_costs?.qp_from_bank ?? 2} credits)
-              </option>
-            </select>
+              onChange={(v) => setGenerateMode(v as "full" | "from_bank")}
+              aria-label="Generation mode"
+              options={[
+                { value: "full", label: `Full AI (${credits?.purpose_costs?.qp_full ?? 5} credits)` },
+                {
+                  value: "from_bank",
+                  label: `From question bank (${credits?.purpose_costs?.qp_from_bank ?? 2} credits)`,
+                },
+              ]}
+            />
             {generateMode === "from_bank" && bankCount !== null && (
               <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
                 {bankCount} approved question{bankCount === 1 ? "" : "s"} in bank
@@ -534,16 +537,17 @@ function AiPapersPageInner() {
           </div>
           <div>
             <label className="stat-label">Difficulty</label>
-            <select
-              className="form-input"
+            <AppSelect
+              variant="field"
               value={difficulty}
-              onChange={(e) => setDifficulty(e.target.value)}
-              style={selStyle}
-            >
-              <option value="easy">Easy</option>
-              <option value="balanced">Balanced</option>
-              <option value="hard">Hard</option>
-            </select>
+              onChange={setDifficulty}
+              aria-label="Difficulty"
+              options={[
+                { value: "easy", label: "Easy" },
+                { value: "balanced", label: "Balanced" },
+                { value: "hard", label: "Hard" },
+              ]}
+            />
           </div>
           <button
             className="btn btn-primary"

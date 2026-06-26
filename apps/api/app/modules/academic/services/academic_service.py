@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import math
+import re
 import uuid
 
+from fastapi import HTTPException
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -45,6 +47,13 @@ class AcademicService:
             query.order_by(Class.grade, Class.section).offset(offset).limit(page_size)
         )
         classes = list(result.scalars().all())
+        classes.sort(
+            key=lambda c: (
+                int(m.group(1)) if (m := re.search(r"(\d+)", c.grade or "")) else 0,
+                c.grade or "",
+                c.section or "",
+            )
+        )
         await self._attach_class_stats(school_id, classes)
         return classes, total
 
@@ -90,16 +99,61 @@ class AcademicService:
         )).all()
         score_map = {cid: round(float(avg), 1) for cid, avg in score if avg is not None}
 
+        incharge_ids = [c.class_incharge_id for c in classes if c.class_incharge_id]
+        incharge_names: dict[uuid.UUID, str] = {}
+        if incharge_ids:
+            incharge_names = dict(
+                (await self.db.execute(
+                    select(User.id, User.full_name).where(
+                        User.school_id == school_id,
+                        User.id.in_(incharge_ids),
+                    )
+                )).all()
+            )
+
         for c in classes:
             c.student_count = counts.get(c.id, 0)
             c.attendance_pct = att_map.get(c.id)
             c.avg_score = score_map.get(c.id)
+            c.class_incharge_name = (
+                incharge_names.get(c.class_incharge_id) if c.class_incharge_id else None
+            )
+
+    async def _assert_unique_incharge(
+        self,
+        school_id: uuid.UUID,
+        academic_year_id: uuid.UUID,
+        incharge_id: uuid.UUID,
+        *,
+        exclude_class_id: uuid.UUID | None = None,
+    ) -> None:
+        """A teacher may be homeroom incharge for at most one class per academic year."""
+        query = select(Class.grade, Class.section).where(
+            Class.school_id == school_id,
+            Class.academic_year_id == academic_year_id,
+            Class.class_incharge_id == incharge_id,
+        )
+        if exclude_class_id is not None:
+            query = query.where(Class.id != exclude_class_id)
+        existing = (await self.db.execute(query)).first()
+        if existing:
+            grade, section = existing
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "This teacher is already the homeroom teacher for "
+                    f"{grade} {section} in this academic year"
+                ),
+            )
 
     async def create_class(self, school_id: uuid.UUID, data: ClassCreate) -> Class:
         scope = TenantScope(self.db, school_id)
         await scope.academic_year(data.academic_year_id)
         if data.class_incharge_id:
             await scope.staff_user(data.class_incharge_id)
+            await self._assert_unique_incharge(
+                school_id, data.academic_year_id, data.class_incharge_id
+            )
         cls = Class(
             school_id=school_id,
             grade=data.grade,
@@ -225,8 +279,12 @@ class AcademicService:
         rows = await self.db.execute(
             base.order_by(Student.admission_no).offset(offset).limit(page_size)
         )
+        page_rows = rows.all()
+        student_ids = [student.id for student, _, _, _ in page_rows]
+        parent_phones = await self._primary_parent_phones(school_id, student_ids)
+
         items: list[StudentOut] = []
-        for student, full_name, grade, section in rows.all():
+        for student, full_name, grade, section in page_rows:
             items.append(
                 StudentOut(
                     id=student.id,
@@ -242,9 +300,37 @@ class AcademicService:
                     ),
                     student_name=full_name,
                     class_name=f"{grade}-{section}",
+                    parent_phone=parent_phones.get(student.id),
                 )
             )
         return items, total
+
+    async def _primary_parent_phones(
+        self, school_id: uuid.UUID, student_ids: list[uuid.UUID]
+    ) -> dict[uuid.UUID, str | None]:
+        """First linked parent mobile per student — prefers is_primary."""
+        if not student_ids:
+            return {}
+        rows = (
+            await self.db.execute(
+                select(StudentParentMap.student_id, User.mobile)
+                .join(Parent, Parent.id == StudentParentMap.parent_id)
+                .join(User, User.id == Parent.user_id)
+                .where(
+                    Parent.school_id == school_id,
+                    StudentParentMap.student_id.in_(student_ids),
+                )
+                .order_by(
+                    StudentParentMap.student_id,
+                    StudentParentMap.is_primary.desc(),
+                )
+            )
+        ).all()
+        phones: dict[uuid.UUID, str | None] = {}
+        for student_id, mobile in rows:
+            if student_id not in phones:
+                phones[student_id] = mobile
+        return phones
 
     async def enroll_student(self, school_id: uuid.UUID, data: StudentEnroll) -> Student:
         scope = TenantScope(self.db, school_id)

@@ -13,7 +13,7 @@ def portal_permissions(role: str) -> UserPermissionsOut:
         role=role,
         is_admin=False,
         scoped_only=True,
-        can_view_dashboard=is_parent or is_student,
+        can_view_dashboard=False,
         can_view_notices=is_parent or is_student,
         can_use_mastery=is_parent or is_student,
     )

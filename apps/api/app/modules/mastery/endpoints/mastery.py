@@ -11,7 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.authorization import assert_can_access_student
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, get_current_user, require_roles
+from app.core.rate_limit import rate_limit
 from app.core.staff_permissions import assert_mastery_flag_review, get_staff_scope
+from app.modules.ai.gateway.errors import raise_http_for_llm_error
 from app.core.tenant_scope import TenantScope
 from app.db.models.academic import Class, Subject
 from app.db.models.mastery import FlagStatus, MasteryFlag, StudentTopicMastery
@@ -42,6 +44,7 @@ from app.shared.schemas.common import APIResponse
 router = APIRouter()
 
 _STAFF = ("teacher", "class_incharge", "admin", "super_admin")
+_AI_GEN_RATE = {"max_requests": 12, "window_seconds": 60}
 
 
 @router.get("/students/{student_id}", response_model=APIResponse[MasteryProfileOut])
@@ -246,7 +249,11 @@ async def list_flags(
     return APIResponse(data=data)
 
 
-@router.post("/flags/{flag_id}/approve", response_model=APIResponse[FlagOut])
+@router.post(
+    "/flags/{flag_id}/approve",
+    response_model=APIResponse[FlagOut],
+    dependencies=[rate_limit("ai_generate", **_AI_GEN_RATE)],
+)
 async def approve_flag(
     flag_id: uuid.UUID,
     current_user: CurrentUser = Depends(require_roles(*_STAFF)),
@@ -275,8 +282,13 @@ async def approve_flag(
             role=current_user.role,
             credits_charged=credits,
         )
-    except ValueError as e:
-        raise HTTPException(status_code=502, detail=str(e))
+    except Exception as exc:
+        raise_http_for_llm_error(
+            exc,
+            log_event="mastery_narrative_failed",
+            timeout_detail="AI generation timed out. Please try again.",
+            generic_detail="Could not draft the parent note. Please try again later.",
+        )
 
     flag.status = FlagStatus.APPROVED
     flag.narrative = narrative
@@ -364,7 +376,7 @@ async def notify_parents(
             title=f"Learning update: {subject_name} — {flag.topic_display}",
             body=flag.narrative,
             channel=NotificationChannel.IN_APP,
-            link=f"/dashboard/students/{flag.student_id}",
+            link=f"/parent/child/{flag.student_id}",
         )
 
     flag.status = FlagStatus.NOTIFIED
