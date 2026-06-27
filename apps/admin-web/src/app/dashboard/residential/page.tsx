@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { AppSelect } from "@/components/ui/AppSelect";
+import { PageHeaderCard } from "@/components/layout/PageHeaderCard";
 import { BedDouble, Plus } from "lucide-react";
 
 const inp: React.CSSProperties = { marginTop: 4 };
@@ -59,15 +60,11 @@ export default function ResidentialPage() {
 
   return (
     <>
-      <div className="card bento-glass" style={{ marginBottom: 24, padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Residential</h1>
-          <p style={{ margin: "4px 0 0", color: "var(--text-muted)", fontSize: 13 }}>Hostel blocks and room allocations.</p>
-        </div>
-        <button className="btn btn-primary" style={{ width: "auto", padding: "8px 18px" }} onClick={() => setShowAdd((v) => !v)}>
+      <PageHeaderCard title="Residential" subtitle="Hostel blocks and room allocations.">
+        <button className="btn btn-primary gw-btn-sm" type="button" onClick={() => setShowAdd((v) => !v)}>
           <Plus size={16} /> Add Block
         </button>
-      </div>
+      </PageHeaderCard>
 
       {error && <div className="card" style={{ marginBottom: 16, padding: 12, color: "var(--danger)" }}>{error}</div>}
 

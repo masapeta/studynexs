@@ -15,8 +15,10 @@ import {
 } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
 import { DashboardWidgets } from "./DashboardWidgets";
+import { DashboardAnalytics } from "./DashboardAnalytics";
 import { SchoolDayPanel } from "./SchoolDayPanel";
 import { briefingDate, inr } from "@/lib/format";
+import { FINANCE, STUDENTS, TEACHING } from "@/lib/dashboard-routes";
 
 export type { TimetablePeriod } from "./SchoolDayPanel";
 
@@ -72,11 +74,13 @@ function StatTile({
 }) {
   return (
     <div className="briefing-card briefing-stat">
-      <div className="briefing-stat-head">
-        <span className="briefing-stat-label">{label}</span>
-        <Icon size={16} className={toneClass} />
+      <div className={`briefing-stat-icon ${toneClass}`} aria-hidden>
+        <Icon size={15} />
       </div>
-      <div className="briefing-stat-value">{value}</div>
+      <div className="briefing-stat-body">
+        <span className="briefing-stat-label">{label}</span>
+        <div className="briefing-stat-value">{value}</div>
+      </div>
     </div>
   );
 }
@@ -197,19 +201,19 @@ export function MorningBriefing({
                 </Link>
               )}
               {pendingFees > 0 && (
-                <Link href="/dashboard/fees" className="briefing-attention briefing-attention-brass">
+                <Link href={FINANCE.fees} className="briefing-attention briefing-attention-brass">
                   <span className="briefing-attention-kicker">Fees outstanding</span>
                   <span className="briefing-attention-body">{inr(pendingFees)} pending collection</span>
                 </Link>
               )}
               {pipeline > 0 && (
-                <Link href="/dashboard/admissions" className="briefing-attention briefing-attention-neutral">
+                <Link href={STUDENTS.admissions} className="briefing-attention briefing-attention-neutral">
                   <span className="briefing-attention-kicker">Admissions pipeline</span>
                   <span className="briefing-attention-body">{pipeline} candidates in progress</span>
                 </Link>
               )}
               {qpPending > 0 && (
-                <Link href="/dashboard/ai-papers" className="briefing-attention briefing-attention-brass">
+                <Link href={TEACHING.aiPapers} className="briefing-attention briefing-attention-brass">
                   <span className="briefing-attention-kicker">{qpPending} papers awaiting approval</span>
                   <span className="briefing-attention-body">Review AI question papers from your teachers</span>
                 </Link>
@@ -222,11 +226,11 @@ export function MorningBriefing({
                   </span>
                 </Link>
               )}
-              <Link href="/dashboard/mastery" className="briefing-attention briefing-attention-neutral">
+              <Link href={TEACHING.mastery} className="briefing-attention briefing-attention-neutral">
                 <span className="briefing-attention-kicker">Topic mastery</span>
                 <span className="briefing-attention-body">Review weakness flags and parent notes</span>
               </Link>
-              <Link href="/dashboard/exams/corrections" className="briefing-attention briefing-attention-neutral">
+              <Link href={TEACHING.corrections} className="briefing-attention briefing-attention-neutral">
                 <span className="briefing-attention-kicker">Exam loop</span>
                 <span className="briefing-attention-body">Answer-sheet corrections and AI grading history</span>
               </Link>
@@ -237,32 +241,54 @@ export function MorningBriefing({
           </div>
 
           {isAdmin && (
-            <div className="briefing-card briefing-panel">
-              <div className="briefing-panel-head">
-                <h3>Finance snapshot</h3>
-                <TrendingUp size={16} className="briefing-tone-sage" />
-              </div>
-              <div className="briefing-finance-row">
-                <div>
-                  <div className="briefing-finance-value briefing-tone-sage">{inr(collected)}</div>
-                  <div className="briefing-finance-label">collected</div>
+            <div className="briefing-secondary-row">
+              <div className="briefing-card briefing-panel briefing-panel--finance">
+                <div className="briefing-panel-head">
+                  <TrendingUp size={16} className="briefing-tone-sage" />
+                  <h3>Finance snapshot</h3>
                 </div>
-                <div>
-                  <div className="briefing-finance-value briefing-tone-coral">{inr(spent)}</div>
-                  <div className="briefing-finance-label">spent</div>
-                </div>
-                <div>
-                  <div className="briefing-finance-value briefing-tone-ink">
-                    {inr(Math.max(0, collected - spent))}
+                <div className="briefing-finance-row">
+                  <div>
+                    <div className="briefing-finance-value briefing-tone-sage">{inr(collected)}</div>
+                    <div className="briefing-finance-label">collected</div>
                   </div>
-                  <div className="briefing-finance-label">net</div>
+                  <div>
+                    <div className="briefing-finance-value briefing-tone-coral">{inr(spent)}</div>
+                    <div className="briefing-finance-label">spent</div>
+                  </div>
+                  <div>
+                    <div className="briefing-finance-value briefing-tone-ink">
+                      {inr(Math.max(0, collected - spent))}
+                    </div>
+                    <div className="briefing-finance-label">net</div>
+                  </div>
                 </div>
               </div>
+
+              {notice && (
+                <div className="briefing-card briefing-panel briefing-panel--notice">
+                  <div className="briefing-panel-head">
+                    <Megaphone size={16} className="briefing-tone-brass" />
+                    <h3>Latest notice</h3>
+                    <Link href="/dashboard/notices" className="briefing-link briefing-panel-action">
+                      View all
+                    </Link>
+                  </div>
+                  <p className="briefing-notice-title">{notice.title}</p>
+                  <p className="briefing-notice-body">{notice.content}</p>
+                  <div className="briefing-notice-meta">
+                    <StatusBadge tone="brass">{notice.audience}</StatusBadge>
+                    {(notice.priority === "high" || notice.priority === "urgent") && (
+                      <StatusBadge tone="red">{notice.priority}</StatusBadge>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
-          {notice && (
-            <div className="briefing-card briefing-panel">
+          {!isAdmin && notice && (
+            <div className="briefing-card briefing-panel briefing-panel--notice">
               <div className="briefing-panel-head">
                 <Megaphone size={16} className="briefing-tone-brass" />
                 <h3>Latest notice</h3>
@@ -304,6 +330,7 @@ export function MorningBriefing({
         </div>
       </div>
 
+      {isAdmin && <DashboardAnalytics />}
       {isAdmin && <DashboardWidgets userId={userId} isAdmin={isAdmin} />}
     </div>
   );

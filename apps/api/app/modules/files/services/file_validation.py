@@ -10,6 +10,7 @@ MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB default
 MAX_UPLOAD_BYTES_BY_CATEGORY: dict[FileCategory, int] = {
     FileCategory.DOCUMENT: 1 * 1024 * 1024,
     FileCategory.REPORT_CARD: 1 * 1024 * 1024,
+    FileCategory.ANSWER_SHEET: 5 * 1024 * 1024,
 }
 
 

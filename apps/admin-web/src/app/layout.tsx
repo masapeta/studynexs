@@ -2,8 +2,13 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import "@/styles/sn-app-premium.css";
+import "@/styles/sn-app-vision.css";
+import "@/styles/app-responsive.css";
+import "@/styles/sn-topbar.css";
+import "@/styles/sn-vision-glass.css";
 import "@/styles/app-select.css";
 import "@/styles/app-file-input.css";
+import "@/styles/sn-page-density.css";
 import { AuthProvider } from "@/lib/auth-context";
 
 const inter = Inter({

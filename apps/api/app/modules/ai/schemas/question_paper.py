@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import uuid
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from app.modules.ai.gateway.input_guard import ALLOWED_DIFFICULTIES, sanitize_prompt_text, sanitize_topic_list
 
 
 class GenerateRequest(BaseModel):
@@ -12,11 +14,36 @@ class GenerateRequest(BaseModel):
     topics: list[str] = Field(
         default_factory=list,
         description="Chapters/topics to cover (Phase 1 free-text; CurriculumPack grounding in Phase 1.5)",
+        max_length=20,
     )
     total_marks: int = Field(default=80, ge=1, le=200)
     duration_minutes: int = Field(default=180, ge=15, le=360)
     difficulty: str = Field(default="balanced", description="easy | balanced | hard")
-    title: str | None = None
+    title: str | None = Field(default=None, max_length=200)
+
+    @field_validator("topics", mode="before")
+    @classmethod
+    def _validate_topics(cls, v: object) -> list[str]:
+        if v is None:
+            return []
+        if not isinstance(v, list):
+            raise ValueError("topics must be a list")
+        return sanitize_topic_list([str(x) for x in v])
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def _validate_title(cls, v: object) -> str | None:
+        if v is None or v == "":
+            return None
+        return sanitize_prompt_text(str(v), max_length=200, field_name="title")
+
+    @field_validator("difficulty", mode="before")
+    @classmethod
+    def _validate_difficulty(cls, v: object) -> str:
+        d = str(v or "balanced").strip().lower()
+        if d not in ALLOWED_DIFFICULTIES:
+            raise ValueError("difficulty must be easy, balanced, or hard")
+        return d
 
 
 class BankSummaryOut(BaseModel):
@@ -65,9 +92,25 @@ class QuestionPaperOut(BaseModel):
 
 class UpdatePaperRequest(BaseModel):
     """Teacher edits before approval — only the editable parts of the paper."""
-    title: str | None = None
-    general_instructions: str | None = None
+    title: str | None = Field(default=None, max_length=200)
+    general_instructions: str | None = Field(default=None, max_length=4000)
     sections: list[SectionOut] | None = None
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def _sanitize_title(cls, v: object) -> str | None:
+        if v is None or v == "":
+            return None
+        return sanitize_prompt_text(str(v), max_length=200, field_name="title", reject_injection=False)
+
+    @field_validator("general_instructions", mode="before")
+    @classmethod
+    def _sanitize_instructions(cls, v: object) -> str | None:
+        if v is None or v == "":
+            return None
+        return sanitize_prompt_text(
+            str(v), max_length=4000, field_name="general_instructions", reject_injection=False
+        )
 
 
 class DuplicatePaperRequest(BaseModel):

@@ -1,19 +1,24 @@
 # StudyNexs — Build Status
 
-> Owner: Avinash Reddy Masapeta (ARM) · **As of: 2026-06-17**  
-> **What's true in the repo today.** Complete product definition: [PRODUCT.md](./PRODUCT.md).
+> Owner: Avinash Reddy Masapeta (ARM) · **As of: 2026-06-15**  
+> **What's true in the repo today.** Complete product definition: [PRODUCT.md](./PRODUCT.md).  
+> **AI-intelligent OS roadmap:** [PRODUCT.md §23](./PRODUCT.md#23-ai-intelligent-school-os) · phase map below.
 
 ---
 
 ## Snapshot
 
 - **SMS core + admin portal** are substantially built; backend APIs cover most school-ops modules.
-- **AI wedge is live in demo:** question paper generation and report card generation proven end-to-end (~₹0.13/paper on OpenAI gpt-4o-mini).
-- **AI credit metering** — credits charged at generation (not approval); principal usage log; QP submit/reject workflow
-- **Topic mastery** module is built (compute, flags, heatmap, digest) with admin UI wired.
+- **IA consolidation (2026-06):** Finance, Students, and Teaching **module hubs** with tab nav; sidebar ~12 items; legacy URL redirects; Reports merged into dashboard analytics; `/teacher` → dashboard.
+- **AI wedge is live in demo:** question paper generation (full + from-bank), report cards, answer-sheet vision eval, mastery narratives — proven end-to-end (~₹0.13/paper on OpenAI gpt-4o-mini).
+- **AI hardening (2026-06):** input guards, eval rate limits, answer-sheet file access, metrics token gate, tutor lesson-key validation — see `apps/api/tests/test_ai_hardening.py`.
+- **Exam loop (partial):** snap/upload → vision OCR → heuristic marks + HITL approve → corrections history; misconception library API exists.
+- **Mistake Recovery Tutor (MVP):** template lessons + Azure/Web Speech TTS in `admin-web` student portal; recommendations from mastery + exam mistakes.
+- **Lesson plans:** CRUD + **template-based** generation (`template-v1`) — **not LLM-grounded yet**; AI lesson plans are Phase **A-OS** below.
+- **Topic mastery** module built (compute, flags, heatmap, digest, parent narratives on approve).
 - **Pilot school** is interested; no signed deal yet. Demand and pricing not validated.
 - **Binding constraint:** solo builder on branch `phase-0-foundation`. Scope discipline is survival.
-- **Four of five planned portals** do not exist yet — only `admin-web` is in the repo.
+- **Four of five planned portals** do not exist yet — student/parent experiences live inside `admin-web` (`/student`, `/parent`) until Flutter Phase 2.
 
 ---
 
@@ -64,12 +69,20 @@
 - `/api/v1/ai/health`, `/api/v1/ai/usage`
 
 ### AI features (Phase 1)
-- **Question paper generator** — generate, edit, approve (HITL), export; SSC Class 10 Maths verified (100 marks, 33 Qs)
+- **Question paper generator** — generate, edit, approve (HITL), export; `generate-from-bank` compose mode; SSC Class 10 Maths verified (100 marks, 33 Qs)
 - **Report card generator** — consolidate marks + attendance, AI-drafted remark, edit, approve (HITL), export
-- **Mastery flag narratives** — LLM-generated teacher-facing explanations on flag approval
+- **Mastery flag narratives** — LLM-generated parent-facing note on flag approval (teacher edits before send)
+- **Answer-sheet evaluation v1** — upload image → vision OCR (async job) → heuristic objective grading + subjective assist → teacher HITL approve → marks committed; corrections history + misconception library API
+- **AI input hardening** — bounded prompts, injection guards, per-route rate limits, scoped answer-sheet downloads
+
+### Tutor & lesson plans (pre–CurriculumPack)
+- **Mistake Recovery Tutor MVP** — recommendations from weak mastery + exam misconceptions; static lesson templates + step player; Azure Neural TTS with Web Speech fallback
+- **Lesson plans** — CRUD under Teaching hub; `template-v1` structured output (**not** syllabus-grounded LLM yet)
 
 ### Admin web (`apps/admin-web`)
-- Wired pages: dashboard, students (+ detail), staff, classes, settings, attendance, exams (+ question schema editor), timetable, finance (read-only stats/receipts), notices (list), transport, residential, **AI Papers**, **Report Cards**, **Topic Mastery**, **Mastery Digest**
+- **Module hubs:** `/dashboard/finance/*`, `/dashboard/students/*`, `/dashboard/teaching/*` with `ModuleHubNav`
+- Wired pages: dashboard (+ embedded school analytics), students (+ detail, admissions, guardians), staff, classes, settings, attendance, exams (+ evaluate, corrections, question schema), timetable, finance hub (fees/payroll/expenses), notices, transport, residential, **AI Papers**, **Report Cards**, **Lesson Plans**, **Topic Mastery**, **Mastery Digest**
+- Student portal: `/student/tutor`, `/student/mastery` (inside admin-web)
 - Auth flow (login, refresh, logout)
 - Playwright smoke script: `apps/admin-web/e2e-smoke.cjs`
 - Demo readiness script: `apps/api/scripts/smoke_demo_readiness.py`
@@ -85,12 +98,16 @@
 |------|-----|
 | Question paper generator | SSC blueprint approximate — verify against real sample paper; export is HTML print-to-PDF (WeasyPrint not wired) |
 | Report cards | LLM remark path proven; needs pilot-school validation on tone/accuracy |
-| AI generation | Synchronous on request thread — should move to Arq queue for production load |
-| Exams / marks UI | Page exists and calls API; needs pilot checklist validation |
-| Timetable UI | Wired to API; needs UX polish for pilot |
-| Finance UI | Read-only; no fee payment UI (API `POST /fees/pay` exists) |
+| Answer-sheet evaluation | Vision OCR live; subjective feedback still heuristic — pilot accuracy checklist; async Arq path works but ops tuning needed |
+| AI generation | Synchronous on request thread for QP/report — should move heavy jobs to Arq queue for production load |
+| Lesson plans | Template-only — **AI-grounded plans blocked on Layer 1 foundation** ([PRODUCT.md §23](./PRODUCT.md#23-ai-intelligent-school-os)) |
+| Tutor MVP | Template lessons only — no Concept Cards / Content Review Queue / RAG yet |
+| Exams / marks UI | Evaluate + corrections wired; needs pilot validation on real scans |
+| Timetable UI | Wired to API; not yet feeding lesson-plan AI context |
+| Finance UI | Fees/payroll/expenses under hub; payment UI still missing (API `POST /fees/pay` exists) |
 | Notices UI | List works; "New Notice" button not wired to API |
-| Mastery module | Built but needs real exam/slip-test data from pilot to prove value |
+| Mastery module | Built; needs real exam/slip-test data from pilot to prove value |
+| IA / UX | Hub consolidation done; visual density pass ongoing — hard refresh after CSS changes |
 
 ---
 
@@ -128,12 +145,32 @@
 10. **Wire QP + marking scheme to pack** — replace free-text `topics`; `QuestionItem` + `Rubric` per question
 10b. **Question-level intelligence** — split papers → `QuestionBankItem`; bank ingest on approve ✅; generate-from-bank ✅ ([PRODUCT.md](./PRODUCT.md) §7.5)
 10c. **Top 5 exam enhancements** — (1) question bank (2) blueprint intelligence (3) eval→question analytics (4) remedial packs (5) inspection/PTA pack ([PRODUCT.md](./PRODUCT.md) §7.6.13)
-11. **Answer sheet evaluation v1** — approved paper + rubric + model answer + concept tags; HITL → `exam_marks`
-12. **Weak-concept extraction** — from evaluations into mastery
-13. **Mistake Recovery Tutor MVP** — Concept Cards + `ContentReviewQueue` + post-eval remediation
+11. ~~**Answer sheet evaluation v1**~~ — **🟡 MVP shipped** (vision OCR + HITL); tighten against approved-paper-only policy + pack tags in Phase 1.5
+12. **Weak-concept extraction** — deepen eval → mastery linkage (partial via misconceptions API)
+13. ~~**Mistake Recovery Tutor MVP**~~ — **🟡 template tutor shipped**; upgrade to Concept Cards + `ContentReviewQueue` in Phase 1.5
 14. **DPDP purpose tags** — on all student-touching events (`exam_evaluation`, `question_generation`, `ai_tutor`, etc.)
 15. RAG embeddings per CurriculumPack (Qdrant)
 16. WhatsApp alerts — deferred past 8-week plan unless pilot demands
+
+### AI-Intelligent OS tracks (see [PRODUCT.md §23](./PRODUCT.md#23-ai-intelligent-school-os))
+
+Runs **in parallel** with CurriculumPack — do not skip Layer 1.
+
+| Track | Name | Product phase | Status | Depends on |
+|-------|------|---------------|--------|------------|
+| **A-OS** | Trust & context | Late Phase 1 → Phase 1.5 | ⬜ | Partial: mastery + eval data exist; **no CurriculumPack / coverage model yet** |
+| **B-OS** | Close the loop | Phase 1.5 → 2 | 🟡 partial | QP↔mastery deep links ✅; bulk QP from heatmap, tutor assignments, subjective feedback LLM ⬜ |
+| **C-OS** | Intelligent UX | Phase 2 → 3 | ⬜ | Suggestion cards, document inbox (classify + confirm), principal narrative |
+| **D-OS** | Workflow orchestration | Phase 3+ | 🔭 | Post-exam loop agent, week-ahead planning agent — **only after A–B used daily** |
+
+**A-OS deliverables (first AI-OS sprint after pilot gate):**
+1. Curriculum graph (or interim: syllabus week + topic list per class/subject)
+2. Academic calendar + “periods until exam” context
+3. Coverage tracking (% taught vs assessed per topic)
+4. Unified student/topic state view (mastery + last mistake + tutor usage)
+5. **AI lesson plan v1** — structured JSON, 1 credit, HITL, links to QP + mastery flags
+
+**Lesson plan AI minimum spec:** [PRODUCT.md §23.4](./PRODUCT.md#234-lesson-plan-ai--minimum-spec)
 
 ### Phase 2+
 13. Flutter parent + student apps
@@ -201,15 +238,16 @@ Solo builder, focused effort. **Validate each phase with pilot before starting t
 | Phase | Focus | Status | Rough effort |
 |-------|-------|--------|--------------|
 | **Phase 0** | AI platform foundation | ✅ Done | — |
-| **Phase 1** | Pilot-ready SMS + QP hardening | 🟡 In progress | 4–8 weeks |
-| **Phase 1.5** | CurriculumPack v1 + exam loop + Mistake Recovery Tutor | ⬜ Next | **8 weeks** (see plan below) |
-| **Phase 2** | Mobile apps + tutor + parent feed | ⬜ | 2–3 months |
-| **Phase 2b** | **Finance Command Center Phase 1** — fee visibility, reminders, promise-to-pay (optional module) | ⬜ | After pilot retention need; **not in 8-week Phase 1.5 plan unless pilot demands** |
+| **Phase 1** | Pilot-ready SMS + QP + eval + mastery + tutor template + IA hubs | 🟡 In progress | 4–8 weeks |
+| **Phase 1.5** | CurriculumPack v1 + exam loop hardening + Concept Cards | ⬜ Next | **8 weeks** (see plan below) |
+| **A-OS** | AI-Intelligent OS — trust & context + **AI lesson plan v1** | ⬜ | Overlaps late P1 / P1.5 ([PRODUCT.md §23](./PRODUCT.md#23-ai-intelligent-school-os)) |
+| **B-OS** | Close the loop (heatmap QP, tutor assign, eval feedback LLM) | 🟡 partial | P1.5 → P2 |
+| **Phase 2** | Mobile apps + tutor RAG + parent feed | ⬜ | 2–3 months |
+| **C-OS** | Intelligent UX (suggestions, document inbox, principal narrative) | ⬜ | P2 → P3 |
+| **Phase 2b** | **Finance Command Center Phase 1** (optional) | ⬜ | Pilot retention only |
 | **Phase 3** | Communication + co-pilot + memory UI | ⬜ | 2–3 months |
-| **Phase 4** | Voice, vernacular, gamification | ⬜ | ~3 months |
-| **Phase 5** | Autonomous ops + vision tutor | ⬜ | 3–6 months |
-| **Finance Phase 2** | Management finance snapshot (revenue, expenses, cashflow, branch compare) | ⬜ | After FC Phase 1 proves value |
-| **Finance Phase 3** | Deeper ops (payroll, vendors, Tally export) | 🔭 | Only on repeated school demand |
+| **D-OS** | Workflow orchestration agents | 🔭 | P3+ only if A–B adopted |
+| **Phase 4–6** | Learning Companion, Enrichment Studio, voice/vision | 🔭 | [PRODUCT.md §17](./PRODUCT.md#17-phased-vision) |
 | **Parallel** | DPDP, billing, onboarding | ⬜ Ongoing | — |
 
 ---
@@ -224,10 +262,10 @@ Canonical execution plan from product strategy. Full design: [PRODUCT.md](./PROD
 | **2** | TOC/syllabus upload + AI extraction into chapter → topic → concept tree |
 | **3** | HOD approval flow for curriculum pack (immutable on approve) |
 | **4** | Generate QP + marking scheme from approved pack; per-question rubric + concept tags at teacher approval |
-| **5** | Answer-sheet evaluator MVP — StudyNexs-generated papers only; snap/upload → AI read → rubric compare |
-| **6** | Teacher HITL correction screen; **teacher time saved** metric |
-| **7** | Weak-concept extraction from approved evaluations → update mastery / concept weakness |
-| **8** | **Mistake Recovery Tutor** MVP — Concept Cards + post-evaluation remediation flow |
+| **5** | Answer-sheet evaluator MVP — StudyNexs-generated papers only; snap/upload → AI read → rubric compare | **🟡 Shipped (MVP)** — pack-scoped rubrics in Week 4–5 |
+| **6** | Teacher HITL correction screen; **teacher time saved** metric | **🟡 Shipped** — corrections history UI |
+| **7** | Weak-concept extraction from approved evaluations → update mastery / concept weakness | 🔧 partial — misconceptions API; full mastery recompute linkage ⬜ |
+| **8** | **Mistake Recovery Tutor** MVP — Concept Cards + post-evaluation remediation flow | **🟡 template tutor shipped** — Concept Cards Week 8 |
 
 **Prerequisites before Week 1:** Phase 1 QP hardening complete; pilot school pack inputs collected (book, TOC, syllabus, sample paper).
 
@@ -250,7 +288,11 @@ Canonical execution plan from product strategy. Full design: [PRODUCT.md](./PROD
 | No full textbook storage | **Decided (2026-06-17):** structured curriculum + references only; copyright-safe |
 | Tutor MVP = Mistake Recovery | **Decided (2026-06-17):** post answer-sheet eval; Concept Cards not per-chat approval |
 | 8-week Phase 1.5 plan | **Decided (2026-06-17):** see table above |
-| Finance Command Center | **Decided (2026-06-17):** optional paid module; FC Phase 1 only if pilot retention needs it; hard boundary on accounting/GST/payroll compliance — see [PRODUCT.md](./PRODUCT.md) §14 |
+| AI-Intelligent OS north star | **Decided (2026-06-15):** context + suggested next action + HITL — [PRODUCT.md §23](./PRODUCT.md#23-ai-intelligent-school-os) |
+| Lesson plan AI | **Decided (2026-06-15):** structured LLM v1 in **A-OS** after syllabus/calendar context — not before |
+| Document upload router agent | **Decided (2026-06-15):** **C-OS** — classify + user confirm first; no autonomous router in pilot |
+| Hybrid rules + ML + LLM | **Decided (2026-06-15):** explicit per feature — see [PRODUCT.md §23.3](./PRODUCT.md#233-hybrid-architecture-rules--ml--llm--workflows) |
+| Finance Command Center | **Decided (2026-06-17):** optional paid module; FC Phase 1 only if pilot retention needs it — see [PRODUCT.md](./PRODUCT.md) §14 |
 | Second engineer | Consider at Phase 2 |
 
 ---

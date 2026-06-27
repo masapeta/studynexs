@@ -12,19 +12,29 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.mastery import MasteryFlag
 from app.modules.ai.gateway import LLMMessage, generate_llm, record_usage
+from app.modules.ai.gateway.input_guard import sanitize_prompt_text
 from app.modules.ai.services.ai_credits import credits_for_purpose, reserve_ai_credits
 
 logger = structlog.get_logger()
 
 
+def _safe_evidence_str(value: object, *, max_length: int = 200) -> str:
+    if value is None:
+        return ""
+    cleaned = sanitize_prompt_text(str(value), max_length=max_length, field_name="evidence", reject_injection=False)
+    return cleaned or ""
+
+
 def _build_messages(flag: MasteryFlag) -> list[LLMMessage]:
     ev = flag.evidence or {}
     history_lines = "\n".join(
-        f"- {h.get('date')}: {h.get('title')} ({h.get('exam_type', '').replace('_', ' ')}): "
-        f"{h.get('pct')}%"
-        for h in ev.get("history", [])
+        f"- {_safe_evidence_str(h.get('date'), max_length=32)}: "
+        f"{_safe_evidence_str(h.get('title'), max_length=120)} "
+        f"({_safe_evidence_str(h.get('exam_type', ''), max_length=40).replace('_', ' ')}): "
+        f"{_safe_evidence_str(h.get('pct'), max_length=16)}%"
+        for h in ev.get("history", [])[:12]
     )
-    trend = str(ev.get("trend", "stable")).replace("_", " ")
+    trend = _safe_evidence_str(ev.get("trend", "stable"), max_length=40).replace("_", " ")
     system = (
         "You are an experienced Indian school teacher writing a short note to a "
         "parent about one topic their child needs support with. Write 3-5 warm, "
@@ -35,10 +45,11 @@ def _build_messages(flag: MasteryFlag) -> list[LLMMessage]:
         "Plain text only, no headings, bullets, or greetings like 'Dear parent'."
     )
     user = (
-        f"Student: {ev.get('student_name') or 'the student'}\n"
-        f"Subject: {ev.get('subject_name') or ''}\n"
-        f"Topic needing support: {ev.get('topic')}\n"
-        f"Current mastery: {ev.get('mastery_pct')}% (class average {ev.get('class_avg_pct')}%)\n"
+        f"Student: {_safe_evidence_str(ev.get('student_name') or 'the student', max_length=120)}\n"
+        f"Subject: {_safe_evidence_str(ev.get('subject_name'), max_length=120)}\n"
+        f"Topic needing support: {_safe_evidence_str(ev.get('topic'), max_length=200)}\n"
+        f"Current mastery: {_safe_evidence_str(ev.get('mastery_pct'), max_length=16)}% "
+        f"(class average {_safe_evidence_str(ev.get('class_avg_pct'), max_length=16)}%)\n"
         f"Trend: {trend}\n"
         f"Recent assessments:\n{history_lines or '- (none)'}\n\n"
         "Write the note to the parent."

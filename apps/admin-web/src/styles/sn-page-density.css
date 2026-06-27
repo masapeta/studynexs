@@ -1,0 +1,428 @@
+/* ── App-wide compact density (aligned with briefing dashboard) ─────────
+   Loaded last — tightens cards, headers, grids on every .sn-app route. */
+
+.sn-app {
+  --sn-stack-gap: 0.75rem;
+  --sn-panel-pad-y: 0.65rem;
+  --sn-panel-pad-x: 0.8rem;
+}
+
+/* ── App shell — no grouped boxes; only tiles are glass ─────────────────── */
+
+.sn-app .main-content,
+.sn-app .page-content {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.sn-app .briefing-header {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0 !important;
+  margin-bottom: 0.75rem !important;
+  border-radius: 0 !important;
+}
+
+.sn-app .briefing-eyebrow {
+  color: var(--text-muted);
+}
+
+.sn-app .briefing-title {
+  color: var(--sn-navy, #0f172a);
+}
+
+/* ── Page headers (PageHeaderCard + PageShell) ─────────────────────────── */
+
+.sn-app .sn-page-header-card,
+.sn-app .gw-page-header {
+  margin-bottom: 0.75rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: 14px;
+}
+
+.sn-app .sn-page-header-card__title,
+.sn-app .gw-page-title {
+  font-size: 1.125rem;
+  line-height: 1.25;
+}
+
+.sn-app .sn-page-header-card__subtitle,
+.sn-app .gw-page-subtitle {
+  font-size: 0.75rem;
+  margin-top: 2px;
+}
+
+/* ── Cards & panels ─────────────────────────────────────────────────────── */
+
+.sn-app .gw-card-pad,
+.sn-app .card:not(.data-table-card):not(.sn-page-header-card) {
+  padding: var(--sn-panel-pad-y) var(--sn-panel-pad-x);
+}
+
+.sn-app .data-table-card {
+  padding: 0;
+}
+
+.sn-app .sn-section-gap {
+  margin-bottom: var(--space-section);
+}
+
+.sn-app .sn-content-card {
+  padding: var(--sn-panel-pad-y) var(--sn-panel-pad-x);
+  margin-bottom: var(--space-section);
+}
+
+.sn-app .sn-inline-alert {
+  padding: 0.5rem 0.75rem;
+  margin-bottom: var(--space-section);
+  border-radius: 10px;
+  font-size: 0.8125rem;
+}
+
+.sn-app .sn-inline-alert--error {
+  color: var(--danger);
+}
+
+.sn-app .sn-inline-alert--success {
+  color: var(--success);
+}
+
+.sn-app .sn-filter-panel {
+  padding: var(--sn-panel-pad-y) var(--sn-panel-pad-x);
+  margin-bottom: var(--space-section);
+}
+
+.sn-app .sn-credits-banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  padding: var(--sn-panel-pad-y) var(--sn-panel-pad-x);
+  margin-bottom: var(--space-section);
+}
+
+.sn-app .sn-form-row {
+  display: grid;
+  gap: 0.65rem;
+  align-items: end;
+}
+
+.sn-app .sn-form-row--timetable {
+  grid-template-columns: repeat(6, minmax(0, 1fr)) auto;
+}
+
+.sn-app .sn-form-row--lesson {
+  grid-template-columns: 1fr 1fr 1.5fr auto;
+}
+
+.sn-app .sn-form-row--events {
+  grid-template-columns: 2fr 1fr 1fr auto;
+}
+
+.sn-app .sn-settings-section {
+  padding: var(--sn-panel-pad-y) var(--sn-panel-pad-x);
+  margin-bottom: var(--space-section);
+}
+
+.sn-app .sn-settings-section h2 {
+  font-size: 0.875rem;
+  font-weight: 700;
+  margin: 0 0 0.65rem;
+}
+
+.sn-app .sn-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+@media (max-width: 768px) {
+  .sn-app .sn-form-row--timetable,
+  .sn-app .sn-form-row--lesson,
+  .sn-app .sn-form-row--events,
+  .sn-app .sn-settings-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Filter pills & pipeline tabs ──────────────────────────────────────── */
+
+.sn-app .sn-filter-pills {
+  margin-bottom: var(--space-section);
+  gap: 0.4rem;
+}
+
+.sn-app .sn-filter-pill {
+  min-height: 32px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+}
+
+.sn-app .gw-pipeline {
+  margin-bottom: var(--space-section);
+  gap: 0.5rem;
+}
+
+.sn-app .gw-pipeline-stage {
+  min-width: 5.5rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 10px;
+}
+
+.sn-app .gw-pipeline-count {
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.sn-app .gw-pipeline-label {
+  font-size: 0.6875rem;
+}
+
+/* ── Lists & section titles ────────────────────────────────────────────── */
+
+.sn-app .gw-list-title {
+  font-size: 0.8125rem;
+  margin: 0 0 0.5rem;
+}
+
+.sn-app .gw-list-meta {
+  font-size: 0.6875rem;
+}
+
+/* ── Grids ─────────────────────────────────────────────────────────────── */
+
+.sn-app .bento-grid,
+.sn-app .dashboard-grid,
+.sn-app .dashboard-widgets-grid,
+.sn-app .library-stats-grid,
+.sn-app .parents-top-grid,
+.sn-app .reports-kpi-grid {
+  gap: var(--space-grid);
+}
+
+.sn-app .briefing-analytics-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: var(--space-section);
+}
+
+.sn-app .briefing-analytics-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.sn-app .briefing-analytics-sub {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin: 0.15rem 0 0;
+}
+
+.sn-app .briefing-analytics-kpis {
+  margin-top: var(--space-section);
+}
+
+.sn-app .library-book-body {
+  padding: 0.65rem 0.75rem;
+}
+
+.sn-app .library-toolbar {
+  padding: 0.5rem 0;
+  margin-bottom: var(--space-section);
+  gap: 0.5rem;
+}
+
+.sn-app .parents-message-row,
+.sn-app .parents-meeting-row {
+  padding: 0.45rem 0;
+}
+
+/* ── Events calendar (compact) ─────────────────────────────────────────── */
+
+.sn-app .events-layout {
+  gap: var(--space-grid);
+  align-items: start;
+}
+
+@media (min-width: 901px) {
+  .sn-app .events-layout {
+    grid-template-columns: minmax(0, 1.65fr) minmax(14rem, 1fr);
+  }
+}
+
+.sn-app .events-calendar-card {
+  padding: var(--sn-panel-pad-y) var(--sn-panel-pad-x);
+}
+
+.sn-app .events-calendar-head {
+  margin-bottom: 0.5rem;
+}
+
+.sn-app .events-calendar-head .gw-list-title {
+  margin-bottom: 0;
+  font-size: 0.875rem;
+}
+
+.sn-app .events-weekdays {
+  gap: 3px;
+  margin-bottom: 4px;
+  font-size: 0.625rem;
+}
+
+.sn-app .events-calendar-grid {
+  gap: 3px;
+}
+
+.sn-app .events-cal-day {
+  aspect-ratio: unset;
+  min-height: 1.75rem;
+  height: 1.75rem;
+  font-size: 0.6875rem;
+  border-radius: 8px;
+}
+
+.sn-app .events-cal-day.has-event::after {
+  bottom: 2px;
+  width: 4px;
+  height: 4px;
+}
+
+.sn-app .events-upcoming {
+  padding: var(--sn-panel-pad-y) var(--sn-panel-pad-x);
+}
+
+.sn-app .events-upcoming-list {
+  gap: 6px;
+}
+
+.sn-app .events-upcoming-item {
+  gap: 0.55rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.35);
+  border-color: var(--sn-glass-border-soft, rgba(148, 163, 184, 0.22));
+}
+
+.sn-app .events-upcoming-title {
+  font-size: 0.8125rem;
+  margin-bottom: 1px;
+}
+
+.sn-app .events-upcoming-date {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+}
+
+.sn-app .events-upcoming-date-day {
+  font-size: 0.8125rem;
+}
+
+.sn-app .events-footer-link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+}
+
+/* ── Tables & data shells ──────────────────────────────────────────────── */
+
+.sn-app .sn-info-banner {
+  padding: 0.55rem 0.75rem;
+  margin-bottom: var(--space-section);
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+/* PageShell uses same header treatment as PageHeaderCard */
+.sn-app .gw-page-header.sn-surface-glass {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.sn-app .sn-settings-lead {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: 0 0 0.65rem;
+}
+
+.sn-app .sn-module-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.sn-app .sn-module-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--sn-glass-border-soft, rgba(148, 163, 184, 0.22));
+  border-radius: 10px;
+}
+
+.sn-app .sn-module-label {
+  font-weight: 600;
+  font-size: 0.8125rem;
+}
+
+.sn-app .sn-module-desc {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+
+.sn-app .stat-label {
+  font-size: 0.625rem;
+  margin-bottom: 3px;
+}
+
+.sn-app .gw-center {
+  padding: 1.25rem 0;
+}
+
+/* ── Module hub sub-navigation (Finance, Students, Teaching) ───────────── */
+
+.sn-app .sn-module-hub-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: var(--space-section);
+  padding: 0.2rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--sn-glass-border-soft, rgba(148, 163, 184, 0.2));
+}
+
+.sn-app .sn-module-hub-tab {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary, #475569);
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sn-app .sn-module-hub-tab:hover {
+  background: rgb(var(--accent-rgb) / 0.08);
+  color: var(--ink, #0f172a);
+}
+
+.sn-app .sn-module-hub-tab--active {
+  background: rgb(var(--accent-rgb) / 0.14);
+  color: var(--ink, #0f172a);
+  box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / 0.2);
+}

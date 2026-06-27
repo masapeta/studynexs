@@ -20,12 +20,12 @@ const PAGES = [
   { url: "/dashboard/students", name: "students", expect: ["Students"], rows: ".data-table tbody tr" },
   { url: "/dashboard/staff", name: "staff", expect: ["Staff"], rows: ".data-table tbody tr" },
   { url: "/dashboard/classes", name: "classes", expect: ["Class 10"] },
-  { url: "/dashboard/ai-papers", name: "ai-papers", expect: ["Question Paper", "Generate"] },
+  { url: "/dashboard/teaching/ai-papers", name: "ai-papers", expect: ["Question Paper", "Generate"] },
   { url: "/dashboard/attendance", name: "attendance", expect: ["Attendance"] },
-  { url: "/dashboard/exams", name: "exams", expect: ["Exam"] },
-  { url: "/dashboard/report-cards", name: "report-cards", expect: ["Report Cards"], rows: ".data-table tbody tr" },
+  { url: "/dashboard/teaching/exams", name: "exams", expect: ["Exam"] },
+  { url: "/dashboard/teaching/report-cards", name: "report-cards", expect: ["Report Cards"], rows: ".data-table tbody tr" },
   { url: "/dashboard/timetable", name: "timetable", expect: ["Timetable"] },
-  { url: "/dashboard/finance", name: "finance", expect: ["Fee", "Finance", "Revenue", "Collect"] },
+  { url: "/dashboard/finance/fees", name: "finance", expect: ["Fee", "Finance", "Revenue", "Collect"] },
   { url: "/dashboard/notices", name: "notices", expect: ["Notice"] },
   { url: "/dashboard/settings", name: "settings", expect: ["Settings", "School"] },
 ];
@@ -85,7 +85,7 @@ async function shot(page, name) {
 
   // ── Real flow: generate a report card on Class 10 - A ────────────────────
   try {
-    await page.goto(BASE + "/dashboard/report-cards", { waitUntil: "domcontentloaded" });
+    await page.goto(BASE + "/dashboard/teaching/report-cards", { waitUntil: "domcontentloaded" });
     await page.locator("select").first().selectOption({ label: "Class 10 - A" });
     await page.waitForLoadState("domcontentloaded");
     await page.waitForTimeout(800);

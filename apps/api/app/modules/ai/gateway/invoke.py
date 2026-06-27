@@ -12,13 +12,23 @@ from app.modules.ai.telemetry.otel_bridge import llm_span
 settings = get_settings()
 
 
-def _fallback_provider_name() -> str | None:
-    name = (settings.AI_FALLBACK_PROVIDER or "").strip().lower()
+def _fallback_provider_name(explicit: str | None = None) -> str | None:
+    name = (explicit or settings.AI_FALLBACK_PROVIDER or "").strip().lower()
     if not name:
         return None
     if name == "ollama" and not (settings.OLLAMA_BASE_URL or "").strip():
         return None
     return name
+
+
+def _fallback_model(provider: str, explicit: str | None = None) -> str:
+    if explicit:
+        return explicit
+    if provider == "ollama":
+        vision_model = (settings.OLLAMA_VISION_MODEL or "").strip()
+        if vision_model:
+            return vision_model
+    return default_model(provider)
 
 
 async def generate_llm(
@@ -29,10 +39,12 @@ async def generate_llm(
     max_tokens: int = 2048,
     json_mode: bool = False,
     provider_name: str | None = None,
+    fallback_provider_name: str | None = None,
+    fallback_model: str | None = None,
     feature: str | None = None,
     caller: str | None = None,
 ) -> LLMResult:
-    """Call the configured primary provider; on failure try AI_FALLBACK_PROVIDER."""
+    """Call the configured primary provider; on failure try fallback (e.g. Ollama gemma4)."""
     primary = (provider_name or settings.AI_DEFAULT_PROVIDER).lower()
     primary_model = model or default_model(primary)
     primary_provider = get_provider(primary)
@@ -70,7 +82,7 @@ async def generate_llm(
             )
             return result
         except Exception as primary_exc:
-            fallback = _fallback_provider_name()
+            fallback = _fallback_provider_name(fallback_provider_name)
             if not fallback or fallback == primary:
                 latency_ms = int((time.perf_counter() - call_started) * 1000)
                 emit_llm_call(
@@ -88,7 +100,7 @@ async def generate_llm(
                 raise
 
             fb_provider = get_provider(fallback)
-            fb_model = default_model(fallback)
+            fb_model = _fallback_model(fallback, fallback_model)
             try:
                 result = await fb_provider.generate(
                     messages,

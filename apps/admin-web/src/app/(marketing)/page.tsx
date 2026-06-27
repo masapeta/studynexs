@@ -1,9 +1,10 @@
+import { AIStorySection } from "@/components/marketing/AIStorySection";
+import { TrustBar } from "@/components/marketing/TrustBar";
 import {
   CTASection,
   FeaturesSection,
   HeroSection,
   MarketingFooter,
-  RolesSection,
   StatsSection,
   TestimonialsSection,
 } from "@/components/marketing/Sections";
@@ -12,9 +13,10 @@ export default function HomePage() {
   return (
     <main>
       <HeroSection />
+      <TrustBar />
       <StatsSection />
       <FeaturesSection />
-      <RolesSection />
+      <AIStorySection />
       <TestimonialsSection />
       <CTASection />
       <MarketingFooter />

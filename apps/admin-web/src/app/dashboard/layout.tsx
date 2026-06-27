@@ -6,12 +6,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { applyThemeColor, DEFAULT_ACCENT, getStoredThemeColor, normalizeThemeColor } from "@/lib/theme";
-import { navAllowed, PORTAL_ROLES, portalHomeForRole, type UserPermissions } from "@/lib/permissions";
+import { navAllowed, PORTAL_ROLES, portalHomeForRole } from "@/lib/permissions";
 import { RouteGuard } from "@/components/RouteGuard";
 import { AppBackground } from "@/components/AppBackground";
-import { NAV_GROUPS, DEFAULT_OFF_MODULES } from "@/lib/nav-groups";
+import { NAV_GROUPS, DEFAULT_OFF_MODULES, type NavItem } from "@/lib/nav-groups";
 import { TopBar } from "@/components/layout/TopBar";
-import { LogOut } from "lucide-react";
 
 export default function DashboardLayout({
   children,
@@ -69,9 +68,13 @@ export default function DashboardLayout({
     return modules[m] !== false;
   };
 
-  const itemVisible = (href: string, perm?: keyof UserPermissions) => {
-    if (perm && permissions && !permissions[perm]) return false;
-    return navAllowed(href, permissions);
+  const itemVisible = (item: NavItem) => {
+    if (item.anyPerm && permissions) {
+      if (!item.anyPerm.some((p) => permissions[p])) return false;
+    } else if (item.perm && permissions && !permissions[item.perm]) {
+      return false;
+    }
+    return navAllowed(item.href, permissions);
   };
 
   const isActive = (href: string) =>
@@ -109,7 +112,7 @@ export default function DashboardLayout({
         <nav className="sidebar-nav">
           {NAV_GROUPS.map((group) => {
             const items = group.items.filter(
-              (item) => moduleVisible(item.module) && itemVisible(item.href, item.perm)
+              (item) => moduleVisible(item.module) && itemVisible(item)
             );
             if (!items.length) return null;
             return (
@@ -132,17 +135,6 @@ export default function DashboardLayout({
             );
           })}
         </nav>
-
-        <div className="sidebar-footer">
-          <button
-            type="button"
-            className="nav-item"
-            onClick={logout}
-          >
-            <LogOut className="nav-icon" size={19} strokeWidth={1.9} />
-            Logout
-          </button>
-        </div>
       </aside>
 
       <main className="main-content">
@@ -151,6 +143,7 @@ export default function DashboardLayout({
           userRole={user.role}
           academicLabel={academicLabel}
           showSettings={navAllowed("/dashboard/settings", permissions)}
+          onLogout={logout}
         />
 
         <div className="page-content">

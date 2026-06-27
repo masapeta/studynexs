@@ -32,6 +32,10 @@ def _ollama_configured() -> bool:
     return bool((settings.OLLAMA_BASE_URL or "").strip())
 
 
+def ollama_configured() -> bool:
+    return _ollama_configured()
+
+
 def get_provider(name: str | None = None) -> LLMProvider:
     provider = (name or settings.AI_DEFAULT_PROVIDER).lower()
     if settings.is_production and provider == "stub":

@@ -1,8 +1,11 @@
 "use client";
 
-import { Check } from "lucide-react";
+import { Check, Sparkles } from "lucide-react";
+import { MarketingPageHero } from "@/components/marketing/MarketingPageHero";
+import { PricingHeroVisual } from "@/components/marketing/PricingHeroVisual";
+import { TrustBar } from "@/components/marketing/TrustBar";
 import { FadeIn, MagneticButton, Stagger, StaggerItem } from "@/components/marketing/Motion";
-import { MarketingFooter } from "@/components/marketing/Sections";
+import { CTASection, MarketingFooter } from "@/components/marketing/Sections";
 
 const PLANS = [
   {
@@ -54,25 +57,39 @@ const PLANS = [
 export default function PricingPage() {
   return (
     <main>
-      <section className="mkt-hero" style={{ minHeight: "70dvh" }} aria-labelledby="pricing-heading">
-        <FadeIn>
-          <div className="mkt-eyebrow mkt-glass" style={{ marginInline: "auto" }}>
+      <MarketingPageHero
+        id="pricing-heading"
+        compact
+        eyebrow={
+          <>
+            <Sparkles size={14} aria-hidden />
             Pricing
-          </div>
-          <h1 id="pricing-heading" className="mkt-h1" style={{ fontSize: "clamp(2.5rem, 6vw, 4rem)" }}>
+          </>
+        }
+        title={
+          <>
             Simple plans.
             <br />
             <span className="mkt-gradient-text">Serious schools.</span>
-          </h1>
-          <p className="mkt-lead" style={{ marginInline: "auto", marginTop: "1.25rem" }}>
-            Start with a pilot. Scale when your staff and families are ready. No surprise AI bills —
-            credits are metered and visible.
-          </p>
-        </FadeIn>
-      </section>
+          </>
+        }
+        lead="Start with a pilot. Scale when your staff and families are ready. No surprise AI bills — credits are metered and visible."
+        visual={<PricingHeroVisual />}
+      />
 
-      <section className="mkt-section" style={{ paddingTop: 0 }} aria-label="Pricing plans">
+      <TrustBar />
+
+      <section className="mkt-section mkt-section--pricing" aria-labelledby="plans-heading">
         <div className="mkt-container">
+          <FadeIn className="mkt-section-header">
+            <h2 id="plans-heading" className="mkt-h2">
+              Choose your starting point
+            </h2>
+            <p className="mkt-lead">
+              Every plan includes tenant isolation, role-based access, and human-in-the-loop AI controls.
+            </p>
+          </FadeIn>
+
           <Stagger className="mkt-pricing-grid">
             {PLANS.map((plan) => (
               <StaggerItem key={plan.name}>
@@ -80,25 +97,17 @@ export default function PricingPage() {
                   className={`mkt-card mkt-glass mkt-pricing-card${
                     plan.featured ? " mkt-pricing-card--featured" : ""
                   }`}
-                  style={{ height: "100%", display: "flex", flexDirection: "column" }}
                 >
                   {plan.featured && (
-                    <span
-                      className="mkt-eyebrow mkt-glass"
-                      style={{ marginBottom: "1rem", alignSelf: "flex-start" }}
-                    >
-                      Most popular
-                    </span>
+                    <span className="mkt-eyebrow mkt-glass mkt-pricing-badge">Most popular</span>
                   )}
-                  <h2 className="mkt-h3">{plan.name}</h2>
-                  <div className="mkt-price" style={{ marginTop: "1rem" }}>
+                  <h3 className="mkt-h3">{plan.name}</h3>
+                  <div className="mkt-price">
                     {plan.price}
                     {plan.period && <span> / {plan.period}</span>}
                   </div>
-                  <p style={{ marginTop: "0.75rem", fontSize: "0.88rem", color: "var(--mkt-gray-500)" }}>
-                    {plan.desc}
-                  </p>
-                  <ul style={{ listStyle: "none", padding: 0, margin: "1.5rem 0", flex: 1 }}>
+                  <p className="mkt-pricing-desc">{plan.desc}</p>
+                  <ul className="mkt-pricing-list">
                     {plan.features.map((f) => (
                       <li key={f} className="mkt-pricing-feature">
                         <Check size={16} aria-hidden />
@@ -118,14 +127,7 @@ export default function PricingPage() {
           </Stagger>
 
           <FadeIn delay={0.2}>
-            <p
-              style={{
-                textAlign: "center",
-                marginTop: "2.5rem",
-                fontSize: "0.85rem",
-                color: "var(--mkt-gray-500)",
-              }}
-            >
+            <p className="mkt-pricing-footnote">
               AI credits are charged at generation time, not approval. Final rupee pricing confirmed
               during pilot onboarding.
             </p>
@@ -133,6 +135,7 @@ export default function PricingPage() {
         </div>
       </section>
 
+      <CTASection />
       <MarketingFooter />
     </main>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PageHeaderCard } from "@/components/layout/PageHeaderCard";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { applyThemeColor, DEFAULT_ACCENT, getStoredThemeColor, normalizeThemeColor, themeColorForUi } from "@/lib/theme";
 import { TOGGLEABLE_MODULES, isModuleOn } from "@/lib/modules";
@@ -103,29 +104,27 @@ export default function SettingsPage() {
 
   return (
     <>
-      <div className="card bento-glass" style={{ marginBottom: 24, padding: "16px 24px" }}>
-        <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>School Settings</h1>
-      </div>
+      <PageHeaderCard title="School settings" subtitle="Profile, academic years, modules, and branding." />
 
-      {error && <div className="card" style={{ marginBottom: 16, padding: 12, color: "var(--danger)" }}>{error}</div>}
-      {msg && <div className="card" style={{ marginBottom: 16, padding: 12, color: "var(--success)" }}>{msg}</div>}
+      {error && <div className="card sn-inline-alert sn-inline-alert--error">{error}</div>}
+      {msg && <div className="card sn-inline-alert sn-inline-alert--success">{msg}</div>}
 
       {/* School profile */}
-      <div className="card" style={{ marginBottom: 24, padding: 24 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, marginTop: 0, marginBottom: 16 }}>School Profile</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+      <div className="card sn-settings-section">
+        <h2>School Profile</h2>
+        <div className="sn-settings-grid">
           <div><label className="stat-label">School name</label>
-            <input className="form-input" style={inp} value={profile.name || ""} onChange={(e) => setProfile({ ...profile, name: e.target.value })} /></div>
+            <input className="form-input sn-inline-field" value={profile.name || ""} onChange={(e) => setProfile({ ...profile, name: e.target.value })} /></div>
           <div><label className="stat-label">Board</label>
-            <input className="form-input" style={inp} value={profile.board || ""} onChange={(e) => setProfile({ ...profile, board: e.target.value })} /></div>
+            <input className="form-input sn-inline-field" value={profile.board || ""} onChange={(e) => setProfile({ ...profile, board: e.target.value })} /></div>
           <div><label className="stat-label">Contact email</label>
-            <input className="form-input" style={inp} value={profile.contact_email || ""} onChange={(e) => setProfile({ ...profile, contact_email: e.target.value })} /></div>
+            <input className="form-input sn-inline-field" value={profile.contact_email || ""} onChange={(e) => setProfile({ ...profile, contact_email: e.target.value })} /></div>
           <div><label className="stat-label">Contact phone</label>
-            <input className="form-input" style={inp} value={profile.contact_phone || ""} onChange={(e) => setProfile({ ...profile, contact_phone: e.target.value })} /></div>
+            <input className="form-input sn-inline-field" value={profile.contact_phone || ""} onChange={(e) => setProfile({ ...profile, contact_phone: e.target.value })} /></div>
           <div><label className="stat-label">City</label>
-            <input className="form-input" style={inp} value={addr.city || ""} onChange={(e) => setProfile({ ...profile, address: { ...addr, city: e.target.value } })} /></div>
+            <input className="form-input sn-inline-field" value={addr.city || ""} onChange={(e) => setProfile({ ...profile, address: { ...addr, city: e.target.value } })} /></div>
           <div><label className="stat-label">State</label>
-            <input className="form-input" style={inp} value={addr.state || ""} onChange={(e) => setProfile({ ...profile, address: { ...addr, state: e.target.value } })} /></div>
+            <input className="form-input sn-inline-field" value={addr.state || ""} onChange={(e) => setProfile({ ...profile, address: { ...addr, state: e.target.value } })} /></div>
         </div>
 
         {/* Brand colour — per-school theming */}
@@ -166,19 +165,19 @@ export default function SettingsPage() {
       </div>
 
       {/* Modules — per-school feature flags */}
-      <div className="card" style={{ marginBottom: 24, padding: 24 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, marginTop: 0, marginBottom: 4 }}>Modules</h2>
-        <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 0, marginBottom: 16 }}>
+      <div className="card sn-settings-section">
+        <h2>Modules</h2>
+        <p className="sn-settings-lead">
           Turn features on or off for your school — changes apply immediately.
         </p>
-        <div style={{ display: "grid", gap: 10 }}>
+        <div className="sn-module-list">
           {TOGGLEABLE_MODULES.map((m) => {
             const on = isModuleOn(modules, m);
             return (
-              <div key={m.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", border: "1px solid var(--border-light)", borderRadius: "var(--radius-md)" }}>
+              <div key={m.key} className="sn-module-row">
                 <div>
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>{m.label}</div>
-                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{m.desc}</div>
+                  <div className="sn-module-label">{m.label}</div>
+                  <div className="sn-module-desc">{m.desc}</div>
                 </div>
                 <button
                   type="button"
@@ -196,9 +195,9 @@ export default function SettingsPage() {
       </div>
 
       {/* Academic years */}
-      <div className="card" style={{ padding: 24 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, marginTop: 0, marginBottom: 16 }}>Academic Years</h2>
-        <table className="data-table" style={{ marginBottom: 16 }}>
+      <div className="card sn-settings-section">
+        <h2>Academic Years</h2>
+        <table className="data-table sn-section-gap">
           <thead><tr><th>Year</th><th>Start</th><th>End</th><th>Active</th></tr></thead>
           <tbody>
             {years.length === 0 ? (
@@ -215,11 +214,11 @@ export default function SettingsPage() {
         </table>
         <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr auto auto", gap: 12, alignItems: "end" }}>
           <div><label className="stat-label">Label</label>
-            <input className="form-input" style={inp} placeholder="2027-2028" value={newYear.year_label} onChange={(e) => setNewYear({ ...newYear, year_label: e.target.value })} /></div>
+            <input className="form-input sn-inline-field" placeholder="2027-2028" value={newYear.year_label} onChange={(e) => setNewYear({ ...newYear, year_label: e.target.value })} /></div>
           <div><label className="stat-label">Start</label>
-            <input type="date" className="form-input" style={inp} value={newYear.start_date} onChange={(e) => setNewYear({ ...newYear, start_date: e.target.value })} /></div>
+            <input type="date" className="form-input sn-inline-field" value={newYear.start_date} onChange={(e) => setNewYear({ ...newYear, start_date: e.target.value })} /></div>
           <div><label className="stat-label">End</label>
-            <input type="date" className="form-input" style={inp} value={newYear.end_date} onChange={(e) => setNewYear({ ...newYear, end_date: e.target.value })} /></div>
+            <input type="date" className="form-input sn-inline-field" value={newYear.end_date} onChange={(e) => setNewYear({ ...newYear, end_date: e.target.value })} /></div>
           <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, paddingBottom: 8 }}>
             <input type="checkbox" checked={newYear.is_active} onChange={(e) => setNewYear({ ...newYear, is_active: e.target.checked })} /> Active
           </label>
@@ -232,5 +231,4 @@ export default function SettingsPage() {
   );
 }
 
-const inp: React.CSSProperties = { width: "100%", padding: "8px 12px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)", background: "white", marginTop: 4 };
 const btn: React.CSSProperties = { width: "auto", padding: "8px 20px", borderRadius: "var(--radius-full)", fontSize: 13 };

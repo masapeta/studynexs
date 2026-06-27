@@ -116,11 +116,21 @@ def create_app() -> FastAPI:
         return {"status": "ready" if all_ok else "degraded", "checks": checks}
 
     @app.get("/metrics", tags=["system"])
-    async def prometheus_metrics():
+    async def prometheus_metrics(request: "Request"):
         """Prometheus scrape endpoint — LLM counters, latency histograms, fallback rates."""
+        from fastapi import HTTPException, Request
         from fastapi.responses import PlainTextResponse
 
         from app.modules.ai.telemetry import ai_metrics
+
+        token = settings.METRICS_TOKEN
+        if settings.is_production and not token:
+            raise HTTPException(status_code=404, detail="Not found")
+        if token:
+            auth = request.headers.get("Authorization", "")
+            header = request.headers.get("X-Metrics-Token", "")
+            if auth != f"Bearer {token}" and header != token:
+                raise HTTPException(status_code=401, detail="Unauthorized")
 
         return PlainTextResponse(
             ai_metrics.prometheus_text(),

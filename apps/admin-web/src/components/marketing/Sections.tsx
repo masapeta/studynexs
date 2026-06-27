@@ -10,129 +10,74 @@ import {
   MessageSquare,
   Shield,
   Sparkles,
-  Users,
 } from "lucide-react";
+import { AnimatedStat } from "./AnimatedStat";
+import { HeroDashboardScene } from "./HeroDashboardScene";
 import { FadeIn, MagneticButton } from "./Motion";
-
-function DashboardPreview() {
-  return (
-    <div className="mkt-dashboard-preview">
-      <div className="mkt-dashboard-inner">
-        <div className="mkt-dash-bar">
-          <span className="mkt-dash-dot" />
-          <span className="mkt-dash-dot" />
-          <span className="mkt-dash-dot" />
-          <span style={{ marginLeft: "auto", fontSize: "0.72rem", color: "var(--mkt-gray-500)" }}>
-            AI Command Center · Live
-          </span>
-        </div>
-        <div className="mkt-dash-body">
-          <div className="mkt-dash-panel">
-            <div className="mkt-dash-label">Mastery alerts</div>
-            <div className="mkt-dash-stat">12</div>
-            <div className="mkt-neural-line" />
-            <div style={{ fontSize: "0.75rem", color: "var(--mkt-gray-500)" }}>3 topics need review</div>
-          </div>
-          <div className="mkt-dash-panel" style={{ gridColumn: "span 1" }}>
-            <div className="mkt-dash-label">AI papers generated</div>
-            <div className="mkt-dash-stat">847</div>
-            <div className="mkt-neural-line" />
-            <div
-              style={{
-                display: "flex",
-                gap: "0.35rem",
-                flexWrap: "wrap",
-                marginTop: "0.5rem",
-              }}
-            >
-              {["Algebra", "Physics", "English"].map((t) => (
-                <span
-                  key={t}
-                  style={{
-                    fontSize: "0.68rem",
-                    padding: "0.25rem 0.55rem",
-                    borderRadius: 999,
-                    background: "rgba(59,130,246,0.1)",
-                    color: "var(--mkt-blue-500)",
-                  }}
-                >
-                  {t}
-                </span>
-              ))}
-            </div>
-          </div>
-          <div className="mkt-dash-panel">
-            <div className="mkt-dash-label">Parent engagement</div>
-            <div className="mkt-dash-stat">94%</div>
-            <div className="mkt-neural-line" />
-            <div style={{ fontSize: "0.75rem", color: "var(--mkt-gray-500)" }}>Notices read this week</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export function HeroSection() {
   const reduce = useReducedMotion();
 
   return (
     <section className="mkt-hero" aria-labelledby="hero-heading">
-      <motion.div
-        className="mkt-eyebrow mkt-glass"
-        initial={reduce ? false : { opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.6, delay: 0.15 }}
-      >
-        <Sparkles size={14} aria-hidden />
-        AI-Native School OS
-      </motion.div>
+      <div className="mkt-hero-grid">
+        <div className="mkt-hero-copy">
+          <motion.div
+            className="mkt-eyebrow mkt-glass"
+            initial={reduce ? false : { opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6, delay: 0.15 }}
+          >
+            <Sparkles size={14} aria-hidden />
+            AI-Powered School OS
+          </motion.div>
 
-      <motion.h1
-        id="hero-heading"
-        className="mkt-h1"
-        initial={reduce ? false : { opacity: 0, y: 32, filter: "blur(10px)" }}
-        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-        transition={{ duration: 0.85, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
-      >
-        The intelligence layer
-        <br />
-        <span className="mkt-gradient-text">for modern schools</span>
-      </motion.h1>
+          <motion.h1
+            id="hero-heading"
+            className="mkt-h1 mkt-h1--hero"
+            initial={reduce ? false : { opacity: 0, y: 32, filter: "blur(10px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            transition={{ duration: 0.85, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
+          >
+            The world&apos;s most advanced
+            <br />
+            <span className="mkt-gradient-text">school operating system</span>
+          </motion.h1>
 
-      <motion.p
-        className="mkt-lead"
-        style={{ marginTop: "1.5rem" }}
-        initial={reduce ? false : { opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, delay: 0.45 }}
-      >
-        StudyNexs unifies academics, operations, and AI — helping principals lead with clarity,
-        teachers teach with superpowers, and families stay connected to every child&apos;s progress.
-      </motion.p>
+          <motion.p
+            className="mkt-lead mkt-lead--hero"
+            initial={reduce ? false : { opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.45 }}
+          >
+            Immersive intelligence for principals, teachers, students, and parents — one glass
+            platform where AI assists, humans approve, and every school stays in control.
+          </motion.p>
 
-      <motion.div
-        className="mkt-hero-actions"
-        initial={reduce ? false : { opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.65, delay: 0.6 }}
-      >
-        <MagneticButton href="/login?portal=staff" className="mkt-btn mkt-btn--primary mkt-btn--lg">
-          Start free pilot
-        </MagneticButton>
-        <MagneticButton href="/platform" className="mkt-btn mkt-btn--glass mkt-btn--lg">
-          Explore platform
-        </MagneticButton>
-      </motion.div>
+          <motion.div
+            className="mkt-hero-actions mkt-hero-actions--left"
+            initial={reduce ? false : { opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.65, delay: 0.6 }}
+          >
+            <MagneticButton href="/login?portal=staff" className="mkt-btn mkt-btn--primary mkt-btn--lg">
+              Start free pilot
+            </MagneticButton>
+            <MagneticButton href="/platform" className="mkt-btn mkt-btn--glass mkt-btn--lg">
+              Explore platform
+            </MagneticButton>
+          </motion.div>
+        </div>
 
-      <motion.div
-        className="mkt-hero-visual"
-        initial={reduce ? false : { opacity: 0, y: 48, rotateX: 8 }}
-        animate={{ opacity: 1, y: 0, rotateX: 4 }}
-        transition={{ duration: 1, delay: 0.75, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <DashboardPreview />
-      </motion.div>
+        <motion.div
+          className="mkt-hero-visual"
+          initial={reduce ? false : { opacity: 0, y: 48, rotateX: 8 }}
+          animate={{ opacity: 1, y: 0, rotateX: 4 }}
+          transition={{ duration: 1, delay: 0.75, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <HeroDashboardScene />
+        </motion.div>
+      </div>
     </section>
   );
 }
@@ -211,73 +156,12 @@ const STATS = [
 
 export function StatsSection() {
   return (
-    <section className="mkt-section" aria-label="Impact statistics">
+    <section className="mkt-section mkt-section--stats" aria-label="Impact statistics">
       <div className="mkt-container">
         <div className="mkt-stats">
           {STATS.map((s, i) => (
             <FadeIn key={s.label} delay={i * 0.08}>
-              <div className="mkt-stat mkt-glass">
-                <div className="mkt-stat-value">{s.value}</div>
-                <div className="mkt-stat-label">{s.label}</div>
-              </div>
-            </FadeIn>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-const ROLES = [
-  {
-    tag: "Principals",
-    title: "Lead with a live pulse on your school",
-    desc: "Morning briefings, fee health, mastery digests — one glass dashboard.",
-  },
-  {
-    tag: "Teachers",
-    title: "Generate, assess, and communicate in one flow",
-    desc: "AI papers, answer evaluation, and flag review without switching tabs.",
-  },
-  {
-    tag: "Students",
-    title: "A tutor that knows your syllabus",
-    desc: "Guided lessons, mastery tracking, and notices — mobile-first.",
-  },
-  {
-    tag: "Parents",
-    title: "Every child's story, in your pocket",
-    desc: "Attendance, fees, weak topics, and teacher feedback — instantly.",
-  },
-];
-
-export function RolesSection() {
-  return (
-    <section className="mkt-section" id="roles" aria-labelledby="roles-heading">
-      <div className="mkt-container">
-        <FadeIn className="mkt-section-header">
-          <div className="mkt-eyebrow mkt-glass" style={{ marginInline: "auto" }}>
-            <Users size={14} aria-hidden />
-            For everyone
-          </div>
-          <h2 id="roles-heading" className="mkt-h2">
-            One platform. Four experiences.
-          </h2>
-          <p className="mkt-lead">
-            Each role gets exactly what they need — nothing more, nothing less.
-          </p>
-        </FadeIn>
-
-        <div className="mkt-role-grid">
-          {ROLES.map((r, i) => (
-            <FadeIn key={r.tag} delay={i * 0.1}>
-              <div className="mkt-role-card mkt-glass">
-                <span className="mkt-role-tag">{r.tag}</span>
-                <h3 className="mkt-h3" style={{ marginTop: "auto" }}>
-                  {r.title}
-                </h3>
-                <p style={{ marginTop: "0.5rem", fontSize: "0.9rem", color: "var(--mkt-gray-500)" }}>{r.desc}</p>
-              </div>
+              <AnimatedStat value={s.value} label={s.label} />
             </FadeIn>
           ))}
         </div>

@@ -1,4 +1,6 @@
 /** Mirrors GET /api/v1/users/me/permissions — drives nav and action buttons. */
+import { FINANCE, STUDENTS, TEACHING } from "./dashboard-routes";
+
 export interface UserPermissions {
   role: string;
   is_admin: boolean;
@@ -55,42 +57,75 @@ export const EMPTY_PERMISSIONS: UserPermissions = {
 
 type NavGate = keyof UserPermissions;
 
+const TEACHING_SUBROUTES: { prefix: string; gate: NavGate }[] = [
+  { prefix: TEACHING.aiPapers, gate: "can_use_ai_papers" },
+  { prefix: TEACHING.mastery, gate: "can_use_mastery" },
+  { prefix: TEACHING.reportCards, gate: "can_use_report_cards" },
+  { prefix: TEACHING.exams, gate: "can_use_exams" },
+  { prefix: TEACHING.gradebook, gate: "can_use_exams" },
+  { prefix: TEACHING.lessonPlans, gate: "can_use_exams" },
+];
+
 /** Nav item → permission flag. Core items without a gate are always shown when logged in. */
 export const NAV_PERMISSION: Record<string, NavGate | undefined> = {
   "/dashboard": "can_view_dashboard",
   "/dashboard/students": "can_manage_students",
   "/dashboard/staff": "can_manage_staff",
   "/dashboard/classes": "can_view_classes",
-  "/dashboard/ai-papers": "can_use_ai_papers",
   "/dashboard/attendance": "can_use_attendance",
-  "/dashboard/exams": "can_use_exams",
-  "/dashboard/mastery": "can_use_mastery",
-  "/dashboard/report-cards": "can_use_report_cards",
   "/dashboard/timetable": "can_view_timetable",
-  "/dashboard/fees": "can_use_finance",
-  "/dashboard/payroll": "can_use_finance",
-  "/dashboard/expenses": "can_use_finance",
   "/dashboard/finance": "can_use_finance",
-  "/dashboard/admissions": "can_manage_students",
-  "/dashboard/parents": "can_manage_students",
-  "/dashboard/reports": "can_view_dashboard",
-  "/dashboard/gradebook": "can_use_exams",
+  "/dashboard/teaching": "can_use_exams",
   "/dashboard/library": "can_view_notices",
   "/dashboard/notices": "can_view_notices",
   "/dashboard/events": "can_view_notices",
   "/dashboard/transport": "can_view_timetable",
   "/dashboard/residential": "can_view_timetable",
-  "/dashboard/lesson-plans": "can_use_exams",
   "/dashboard/settings": "can_use_settings",
+  // Legacy bookmarks (redirect to hub paths)
+  "/dashboard/ai-papers": "can_use_ai_papers",
+  "/dashboard/exams": "can_use_exams",
+  "/dashboard/mastery": "can_use_mastery",
+  "/dashboard/report-cards": "can_use_report_cards",
+  "/dashboard/fees": "can_use_finance",
+  "/dashboard/payroll": "can_use_finance",
+  "/dashboard/expenses": "can_use_finance",
+  "/dashboard/admissions": "can_manage_students",
+  "/dashboard/parents": "can_manage_students",
+  "/dashboard/reports": "can_view_dashboard",
+  "/dashboard/gradebook": "can_use_exams",
+  "/dashboard/lesson-plans": "can_use_exams",
 };
 
 export const PORTAL_ROLES = new Set(["parent", "student"]);
 
+export function teachingHubAllowed(perms: UserPermissions | null): boolean {
+  if (!perms) return false;
+  return (
+    perms.can_use_exams ||
+    perms.can_use_ai_papers ||
+    perms.can_use_mastery ||
+    perms.can_use_report_cards
+  );
+}
+
 export function navAllowed(href: string, perms: UserPermissions | null): boolean {
   if (!perms) return false;
+  if (href === TEACHING.root) return teachingHubAllowed(perms);
   const gate = NAV_PERMISSION[href];
   if (!gate) return false;
   return Boolean(perms[gate]);
+}
+
+function teachingRouteAllowed(pathname: string, perms: UserPermissions): boolean {
+  if (!teachingHubAllowed(perms)) return false;
+  const sorted = [...TEACHING_SUBROUTES].sort((a, b) => b.prefix.length - a.prefix.length);
+  for (const { prefix, gate } of sorted) {
+    if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
+      return Boolean(perms[gate]);
+    }
+  }
+  return true;
 }
 
 /** Check access for nested routes like /dashboard/classes/abc-123 */
@@ -100,6 +135,17 @@ export function routeAllowed(pathname: string, perms: UserPermissions | null): b
     return false;
   }
   if (pathname === "/dashboard") return navAllowed("/dashboard", perms);
+
+  if (pathname.startsWith(`${STUDENTS.root}/`) || pathname === STUDENTS.root) {
+    return navAllowed(STUDENTS.root, perms);
+  }
+  if (pathname.startsWith(`${FINANCE.root}/`) || pathname === FINANCE.root) {
+    return navAllowed(FINANCE.root, perms);
+  }
+  if (pathname.startsWith(`${TEACHING.root}/`) || pathname === TEACHING.root) {
+    return teachingRouteAllowed(pathname, perms);
+  }
+
   const prefixes = Object.keys(NAV_PERMISSION).sort((a, b) => b.length - a.length);
   for (const href of prefixes) {
     if (href !== "/dashboard" && (pathname === href || pathname.startsWith(`${href}/`))) {
@@ -112,7 +158,6 @@ export function routeAllowed(pathname: string, perms: UserPermissions | null): b
 export function portalHomeForRole(role: string): string {
   if (role === "parent") return "/parent";
   if (role === "student") return "/student";
-  if (role === "teacher" || role === "class_incharge") return "/teacher";
   return "/dashboard";
 }
 

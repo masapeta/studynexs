@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { TEACHING } from "@/lib/dashboard-routes";
 
 const trendGlyph: Record<string, { glyph: string; color: string; label: string }> = {
   improving: { glyph: "▲", color: "var(--success, #059669)", label: "Improving" },
@@ -67,7 +68,7 @@ export default function TopicMasterySection({ studentId }: { studentId: string }
                   title="Generate a practice paper on this topic"
                   onClick={() =>
                     router.push(
-                      `/dashboard/ai-papers?class_id=${subj.class_id}&subject_id=${subj.subject_id}&topics=${encodeURIComponent(t.topic_display)}&difficulty=easy`
+                      `${TEACHING.aiPapers}?class_id=${subj.class_id}&subject_id=${subj.subject_id}&topics=${encodeURIComponent(t.topic_display)}&difficulty=easy`
                     )
                   }
                 >

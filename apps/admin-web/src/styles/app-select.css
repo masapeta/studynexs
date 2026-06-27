@@ -156,12 +156,157 @@
   color: var(--sn-navy, #0f172a);
 }
 
-.sn-app .app-select-menu {
+/* ── Shared dropdown surface (AppSelect, notifications, profile, search) ─ */
+
+.sn-app :is(
+  .app-select-menu,
+  .topbar-notif-panel,
+  .topbar-profile-menu,
+  .topbar-search-modal
+) {
   background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border-color: var(--sn-glass-border-soft, rgba(148, 163, 184, 0.22));
-  box-shadow: 0 16px 48px rgba(15, 23, 42, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 14px;
+  box-shadow:
+    0 4px 6px rgba(15, 23, 42, 0.04),
+    0 16px 40px rgba(15, 23, 42, 0.1);
+}
+
+.sn-app :is(
+  .app-select-option,
+  .topbar-notif-item,
+  .topbar-profile-item,
+  .topbar-search-result
+) {
+  border-radius: 10px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sn-app :is(
+  .app-select-option:hover,
+  .app-select-option:focus-visible,
+  .topbar-notif-item:hover,
+  .topbar-profile-item:hover,
+  .topbar-search-result:hover
+) {
+  background: rgb(var(--accent-rgb) / 0.08);
+}
+
+.sn-app :is(
+  .app-select-option.selected,
+  .topbar-notif-item.unread
+) {
+  background: rgb(var(--accent-rgb) / 0.12);
+  border: none;
+  box-shadow: none;
+}
+
+/* Notifications — match AppSelect list layout */
+.sn-app .topbar-notif-panel {
+  z-index: 200;
+  isolation: isolate;
+  padding: 0;
+  overflow: hidden;
+}
+
+.sn-app .topbar-notif-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px 8px;
+  background: transparent;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.sn-app .topbar-notif-title {
+  font-weight: 700;
+  font-size: 0.875rem;
+  color: var(--ink, #0f172a);
+}
+
+.sn-app .topbar-notif-mark {
+  border: none;
+  background: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.sn-app .topbar-notif-mark:hover {
+  text-decoration: underline;
+}
+
+.sn-app .topbar-notif-list {
+  padding: 6px;
+  background: transparent;
+  max-height: min(320px, 50vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.sn-app .topbar-notif-item {
+  background: transparent;
+  border: none;
+  margin-bottom: 0;
+  padding: 0.5rem 0.7rem;
+  box-shadow: none;
+  cursor: default;
+}
+
+.sn-app .topbar-notif-item-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ink, #0f172a);
+  line-height: 1.35;
+}
+
+.sn-app .topbar-notif-item.unread .topbar-notif-item-title {
+  font-weight: 700;
+}
+
+.sn-app .topbar-notif-item-body {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #475569);
+  line-height: 1.45;
+  margin-top: 2px;
+}
+
+.sn-app .topbar-notif-empty {
+  color: var(--text-muted, #64748b);
+  font-size: 0.8125rem;
+  padding: 1rem 0.7rem;
+  text-align: center;
+}
+
+.sn-app .topbar-notif-item.unread:hover {
+  background: rgb(var(--accent-rgb) / 0.14);
+}
+
+.sn-app .app-select-option.selected:hover {
+  background: rgb(var(--accent-rgb) / 0.14);
+}
+
+
+/* Profile menu — align with AppSelect option rows */
+.sn-app .topbar-profile-menu {
+  padding: 6px;
+}
+
+.sn-app .topbar-profile-menu-head {
+  padding: 0.5rem 0.7rem;
+}
+
+.sn-app .topbar-profile-item {
+  background: transparent;
+  color: var(--text-secondary, #475569);
+  font-weight: 500;
+}
+
+.sn-app .topbar-profile-item--danger:hover {
+  background: rgba(254, 226, 226, 0.65);
 }
 
 .sn-app .gw-toolbar .app-select--pill {

@@ -1,0 +1,189 @@
+/* ── Fluid layout — fill available width beside the sidebar ───────────────
+   Fixes empty right margin on ultrawide / large monitors while keeping
+   readable breakpoints on tablet and mobile. */
+
+.sn-app .main-content {
+  flex: 1;
+  min-width: 0;
+  width: calc(100vw - var(--sidebar-width));
+  max-width: calc(100vw - var(--sidebar-width));
+}
+
+.sn-app .page-content {
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+  padding-left: clamp(12px, 1.25vw, 28px);
+  padding-right: clamp(12px, 1.25vw, 28px);
+}
+
+/* Page shells — use full content width (was capped at 72–80rem) */
+.sn-app .gw-page,
+.sn-app .briefing-page,
+.gw-page,
+.briefing-page {
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+}
+
+/* Top bar: let search grow on wide screens */
+.sn-app .header.topbar {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Top bar search width — scoped to header only (library page reuses class elsewhere) */
+.sn-app .header.topbar .topbar-search-trigger {
+  flex: none;
+  max-width: 36rem;
+}
+
+/* ── Dashboard / briefing ───────────────────────────────────────────────── */
+
+.briefing-stat-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));
+  gap: 10px;
+}
+
+@media (min-width: 1024px) {
+  .briefing-stat-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.briefing-main-grid {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 1024px) {
+  .briefing-main-grid {
+    grid-template-columns: minmax(14rem, 0.85fr) minmax(0, 2.15fr);
+  }
+}
+
+@media (min-width: 1440px) {
+  .briefing-main-grid {
+    grid-template-columns: minmax(16rem, 0.9fr) minmax(0, 2.5fr);
+  }
+}
+
+@media (min-width: 1920px) {
+  .briefing-main-grid {
+    grid-template-columns: minmax(17rem, 0.95fr) minmax(0, 2.75fr);
+  }
+}
+
+.briefing-attention-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 10.5rem), 1fr));
+  gap: 8px;
+}
+
+@media (min-width: 1200px) {
+  .briefing-attention-grid {
+    grid-template-columns: repeat(auto-fill, minmax(11.5rem, 1fr));
+  }
+}
+
+/* ── Reports ──────────────────────────────────────────────────────────── */
+
+.reports-charts-grid {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 900px) {
+  .reports-charts-grid {
+    grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 1600px) {
+  .reports-charts-grid {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
+}
+
+.reports-kpi-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12.5rem), 1fr));
+}
+
+.reports-bar-row {
+  grid-template-columns: minmax(5.5rem, 8rem) minmax(0, 1fr) 3rem;
+}
+
+/* ── Staff & card grids ─────────────────────────────────────────────────── */
+
+.gw-staff-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+}
+
+@media (min-width: 1280px) {
+  .gw-staff-grid {
+    grid-template-columns: repeat(auto-fill, minmax(16.25rem, 1fr));
+  }
+}
+
+@media (min-width: 1920px) {
+  .gw-staff-grid {
+    grid-template-columns: repeat(auto-fill, minmax(17.5rem, 1fr));
+  }
+}
+
+.gw-pipeline-stage {
+  flex: 1 1 7.5rem;
+  max-width: none;
+}
+
+/* ── Shared dashboard grids ─────────────────────────────────────────────── */
+
+.dashboard-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+}
+
+.bento-grid {
+  width: 100%;
+}
+
+.data-table-card,
+.gw-card {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Page headers stretch with content */
+.gw-page-header {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ── Mobile / tablet (sidebar hidden) ───────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .sn-app .main-content {
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+  }
+
+  .sn-app .header.topbar .topbar-search-trigger {
+    max-width: none;
+    width: 100%;
+  }
+}
+
+@media (max-width: 900px) {
+  .reports-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .reports-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .briefing-stat-grid {
+    grid-template-columns: 1fr;
+  }
+}

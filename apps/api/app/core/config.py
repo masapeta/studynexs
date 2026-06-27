@@ -152,10 +152,17 @@ class Settings(BaseSettings):
     AI_DEFAULT_PROVIDER: str = "gemini"  # default only; benchmark decides the real one
     AI_DEFAULT_MODEL: str = ""  # empty → factory picks the provider's default model
     AI_FALLBACK_PROVIDER: str = ""  # e.g. ollama — used when primary provider fails
+    AI_VISION_FALLBACK_PROVIDER: str = ""  # answer-sheet OCR; defaults to AI_FALLBACK_PROVIDER or ollama
     OLLAMA_BASE_URL: str = ""  # e.g. http://host.docker.internal:11434 (Docker → host Ollama)
     OLLAMA_MODEL: str = "gemma4:cloud"
+    OLLAMA_VISION_MODEL: str = ""  # empty → OLLAMA_MODEL (gemma4 supports image input)
     OLLAMA_API_KEY: str = ""  # optional — Ollama cloud / authenticated endpoints
     AI_REQUEST_TIMEOUT_SECONDS: float = 120.0
+
+    # ── Observability scrape (Prometheus) ─────────────────────────
+    # When set, /metrics requires Authorization: Bearer <token> or X-Metrics-Token header.
+    # In production, /metrics is disabled unless this is configured.
+    METRICS_TOKEN: str = ""
 
     # ── OpenTelemetry (metrics + traces → OTLP collector) ───────
     OTEL_ENABLED: bool = False

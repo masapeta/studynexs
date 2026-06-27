@@ -6,6 +6,7 @@ import { CalendarDays, MapPin, Plus } from "lucide-react";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { eventBadgeParts } from "@/lib/format";
 import { PageShell } from "@/components/layout/PageShell";
+import { FilterPillBar } from "@/components/layout/FilterPillBar";
 import { StatusBadge } from "@/components/briefing/StatusBadge";
 
 type EventItem = {
@@ -166,8 +167,8 @@ export default function EventsPage() {
       {error && <div className="gw-alert gw-alert-error">{error}</div>}
 
       {showAdd && (
-        <div className="gw-card gw-card-pad" style={{ marginBottom: 20 }}>
-          <div className="gw-expense-form" style={{ gridTemplateColumns: "2fr 1fr 1fr auto" }}>
+        <div className="gw-card gw-card-pad sn-section-gap">
+          <div className="gw-expense-form sn-form-row sn-form-row--events">
             <input
               className="form-input"
               placeholder="Event title"
@@ -199,24 +200,16 @@ export default function EventsPage() {
         </div>
       ) : (
         <>
-          <div className="gw-pipeline" role="tablist" aria-label="Filter events">
-            {FILTERS.map((f) => {
-              const active = listFilter === f.key;
-              return (
-                <button
-                  key={f.key}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  className={`gw-pipeline-stage${active ? " gw-pipeline-stage-active" : ""}`}
-                  onClick={() => setListFilter(f.key)}
-                >
-                  <span className="gw-pipeline-count">{counts[f.key]}</span>
-                  <span className="gw-pipeline-label">{f.label}</span>
-                </button>
-              );
-            })}
-          </div>
+          <FilterPillBar
+            tabs={FILTERS.map((f) => ({
+              key: f.key,
+              label: f.label,
+              count: counts[f.key],
+            }))}
+            activeKey={listFilter}
+            onChange={(key) => setListFilter(key as EventFilter)}
+            ariaLabel="Filter events"
+          />
 
           <div className="events-layout">
           <div className="gw-card gw-card-pad events-calendar-card">
@@ -255,9 +248,7 @@ export default function EventsPage() {
           </div>
 
           <div className="gw-card gw-card-pad events-upcoming">
-            <h3 className="gw-list-title" style={{ marginBottom: 16 }}>
-              Upcoming
-            </h3>
+            <h3 className="gw-list-title">Upcoming</h3>
             {upcoming.length === 0 ? (
               <p className="gw-muted">No events scheduled.</p>
             ) : (
@@ -290,7 +281,7 @@ export default function EventsPage() {
                 })}
               </div>
             )}
-            <Link href="/dashboard/notices" className="briefing-link" style={{ display: "inline-block", marginTop: 12 }}>
+            <Link href="/dashboard/notices" className="briefing-link events-footer-link">
               Share as notice →
             </Link>
           </div>

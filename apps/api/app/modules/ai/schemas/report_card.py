@@ -3,12 +3,21 @@ from __future__ import annotations
 
 import uuid
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
+
+from app.modules.ai.gateway.input_guard import sanitize_prompt_text
 
 
 class GenerateReportRequest(BaseModel):
     student_id: uuid.UUID
-    title: str | None = None
+    title: str | None = Field(default=None, max_length=200)
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def _validate_title(cls, v: object) -> str | None:
+        if v is None or v == "":
+            return None
+        return sanitize_prompt_text(str(v), max_length=200, field_name="title")
 
 
 class SubjectRow(BaseModel):
@@ -37,5 +46,21 @@ class ReportCardOut(BaseModel):
 
 class UpdateReportRequest(BaseModel):
     """Teacher edits before approval — primarily the remark."""
-    title: str | None = None
-    ai_remark: str | None = None
+    title: str | None = Field(default=None, max_length=200)
+    ai_remark: str | None = Field(default=None, max_length=4000)
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def _sanitize_title(cls, v: object) -> str | None:
+        if v is None or v == "":
+            return None
+        return sanitize_prompt_text(str(v), max_length=200, field_name="title", reject_injection=False)
+
+    @field_validator("ai_remark", mode="before")
+    @classmethod
+    def _sanitize_remark(cls, v: object) -> str | None:
+        if v is None or v == "":
+            return None
+        return sanitize_prompt_text(
+            str(v), max_length=4000, field_name="ai_remark", reject_injection=False
+        )

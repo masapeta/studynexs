@@ -6,21 +6,59 @@ import re
 
 import structlog
 
-from app.core.config import Environment, get_settings
+from app.core.config import get_settings
 from app.modules.ai.gateway import LLMImage, LLMMessage, default_model, generate_llm
 from app.modules.ai.gateway.base import LLMResult
+from app.modules.ai.gateway.factory import ollama_configured
 from app.modules.files.services.file_validation import IMAGE_MIMES, normalize_mime
 
 logger = structlog.get_logger()
 settings = get_settings()
 
+_VISION_PROVIDERS = frozenset({"gemini", "openai", "ollama"})
+
+
+def _ollama_ready() -> bool:
+    return ollama_configured()
+
+
+def _vision_fallback_provider() -> str | None:
+    """Answer-sheet handwriting fallback — Ollama gemma4 by default (not a second OpenAI call)."""
+    for candidate in (
+        (settings.AI_VISION_FALLBACK_PROVIDER or "").strip().lower(),
+        (settings.AI_FALLBACK_PROVIDER or "").strip().lower(),
+        "ollama",
+    ):
+        if not candidate:
+            continue
+        if candidate == "ollama" and not _ollama_ready():
+            continue
+        return candidate
+    return None
+
+
+def _vision_primary_provider() -> str | None:
+    """First vision attempt: Gemini if configured, else AI_DEFAULT_PROVIDER when vision-capable."""
+    if settings.GEMINI_API_KEY:
+        return "gemini"
+    primary = (settings.AI_DEFAULT_PROVIDER or "").strip().lower()
+    if primary in _VISION_PROVIDERS:
+        if primary == "ollama" and not _ollama_ready():
+            return None
+        if primary == "openai" and not settings.OPENAI_API_KEY:
+            return None
+        if primary == "gemini" and not settings.GEMINI_API_KEY:
+            return None
+        return primary
+    if settings.OPENAI_API_KEY:
+        return "openai"
+    if _ollama_ready():
+        return "ollama"
+    return None
+
 
 def vision_llm_available() -> bool:
-    return bool(
-        settings.GEMINI_API_KEY
-        or settings.OPENAI_API_KEY
-        or (settings.OLLAMA_BASE_URL or "").strip()
-    )
+    return _vision_primary_provider() is not None or _vision_fallback_provider() is not None
 
 
 def is_image_mime(mime: str) -> bool:
@@ -59,6 +97,10 @@ def _parse_answers_json(text: str) -> dict[str, str]:
     return {str(k): str(v) for k, v in answers.items()}
 
 
+def _ollama_vision_model() -> str:
+    return (settings.OLLAMA_VISION_MODEL or settings.OLLAMA_MODEL or "gemma4:cloud").strip()
+
+
 async def extract_answers_from_image(
     *,
     image_bytes: bytes,
@@ -66,22 +108,21 @@ async def extract_answers_from_image(
     question_schema: list[dict],
     rubrics: dict[str, dict],
 ) -> tuple[dict[str, str], LLMResult | None]:
-    """OCR via vision LLM. Returns ({qno: answer}, llm_result). Empty dict when unavailable."""
+    """OCR via vision LLM. Primary provider first, then Ollama gemma4 for handwriting."""
     if not vision_llm_available():
         return {}, None
     if not is_image_mime(mime_type):
         return {}, None
 
-    prompt = _question_prompt(question_schema, rubrics)
-    if settings.GEMINI_API_KEY:
-        provider_name = "gemini"
-    elif settings.OPENAI_API_KEY:
-        provider_name = "openai"
-    elif (settings.OLLAMA_BASE_URL or "").strip():
-        provider_name = "ollama"
-    else:
+    primary = _vision_primary_provider()
+    fallback = _vision_fallback_provider()
+    if not primary and fallback:
+        primary = fallback
+        fallback = None
+    if not primary:
         return {}, None
 
+    prompt = _question_prompt(question_schema, rubrics)
     messages = [
         LLMMessage(
             role="user",
@@ -89,11 +130,14 @@ async def extract_answers_from_image(
             images=[LLMImage(data=image_bytes, mime_type=mime_type.split(";")[0])],
         )
     ]
+    fb_model = _ollama_vision_model() if fallback == "ollama" else None
     try:
         result = await generate_llm(
             messages,
-            model=default_model(provider_name),
-            provider_name=provider_name,
+            model=default_model(primary),
+            provider_name=primary,
+            fallback_provider_name=fallback,
+            fallback_model=fb_model,
             temperature=0.1,
             max_tokens=4096,
             json_mode=True,
@@ -101,5 +145,6 @@ async def extract_answers_from_image(
             caller="extract_answers_from_image",
         )
     except (RuntimeError, ValueError):
+        logger.warning("answer_sheet_vision_failed", primary=primary, fallback=fallback)
         return {}, None
     return _parse_answers_json(result.text), result

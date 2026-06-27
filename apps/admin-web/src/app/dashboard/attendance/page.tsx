@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { api, getApiErrorMessage } from "@/lib/api";
-import { PageShell } from "@/components/layout/PageShell";
 import { StatusBadge } from "@/components/briefing/StatusBadge";
+import { PageHeaderCard } from "@/components/layout/PageHeaderCard";
+import { FilterPillBar } from "@/components/layout/FilterPillBar";
 import { AppSelect } from "@/components/ui/AppSelect";
 import { formatClassLabel, sortClasses } from "@/lib/format";
 
@@ -121,6 +122,11 @@ export default function AttendancePage() {
     return students.filter((s) => attendance[s.id] === statusFilter);
   }, [students, attendance, statusFilter]);
 
+  const selectedClassLabel = useMemo(() => {
+    const match = classes.find((c) => c.id === selectedClass);
+    return match ? formatClassLabel(match.grade, match.section) : "";
+  }, [classes, selectedClass]);
+
   function toggleStatusFilter(filter: AttendanceFilter) {
     if (filter === "all") {
       setStatusFilter("all");
@@ -136,92 +142,90 @@ export default function AttendancePage() {
   })();
 
   return (
-    <PageShell
-      title="Daily Attendance"
-      subtitle="Mark and review class attendance for the selected date."
-      action={
-        <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-          {loadingClasses ? (
-            <div className="spinner" style={{ width: 20, height: 20 }} />
-          ) : (
-            <AppSelect
-              variant="pill"
-              value={selectedClass}
-              onChange={setSelectedClass}
-              aria-label="Select class"
-              style={{ width: 180 }}
-              options={classes.map((c) => ({
-                value: c.id,
-                label: formatClassLabel(c.grade, c.section),
-              }))}
-            />
-          )}
-          <input
-            type="date"
-            className="form-input"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            aria-label="Attendance date"
-            style={{ width: 160 }}
+    <>
+      <PageHeaderCard title="Attendance" subtitle="Mark and review class attendance for the selected date.">
+        {loadingClasses ? (
+          <div className="spinner" style={{ width: 20, height: 20 }} />
+        ) : (
+          <AppSelect
+            variant="pill"
+            value={selectedClass}
+            onChange={setSelectedClass}
+            aria-label="Select class"
+            style={{ width: 180 }}
+            options={classes.map((c) => ({
+              value: c.id,
+              label: formatClassLabel(c.grade, c.section),
+            }))}
           />
-          <button
-            type="button"
-            className="btn btn-primary gw-btn-sm"
-            onClick={handleSave}
-            disabled={loadingData || saving || students.length === 0}
-          >
-            {saving ? "Saving…" : "Save Attendance"}
-          </button>
-        </div>
-      }
-    >
-      {error && <div className="gw-alert gw-alert-error">{error}</div>}
+        )}
+        <input
+          type="date"
+          className="form-input"
+          value={selectedDate}
+          onChange={(e) => setSelectedDate(e.target.value)}
+          aria-label="Attendance date"
+          style={{ width: 160 }}
+        />
+        <button
+          type="button"
+          className="btn btn-primary sn-filter-pill"
+          onClick={handleSave}
+          disabled={loadingData || saving || students.length === 0}
+        >
+          {saving ? "Saving…" : "Save Attendance"}
+        </button>
+      </PageHeaderCard>
 
-      <div className="gw-pipeline" role="tablist" aria-label="Filter by attendance status">
-        {FILTER_TILES.map(({ key, label }) => {
-          const active = statusFilter === key;
-          return (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              className={`gw-pipeline-stage${active ? " gw-pipeline-stage-active" : ""}`}
-              onClick={() => toggleStatusFilter(key)}
-            >
-              <span className="gw-pipeline-count">{counts[key]}</span>
-              <span className="gw-pipeline-label">{label}</span>
-            </button>
-          );
-        })}
-      </div>
+      {error && (
+        <div className="card" style={{ marginBottom: 16, padding: 12, color: "var(--danger)" }}>
+          {error}
+        </div>
+      )}
+
+      <FilterPillBar
+        tabs={FILTER_TILES.map(({ key, label }) => ({
+          key,
+          label,
+          count: counts[key],
+        }))}
+        activeKey={statusFilter}
+        onChange={(key) => toggleStatusFilter(key as AttendanceFilter)}
+        ariaLabel="Filter by attendance status"
+      />
 
       <div className="data-table-card">
-        <table className="data-table" aria-label="Class attendance">
+        <table className="attendance-table" aria-label="Class attendance">
+          <colgroup>
+            <col className="attendance-col-adm" />
+            <col className="attendance-col-name" />
+            <col className="attendance-col-status" />
+            <col className="attendance-col-mark" />
+          </colgroup>
           <thead>
             <tr>
-              <th>Student ID</th>
+              <th>Admission No.</th>
               <th>Student Name</th>
               <th>Current Status</th>
-              <th style={{ textAlign: "right" }}>Mark Attendance</th>
+              <th>Mark Attendance</th>
             </tr>
           </thead>
           <tbody>
             {loadingData ? (
               <tr>
-                <td colSpan={4} style={{ textAlign: "center", padding: 40 }}>
+                <td colSpan={4} className="attendance-table-empty">
                   <div className="spinner" style={{ margin: "0 auto" }} />
                 </td>
               </tr>
             ) : students.length === 0 ? (
               <tr>
-                <td colSpan={4} style={{ textAlign: "center", padding: 40, color: "var(--text-muted)" }}>
+                <td colSpan={4} className="attendance-table-empty">
                   No students found in this class.
                 </td>
               </tr>
             ) : filteredStudents.length === 0 ? (
               <tr>
-                <td colSpan={4} style={{ textAlign: "center", padding: 40, color: "var(--text-muted)" }}>
+                <td colSpan={4} className="attendance-table-empty">
                   {emptyFilterMessage}
                 </td>
               </tr>
@@ -229,15 +233,15 @@ export default function AttendancePage() {
               filteredStudents.map((s) => {
                 const status = attendance[s.id] || "present";
                 return (
-                  <tr key={s.id}>
-                    <td style={{ fontWeight: 600 }}>{s.admission_no || "—"}</td>
-                    <td>{s.student_name || "—"}</td>
+                  <tr key={s.id} className="attendance-table-row">
+                    <td className="attendance-table-adm">{s.admission_no || "—"}</td>
+                    <td className="attendance-table-name">{s.student_name || "—"}</td>
                     <td>
                       <StatusBadge tone={STATUS_TONE[status as keyof typeof STATUS_TONE] || "gray"}>
                         {status.charAt(0).toUpperCase() + status.slice(1)}
                       </StatusBadge>
                     </td>
-                    <td style={{ textAlign: "right" }}>
+                    <td className="attendance-table-mark">
                       <div className="gw-attendance-mark">
                         {(["present", "late", "absent"] as const).map((value) => (
                           <button
@@ -259,7 +263,22 @@ export default function AttendancePage() {
             )}
           </tbody>
         </table>
+
+        {students.length > 0 && !loadingData && (
+          <div className="data-table-footer">
+            <span>
+              {statusFilter === "all"
+                ? `${filteredStudents.length} student${filteredStudents.length === 1 ? "" : "s"}`
+                : `Showing ${filteredStudents.length} of ${students.length} students`}
+            </span>
+            <span>
+              {selectedClassLabel}
+              {selectedClassLabel ? " · " : ""}
+              {selectedDate}
+            </span>
+          </div>
+        )}
       </div>
-    </PageShell>
+    </>
   );
 }

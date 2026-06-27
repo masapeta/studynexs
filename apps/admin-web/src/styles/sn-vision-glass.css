@@ -1,0 +1,210 @@
+/* ── VisionOS glossy glass — app-wide (loaded last) ─────────────────────
+   Unified transparent surfaces for dashboard, modules, portals. */
+
+.sn-app {
+  --sn-vision-surface: rgba(255, 255, 255, 0.16);
+  --sn-vision-surface-nested: rgba(255, 255, 255, 0.11);
+  --sn-vision-surface-hover: rgba(255, 255, 255, 0.24);
+  --sn-vision-surface-shell: rgba(255, 255, 255, 0.08);
+  --sn-vision-surface-input: rgba(255, 255, 255, 0.22);
+  --sn-vision-surface-input-focus: rgba(255, 255, 255, 0.32);
+  --sn-vision-border: rgba(255, 255, 255, 0.42);
+  --sn-vision-border-soft: rgba(255, 255, 255, 0.28);
+  --sn-vision-specular: inset 0 1px 0 rgba(255, 255, 255, 0.58),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+  --sn-vision-blur: blur(20px) saturate(1.35);
+
+  /* Remap tokens used across premium / vision layers */
+  --sn-glass: var(--sn-vision-surface);
+  --sn-glass-strong: rgba(255, 255, 255, 0.2);
+  --sn-glass-border: var(--sn-vision-border);
+  --sn-glass-border-soft: var(--sn-vision-border-soft);
+  --sn-surface-solid: var(--sn-vision-surface);
+  --bg-card: var(--sn-vision-surface);
+  --sn-glass-specular: var(--sn-vision-specular);
+  --shadow-card: var(--sn-vision-specular), 0 4px 20px rgba(15, 23, 42, 0.04);
+  --shadow-md: var(--sn-vision-specular), 0 8px 32px rgba(15, 23, 42, 0.06);
+  --sn-shadow-card: var(--shadow-card);
+  --sn-shadow-md: var(--shadow-md);
+}
+
+/* ── App shell ─────────────────────────────────────────────────────────── */
+
+.sn-app .sidebar {
+  background: rgba(255, 255, 255, 0.14);
+  backdrop-filter: var(--sn-vision-blur);
+  -webkit-backdrop-filter: var(--sn-vision-blur);
+  border-color: var(--sn-vision-border-soft);
+  box-shadow: var(--sn-vision-specular), 4px 0 24px rgba(15, 23, 42, 0.03);
+}
+
+.sn-app .main-content {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: none;
+  box-shadow: none;
+}
+
+.sn-app .portal-header,
+.sn-app .portal-bottom-nav {
+  background: var(--sn-vision-surface);
+  backdrop-filter: var(--sn-vision-blur);
+  -webkit-backdrop-filter: var(--sn-vision-blur);
+  border-color: var(--sn-vision-border);
+  box-shadow: var(--shadow-card);
+}
+
+/* ── Cards, tiles, panels (all internal pages) ───────────────────────── */
+
+.sn-app :is(
+  .card,
+  .portal-card,
+  .gw-card,
+  .data-table-card,
+  .briefing-card,
+  .briefing-stat,
+  .briefing-panel,
+  .gw-staff-card,
+  .gw-staff-tile,
+  .gw-pipeline-stage,
+  .gw-route-card,
+  .gw-notice-card,
+  .gw-admission-form-card,
+  .gw-doc-upload-cell,
+  .bento-glass,
+  .ui-card,
+  .ui-stat,
+  .sn-page-header-card,
+  .gw-page-header,
+  .stat-card,
+  .quick-actions,
+  .gw-empty-state,
+  .gw-modal,
+  .gw-class-tabs,
+  .gw-toolbar,
+  .gw-chip,
+  .gw-list-row,
+  .gw-alert,
+  .students-table-wrap,
+  .attendance-table-wrap,
+  .portal-stat
+) {
+  background: var(--sn-vision-surface);
+  backdrop-filter: var(--sn-vision-blur);
+  -webkit-backdrop-filter: var(--sn-vision-blur);
+  border-color: var(--sn-vision-border);
+  box-shadow: var(--shadow-card);
+}
+
+/* Nested chips inside panels */
+.sn-app :is(
+  .briefing-attention,
+  .briefing-attention-coral,
+  .briefing-attention-brass,
+  .briefing-attention-neutral,
+  .briefing-finance-row > div,
+  .gw-widget-row > div
+) {
+  background: var(--sn-vision-surface-nested);
+  backdrop-filter: var(--sn-vision-blur);
+  -webkit-backdrop-filter: var(--sn-vision-blur);
+  border: 1px solid var(--sn-vision-border-soft);
+  box-shadow: var(--sn-vision-specular);
+}
+
+.sn-app .briefing-attention-coral,
+.sn-app .briefing-attention-brass,
+.sn-app .briefing-attention-neutral {
+  border-color: var(--sn-vision-border-soft);
+}
+
+/* ── Tables ────────────────────────────────────────────────────────────── */
+
+.sn-app .data-table-card,
+.sn-app table.students-table thead th,
+.sn-app table.attendance-table thead th {
+  background: var(--sn-vision-surface);
+}
+
+.sn-app .data-table th {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.sn-app .data-table tr:hover td,
+.sn-app table.students-table tbody tr.students-table-row:hover td,
+.sn-app table.attendance-table tbody tr.attendance-table-row:hover td {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ── Filters & pill bars ─────────────────────────────────────────────── */
+
+.sn-app .sn-filter-pills,
+.sn-app .gw-class-tabs {
+  background: var(--sn-vision-surface-nested);
+  backdrop-filter: var(--sn-vision-blur);
+  -webkit-backdrop-filter: var(--sn-vision-blur);
+  border-color: var(--sn-vision-border-soft);
+}
+
+/* ── Forms & inputs ──────────────────────────────────────────────────── */
+
+.sn-app :is(
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea,
+  .form-input,
+  .gw-form-input,
+  .sn-inline-field,
+  .sn-search-inline
+) {
+  background: var(--sn-vision-surface-input) !important;
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  border-color: var(--sn-vision-border-soft) !important;
+  box-shadow: var(--sn-vision-specular);
+}
+
+.sn-app :is(input, select, textarea, .form-input, .gw-form-input):focus {
+  background: var(--sn-vision-surface-input-focus) !important;
+  border-color: rgb(var(--accent-rgb) / 0.35) !important;
+}
+
+.sn-app .app-select-trigger,
+.sn-app .app-file-input-trigger {
+  background: var(--sn-vision-surface-input);
+  backdrop-filter: var(--sn-vision-blur);
+  -webkit-backdrop-filter: var(--sn-vision-blur);
+  border-color: var(--sn-vision-border-soft);
+}
+
+/* ── Hover lift (keep motion, brighten glass) ──────────────────────────── */
+
+.sn-app :is(
+  .card,
+  .briefing-stat,
+  .briefing-card,
+  .gw-staff-card,
+  .gw-route-card,
+  .bento-glass,
+  .gw-card
+):hover {
+  background: var(--sn-vision-surface-hover);
+  border-color: rgba(255, 255, 255, 0.52);
+}
+
+.sn-app .briefing-attention:hover {
+  background: var(--sn-vision-surface-hover);
+}
+
+/* ── Top bar chips — align with global tokens ──────────────────────────── */
+
+.sn-app .header.topbar {
+  --topbar-glass-bg: var(--sn-vision-surface);
+  --topbar-glass-bg-hover: var(--sn-vision-surface-hover);
+  --topbar-glass-border: var(--sn-vision-border);
+  --topbar-glass-specular: var(--sn-vision-specular);
+}
+

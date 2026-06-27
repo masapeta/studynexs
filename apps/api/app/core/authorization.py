@@ -77,9 +77,11 @@ async def assert_can_access_student(
         from app.core.staff_permissions import get_staff_scope
 
         scope = await get_staff_scope(db, current_user)
-        if not scope.is_class_incharge(student.class_id):
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-        return student
+        if scope.is_class_incharge(student.class_id):
+            return student
+        if student.class_id in scope.teaching_class_ids:
+            return student
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
@@ -114,13 +116,41 @@ async def assert_can_pay_fee(
     )
 
 
-def assert_can_access_file(current_user: CurrentUser, record: UploadedFile) -> None:
+async def assert_can_access_file(
+    current_user: CurrentUser,
+    record: UploadedFile,
+    db: AsyncSession,
+) -> None:
     """Authorize a file download. The caller has already enforced school scope."""
     # SECURITY-REVIEW: identity document uploads are restricted to admissions admins.
     if record.category in _IDENTITY_DOC_CATEGORIES:
         if current_user.role not in _IDENTITY_DOC_ROLES:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
         return
+
+    if record.category == FileCategory.ANSWER_SHEET:
+        if str(record.uploaded_by) == current_user.id:
+            return
+        if current_user.role in ("admin", "super_admin"):
+            return
+        if current_user.role in ("teacher", "class_incharge"):
+            from app.core.staff_permissions import assert_exam_eval_access, get_staff_scope
+            from app.core.tenant_scope import TenantScope
+            from app.db.models.answer_sheet_evaluation import AnswerSheetEvaluation
+
+            ev = (
+                await db.execute(
+                    select(AnswerSheetEvaluation)
+                    .where(AnswerSheetEvaluation.file_id == record.id)
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
+            if ev:
+                scope = await get_staff_scope(db, current_user)
+                exam = await TenantScope(db, uuid.UUID(current_user.school_id)).exam(ev.exam_id)
+                assert_exam_eval_access(scope, exam)
+                return
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     if current_user.role in _STAFF_FILE_ROLES:
         return

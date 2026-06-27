@@ -494,6 +494,11 @@ async def generate_question_paper_from_bank(
     db: AsyncSession = Depends(get_db),
 ) -> QuestionPaperOut:
     """Compose a DRAFT from the school question bank; LLM fills only missing blueprint slots."""
+    bind_ai_context(
+        school_id=current_user.school_id,
+        user_id=current_user.id,
+        feature="question_paper",
+    )
     scope = await get_staff_scope(db, current_user)
     assert_qp_generate(scope, body.class_id, body.subject_id)
     credits = await _enforce_monthly_cap(

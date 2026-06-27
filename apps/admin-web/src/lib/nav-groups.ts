@@ -1,27 +1,19 @@
 import type { ElementType } from "react";
 import {
-  Award,
-  Banknote,
-  BarChart3,
   BookOpen,
   Bus,
   CalendarDays,
   ClipboardCheck,
   FileText,
   GraduationCap,
-  HeartHandshake,
   LayoutDashboard,
   Megaphone,
-  NotebookPen,
-  Receipt,
   School,
-  Sparkles,
-  Target,
-  UserPlus,
   UserCog,
   Wallet,
 } from "lucide-react";
 import type { UserPermissions } from "./permissions";
+import { FINANCE, STUDENTS, TEACHING } from "./dashboard-routes";
 
 export type NavItem = {
   label: string;
@@ -29,6 +21,8 @@ export type NavItem = {
   icon: ElementType;
   module?: string;
   perm?: keyof UserPermissions;
+  /** Show when the user has any of these permissions. */
+  anyPerm?: (keyof UserPermissions)[];
 };
 
 export type NavGroup = {
@@ -36,34 +30,44 @@ export type NavGroup = {
   items: NavItem[];
 };
 
+export const TEACHING_ANY_PERM: (keyof UserPermissions)[] = [
+  "can_use_exams",
+  "can_use_ai_papers",
+  "can_use_mastery",
+  "can_use_report_cards",
+];
+
 export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Overview",
     items: [
       { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, perm: "can_view_dashboard" },
-      { label: "Reports", href: "/dashboard/reports", icon: BarChart3, perm: "can_view_dashboard" },
     ],
   },
   {
     label: "People",
     items: [
-      { label: "Students", href: "/dashboard/students", icon: GraduationCap, perm: "can_manage_students" },
+      { label: "Students", href: STUDENTS.root, icon: GraduationCap, perm: "can_manage_students" },
       { label: "Staff & HR", href: "/dashboard/staff", icon: UserCog, perm: "can_manage_staff" },
-      { label: "Parents", href: "/dashboard/parents", icon: HeartHandshake, perm: "can_manage_students" },
-      { label: "Admissions", href: "/dashboard/admissions", icon: UserPlus, perm: "can_manage_students" },
     ],
   },
   {
-    label: "Academics",
+    label: "Teaching",
     items: [
+      {
+        label: "Assessments",
+        href: TEACHING.root,
+        icon: FileText,
+        anyPerm: TEACHING_ANY_PERM,
+      },
       { label: "Classes", href: "/dashboard/classes", icon: School, perm: "can_view_classes" },
-      { label: "Attendance", href: "/dashboard/attendance", icon: ClipboardCheck, module: "attendance", perm: "can_use_attendance" },
-      { label: "Gradebook", href: "/dashboard/gradebook", icon: Award, module: "exams", perm: "can_use_exams" },
-      { label: "Exams", href: "/dashboard/exams", icon: FileText, module: "exams", perm: "can_use_exams" },
-      { label: "AI Papers", href: "/dashboard/ai-papers", icon: Sparkles, module: "ai_papers", perm: "can_use_ai_papers" },
-      { label: "Topic Mastery", href: "/dashboard/mastery", icon: Target, module: "mastery", perm: "can_use_mastery" },
-      { label: "Lesson Plans", href: "/dashboard/lesson-plans", icon: NotebookPen, perm: "can_use_exams" },
-      { label: "Report Cards", href: "/dashboard/report-cards", icon: Award, module: "report_cards", perm: "can_use_report_cards" },
+      {
+        label: "Attendance",
+        href: "/dashboard/attendance",
+        icon: ClipboardCheck,
+        module: "attendance",
+        perm: "can_use_attendance",
+      },
     ],
   },
   {
@@ -79,10 +83,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Finance",
     items: [
-      { label: "Fees", href: "/dashboard/fees", icon: Wallet, module: "finance", perm: "can_use_finance" },
-      { label: "Payroll", href: "/dashboard/payroll", icon: Banknote, module: "finance", perm: "can_use_finance" },
-      { label: "Expenses", href: "/dashboard/expenses", icon: Receipt, module: "finance", perm: "can_use_finance" },
-      { label: "Finance overview", href: "/dashboard/finance", icon: Wallet, module: "finance", perm: "can_use_finance" },
+      { label: "Finance", href: FINANCE.root, icon: Wallet, module: "finance", perm: "can_use_finance" },
     ],
   },
   {

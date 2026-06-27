@@ -97,8 +97,8 @@ async def download_file(
     if not record:
         raise HTTPException(status_code=404, detail="File not found")
 
-    # Staff see any file in their school; non-staff only their own uploads.
-    assert_can_access_file(current_user, record)
+    # Staff see school files when authorized; non-staff only their own uploads.
+    await assert_can_access_file(current_user, record, db)
 
     return FileResponse(
         path=record.storage_path,

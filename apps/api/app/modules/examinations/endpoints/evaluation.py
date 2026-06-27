@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, require_roles
+from app.core.rate_limit import rate_limit
 from app.core.staff_permissions import (
     assert_exam_class,
     assert_exam_eval_access,
@@ -34,6 +35,7 @@ from app.shared.schemas.common import APIResponse
 
 router = APIRouter()
 _STAFF = ("teacher", "class_incharge", "admin", "super_admin")
+_EVAL_RATE = {"max_requests": 8, "window_seconds": 60}
 
 
 def _subject_ids_for_list(
@@ -138,6 +140,7 @@ async def list_misconception_library(
     "/{exam_id}/evaluations",
     response_model=APIResponse[EvaluationOut],
     status_code=201,
+    dependencies=[rate_limit("exam_eval", **_EVAL_RATE)],
 )
 async def create_evaluation(
     exam_id: uuid.UUID,

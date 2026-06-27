@@ -36,9 +36,10 @@
   --space-table-y: 6px;
   --space-table-x: 14px;
   --space-table-head-y: 7px;
-  --space-section: 14px;
-  --space-grid: 12px;
+  --space-section: 12px;
+  --space-grid: 10px;
   --header-height: 52px;
+  --table-edge-inset: 20px;
 
   /* Remap legacy Greenwood tokens → school brand accent */
   --ink: #0f172a;
@@ -213,17 +214,7 @@
   border-top-color: var(--sn-glass-border-soft);
 }
 
-.sn-app .header.topbar {
-  position: sticky;
-  top: 0;
-  z-index: 45;
-  isolation: isolate;
-  background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(20px) saturate(1.15);
-  -webkit-backdrop-filter: blur(20px) saturate(1.15);
-  border-bottom: 1px solid var(--sn-glass-border-soft);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8), 0 4px 24px rgba(15, 23, 42, 0.04);
-}
+/* Top bar shell — sn-topbar.css (loaded last) owns layout + glass */
 
 .sn-app .topbar-search-trigger {
   background: rgba(255, 255, 255, 0.5);
@@ -252,15 +243,6 @@
   border-radius: 999px;
 }
 
-.sn-app .topbar-notif-panel,
-.sn-app .topbar-search-modal {
-  background: var(--sn-glass-strong);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid var(--sn-glass-border);
-  box-shadow: var(--shadow-md);
-  border-radius: var(--radius-lg);
-}
 
 .sn-app .page-content {
   padding: var(--space-page) calc(var(--space-page) + 4px) var(--space-page-bottom);
@@ -466,7 +448,8 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .sn-app .gw-page {
-  max-width: 80rem;
+  width: 100%;
+  max-width: none;
 }
 
 .sn-app .gw-page-header {
@@ -518,6 +501,97 @@
 .sn-app .gw-route-card:hover {
   border-color: rgb(var(--accent-rgb) / 0.2);
   box-shadow: var(--shadow-md);
+}
+
+/* Topic Mastery–style page header + pill filters (shared across modules) */
+.sn-app .sn-page-header-card {
+  margin-bottom: 0.75rem;
+  padding: 0.65rem 0.9rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.65rem 0.75rem;
+}
+
+@media (max-width: 720px) {
+  .sn-app .sn-page-header-card {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+}
+
+.sn-app .sn-page-header-card__text {
+  min-width: 0;
+}
+
+.sn-app .sn-page-header-card__title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--sn-navy);
+  letter-spacing: -0.02em;
+}
+
+.sn-app .sn-page-header-card__subtitle {
+  margin: 0.125rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.sn-app .sn-page-header-card__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+
+.sn-app .sn-page-header-card__actions .form-input,
+.sn-app .sn-page-header-card__actions .sn-search-inline,
+.sn-app .sn-page-header-card__actions .app-select {
+  width: 12.5rem;
+  min-width: 9rem;
+  max-width: 16rem;
+  flex: 0 1 12.5rem;
+}
+
+.sn-app .sn-page-header-card__actions .gw-table-icon-btn,
+.sn-app .sn-page-header-card__actions .btn {
+  flex-shrink: 0;
+}
+
+@media (max-width: 720px) {
+  .sn-app .sn-page-header-card__actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .sn-app .sn-page-header-card__actions .form-input,
+  .sn-app .sn-page-header-card__actions .sn-search-inline,
+  .sn-app .sn-page-header-card__actions .app-select {
+    flex: 1 1 10rem;
+    width: auto;
+    max-width: none;
+  }
+}
+
+.sn-app .sn-filter-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.sn-app .sn-filter-pill {
+  width: auto;
+  padding: 0.5rem 1.125rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .sn-app .gw-alert {
@@ -731,11 +805,12 @@
 
 /* Briefing / dashboard home */
 .sn-app .briefing-page {
-  max-width: 72rem;
+  width: 100%;
+  max-width: none;
 }
 
 .sn-app .briefing-header {
-  margin-bottom: 1.25rem;
+  margin-bottom: 0.75rem;
 }
 
 .sn-app .briefing-title {
@@ -821,7 +896,7 @@
 .sn-app .bento-grid,
 .sn-app .dashboard-grid,
 .sn-app .dashboard-widgets-grid {
-  gap: 1.25rem;
+  gap: 0.75rem;
 }
 
 .sn-app .stat-icon-container {
@@ -909,15 +984,6 @@
   transition: color 0.2s;
 }
 
-.sn-app .topbar-search-result:hover {
-  background: rgb(var(--accent-rgb) / 0.06);
-  border-radius: 10px;
-}
-
-.sn-app .topbar-notif-item.unread {
-  background: rgb(var(--accent-rgb) / 0.08);
-  border-radius: 10px;
-}
 
 /* Settings & misc panels */
 .sn-app .settings-section,
@@ -955,20 +1021,22 @@
   margin-right: 6px;
 }
 
-.sn-app .data-table th:last-child,
-.sn-app .data-table td:last-child {
-  width: 56px;
-  padding-left: 8px;
-  padding-right: 8px;
-  text-align: center;
+.sn-app .data-table th:first-child,
+.sn-app .data-table td:first-child {
+  padding-left: var(--table-edge-inset);
 }
 
-/* Students table — native <table> for reliable header/body column alignment */
-.sn-app table.students-table {
+.sn-app .data-table th:last-child,
+.sn-app .data-table td:last-child {
+  padding-right: var(--table-edge-inset);
+}
+
+/* Students & attendance tables — native <table> for reliable header/body column alignment */
+.sn-app table.students-table,
+.sn-app table.attendance-table {
   width: 100%;
   table-layout: fixed;
   border-collapse: collapse;
-  /* Action col: 12% wide, 10px pad-left, 14px pad-right, 28px icon — centered */
   --students-action-inner: 52px;
 }
 
@@ -979,8 +1047,15 @@
 .sn-app table.students-table .students-col-phone { width: 18%; }
 .sn-app table.students-table .students-col-action { width: 12%; }
 
+.sn-app table.attendance-table .attendance-col-adm { width: 14%; }
+.sn-app table.attendance-table .attendance-col-name { width: 30%; }
+.sn-app table.attendance-table .attendance-col-status { width: 16%; }
+.sn-app table.attendance-table .attendance-col-mark { width: 40%; }
+
 .sn-app table.students-table th,
-.sn-app table.students-table td {
+.sn-app table.students-table td,
+.sn-app table.attendance-table th,
+.sn-app table.attendance-table td {
   padding-top: var(--space-table-y);
   padding-bottom: var(--space-table-y);
   padding-left: 10px;
@@ -990,7 +1065,7 @@
   border-bottom: 1px solid var(--sn-glass-border-soft);
 }
 
-/* Same left inset for admission header + body so labels align with values */
+/* Same left inset for admission header + body (students action column optical balance) */
 .sn-app table.students-table thead th:first-child,
 .sn-app table.students-table tbody td:first-child {
   padding-left: max(
@@ -1000,13 +1075,28 @@
   padding-right: 20px;
 }
 
+/* Attendance — symmetric insets from the card edge on both sides */
+.sn-app table.attendance-table thead th:first-child,
+.sn-app table.attendance-table tbody td:first-child {
+  padding-left: var(--table-edge-inset);
+  padding-right: 10px;
+}
+
 .sn-app table.students-table th:last-child,
 .sn-app table.students-table td:last-child {
   padding-right: var(--space-table-x);
   text-align: center;
 }
 
-.sn-app table.students-table thead th {
+.sn-app table.attendance-table th:last-child,
+.sn-app table.attendance-table td.attendance-table-mark {
+  padding-right: var(--table-edge-inset);
+  padding-left: 10px;
+  text-align: right;
+}
+
+.sn-app table.students-table thead th,
+.sn-app table.attendance-table thead th {
   height: 45px;
   padding-top: var(--space-table-head-y);
   padding-bottom: var(--space-table-head-y);
@@ -1024,26 +1114,35 @@
   font-size: 0.875rem;
 }
 
-.sn-app table.students-table tbody tr.students-table-row:hover td {
+.sn-app table.attendance-table tbody tr.attendance-table-row {
+  font-size: 0.875rem;
+}
+
+.sn-app table.students-table tbody tr.students-table-row:hover td,
+.sn-app table.attendance-table tbody tr.attendance-table-row:hover td {
   background: rgb(var(--accent-rgb) / 0.05);
 }
 
-.sn-app table.students-table tbody tr:last-child td {
+.sn-app table.students-table tbody tr:last-child td,
+.sn-app table.attendance-table tbody tr:last-child td {
   border-bottom: none;
 }
 
-.sn-app table.students-table .students-table-adm {
+.sn-app table.students-table .students-table-adm,
+.sn-app table.attendance-table .attendance-table-adm {
   font-weight: 600;
   white-space: nowrap;
 }
 
-.sn-app table.students-table .students-table-name {
+.sn-app table.students-table .students-table-name,
+.sn-app table.attendance-table .attendance-table-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.sn-app table.students-table .students-table-muted {
+.sn-app table.students-table .students-table-muted,
+.sn-app table.attendance-table .attendance-table-muted {
   color: var(--text-secondary);
   font-size: 0.8125rem;
   white-space: nowrap;
@@ -1053,7 +1152,8 @@
   text-align: center;
 }
 
-.sn-app table.students-table .students-table-empty {
+.sn-app table.students-table .students-table-empty,
+.sn-app table.attendance-table .attendance-table-empty {
   padding: 40px 16px;
   text-align: center;
   color: var(--text-muted);
@@ -1063,6 +1163,10 @@
   width: 28px;
   height: 28px;
   border-radius: 8px;
+}
+
+.sn-app table.attendance-table .gw-attendance-mark {
+  justify-content: flex-end;
 }
 
 .sn-app .data-table-muted {
@@ -1089,15 +1193,15 @@
 }
 
 .sn-app .briefing-stat {
-  padding: 12px;
+  padding: 0.6rem 0.75rem;
 }
 
 .sn-app .briefing-panel {
-  padding: 14px;
+  padding: 0.65rem 0.8rem;
 }
 
 .sn-app .gw-card-pad {
-  padding: 14px;
+  padding: 0.65rem 0.8rem;
 }
 
 .sn-app .gw-staff-tile {

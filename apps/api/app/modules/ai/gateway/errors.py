@@ -4,6 +4,8 @@ from __future__ import annotations
 import structlog
 from fastapi import HTTPException, status
 
+from app.modules.ai.gateway.input_guard import safe_provider_error_detail
+
 logger = structlog.get_logger()
 
 _TIMEOUT_TYPE_NAMES = frozenset({
@@ -33,12 +35,12 @@ def raise_http_for_llm_error(
     if isinstance(exc, ModuleNotFoundError):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail='AI provider SDK not installed. Run: pip install -e ".[ai]"',
+            detail="AI service is temporarily unavailable. Please try again later.",
         ) from exc
     if isinstance(exc, RuntimeError):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
+            detail=safe_provider_error_detail(exc),
         ) from exc
     if type(exc).__name__ in _TIMEOUT_TYPE_NAMES:
         raise HTTPException(

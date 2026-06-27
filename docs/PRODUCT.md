@@ -1,6 +1,6 @@
 # StudyNexs — Product Bible
 
-> Owner: Avinash Reddy Masapeta (ARM) · Last updated: 2026-06-18  
+> Owner: Avinash Reddy Masapeta (ARM) · Last updated: 2026-06-15  
 > **Complete product definition** — vision, features, value to schools, operations impact, memory layer, compliance.  
 > For build status see [STATUS.md](./STATUS.md).
 
@@ -33,7 +33,8 @@
 19. [Compliance & Trust](#19-compliance--trust)  
 20. [Demo & Wow Moments](#20-demo--wow-moments-by-persona)  
 21. [Pricing & Plans](#21-pricing--plans)  
-22. [Related Documents](#22-related-documents)
+22. [Related Documents](#24-related-documents)  
+23. [AI-Intelligent School OS](#23-ai-intelligent-school-os)
 
 ---
 
@@ -1364,7 +1365,7 @@ Multi-tenant school operations: each school isolated at database level (`school_
 | **Objective auto-grade** | Deterministic MCQ/fill scoring | Teacher | Instant for objective sections |
 | **Subjective grading assist** | Suggested marks + written feedback | Teacher | Starting point for essays/show-work |
 | **Student summary** | One-click narrative from marks + attendance | Teacher | Parent meetings prep in seconds |
-| **Lesson plans / worksheets** | Generated from pack concepts | Teacher | Daily prep time reduced |
+| **Lesson plans / worksheets** | Generated from pack concepts + mastery gaps | Teacher | Daily prep time reduced — **today: template v1 only; AI v1 in A-OS** ([§23](#23-ai-intelligent-school-os)) |
 | **Time-saved dashboard** | Cumulative hours saved per teacher/school | Principal | ROI proof for management/trust |
 
 ### 13.4 Topic Mastery & Learning Intelligence
@@ -1583,16 +1584,19 @@ High-level sequencing intent (effort and scope in [STATUS.md](./STATUS.md)):
 | Phase | Focus |
 |-------|-------|
 | **Phase 0** | AI platform foundation — gateway, job queue, metering, core fixes |
-| **Phase 1** | Pilot-ready SMS + teacher AI question papers (hardened, productionised) |
-| **Phase 1.5** | CurriculumPack v1 + exam loop + Mistake Recovery Tutor MVP (8-week plan in [STATUS.md](./STATUS.md)) |
-| **Phase 2** | Flutter parent/student apps, text tutor, fee payment, progress feed |
-| **Phase 2b** | **Finance Command Center Phase 1** — fee visibility, overdue list, reminders, promise-to-pay (optional module; pilot retention only in near term) |
-| **Phase 3** | Communication hub, principal co-pilot, personalized learning, institutional memory UI |
+| **Phase 1** | Pilot-ready SMS + teacher AI (QP, report cards, eval MVP, mastery, tutor templates) + admin IA hubs |
+| **Phase 1.5** | CurriculumPack v1 + exam loop hardening + Concept Cards + pack-grounded QP/eval |
+| **A-OS** | **AI-Intelligent OS — Layer 1 foundation + AI lesson plan v1 + weekly teacher brief** ([§23](#23-ai-intelligent-school-os)) |
+| **B-OS** | Close the loop — heatmap QP, tutor assignments, subjective eval feedback LLM |
+| **Phase 2** | Flutter parent/student apps, tutor RAG, fee payment, progress feed |
+| **C-OS** | Intelligent UX — dashboard suggestions, document inbox (classify + confirm), principal narrative |
+| **Phase 2b** | **Finance Command Center Phase 1** (optional) |
+| **Phase 3** | Communication hub, principal co-pilot, institutional memory UI |
+| **D-OS** | Named workflow orchestration (post-exam loop, week-ahead planning) — only if A–B adopted |
 | **Phase 4** | **Learning Companion** — revision booklets, practice workbooks, mistake sheets |
-| **Phase 5** | **Global Enrichment Studio** + living workbook maturity; voice, vernacular UI |
-| **Phase 6** | Full living textbook; autonomous operations; vision/video tutor |
-| **Finance Phase 2** | Management finance snapshot (revenue, expenses, cashflow, branch compare) — after Phase 2b proves value |
-| **Finance Phase 3** | Deeper ops (payroll, vendors, Tally export) — only on repeated demand |
+| **Phase 5** | **Global Enrichment Studio** + voice, vernacular UI |
+| **Phase 6** | Full living textbook; vision/video tutor |
+| **Finance Phase 2–3** | Management snapshot → deeper ops — on demand |
 | **Parallel** | DPDP compliance, billing, onboarding console, multi-board expansion |
 
 ---
@@ -1706,11 +1710,113 @@ Rupee prices are **not locked** — validate in pilot meetings before publishing
 
 ---
 
-## 22. Related Documents
+## 23. AI-Intelligent School OS
+
+> **Build status:** [STATUS.md](./STATUS.md) — snapshot, A–D-OS tracks, lesson-plan gate.  
+> **Decided 2026-06-15:** This is the product north star for AI beyond individual sparkle features.
+
+### 23.1 What it means (and what it does not)
+
+**Not:** every screen has a sparkle button or a chat box.
+
+**Yes:** the system **knows context** (class, subject, week, syllabus, exam results, mastery gaps) and **proposes the next right action** — with a teacher or admin **always approving** before anything reaches parents or published exams.
+
+**North star (Monday morning test):**
+
+> *"Monday morning, the OS tells each teacher what to teach, what to reteach, what to assess, and what to communicate — grounded in their school's data."*
+
+**Today (partial):** mastery → QP deep links, exam eval loop, template tutor, report/mastery LLM narratives, dashboard analytics. **Gap:** planning (syllabus week, lesson plans, timetable context) and **proactive suggestions** (not just tools).
+
+### 23.2 Layer model — map to product phases
+
+| Layer | Capability | Why | Product phase | Status |
+|-------|------------|-----|---------------|--------|
+| **L1 Foundation** | Curriculum graph, academic calendar, coverage tracking, unified student/topic state, audit + HITL | Without L1, AI lesson plans are generic ChatGPT | **A-OS** (late P1 / P1.5) | ⬜ — free-text topics today |
+| **L2 Lesson plans** | Structured LLM plans grounded in L1 + timetable | Daily teacher utility | **A-OS** | 🟡 template only |
+| **L3 Extensions** | Heatmap QP, bank intelligence, eval feedback LLM, tutor assign, report v2, ops briefs | Close exam → teach → communicate loop | **B-OS** (P1.5 → P2) | 🟡 partial |
+| **L4 Intelligent UX** | Persona command centers, suggestion cards, document inbox, explainability | Feels like an OS, not a module list | **C-OS** (P2 → P3) | ⬜ |
+| **L5 Workflows** | Post-exam loop, week-ahead planning, parent-concern flow | Multi-step orchestration | **D-OS** (P3+) | 🔭 |
+
+**Prerequisite rule:** Do not ship L4–L5 autonomous routing before L1 + at least one L2 feature is trusted in pilot.
+
+### 23.3 Hybrid architecture (rules + ML + LLM + workflows)
+
+Use the **cheapest correct engine** per step — not "agents everywhere."
+
+| Step type | Engine | Examples in StudyNexs |
+|-----------|--------|------------------------|
+| Policy, eligibility, flags | **Rules** | Mastery compute, flag rules, RBAC, credit caps |
+| Classification, similarity, anomalies | **ML / heuristics** | Objective grading, duplicate-Q warning (planned), upload classify (C-OS) |
+| Language generation | **LLM** | QP, report remarks, mastery narratives, vision OCR, lesson plan prose (A-OS) |
+| Multi-step jobs with tools | **Workflow** (not open-ended agent) | Async eval job, post-exam loop (D-OS) |
+
+**Document upload router (user idea):** classify upload → **user confirms** → specialist pipeline. Phase **C-OS**, not pilot. Misrouting answer sheets into mastery is unacceptable.
+
+### 23.4 Lesson plan AI — minimum spec
+
+First new AI surface after L1 foundation (or interim syllabus-week model):
+
+1. Teacher picks class + subject + **week** (or accepts system suggestion).
+2. UI shows: topics planned, mastery gaps, upcoming exam.
+3. **Generate plan** → structured JSON (objectives, period breakdown, differentiation, homework) — **1 credit**, saved as draft.
+4. Actions: **Generate slip test** (→ QP), **Add to timetable notes**, **Copy homework to notices**.
+5. Class incharge can **approve as school template** for reuse.
+
+**Inputs (rules + DB):** period length from timetable, topics from syllabus plan or mastery lag, prior week summary, exam countdown, school board/language prefs.
+
+**Outputs (structured, not essay):** objectives, hook/explain/practice/exit per period, support + extension, homework link.
+
+**Avoid:** long prose, plans disconnected from exams/mastery, auto-publish to parents.
+
+**Today:** `lesson_plan_service` uses `ai_model="template-v1"` — placeholder until A-OS.
+
+### 23.5 Layer 3 enhancement backlog (prioritized for Indian pilot)
+
+**A. Teaching & assessment** — QP from heatmap (bulk), question-bank auto-tag, subjective **feedback** LLM only (marks stay heuristic), misconception → tutor assign, report remark v2.
+
+**B. Planning & operations** — AI lesson plan (above), weekly class-incharge brief, substitute pack PDF, notice drafts from bullets.
+
+**C. People** — admission doc triage, guardian comms drafts (HITL).
+
+**D. Student** — adaptive tutor paths (rules), practice QP after tutor, "study tonight" from mastery + tomorrow timetable.
+
+**E. Principal** — school health narrative (extends dashboard analytics), AI credit forecast, anomaly alerts.
+
+### 23.6 Layer 4 — Intelligent UX
+
+- **Command center per persona** — admin: ops + AI usage; teacher: periods + plans + pending approvals; student: tutor + homework.
+- **Suggestions, not modules** — e.g. *"Period 4 tomorrow has no plan — generate from week 12?"*
+- **Document inbox** — upload → classify → confirm → pipeline.
+- **Explainability** — every AI output: data used, model, credits, edit-before-use.
+
+### 23.7 Layer 5 — Named workflows (agents only here)
+
+| Workflow | Steps |
+|----------|--------|
+| **Post-exam loop** | Marks in → mastery recompute → flags → suggest QP → queue tutor lessons |
+| **Week-ahead planning** | Syllabus week + gaps → draft lesson plans → link slip tests |
+| **Parent concern** | Teacher note → draft parent message → incharge approve → notify |
+
+Each step is an existing **service**; orchestration adds retries, notifications, and audit — not a single mega-agent.
+
+### 23.8 Sequencing vs CurriculumPack
+
+| Track | Relationship |
+|-------|----------------|
+| **Phase 1.5 CurriculumPack** | Moat — pack-grounded QP, eval, mastery, tutor RAG |
+| **A-OS** | Runs **in parallel** once pilot gate passes — can start with interim "syllabus week" before full pack |
+| **B-OS** | Accelerates after pack tags exist; some items work today (QP deep links) |
+| **C-OS / D-OS** | After daily use of A–B |
+
+**Do not delay pilot** for full OS vision. **Do not build D-OS** before teachers use lesson plans and post-exam suggestions weekly.
+
+---
+
+## 24. Related Documents
 
 | Document | Purpose |
 |----------|---------|
-| [STATUS.md](./STATUS.md) | What's built vs planned **as of today** |
+| [STATUS.md](./STATUS.md) | What's built vs planned **as of today** — includes **A–D-OS** track status |
 | [PRICING.md](./PRICING.md) | **Tiers, feature gates, AI pools, add-ons, pilot packaging** |
 | [TRACK_AB_EXECUTION.md](./TRACK_AB_EXECUTION.md) | **Start here** — Track A + B execution |
 | [PILOT_DISCOVERY.md](./PILOT_DISCOVERY.md) | Pilot meeting questions + demo script |

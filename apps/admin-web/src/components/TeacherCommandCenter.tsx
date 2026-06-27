@@ -7,6 +7,7 @@ import {
   CalendarDays, CheckCircle2, Megaphone, ChevronRight, RefreshCw,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { TEACHING } from "@/lib/dashboard-routes";
 
 export type TeacherHome = {
   greeting: string;
@@ -401,7 +402,7 @@ export function TeacherCommandCenter({ data, onRefresh }: { data: TeacherHome; o
                   </div>
                 )}
                 <Link
-                  href={`/dashboard/mastery`}
+                  href={TEACHING.mastery}
                   style={{ fontSize: 12, color: "var(--accent-dark)", marginTop: 12, display: "inline-block" }}
                 >
                   Review flags →

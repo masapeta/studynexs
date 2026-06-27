@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { Menu, X } from "lucide-react";
+import { NeuralCanvas } from "./NeuralCanvas";
 
 const LINKS = [
   { href: "/platform", label: "Platform" },
@@ -18,9 +19,15 @@ export function MarketingBackground() {
   return (
     <div className="mkt-bg" aria-hidden>
       <div className="mkt-mesh" />
-      <div className={`mkt-orb mkt-orb--1${reduce ? "" : ""}`} />
-      <div className="mkt-orb mkt-orb--2" />
-      <div className="mkt-orb mkt-orb--3" />
+      <div className="mkt-grid-fade" />
+      <NeuralCanvas />
+      {!reduce && (
+        <>
+          <div className="mkt-orb mkt-orb--1" />
+          <div className="mkt-orb mkt-orb--2" />
+          <div className="mkt-orb mkt-orb--3" />
+        </>
+      )}
     </div>
   );
 }

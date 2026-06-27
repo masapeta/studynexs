@@ -1,0 +1,827 @@
+/* ── StudyNexs VisionOS layer — internal dashboards & portals ─────────────
+   Loaded after sn-app-premium.css. Scoped to .sn-app only. */
+
+.sn-app {
+  --sn-blur-heavy: 32px;
+  --sn-radius-shell: 22px;
+  --sn-radius-pill: 9999px;
+  --sn-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --sn-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --sn-surface-solid: rgba(255, 255, 255, 0.88);
+  --sn-glass-specular: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  --sn-glass-depth: 0 12px 40px rgba(15, 23, 42, 0.06), 0 2px 8px rgba(15, 23, 42, 0.03);
+  --sn-shadow-card:
+    var(--sn-glass-specular),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.18),
+    var(--sn-glass-depth);
+  --sn-shadow-md:
+    var(--sn-glass-specular),
+    0 16px 48px rgb(var(--accent-rgb) / 0.08),
+    0 4px 16px rgba(15, 23, 42, 0.05);
+
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Immersive background ─────────────────────────────────────────────── */
+
+.sn-app-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.28;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+.sn-app-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgb(var(--accent-rgb) / 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--accent-rgb) / 0.035) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 75% 65% at 50% 25%, black 15%, transparent 72%);
+  -webkit-mask-image: radial-gradient(ellipse 75% 65% at 50% 25%, black 15%, transparent 72%);
+  pointer-events: none;
+}
+
+.sn-app-neural {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.4;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+.sn-app-orb--3 {
+  width: 280px;
+  height: 280px;
+  top: 42%;
+  right: 18%;
+  background: color-mix(in srgb, var(--accent) 18%, white);
+  animation: sn-float-3 30s ease-in-out infinite;
+}
+
+@keyframes sn-float-3 {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-18px, 20px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sn-app-orb--3 { animation: none !important; }
+}
+
+/* ── Floating VisionOS shell ──────────────────────────────────────────── */
+
+.sn-app > .app-layout {
+  padding: 12px 12px 12px 0;
+  gap: 12px;
+  min-height: 100dvh;
+  align-items: flex-start;
+}
+
+.sn-app .sidebar {
+  position: sticky;
+  top: 12px;
+  left: auto;
+  bottom: auto;
+  height: calc(100dvh - 24px);
+  max-height: calc(100dvh - 24px);
+  margin-left: 12px;
+  flex-shrink: 0;
+  border-radius: var(--sn-radius-shell);
+  border: 1px solid var(--sn-glass-border);
+  border-right: 1px solid var(--sn-glass-border);
+  box-shadow: var(--sn-shadow-card);
+  overflow: hidden;
+}
+
+.sn-app .sidebar-brand {
+  padding: 1.1rem 1rem 1rem;
+}
+
+.sn-app .sidebar-nav {
+  padding: 0.5rem 0.65rem;
+}
+
+.sn-app .nav-item {
+  border-radius: 14px;
+  margin-bottom: 3px;
+}
+
+.sn-app .nav-item.active {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 0 0 1px rgb(var(--accent-rgb) / 0.12),
+    0 2px 8px rgb(var(--accent-rgb) / 0.08);
+}
+
+.sn-app .main-content {
+  margin-left: 0;
+  flex: 1;
+  min-width: 0;
+  min-height: calc(100dvh - 24px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 0;
+  border: none;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.sn-app .header.topbar {
+  display: grid;
+  grid-template-columns: minmax(10rem, auto) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin: 10px 12px 0;
+  border-radius: 0;
+  border: none;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  padding: 8px 16px;
+  min-height: 52px;
+  flex-shrink: 0;
+}
+
+.sn-app .topbar-left {
+  min-width: 0;
+}
+
+.sn-app .topbar-context {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sn-app .topbar-center {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.sn-app .topbar-search-trigger {
+  width: 100%;
+  max-width: 36rem;
+  margin: 0 auto;
+  flex: none;
+}
+
+.sn-app .topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 0;
+  flex-shrink: 0;
+}
+
+/* Uniform pill controls — bell, date, profile */
+.sn-app .topbar-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--sn-glass-border-soft);
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--sn-navy);
+  cursor: pointer;
+  position: relative;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+  white-space: nowrap;
+}
+
+.sn-app .topbar-chip--icon {
+  width: 36px;
+  padding: 0;
+  color: var(--text-secondary);
+}
+
+.sn-app .topbar-date-chip {
+  display: inline-flex;
+  color: var(--text-secondary);
+}
+
+.sn-app .topbar-chip:hover,
+.sn-app .topbar-profile-trigger--open {
+  background: rgba(255, 255, 255, 0.78);
+  border-color: rgb(var(--accent-rgb) / 0.22);
+  box-shadow: var(--sn-glass-specular);
+}
+
+.sn-app .topbar-notif-badge {
+  top: 6px;
+  right: 6px;
+}
+
+.sn-app .page-content {
+  flex: 1;
+  animation: sn-page-in 0.55s var(--sn-ease) both;
+}
+
+@keyframes sn-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sn-app .page-content {
+    animation: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .sn-app > .app-layout {
+    padding: 0;
+    gap: 0;
+  }
+
+  .sn-app .header.topbar {
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    gap: 8px;
+    padding: 8px 12px;
+    margin: 0;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+  }
+
+  .sn-app .topbar-left {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .sn-app .topbar-actions {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+
+  .sn-app .topbar-center {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .sn-app .topbar-search-trigger {
+    max-width: none;
+  }
+
+  .sn-app .main-content {
+    min-height: 100dvh;
+    border-radius: 0;
+    border: none;
+    background: transparent;
+    backdrop-filter: none;
+    box-shadow: none;
+  }
+}
+
+/* ── Glass surfaces (all internal cards) ──────────────────────────────── */
+
+.sn-app .card,
+.sn-app .portal-card,
+.sn-app .gw-card,
+.sn-app .data-table-card,
+.sn-app .briefing-card,
+.sn-app .briefing-stat,
+.sn-app .briefing-panel,
+.sn-app .gw-staff-card,
+.sn-app .gw-pipeline-stage,
+.sn-app .gw-route-card,
+.sn-app .gw-notice-card,
+.sn-app .gw-admission-form-card,
+.sn-app .bento-glass,
+.sn-app .ui-card,
+.sn-app .ui-stat,
+.sn-app .sn-page-header-card,
+.sn-app .gw-page-header {
+  box-shadow: var(--sn-shadow-card);
+  transition:
+    transform 0.4s var(--sn-spring),
+    box-shadow 0.4s var(--sn-ease),
+    border-color 0.35s var(--sn-ease);
+}
+
+.sn-app .card:hover,
+.sn-app .briefing-stat:hover,
+.sn-app .briefing-card:hover,
+.sn-app .gw-staff-card:hover,
+.sn-app .gw-route-card:hover,
+.sn-app .bento-glass:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--sn-shadow-md);
+  border-color: rgb(var(--accent-rgb) / 0.22);
+}
+
+/* ── Dashboard home (briefing) — compact density ─────────────────────── */
+
+.sn-app .briefing-header {
+  padding: 0;
+  margin-bottom: 0.75rem;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.sn-app .briefing-title {
+  font-size: clamp(1.2rem, 2vw, 1.5rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.sn-app .briefing-subtitle {
+  font-size: 0.8125rem;
+  margin-top: 4px;
+}
+
+.sn-app .briefing-eyebrow {
+  font-size: 0.75rem;
+  margin-bottom: 2px;
+}
+
+.sn-app .briefing-stat-value,
+.sn-app .briefing-finance-value {
+  font-family: var(--font-marketing, "Inter", sans-serif);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.sn-app .briefing-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 14px;
+}
+
+.sn-app .briefing-stat::after {
+  display: none;
+}
+
+.sn-app .briefing-stat-icon {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.42);
+  border: 1px solid var(--sn-glass-border-soft);
+}
+
+.sn-app .briefing-stat-value {
+  font-size: 1.125rem;
+}
+
+.sn-app .briefing-attention {
+  border-radius: 12px;
+  transition: transform 0.25s var(--sn-spring), box-shadow 0.25s var(--sn-ease);
+}
+
+.sn-app .briefing-attention:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--sn-shadow-md);
+}
+
+.sn-app .briefing-panel {
+  border-radius: 14px;
+  padding: 0.65rem 0.8rem;
+}
+
+.sn-app .briefing-panel-head {
+  margin-bottom: 0.55rem;
+}
+
+.sn-app .briefing-panel-head h3 {
+  font-size: 0.8125rem;
+}
+
+/* ── Page headers & filters ───────────────────────────────────────────── */
+
+.sn-app .sn-page-header-card,
+.sn-app .gw-page-header {
+  border-radius: var(--sn-radius-shell);
+  padding: 1rem 1.35rem;
+}
+
+.sn-app .sn-filter-pills {
+  padding: 0.35rem;
+  border-radius: var(--sn-radius-pill);
+  background: rgba(255, 255, 255, 0.35);
+  border: 1px solid var(--sn-glass-border-soft);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.sn-app .sn-filter-pill.btn-primary {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 4px 14px rgb(var(--accent-rgb) / 0.22);
+}
+
+/* ── Data tables — readable glass ─────────────────────────────────────── */
+
+.sn-app .data-table-card {
+  border-radius: var(--sn-radius-shell);
+  background: var(--sn-surface-solid);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.sn-app .data-table th {
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.sn-app .students-table-wrap,
+.sn-app .attendance-table-wrap {
+  border-radius: var(--sn-radius-shell);
+  background: var(--sn-surface-solid);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--sn-glass-border);
+  box-shadow: var(--sn-shadow-card);
+  overflow: hidden;
+}
+
+/* ── Forms & inputs ───────────────────────────────────────────────────── */
+
+.sn-app input:not([type="checkbox"]):not([type="radio"]),
+.sn-app select,
+.sn-app textarea,
+.sn-app .form-input,
+.sn-app .gw-form-input {
+  background: rgba(255, 255, 255, 0.62) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--sn-glass-border-soft);
+  border-radius: 12px;
+  transition: border-color 0.25s, box-shadow 0.25s, background 0.25s;
+}
+
+.sn-app input:focus,
+.sn-app select:focus,
+.sn-app textarea:focus,
+.sn-app .form-input:focus {
+  background: rgba(255, 255, 255, 0.78) !important;
+  border-color: rgb(var(--accent-rgb) / 0.4);
+  box-shadow: 0 0 0 3px rgb(var(--accent-rgb) / 0.1);
+  outline: none;
+}
+
+.sn-app .btn-primary {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 4px 16px rgb(var(--accent-rgb) / 0.24);
+}
+
+.sn-app .btn-ghost,
+.sn-app .btn-outline {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* ── Modals — crisp foreground layer ──────────────────────────────────── */
+
+.sn-app .gw-modal {
+  border-radius: var(--sn-radius-shell);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.6),
+    0 32px 96px rgba(15, 23, 42, 0.2);
+}
+
+/* ── Portal device frame ──────────────────────────────────────────────── */
+
+.sn-app .portal-device-frame {
+  border-radius: 40px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    0 32px 96px rgba(15, 23, 42, 0.12);
+}
+
+.sn-app .portal-header {
+  border-radius: 20px;
+  box-shadow: var(--sn-shadow-card);
+}
+
+.sn-app .portal-card,
+.sn-app .portal-stat {
+  border-radius: 18px;
+  box-shadow: var(--sn-shadow-card);
+  transition: transform 0.35s var(--sn-spring), box-shadow 0.35s;
+}
+
+.sn-app .portal-card:active {
+  transform: scale(0.985);
+}
+
+/* ── Bento / stat grids ───────────────────────────────────────────────── */
+
+.sn-app .bento-grid .bento-glass,
+.sn-app .gw-class-tabs {
+  background: rgba(255, 255, 255, 0.42);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: var(--sn-radius-shell);
+  box-shadow: var(--sn-shadow-card);
+}
+
+.sn-app .stat-card,
+.sn-app .quick-actions {
+  border-radius: var(--sn-radius-shell);
+  box-shadow: var(--sn-shadow-card);
+}
+
+/* ── Empty & loading states ───────────────────────────────────────────── */
+
+.sn-app .gw-empty-state {
+  border-radius: var(--sn-radius-shell);
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px dashed var(--sn-glass-border-soft);
+}
+
+.sn-app .loading-screen .spinner {
+  box-shadow: 0 0 24px rgb(var(--accent-rgb) / 0.15);
+}
+
+/* ── Profile menu (top-right) ─────────────────────────────────────────── */
+
+.sn-app .topbar-profile-wrap {
+  position: relative;
+}
+
+.sn-app .topbar-profile-chip {
+  padding: 0 10px 0 4px;
+  gap: 6px;
+  max-width: 12rem;
+}
+
+.sn-app .topbar-profile-name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--sn-navy);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+@media (max-width: 1100px) {
+  .sn-app .topbar-profile-name {
+    display: none;
+  }
+
+  .sn-app .topbar-profile-chip {
+    max-width: none;
+    padding: 0 8px 0 4px;
+  }
+}
+
+@media (max-width: 900px) {
+  .sn-app .topbar-date-chip {
+    display: none;
+  }
+}
+
+.sn-app .topbar-profile-trigger {
+  border: 1px solid var(--sn-glass-border-soft);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.sn-app .topbar-profile-chevron {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: transform 0.25s var(--sn-ease);
+}
+
+.sn-app .topbar-profile-chevron--open {
+  transform: rotate(180deg);
+}
+
+.sn-app .topbar-profile-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 60;
+  min-width: 220px;
+}
+
+.sn-app .topbar-profile-menu-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+}
+
+.sn-app .topbar-profile-menu-name {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--sn-navy);
+  line-height: 1.25;
+}
+
+.sn-app .topbar-profile-menu-role {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.1rem;
+}
+
+.sn-app .topbar-profile-menu-divider {
+  height: 1px;
+  margin: 0.25rem 0.5rem;
+  background: var(--sn-glass-border-soft);
+}
+
+.sn-app .topbar-profile-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.sn-app .topbar-profile-item:hover {
+  color: var(--sn-navy);
+}
+
+.sn-app .topbar-profile-item svg {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.sn-app .topbar-profile-item--danger {
+  color: #b91c1c;
+}
+
+.sn-app .topbar-profile-item--danger:hover {
+  background: rgba(254, 226, 226, 0.45);
+  color: #991b1b;
+}
+
+.sn-app .topbar-profile-item--danger svg {
+  color: #dc2626;
+}
+
+/* ── Briefing dashboard consistency ───────────────────────────────────── */
+
+.sn-app .briefing-main-grid {
+  align-items: start;
+}
+
+.sn-app .briefing-panel--school-day {
+  align-self: start;
+  height: fit-content;
+}
+
+.sn-app .briefing-panel-head h3 {
+  flex: 1;
+  margin: 0;
+}
+
+.sn-app .briefing-finance-row {
+  text-align: left;
+}
+
+.sn-app .briefing-finance-row > div {
+  padding: 0.15rem 0.5rem;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+}
+
+.sn-app .briefing-finance-row > div:not(:last-child) {
+  border-right: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.sn-app .briefing-finance-value {
+  font-size: 1rem;
+}
+
+.sn-app .briefing-attention {
+  background: rgba(255, 255, 255, 0.58);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--sn-glass-border-soft);
+  box-shadow: var(--sn-glass-specular);
+}
+
+.sn-app .briefing-attention-coral,
+.sn-app .briefing-attention-brass,
+.sn-app .briefing-attention-neutral {
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.sn-app .briefing-attention-kicker {
+  font-size: 0.6875rem;
+  letter-spacing: 0.01em;
+}
+
+.sn-app .briefing-attention-body {
+  font-size: 0.75rem;
+}
+
+.sn-app .briefing-panel--school-day .briefing-muted-text {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.sn-app .briefing-panel {
+  padding: 0.65rem 0.8rem;
+}
+
+.sn-app .briefing-side-stack {
+  gap: 0.75rem;
+}
+
+.sn-app .briefing-secondary-row {
+  gap: 0.75rem;
+}
+
+.sn-app .briefing-panel--finance {
+  align-self: start;
+}
+
+.sn-app .briefing-panel--notice {
+  align-self: start;
+}
+
+.sn-app .dashboard-widgets-grid {
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.sn-app .briefing-school-day-head {
+  margin-bottom: 0;
+}
+
+.sn-app .briefing-school-day-loading {
+  padding: 0.75rem 0;
+}
+
+/* ── Shared form controls (replace inline white backgrounds) ──────────── */
+
+.sn-app .sn-inline-field {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.sn-app .sn-search-inline {
+  width: 12.5rem;
+  max-width: 16rem;
+}
+
+.sn-app .sn-finance-stat {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.sn-app .sn-finance-stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--sn-navy);
+}

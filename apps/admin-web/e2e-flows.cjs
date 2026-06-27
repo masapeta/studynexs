@@ -72,7 +72,7 @@ async function shot(page, name) {
 
   // ── 2. Finance + receipt view ───────────────────────────────────────────────
   try {
-    await page.goto(BASE + "/dashboard/finance", { waitUntil: "domcontentloaded" });
+    await page.goto(BASE + "/dashboard/finance/fees", { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(700);
     const body = await page.locator("body").innerText();
     if (body.includes("Total Collected")) ok("finance dashboard renders");
@@ -106,7 +106,7 @@ async function shot(page, name) {
   // ── 3. Report-card "Not assessed" block ─────────────────────────────────────
   // Prefer opening an existing report (no LLM cost); generate only if none exist.
   try {
-    await page.goto(BASE + "/dashboard/report-cards", { waitUntil: "domcontentloaded" });
+    await page.goto(BASE + "/dashboard/teaching/report-cards", { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(800);
     const openBtn = page.getByRole("button", { name: "Open", exact: true });
     let opened = false;

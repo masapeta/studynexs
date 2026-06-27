@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Bell, Calendar, Search, Settings } from "lucide-react";
+import { Bell, Calendar, ChevronDown, CircleHelp, GraduationCap, LogOut, Search, Settings } from "lucide-react";
 import { api } from "@/lib/api";
 import { PersonMono } from "@/components/briefing/PersonMono";
 import { roleLabel } from "@/lib/permissions";
@@ -22,6 +22,7 @@ type Props = {
   userRole: string;
   academicLabel: string;
   showSettings?: boolean;
+  onLogout: () => void | Promise<void>;
 };
 
 function formatToday() {
@@ -31,12 +32,14 @@ function formatToday() {
   return `${months[d.getMonth()]} ${d.getDate()}, ${days[d.getDay()]}`;
 }
 
-export function TopBar({ userName, userRole, academicLabel, showSettings = true }: Props) {
+export function TopBar({ userName, userRole, academicLabel, showSettings = true, onLogout }: Props) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const notifRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
 
   const loadNotifications = useCallback(() => {
     api<{ data: { unread_count: number } }>("/api/v1/notifications/count")
@@ -62,6 +65,10 @@ export function TopBar({ userName, userRole, academicLabel, showSettings = true 
         e.preventDefault();
         setSearchOpen(true);
       }
+      if (e.key === "Escape") {
+        setProfileOpen(false);
+        setNotifOpen(false);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -79,6 +86,17 @@ export function TopBar({ userName, userRole, academicLabel, showSettings = true 
     return () => document.removeEventListener("mousedown", onClick);
   }, [notifOpen, loadNotificationList]);
 
+  useEffect(() => {
+    if (!profileOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [profileOpen]);
+
   async function markAllRead() {
     try {
       await api("/api/v1/notifications/read-all", { method: "POST" });
@@ -89,30 +107,45 @@ export function TopBar({ userName, userRole, academicLabel, showSettings = true 
     }
   }
 
+  async function handleLogout() {
+    setProfileOpen(false);
+    await onLogout();
+  }
+
   return (
     <>
       <header className="header topbar">
-        <span className="header-context topbar-context">{academicLabel}</span>
+        <div className="topbar-left">
+          <div className="topbar-chip topbar-chip--static topbar-context-chip">
+            <GraduationCap size={14} aria-hidden />
+            <span className="topbar-context">{academicLabel}</span>
+          </div>
+        </div>
 
-        <button
-          type="button"
-          className="topbar-search-trigger"
-          onClick={() => setSearchOpen(true)}
-        >
-          <Search size={16} />
-          <span className="topbar-search-placeholder">Search students, teachers, classes…</span>
-          <kbd className="topbar-search-kbd">⌘K</kbd>
-        </button>
+        <div className="topbar-center">
+          <button
+            type="button"
+            className="topbar-search-trigger"
+            onClick={() => setSearchOpen(true)}
+          >
+            <Search size={16} />
+            <span className="topbar-search-placeholder">Search students, teachers, classes…</span>
+            <kbd className="topbar-search-kbd">⌘K</kbd>
+          </button>
+        </div>
 
         <div className="topbar-actions">
           <div className="topbar-notif-wrap" ref={notifRef}>
             <button
               type="button"
-              className="topbar-icon-btn"
+              className="topbar-chip topbar-chip--icon"
               aria-label="Notifications"
-              onClick={() => setNotifOpen((v) => !v)}
+              onClick={() => {
+                setProfileOpen(false);
+                setNotifOpen((v) => !v);
+              }}
             >
-              <Bell size={20} />
+              <Bell size={18} />
               {unread > 0 && <span className="topbar-notif-badge" />}
             </button>
             {notifOpen && (
@@ -144,23 +177,74 @@ export function TopBar({ userName, userRole, academicLabel, showSettings = true 
             )}
           </div>
 
-          {showSettings && (
-            <Link href="/dashboard/settings" className="topbar-icon-btn" aria-label="Settings">
-              <Settings size={20} />
-            </Link>
-          )}
-
-          <div className="topbar-date-pill">
-            <Calendar size={14} />
+          <div className="topbar-chip topbar-date-chip">
+            <Calendar size={14} aria-hidden />
             <span>{formatToday()}</span>
           </div>
 
-          <div className="header-user topbar-user">
-            <div className="header-user-text">
-              <div className="header-name">{userName}</div>
-              <div className="header-role">{roleLabel(userRole)}</div>
-            </div>
-            <PersonMono name={userName} size={36} />
+          <div className="topbar-profile-wrap" ref={profileRef}>
+            <button
+              type="button"
+              className={`topbar-chip topbar-profile-chip topbar-profile-trigger${profileOpen ? " topbar-profile-trigger--open" : ""}`}
+              onClick={() => {
+                setNotifOpen(false);
+                setProfileOpen((v) => !v);
+              }}
+              aria-expanded={profileOpen}
+              aria-haspopup="menu"
+              aria-label={`Account menu for ${userName}`}
+            >
+              <PersonMono name={userName} size={28} />
+              <span className="topbar-profile-name">{userName}</span>
+              <ChevronDown
+                size={14}
+                className={`topbar-profile-chevron${profileOpen ? " topbar-profile-chevron--open" : ""}`}
+                aria-hidden
+              />
+            </button>
+
+            {profileOpen && (
+              <div className="topbar-profile-menu" role="menu">
+                <div className="topbar-profile-menu-head">
+                  <PersonMono name={userName} size={40} />
+                  <div>
+                    <div className="topbar-profile-menu-name">{userName}</div>
+                    <div className="topbar-profile-menu-role">{roleLabel(userRole)}</div>
+                  </div>
+                </div>
+                <div className="topbar-profile-menu-divider" />
+                {showSettings && (
+                  <Link
+                    href="/dashboard/settings"
+                    className="topbar-profile-item"
+                    role="menuitem"
+                    onClick={() => setProfileOpen(false)}
+                  >
+                    <Settings size={16} aria-hidden />
+                    Settings
+                  </Link>
+                )}
+                <a
+                  href="mailto:hello@studynexs.com"
+                  className="topbar-profile-item"
+                  role="menuitem"
+                  onClick={() => setProfileOpen(false)}
+                >
+                  <CircleHelp size={16} aria-hidden />
+                  Help & support
+                </a>
+                <div className="topbar-profile-menu-divider" />
+                <button
+                  type="button"
+                  className="topbar-profile-item topbar-profile-item--danger"
+                  role="menuitem"
+                  onClick={handleLogout}
+                >
+                  <LogOut size={16} aria-hidden />
+                  Log out
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>

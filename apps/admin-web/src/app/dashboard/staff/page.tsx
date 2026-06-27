@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { UserPlus } from "lucide-react";
 import { api, getApiErrorMessage } from "@/lib/api";
-import { PageShell } from "@/components/layout/PageShell";
+import { PageHeaderCard } from "@/components/layout/PageHeaderCard";
+import { FilterPillBar } from "@/components/layout/FilterPillBar";
 import {
   StaffDirectoryCard,
   type StaffDirectoryMember,
@@ -131,55 +132,48 @@ export default function StaffPage() {
   }
 
   return (
-    <PageShell
-      title="Staff & HR"
-      subtitle="Staff directory, assignments, and roles"
-      action={
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <input
-            className="form-input"
-            placeholder="Search staff..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ width: 260 }}
-            aria-label="Search staff"
-          />
-          <button
-            type="button"
-            className="gw-table-icon-btn"
-            aria-label="Onboard staff"
-            title="Onboard staff"
-            onClick={() => {
-              setModalOpen(true);
-              setModalError("");
-            }}
-          >
-            <UserPlus size={20} />
-          </button>
-        </div>
-      }
-    >
-      {error && <div className="gw-alert gw-alert-error">{error}</div>}
+    <>
+      <PageHeaderCard
+        title="Staff & HR"
+        subtitle="Staff directory, assignments, and roles"
+      >
+        <input
+          className="form-input sn-search-inline"
+          placeholder="Search staff..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          aria-label="Search staff"
+        />
+        <button
+          type="button"
+          className="gw-table-icon-btn"
+          aria-label="Onboard staff"
+          title="Onboard staff"
+          onClick={() => {
+            setModalOpen(true);
+            setModalError("");
+          }}
+        >
+          <UserPlus size={20} />
+        </button>
+      </PageHeaderCard>
 
-      <div className="gw-pipeline" role="tablist" aria-label="Filter by staff category">
-        {FILTERS.map((f) => {
-          const active = filter === f.key;
-          const count = f.key === "all" ? counts.all || 0 : counts[f.key] || 0;
-          return (
-            <button
-              key={f.key}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              className={`gw-pipeline-stage${active ? " gw-pipeline-stage-active" : ""}`}
-              onClick={() => setFilter(f.key)}
-            >
-              <span className="gw-pipeline-count">{count}</span>
-              <span className="gw-pipeline-label">{f.label}</span>
-            </button>
-          );
-        })}
-      </div>
+      {error && (
+        <div className="card" style={{ marginBottom: 16, padding: 12, color: "var(--danger)" }}>
+          {error}
+        </div>
+      )}
+
+      <FilterPillBar
+        tabs={FILTERS.map((f) => ({
+          key: f.key,
+          label: f.label,
+          count: f.key === "all" ? counts.all || 0 : counts[f.key] || 0,
+        }))}
+        activeKey={filter}
+        onChange={(key) => setFilter(key as (typeof FILTERS)[number]["key"])}
+        ariaLabel="Filter by staff category"
+      />
 
       {loading ? (
         <div className="gw-center" style={{ padding: 60 }}>
@@ -215,6 +209,6 @@ export default function StaffPage() {
         member={profileMember}
         onClose={() => setProfileMember(null)}
       />
-    </PageShell>
+    </>
   );
 }

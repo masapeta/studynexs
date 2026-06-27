@@ -4,7 +4,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.authorization import assert_can_access_student
@@ -12,6 +12,7 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, get_current_user
 from app.core.rate_limit import rate_limit
+from app.modules.ai.gateway.input_guard import sanitize_lesson_key, sanitize_prompt_text
 from app.modules.tutor.schemas.tutor import TutorLessonOut, TutorRecommendationOut
 from app.modules.tutor.services.tts_service import synthesize_speech, tts_enabled
 from app.modules.tutor.services.tutor_service import get_lesson, list_recommendations
@@ -20,11 +21,20 @@ from app.shared.schemas.common import APIResponse
 router = APIRouter()
 
 _TTS_RATE = {"max_requests": 40, "window_seconds": 60}
+_TTS_ROLES = frozenset({"student", "parent", "teacher", "class_incharge", "admin", "super_admin"})
 
 
 class TtsRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=1200)
     voice: str | None = Field(None, max_length=60)
+
+    @field_validator("text", mode="before")
+    @classmethod
+    def _sanitize_text(cls, v: object) -> str:
+        cleaned = sanitize_prompt_text(str(v), max_length=1200, field_name="text", reject_injection=False)
+        if not cleaned:
+            raise ValueError("text is required")
+        return cleaned
 
 
 @router.get(
@@ -56,11 +66,15 @@ async def tutor_lesson(
 ):
     """Teacher-style lesson with narration + visual steps (voice/image on client)."""
     await assert_can_access_student(current_user, db, student_id)
+    try:
+        safe_key = sanitize_lesson_key(lesson_key)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     lesson = await get_lesson(
         db,
         school_id=uuid.UUID(current_user.school_id),
         student_id=student_id,
-        lesson_key=lesson_key,
+        lesson_key=safe_key,
     )
     if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
@@ -79,6 +93,8 @@ async def tutor_tts(
     current_user: CurrentUser = Depends(get_current_user),
 ):
     """Synthesize a lesson step to MP3 (soft female Indian voice). 503 → client falls back."""
+    if current_user.role not in _TTS_ROLES:
+        raise HTTPException(status_code=403, detail="Voice synthesis is not available for this role")
     if not tts_enabled():
         raise HTTPException(status_code=503, detail="Voice synthesis is not configured")
     try:

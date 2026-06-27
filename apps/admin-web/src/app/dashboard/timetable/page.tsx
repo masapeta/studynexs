@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { AppSelect } from "@/components/ui/AppSelect";
+import { PageHeaderCard } from "@/components/layout/PageHeaderCard";
 import { formatClassLabel, sortClasses } from "@/lib/format";
 
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
@@ -107,8 +108,7 @@ export default function TimetablePage() {
 
   return (
     <>
-      <div className="card bento-glass" style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 24px" }}>
-        <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Timetable</h1>
+      <PageHeaderCard title="Timetable">
         <AppSelect
           variant="pill"
           value={classId}
@@ -119,12 +119,12 @@ export default function TimetablePage() {
             label: formatClassLabel(c.grade, c.section),
           }))}
         />
-      </div>
+      </PageHeaderCard>
 
-      {error && <div className="card" style={{ marginBottom: 16, padding: 12, color: "var(--danger)" }}>{error}</div>}
+      {error && <div className="card sn-inline-alert sn-inline-alert--error">{error}</div>}
 
       {canEdit && (
-      <div className="card" style={{ marginBottom: 24, padding: 20, display: "grid", gridTemplateColumns: "repeat(6, 1fr) auto", gap: 10, alignItems: "end" }}>
+      <div className="card sn-content-card sn-form-row sn-form-row--timetable">
         <div>
           <label className="stat-label">Day</label>
           <AppSelect
@@ -137,7 +137,7 @@ export default function TimetablePage() {
         </div>
         <div>
           <label className="stat-label">Period</label>
-          <input type="number" min={1} className="form-input" style={sel} value={form.period_number} onChange={(e) => setForm({ ...form, period_number: Number(e.target.value) })} />
+          <input type="number" min={1} className="form-input sn-inline-field" value={form.period_number} onChange={(e) => setForm({ ...form, period_number: Number(e.target.value) })} />
         </div>
         <div>
           <label className="stat-label">Subject</label>
@@ -161,11 +161,11 @@ export default function TimetablePage() {
         </div>
         <div>
           <label className="stat-label">Start</label>
-          <input type="time" className="form-input" style={sel} value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })} />
+          <input type="time" className="form-input sn-inline-field" value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })} />
         </div>
         <div>
           <label className="stat-label">End</label>
-          <input type="time" className="form-input" style={sel} value={form.end_time} onChange={(e) => setForm({ ...form, end_time: e.target.value })} />
+          <input type="time" className="form-input sn-inline-field" value={form.end_time} onChange={(e) => setForm({ ...form, end_time: e.target.value })} />
         </div>
         <button className="btn btn-primary" style={btn} onClick={addSlot} disabled={adding}>
           {adding ? "Adding…" : "+ Add"}
@@ -174,7 +174,7 @@ export default function TimetablePage() {
       )}
 
       {!canEdit && (
-        <div className="card" style={{ marginBottom: 16, padding: 14, color: "var(--text-secondary)", fontSize: 14 }}>
+        <div className="card sn-info-banner">
           View-only timetable. Only the principal and class incharges can add or edit slots.
         </div>
       )}
@@ -225,5 +225,4 @@ export default function TimetablePage() {
   );
 }
 
-const sel: React.CSSProperties = { width: "100%", padding: "8px 10px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)", background: "white", marginTop: 4 };
 const btn: React.CSSProperties = { width: "auto", padding: "8px 18px", borderRadius: "var(--radius-full)", fontSize: 13 };

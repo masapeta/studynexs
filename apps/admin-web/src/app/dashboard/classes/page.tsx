@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, getApiErrorMessage } from "@/lib/api";
+import { PageHeaderCard } from "@/components/layout/PageHeaderCard";
 import { AppSelect } from "@/components/ui/AppSelect";
 import { PersonMono } from "@/components/briefing/PersonMono";
 import { formatClassLabel } from "@/lib/format";
 
-const sel: React.CSSProperties = { width: "100%", padding: "8px 12px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)", background: "white", marginTop: 4 };
 const btnSm: React.CSSProperties = { width: "auto", padding: "8px 18px", borderRadius: "var(--radius-full)", fontSize: 13 };
 
 export default function ClassesPage() {
@@ -69,20 +69,19 @@ export default function ClassesPage() {
 
   return (
     <>
-      <div className="sn-page-toolbar">
-        <h1 className="sn-page-title">Classes</h1>
-        <button className="btn btn-primary" style={{ width: "auto", padding: "10px 20px" }} onClick={() => setShowAdd((v) => !v)}>
+      <PageHeaderCard title="Classes" subtitle="Grades, sections, and homeroom assignments.">
+        <button type="button" className="btn btn-primary" style={{ width: "auto", padding: "10px 20px" }} onClick={() => setShowAdd((v) => !v)}>
           {showAdd ? "Cancel" : "+ Add Class"}
         </button>
-      </div>
+      </PageHeaderCard>
 
       {error && <div className="card" style={{ marginBottom: 16, padding: 12, color: "var(--danger)" }}>{error}</div>}
 
       {showAdd && (
         <div className="card sn-section-gap" style={{ padding: 18, display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1.4fr auto", gap: 12, alignItems: "end" }}>
-          <div><label className="stat-label">Grade</label><input className="form-input" style={sel} value={form.grade} placeholder="Grade 5" onChange={(e) => setForm({ ...form, grade: e.target.value })} /></div>
-          <div><label className="stat-label">Section</label><input className="form-input" style={sel} value={form.section} placeholder="A" onChange={(e) => setForm({ ...form, section: e.target.value })} /></div>
-          <div><label className="stat-label">Room</label><input className="form-input" style={sel} value={form.room_number} onChange={(e) => setForm({ ...form, room_number: e.target.value })} /></div>
+          <div><label className="stat-label">Grade</label><input className="form-input sn-inline-field" value={form.grade} placeholder="Grade 5" onChange={(e) => setForm({ ...form, grade: e.target.value })} /></div>
+          <div><label className="stat-label">Section</label><input className="form-input sn-inline-field" value={form.section} placeholder="A" onChange={(e) => setForm({ ...form, section: e.target.value })} /></div>
+          <div><label className="stat-label">Room</label><input className="form-input sn-inline-field" value={form.room_number} onChange={(e) => setForm({ ...form, room_number: e.target.value })} /></div>
           <div>
             <label className="stat-label">Academic year</label>
             <AppSelect
