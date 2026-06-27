@@ -4,7 +4,7 @@
 
 ![StudyNexs](assets/Logo.png)
 
-**Documentation:** [Product bible](docs/PRODUCT.md) · [Build status](docs/STATUS.md)
+**Documentation:** [Product bible](docs/PRODUCT.md) · [Build status](docs/STATUS.md) · [IP protection](docs/IP_PROTECTION_GUIDE.md) · [War room review](docs/WAR_ROOM_REVIEW.md)
 
 ---
 
@@ -108,4 +108,4 @@ python scripts/seed_synthetic.py
 
 ## License
 
-Proprietary — © 2026 StudyNexs. All rights reserved.
+Proprietary — © 2026 StudyNexs Technologies Pvt Ltd. All rights reserved. See [LICENSE](LICENSE).
