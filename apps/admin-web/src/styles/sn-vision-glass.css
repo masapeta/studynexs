@@ -63,6 +63,7 @@
   .gw-card,
   .data-table-card,
   .briefing-card,
+  .briefing-glass-chip,
   .briefing-stat,
   .briefing-panel,
   .gw-staff-card,
@@ -103,6 +104,8 @@
   .briefing-attention-coral,
   .briefing-attention-brass,
   .briefing-attention-neutral,
+  .briefing-exec-priority-item,
+  .briefing-exec-quicklink,
   .briefing-finance-row > div,
   .gw-widget-row > div
 ) {
@@ -152,7 +155,7 @@
 /* ── Forms & inputs ──────────────────────────────────────────────────── */
 
 .sn-app :is(
-  input:not([type="checkbox"]):not([type="radio"]),
+  input:not([type="checkbox"]):not([type="radio"]):not(.topbar-search-input),
   select,
   textarea,
   .form-input,
@@ -167,7 +170,13 @@
   box-shadow: var(--sn-vision-specular);
 }
 
-.sn-app :is(input, select, textarea, .form-input, .gw-form-input):focus {
+.sn-app :is(
+  input:not(.topbar-search-input),
+  select,
+  textarea,
+  .form-input,
+  .gw-form-input
+):focus {
   background: var(--sn-vision-surface-input-focus) !important;
   border-color: rgb(var(--accent-rgb) / 0.35) !important;
 }
@@ -186,6 +195,7 @@
   .card,
   .briefing-stat,
   .briefing-card,
+  .briefing-glass-chip,
   .gw-staff-card,
   .gw-route-card,
   .bento-glass,

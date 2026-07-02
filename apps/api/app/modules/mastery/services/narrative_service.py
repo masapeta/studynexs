@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models.mastery import MasteryFlag
 from app.modules.ai.gateway import LLMMessage, generate_llm, record_usage
 from app.modules.ai.gateway.input_guard import sanitize_prompt_text
+from app.modules.ai.gateway.output_guard import sanitize_llm_plain_text
 from app.modules.ai.services.ai_credits import credits_for_purpose, reserve_ai_credits
 
 logger = structlog.get_logger()
@@ -21,7 +22,7 @@ logger = structlog.get_logger()
 def _safe_evidence_str(value: object, *, max_length: int = 200) -> str:
     if value is None:
         return ""
-    cleaned = sanitize_prompt_text(str(value), max_length=max_length, field_name="evidence", reject_injection=False)
+    cleaned = sanitize_prompt_text(str(value), max_length=max_length, field_name="evidence", reject_injection=True)
     return cleaned or ""
 
 
@@ -93,7 +94,7 @@ async def draft_narrative(
         ref_type="mastery_flag",
         ref_id=flag.id,
     )
-    text = (result.text or "").strip()
+    text = sanitize_llm_plain_text(result.text, max_length=2000)
     if not text:
         raise ValueError("LLM returned an empty narrative")
     logger.info("mastery_narrative_drafted", flag_id=str(flag.id), model=model)

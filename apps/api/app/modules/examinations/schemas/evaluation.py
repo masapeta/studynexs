@@ -90,7 +90,7 @@ class EvaluationApprove(BaseModel):
         if v is None or v == "":
             return None
         return sanitize_prompt_text(
-            str(v), max_length=2000, field_name="correction_summary", reject_injection=False
+            str(v), max_length=2000, field_name="correction_summary", reject_injection=True
         )
 
 

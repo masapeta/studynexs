@@ -2,6 +2,7 @@
 
 > Owner: Avinash Reddy Masapeta (ARM) · **As of: 2026-06-15**  
 > **What's true in the repo today.** Complete product definition: [PRODUCT.md](./PRODUCT.md).  
+> **Enhancement inbox (discussions → build):** [BACKLOG.md](./BACKLOG.md) — **three gates:** demo polish → controlled pilot → production  
 > **AI-intelligent OS roadmap:** [PRODUCT.md §23](./PRODUCT.md#23-ai-intelligent-school-os) · phase map below.
 
 ---
@@ -89,6 +90,7 @@
 
 ### Demo data
 - Sri Saraswathi High School (SSC) seeded — 288 students, grades 1–10, with attendance + fees
+- Hands-on meeting guide: [pilot/HANDS_ON_RUNBOOK.md](./pilot/HANDS_ON_RUNBOOK.md)
 
 ---
 

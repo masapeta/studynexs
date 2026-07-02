@@ -479,11 +479,13 @@
 
 /* ── Forms & inputs ───────────────────────────────────────────────────── */
 
-.sn-app input:not([type="checkbox"]):not([type="radio"]),
-.sn-app select,
-.sn-app textarea,
-.sn-app .form-input,
-.sn-app .gw-form-input {
+.sn-app :is(
+  input:not([type="checkbox"]):not([type="radio"]):not(.topbar-search-input),
+  select,
+  textarea,
+  .form-input,
+  .gw-form-input
+) {
   background: rgba(255, 255, 255, 0.62) !important;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -492,7 +494,7 @@
   transition: border-color 0.25s, box-shadow 0.25s, background 0.25s;
 }
 
-.sn-app input:focus,
+.sn-app input:focus:not(.topbar-search-input),
 .sn-app select:focus,
 .sn-app textarea:focus,
 .sn-app .form-input:focus {

@@ -3,7 +3,7 @@
 > Owner: Avinash Reddy Masapeta (ARM) · Status: **Living record v1.0** · Last updated: 2026-06-18
 > Purpose: capture *what was decided and why*, the tradeoffs weighed, what's still open, and the
 > working agreements — so decisions aren't re-litigated and the reasoning survives.
-> Companions: [PRODUCT.md](./PRODUCT.md) · [STATUS.md](./STATUS.md)
+> Companions: [PRODUCT.md](./PRODUCT.md) · [STATUS.md](./STATUS.md) · [BACKLOG.md](./BACKLOG.md)
 
 ---
 
@@ -52,7 +52,7 @@
 - *Alternatives weighed:* StudyVix (cleaner spelling, but "Vix" is meaningless/edgy) vs. StudyNexs (better meaning — nexus/next — but "Nexs" has spelling friction).
 - *Status: decided — StudyNexs.* Full-depth rename done (code, db, configs, docs). Root folder rename pending (manual; see §6).
 
-**D7 — Ownership = Avinash Reddy Masapeta (ARM) only.** Never reference HCL/employer; never add AI-authorship attribution ("Co-Authored-By Claude", etc.) to any artifact. *Status: standing rule; baseline commit scrubbed of attribution.*
+**D7 — Ownership = Noustriks; founder Avinash Reddy Masapeta (ARM) only.** StudyNexs is a Noustriks product. Never reference HCL/employer; never add AI-authorship attribution ("Co-Authored-By Claude", etc.) to any artifact. *Status: standing rule; baseline commit scrubbed of attribution.*
 
 **D8 — Communication style = plain/human, not formatted "AI" output — while keeping brutal honesty.** *Status: standing rule.*
 

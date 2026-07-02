@@ -1,4 +1,5 @@
-# Production dependencies for StudyNexs API.
+# Production dependencies for StudyNexs API (Noustriks product — proprietary).
+# Copyright (c) 2026 Noustriks. Owner: Avinash Reddy Masapeta (ARM). See ../../LICENSE.
 # Source of truth: pyproject.toml — keep these in sync when adding packages.
 #
 # Preferred install (editable, picks up local package):
@@ -22,3 +23,4 @@ redis[hiredis]>=5.0.0
 httpx>=0.27.0
 structlog>=24.0.0
 arq>=0.26.0
+edge-tts>=6.1.0

@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth-context";
 import { apiAuth, getAccessTokenFromAuthResponse, getApiErrorMessage } from "@/lib/api";
 import { DEMO_LOGINS, DemoPortalKey, homePathAfterLogin } from "@/lib/portal";
 import { ArrowLeft, Lock, RotateCcw, Smartphone } from "lucide-react";
+import { DemoDataBanner } from "@/components/DemoDataBanner";
 
 type Step = "method" | "mobile" | "otp" | "password";
 
@@ -146,6 +147,7 @@ function LoginPageInner() {
 
   return (
     <div className="mkt-login-page">
+      <DemoDataBanner variant="marketing" />
       <motion.div className="mkt-login-card mkt-glass-strong" {...cardAnim}>
         {step === "method" && (
           <Link href="/" className="mkt-login-back">

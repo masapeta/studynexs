@@ -4,9 +4,10 @@ import uuid
 from datetime import date, datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.db.models.mastery import FlagSeverity, FlagStatus, MasteryTrend
+from app.modules.ai.gateway.input_guard import sanitize_prompt_text
 
 
 class TopicMasteryOut(BaseModel):
@@ -85,9 +86,24 @@ class FlagOut(BaseModel):
 class NarrativeUpdate(BaseModel):
     narrative: str = Field(..., min_length=1, max_length=2000)
 
+    @field_validator("narrative", mode="before")
+    @classmethod
+    def _sanitize_narrative(cls, v: object) -> str:
+        cleaned = sanitize_prompt_text(str(v), max_length=2000, field_name="narrative")
+        if not cleaned:
+            raise ValueError("narrative is required")
+        return cleaned
+
 
 class DismissRequest(BaseModel):
     reason: Optional[str] = Field(None, max_length=300)
+
+    @field_validator("reason", mode="before")
+    @classmethod
+    def _sanitize_reason(cls, v: object) -> str | None:
+        if v is None or v == "":
+            return None
+        return sanitize_prompt_text(str(v), max_length=300, field_name="reason")
 
 
 class NotifyResponse(BaseModel):

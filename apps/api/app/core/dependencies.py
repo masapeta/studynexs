@@ -252,7 +252,13 @@ async def check_rate_limit(
         return
 
     redis_key = f"{settings.REDIS_RATE_LIMIT_PREFIX}{key}"
-    current = int(await r.eval(_RATE_LIMIT_LUA, 1, redis_key, window_seconds))
+    try:
+        current = int(await r.eval(_RATE_LIMIT_LUA, 1, redis_key, window_seconds))
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Service temporarily unavailable. Please try again later.",
+        ) from None
     if current > max_attempts:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,

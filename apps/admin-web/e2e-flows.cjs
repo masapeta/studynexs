@@ -37,11 +37,11 @@ async function shot(page, name) {
 
   // ── Login ────────────────────────────────────────────────────────────────
   try {
-    await page.goto(BASE, { waitUntil: "domcontentloaded" });
-    await page.click("#btn-password-login");
+    await page.goto(`${BASE}/login?portal=staff`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#username-input", { timeout: 15000 });
     await page.fill("#username-input", "principal");
     await page.fill("#password-input", "Demo@1234");
-    await page.click("#btn-password-submit");
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
     await page.waitForURL("**/dashboard", { timeout: 20000 });
     await page.waitForLoadState("domcontentloaded");
     ok("login -> /dashboard");

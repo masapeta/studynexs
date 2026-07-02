@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import { LogOut } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AppBackground } from "@/components/AppBackground";
+import { DemoDataBanner } from "@/components/DemoDataBanner";
 
 export type NavItem = { href: string; label: string; icon?: LucideIcon };
 
@@ -35,6 +36,7 @@ export default function PortalShell({
       <div className="portal-device-frame">
         <div className="portal-device-notch" aria-hidden />
         <div className="portal-shell">
+          <DemoDataBanner />
           <header className="portal-header">
             <div>
               <div style={{ fontWeight: 800, fontSize: 17, letterSpacing: "-0.02em" }}>{title}</div>

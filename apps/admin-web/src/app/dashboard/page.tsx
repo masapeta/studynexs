@@ -18,8 +18,33 @@ type Summary = BriefingSummary & {
 type EventItem = { id: string; title: string; event_date: string };
 type FeeStats = { total_collected?: number; pending_amount?: number };
 
+function DashboardSkeleton() {
+  return (
+    <div className="briefing-page briefing-page--executive" aria-busy="true" aria-label="Loading dashboard">
+      <div className="briefing-exec-row briefing-exec-row--kpis">
+        {[0, 1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="briefing-glass-chip briefing-exec-kpi"
+            style={{ minHeight: 68, opacity: 0.45 }}
+          />
+        ))}
+      </div>
+      <div className="briefing-exec-row briefing-exec-row--command">
+        {[0, 1, 2].map((i) => (
+          <div
+            key={i}
+            className="briefing-glass-chip briefing-panel"
+            style={{ minHeight: 200, opacity: 0.4 }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const [summary, setSummary] = useState<Summary | null>(null);
   const [feeStats, setFeeStats] = useState<FeeStats | null>(null);
   const [eventsCount, setEventsCount] = useState(0);
@@ -27,8 +52,11 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
 
   const load = useCallback(() => {
+    if (!user) return;
     setLoading(true);
     setError("");
+
+    const isAdmin = user.role === "admin" || user.role === "super_admin";
 
     const summaryP = api<{ data: Summary }>("/api/v1/dashboard/summary")
       .then((r) => r.data)
@@ -40,30 +68,27 @@ export default function DashboardPage() {
       .then((r) => setEventsCount((r.data || []).length))
       .catch(() => setEventsCount(0));
 
-    const feesP =
-      user?.role === "admin" || user?.role === "super_admin"
-        ? api<{ data: FeeStats }>("/api/v1/fees/stats")
-            .then((r) => setFeeStats(r.data))
-            .catch(() => setFeeStats(null))
-        : Promise.resolve();
+    const feesP = isAdmin
+      ? api<{ data: FeeStats }>("/api/v1/fees/stats")
+          .then((r) => setFeeStats(r.data))
+          .catch(() => setFeeStats(null))
+      : Promise.resolve();
 
     Promise.all([summaryP, eventsP, feesP])
       .then(([s]) => setSummary(s))
       .catch((e) => setError(getApiErrorMessage(e, "Could not load dashboard.")))
       .finally(() => setLoading(false));
-  }, [user?.role]);
+  }, [user]);
 
   useEffect(() => {
-    if (authLoading || !user) return;
+    if (!user) return;
     load();
-  }, [authLoading, user, load]);
+  }, [user, load]);
 
-  if (authLoading || loading) {
-    return (
-      <div className="loading-screen" style={{ minHeight: "60vh" }}>
-        <div className="spinner" />
-      </div>
-    );
+  if (!user) return null;
+
+  if (loading) {
+    return <DashboardSkeleton />;
   }
 
   if (error) {
@@ -85,7 +110,7 @@ export default function DashboardPage() {
     return <TeacherCommandCenter data={s.teacher_home} onRefresh={load} />;
   }
 
-  if ((persona === "admin" || persona === "class_incharge") && s && user) {
+  if ((persona === "admin" || persona === "class_incharge") && s) {
     return (
       <MorningBriefing
         userName={user.full_name}
@@ -99,8 +124,8 @@ export default function DashboardPage() {
 
   return (
     <MorningBriefing
-      userName={user?.full_name || "User"}
-      userId={user?.id || "guest"}
+      userName={user.full_name}
+      userId={user.id}
       summary={s || { persona: "teacher", subtitle: "Your workspace for today." }}
       eventsCount={eventsCount}
     />

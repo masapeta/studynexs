@@ -1,23 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import {
-  AlertCircle,
-  CalendarDays,
-  ClipboardCheck,
-  Megaphone,
-  Sparkles,
-  Target,
-  TrendingUp,
-  UserPlus,
-  Users,
-  Wallet,
-} from "lucide-react";
+import { ChevronRight, Megaphone } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
 import { DashboardWidgets } from "./DashboardWidgets";
 import { DashboardAnalytics } from "./DashboardAnalytics";
 import { SchoolDayPanel } from "./SchoolDayPanel";
-import { briefingDate, inr } from "@/lib/format";
+import { inr } from "@/lib/format";
 import { FINANCE, STUDENTS, TEACHING } from "@/lib/dashboard-routes";
 
 export type { TimetablePeriod } from "./SchoolDayPanel";
@@ -38,6 +27,7 @@ export type BriefingSummary = {
   }[];
   admissions_pipeline?: number | null;
   expenses_this_month?: number | null;
+  class_performance?: { label: string; percentage: number }[];
   notices?: {
     id: string;
     title: string;
@@ -61,29 +51,47 @@ type Props = {
   eventsCount?: number;
 };
 
-function StatTile({
-  label,
-  value,
-  icon: Icon,
-  toneClass,
-}: {
+type KpiItem = {
   label: string;
   value: React.ReactNode;
-  icon: React.ElementType;
-  toneClass: string;
-}) {
+  hint?: string;
+  hintWarn?: boolean;
+};
+
+type PriorityAlert = {
+  priority: number;
+  href: string;
+  kicker: string;
+  body: string;
+  tone: "coral" | "brass" | "neutral";
+};
+
+function ExecutiveKpiBar({ items }: { items: KpiItem[] }) {
   return (
-    <div className="briefing-card briefing-stat">
-      <div className={`briefing-stat-icon ${toneClass}`} aria-hidden>
-        <Icon size={15} />
-      </div>
-      <div className="briefing-stat-body">
-        <span className="briefing-stat-label">{label}</span>
-        <div className="briefing-stat-value">{value}</div>
-      </div>
+    <div className="briefing-exec-row briefing-exec-row--kpis" role="list">
+      {items.map((item) => (
+        <div key={item.label} className="briefing-glass-chip briefing-exec-kpi" role="listitem">
+          <span className="briefing-exec-kpi-label">{item.label}</span>
+          <span className="briefing-exec-kpi-value">{item.value}</span>
+          {item.hint ? (
+            <span
+              className={`briefing-exec-kpi-hint${item.hintWarn ? " briefing-exec-kpi-hint--warn" : ""}`}
+            >
+              {item.hint}
+            </span>
+          ) : null}
+        </div>
+      ))}
     </div>
   );
 }
+
+const QUICK_LINKS = [
+  { label: "Mastery", href: TEACHING.mastery },
+  { label: "Exam loop", href: TEACHING.corrections },
+  { label: "Attendance", href: "/dashboard/attendance" },
+  { label: "Timetable", href: "/dashboard/timetable" },
+] as const;
 
 export function MorningBriefing({
   userName,
@@ -98,8 +106,9 @@ export function MorningBriefing({
   const pendingFees = summary.pending_fees ?? feeStats?.pending_amount ?? 0;
   const collected = feeStats?.total_collected ?? 0;
   const pipeline = summary.admissions_pipeline ?? 0;
-  const spent = summary.expenses_this_month ?? 0;
   const notice = summary.notices?.[0];
+  const collectionRate =
+    collected + pendingFees > 0 ? Math.round((collected / (collected + pendingFees)) * 100) : 0;
 
   const qpPending = (summary.incharge_classes ?? []).reduce(
     (n, c) => n + (c.pending_qp_approvals || 0),
@@ -109,229 +118,188 @@ export function MorningBriefing({
     (c) => (c.attendance_percent ?? 100) < 85
   );
 
-  const stats = isAdmin
-    ? [
-        {
-          label: "Students enrolled",
-          value: summary.total_students ?? 0,
-          icon: Users,
-          toneClass: "briefing-tone-ink",
-        },
-        {
-          label: "Present today",
-          value: `${att}%`,
-          icon: ClipboardCheck,
-          toneClass: "briefing-tone-sage",
-        },
-        {
-          label: "Fees collected",
-          value: inr(collected),
-          icon: Wallet,
-          toneClass: "briefing-tone-sage",
-        },
-        {
-          label: "In admissions pipeline",
-          value: pipeline,
-          icon: UserPlus,
-          toneClass: "briefing-tone-brass",
-        },
-      ]
-    : [
-        {
-          label: "Your classes",
-          value: summary.incharge_classes?.length ?? 0,
-          icon: Users,
-          toneClass: "briefing-tone-ink",
-        },
-        {
-          label: "Papers to approve",
-          value: qpPending,
-          icon: Sparkles,
-          toneClass: "briefing-tone-brass",
-        },
-        {
-          label: "Events this term",
-          value: eventsCount,
-          icon: ClipboardCheck,
-          toneClass: "briefing-tone-sage",
-        },
-        {
-          label: "Quick link",
-          value: "Mastery",
-          icon: Target,
-          toneClass: "briefing-tone-blue",
-        },
-      ];
+  const adminKpis: KpiItem[] = [
+    { label: "Students", value: summary.total_students ?? 0 },
+    {
+      label: "Present today",
+      value: `${att}%`,
+      hint: att < 90 ? "Below target" : undefined,
+      hintWarn: att < 90,
+    },
+    {
+      label: "Fees collected",
+      value: inr(collected),
+      hint: collectionRate > 0 ? `${collectionRate}% of target` : undefined,
+    },
+    { label: "Admissions", value: pipeline, hint: pipeline > 0 ? "In pipeline" : undefined },
+  ];
+
+  const inchargeKpis: KpiItem[] = [
+    { label: "Your classes", value: summary.incharge_classes?.length ?? 0 },
+    { label: "Papers to approve", value: qpPending },
+    { label: "Events this term", value: eventsCount },
+    { label: "Quick link", value: "Mastery" },
+  ];
+
+  const priorityAlerts: PriorityAlert[] = [];
+
+  if (isAdmin && att < 90) {
+    priorityAlerts.push({
+      priority: 1,
+      href: "/dashboard/attendance",
+      kicker: "Attendance below 90%",
+      body: `${att}% present school-wide today`,
+      tone: "coral",
+    });
+  }
+  if (pendingFees > 0) {
+    priorityAlerts.push({
+      priority: 2,
+      href: FINANCE.fees,
+      kicker: "Fees outstanding",
+      body: `${inr(pendingFees)} pending collection`,
+      tone: "brass",
+    });
+  }
+  if (pipeline > 0) {
+    priorityAlerts.push({
+      priority: 3,
+      href: STUDENTS.admissions,
+      kicker: "Admissions pipeline",
+      body: `${pipeline} candidates in progress`,
+      tone: "neutral",
+    });
+  }
+  if (qpPending > 0) {
+    priorityAlerts.push({
+      priority: 2,
+      href: TEACHING.aiPapers,
+      kicker: `${qpPending} papers awaiting approval`,
+      body: "Review AI question papers from your teachers",
+      tone: "brass",
+    });
+  }
+  if (!isAdmin && lowAttClasses.length > 0) {
+    priorityAlerts.push({
+      priority: 1,
+      href: "/dashboard/attendance",
+      kicker: "Low attendance in class",
+      body: lowAttClasses.map((c) => c.class_label).join(", "),
+      tone: "coral",
+    });
+  }
+
+  priorityAlerts.sort((a, b) => a.priority - b.priority);
+  const topAlerts = priorityAlerts.slice(0, 4);
+  const allClear =
+    isAdmin && priorityAlerts.length === 0 && att >= 90 && pendingFees === 0 && qpPending === 0;
 
   return (
-    <div className="briefing-page">
-      <header className="briefing-header">
-        <div>
-          <p className="briefing-eyebrow">{briefingDate()} · morning briefing</p>
-          <h1 className="briefing-title">Good morning, {first}</h1>
-          <p className="briefing-subtitle">{summary.subtitle}</p>
-        </div>
+    <div className="briefing-page briefing-page--executive">
+      <header className="briefing-header briefing-exec-header">
+        <h1 className="briefing-title">Good morning, {first}</h1>
+        <p className="briefing-subtitle">{summary.subtitle}</p>
       </header>
 
-      <div className="briefing-stat-grid">
-        {stats.map((s) => (
-          <StatTile key={s.label} {...s} />
-        ))}
-      </div>
+      <ExecutiveKpiBar items={isAdmin ? adminKpis : inchargeKpis} />
 
-      <div className="briefing-main-grid">
+      <div className="briefing-exec-row briefing-exec-row--command">
         <SchoolDayPanel
-          defaultClassId={
-            summary.incharge_classes?.[0]?.class_id ??
-            null
-          }
+          defaultClassId={summary.incharge_classes?.[0]?.class_id ?? null}
         />
 
-        <div className="briefing-side-stack">
-          <div className="briefing-card briefing-panel">
-            <div className="briefing-panel-head">
-              <AlertCircle size={16} className="briefing-tone-coral" />
-              <h3>Needs your attention</h3>
+        <div className="briefing-glass-chip briefing-card briefing-panel briefing-exec-priority">
+          <div className="briefing-panel-head">
+            <h3>Priority queue</h3>
+            {priorityAlerts.length > 4 && (
+              <Link href="/dashboard/attendance" className="briefing-link briefing-panel-action">
+                View all
+              </Link>
+            )}
+          </div>
+
+          {allClear ? (
+            <p className="briefing-exec-all-clear">All clear — school operations look healthy today.</p>
+          ) : topAlerts.length === 0 ? (
+            <p className="briefing-muted-text">No urgent items right now.</p>
+          ) : (
+            <div className="briefing-exec-priority-list">
+              {topAlerts.map((alert) => (
+                <Link
+                  key={alert.kicker}
+                  href={alert.href}
+                  className={`briefing-exec-priority-item briefing-exec-priority-item--${alert.tone}`}
+                >
+                  <span className="briefing-exec-priority-dot" aria-hidden />
+                  <div className="briefing-exec-priority-copy">
+                    <strong>{alert.kicker}</strong>
+                    <span>{alert.body}</span>
+                  </div>
+                  <ChevronRight size={14} className="briefing-exec-priority-chevron" aria-hidden />
+                </Link>
+              ))}
             </div>
-            <div className="briefing-attention-grid">
-              {isAdmin && att < 90 && (
-                <Link href="/dashboard/attendance" className="briefing-attention briefing-attention-coral">
-                  <span className="briefing-attention-kicker">Attendance below 90%</span>
-                  <span className="briefing-attention-body">{att}% present school-wide today</span>
+          )}
+
+          <div className="briefing-exec-quicklinks" aria-label="Quick links">
+            {isAdmin &&
+              QUICK_LINKS.map((link) => (
+                <Link key={link.href} href={link.href} className="briefing-exec-quicklink">
+                  {link.label}
                 </Link>
-              )}
-              {pendingFees > 0 && (
-                <Link href={FINANCE.fees} className="briefing-attention briefing-attention-brass">
-                  <span className="briefing-attention-kicker">Fees outstanding</span>
-                  <span className="briefing-attention-body">{inr(pendingFees)} pending collection</span>
-                </Link>
-              )}
-              {pipeline > 0 && (
-                <Link href={STUDENTS.admissions} className="briefing-attention briefing-attention-neutral">
-                  <span className="briefing-attention-kicker">Admissions pipeline</span>
-                  <span className="briefing-attention-body">{pipeline} candidates in progress</span>
-                </Link>
-              )}
-              {qpPending > 0 && (
-                <Link href={TEACHING.aiPapers} className="briefing-attention briefing-attention-brass">
-                  <span className="briefing-attention-kicker">{qpPending} papers awaiting approval</span>
-                  <span className="briefing-attention-body">Review AI question papers from your teachers</span>
-                </Link>
-              )}
-              {!isAdmin && lowAttClasses.length > 0 && (
-                <Link href="/dashboard/attendance" className="briefing-attention briefing-attention-coral">
-                  <span className="briefing-attention-kicker">Low attendance in class</span>
-                  <span className="briefing-attention-body">
-                    {lowAttClasses.map((c) => c.class_label).join(", ")}
-                  </span>
-                </Link>
-              )}
-              <Link href={TEACHING.mastery} className="briefing-attention briefing-attention-neutral">
-                <span className="briefing-attention-kicker">Topic mastery</span>
-                <span className="briefing-attention-body">Review weakness flags and parent notes</span>
+              ))}
+          </div>
+        </div>
+
+        {notice && (
+          <div className="briefing-glass-chip briefing-card briefing-panel briefing-panel--notice briefing-exec-notice">
+            <div className="briefing-panel-head">
+              <Megaphone size={15} className="briefing-tone-brass" aria-hidden />
+              <h3>Latest notice</h3>
+              <Link href="/dashboard/notices" className="briefing-link briefing-panel-action">
+                View all
               </Link>
-              <Link href={TEACHING.corrections} className="briefing-attention briefing-attention-neutral">
-                <span className="briefing-attention-kicker">Exam loop</span>
-                <span className="briefing-attention-body">Answer-sheet corrections and AI grading history</span>
-              </Link>
-              {pendingFees === 0 && att >= 90 && qpPending === 0 && isAdmin && (
-                <p className="briefing-muted-text">All clear for now — great start to the day.</p>
+            </div>
+            <p className="briefing-notice-title">{notice.title}</p>
+            <p className="briefing-notice-body">{notice.content}</p>
+            <div className="briefing-notice-meta">
+              <StatusBadge tone="brass">{notice.audience}</StatusBadge>
+              {(notice.priority === "high" || notice.priority === "urgent") && (
+                <StatusBadge tone="red">{notice.priority}</StatusBadge>
               )}
             </div>
           </div>
+        )}
 
-          {isAdmin && (
-            <div className="briefing-secondary-row">
-              <div className="briefing-card briefing-panel briefing-panel--finance">
-                <div className="briefing-panel-head">
-                  <TrendingUp size={16} className="briefing-tone-sage" />
-                  <h3>Finance snapshot</h3>
-                </div>
-                <div className="briefing-finance-row">
-                  <div>
-                    <div className="briefing-finance-value briefing-tone-sage">{inr(collected)}</div>
-                    <div className="briefing-finance-label">collected</div>
-                  </div>
-                  <div>
-                    <div className="briefing-finance-value briefing-tone-coral">{inr(spent)}</div>
-                    <div className="briefing-finance-label">spent</div>
-                  </div>
-                  <div>
-                    <div className="briefing-finance-value briefing-tone-ink">
-                      {inr(Math.max(0, collected - spent))}
-                    </div>
-                    <div className="briefing-finance-label">net</div>
-                  </div>
-                </div>
-              </div>
-
-              {notice && (
-                <div className="briefing-card briefing-panel briefing-panel--notice">
-                  <div className="briefing-panel-head">
-                    <Megaphone size={16} className="briefing-tone-brass" />
-                    <h3>Latest notice</h3>
-                    <Link href="/dashboard/notices" className="briefing-link briefing-panel-action">
-                      View all
-                    </Link>
-                  </div>
-                  <p className="briefing-notice-title">{notice.title}</p>
-                  <p className="briefing-notice-body">{notice.content}</p>
-                  <div className="briefing-notice-meta">
-                    <StatusBadge tone="brass">{notice.audience}</StatusBadge>
-                    {(notice.priority === "high" || notice.priority === "urgent") && (
-                      <StatusBadge tone="red">{notice.priority}</StatusBadge>
-                    )}
-                  </div>
-                </div>
-              )}
+        {!isAdmin && (summary.incharge_classes?.length ?? 0) > 0 && (
+          <div className="briefing-glass-chip briefing-card briefing-panel briefing-exec-classes">
+            <div className="briefing-panel-head">
+              <h3>Your classes today</h3>
             </div>
-          )}
-
-          {!isAdmin && notice && (
-            <div className="briefing-card briefing-panel briefing-panel--notice">
-              <div className="briefing-panel-head">
-                <Megaphone size={16} className="briefing-tone-brass" />
-                <h3>Latest notice</h3>
-                <Link href="/dashboard/notices" className="briefing-link briefing-panel-action">
-                  View all
-                </Link>
-              </div>
-              <p className="briefing-notice-title">{notice.title}</p>
-              <p className="briefing-notice-body">{notice.content}</p>
-              <div className="briefing-notice-meta">
-                <StatusBadge tone="brass">{notice.audience}</StatusBadge>
-                {(notice.priority === "high" || notice.priority === "urgent") && (
-                  <StatusBadge tone="red">{notice.priority}</StatusBadge>
-                )}
-              </div>
+            <div className="briefing-class-list">
+              {summary.incharge_classes!.map((c) => (
+                <div key={c.class_id} className="briefing-class-row">
+                  <span className="briefing-class-name">{c.class_label}</span>
+                  <span className="briefing-class-stat">
+                    {c.attendance_percent ?? "—"}% present
+                  </span>
+                  {c.pending_qp_approvals > 0 && (
+                    <StatusBadge tone="brass">{c.pending_qp_approvals} QP</StatusBadge>
+                  )}
+                </div>
+              ))}
             </div>
-          )}
-
-          {!isAdmin && (summary.incharge_classes?.length ?? 0) > 0 && (
-            <div className="briefing-card briefing-panel">
-              <div className="briefing-panel-head">
-                <h3>Your classes today</h3>
-              </div>
-              <div className="briefing-class-list">
-                {summary.incharge_classes!.map((c) => (
-                  <div key={c.class_id} className="briefing-class-row">
-                    <span className="briefing-class-name">{c.class_label}</span>
-                    <span className="briefing-class-stat">
-                      {c.attendance_percent ?? "—"}% present
-                    </span>
-                    {c.pending_qp_approvals > 0 && (
-                      <StatusBadge tone="brass">{c.pending_qp_approvals} QP</StatusBadge>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
-      {isAdmin && <DashboardAnalytics />}
-      {isAdmin && <DashboardWidgets userId={userId} isAdmin={isAdmin} />}
+      {isAdmin && (
+        <DashboardAnalytics
+          classPerformance={summary.class_performance}
+          feeStats={feeStats}
+        />
+      )}
+      {isAdmin && <DashboardWidgets userId={userId} isAdmin={isAdmin} layout="executive" />}
     </div>
   );
 }

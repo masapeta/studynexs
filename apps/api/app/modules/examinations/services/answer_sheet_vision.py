@@ -10,6 +10,7 @@ from app.core.config import get_settings
 from app.modules.ai.gateway import LLMImage, LLMMessage, default_model, generate_llm
 from app.modules.ai.gateway.base import LLMResult
 from app.modules.ai.gateway.factory import ollama_configured
+from app.modules.ai.gateway.output_guard import sanitize_vision_answers
 from app.modules.files.services.file_validation import IMAGE_MIMES, normalize_mime
 
 logger = structlog.get_logger()
@@ -77,6 +78,8 @@ def _question_prompt(question_schema: list[dict], rubrics: dict[str, dict]) -> s
         qno = str(q["no"])
         rubric = rubrics.get(qno, {})
         qtext = str(rubric.get("question_text") or "")[:200]
+        # Bound question text embedded in vision prompts — not user-authored at OCR time.
+        qtext = qtext.replace("\n", " ")
         lines.append(f"- Q{qno} ({q.get('max_marks')} marks): {qtext}")
     return "\n".join(lines)
 
@@ -94,7 +97,7 @@ def _parse_answers_json(text: str) -> dict[str, str]:
     answers = data.get("answers") if isinstance(data, dict) else data
     if not isinstance(answers, dict):
         return {}
-    return {str(k): str(v) for k, v in answers.items()}
+    return sanitize_vision_answers({str(k): str(v) for k, v in answers.items()})
 
 
 def _ollama_vision_model() -> str:

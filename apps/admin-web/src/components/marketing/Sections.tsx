@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { motion, useReducedMotion } from "framer-motion";
 import {
   Brain,
   FileText,
@@ -9,78 +8,10 @@ import {
   LineChart,
   MessageSquare,
   Shield,
-  Sparkles,
 } from "lucide-react";
 import { AnimatedStat } from "./AnimatedStat";
-import { HeroDashboardScene } from "./HeroDashboardScene";
 import { FadeIn, MagneticButton } from "./Motion";
-
-export function HeroSection() {
-  const reduce = useReducedMotion();
-
-  return (
-    <section className="mkt-hero" aria-labelledby="hero-heading">
-      <div className="mkt-hero-grid">
-        <div className="mkt-hero-copy">
-          <motion.div
-            className="mkt-eyebrow mkt-glass"
-            initial={reduce ? false : { opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, delay: 0.15 }}
-          >
-            <Sparkles size={14} aria-hidden />
-            AI-Powered School OS
-          </motion.div>
-
-          <motion.h1
-            id="hero-heading"
-            className="mkt-h1 mkt-h1--hero"
-            initial={reduce ? false : { opacity: 0, y: 32, filter: "blur(10px)" }}
-            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            transition={{ duration: 0.85, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
-          >
-            The world&apos;s most advanced
-            <br />
-            <span className="mkt-gradient-text">school operating system</span>
-          </motion.h1>
-
-          <motion.p
-            className="mkt-lead mkt-lead--hero"
-            initial={reduce ? false : { opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.45 }}
-          >
-            Immersive intelligence for principals, teachers, students, and parents — one glass
-            platform where AI assists, humans approve, and every school stays in control.
-          </motion.p>
-
-          <motion.div
-            className="mkt-hero-actions mkt-hero-actions--left"
-            initial={reduce ? false : { opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.65, delay: 0.6 }}
-          >
-            <MagneticButton href="/login?portal=staff" className="mkt-btn mkt-btn--primary mkt-btn--lg">
-              Start free pilot
-            </MagneticButton>
-            <MagneticButton href="/platform" className="mkt-btn mkt-btn--glass mkt-btn--lg">
-              Explore platform
-            </MagneticButton>
-          </motion.div>
-        </div>
-
-        <motion.div
-          className="mkt-hero-visual"
-          initial={reduce ? false : { opacity: 0, y: 48, rotateX: 8 }}
-          animate={{ opacity: 1, y: 0, rotateX: 4 }}
-          transition={{ duration: 1, delay: 0.75, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <HeroDashboardScene />
-        </motion.div>
-      </div>
-    </section>
-  );
-}
+import { FOOTER_LINKS, NOUSTRIKS, copyrightNotice, LEGAL } from "@/lib/noustriks-content";
 
 const FEATURES = [
   {
@@ -248,40 +179,56 @@ export function CTASection() {
 
 export function MarketingFooter() {
   return (
-    <footer className="mkt-footer">
+    <footer className="mkt-footer mkt-footer--premium">
       <div className="mkt-container">
-        <div className="mkt-footer-grid">
-          <div>
-            <Link href="/" className="mkt-nav-logo" style={{ padding: 0, marginBottom: "1rem" }}>
-              <span className="mkt-nav-logo-mark">SN</span>
-              StudyNexs
+        <div className="mkt-footer-grid mkt-footer-grid--premium">
+          <div className="mkt-footer-brand">
+            <Link href="/products" className="mkt-nav-logo mkt-nav-logo--noustriks" style={{ padding: 0, marginBottom: "1rem" }}>
+              <span className="mkt-nav-logo-mark mkt-nav-logo-mark--noustriks" aria-hidden>
+                N
+              </span>
+              {NOUSTRIKS.name}
             </Link>
-            <p style={{ fontSize: "0.88rem", color: "var(--mkt-gray-500)", maxWidth: "20rem", lineHeight: 1.65 }}>
-              The AI-powered school operating system for principals, teachers, students, and parents.
+            <p className="mkt-footer-tagline">{NOUSTRIKS.tagline}</p>
+            <p className="mkt-footer-studynexs-note">
+              <Link href="/">StudyNexs</Link> is a flagship product of Noustriks.
             </p>
           </div>
           <div>
-            <h4>Product</h4>
-            <Link href="/platform">Platform</Link>
-            <Link href="/#features">Features</Link>
-            <Link href="/pricing">Pricing</Link>
+            <h4>Products</h4>
+            {FOOTER_LINKS.products.map((link) => (
+              <Link key={link.href} href={link.href}>
+                {link.label}
+              </Link>
+            ))}
           </div>
           <div>
-            <h4>Portals</h4>
-            <Link href="/login?portal=staff">Admin</Link>
-            <Link href="/login?portal=teacher">Teacher</Link>
-            <Link href="/login?portal=parent">Parent</Link>
-            <Link href="/login?portal=student">Student</Link>
+            <h4>StudyNexs</h4>
+            {FOOTER_LINKS.studynexs.map((link) => (
+              <Link key={link.href} href={link.href}>
+                {link.label}
+              </Link>
+            ))}
+            <Link href="/login?portal=parent">Parent portal</Link>
+            <Link href="/login?portal=student">Student portal</Link>
           </div>
           <div>
             <h4>Company</h4>
+            {FOOTER_LINKS.company.map((link) => (
+              <Link key={link.href} href={link.href}>
+                {link.label}
+              </Link>
+            ))}
             <Link href="/login">Sign in</Link>
-            <a href="mailto:hello@studynexs.com">Contact</a>
+            <Link href="/pricing">Pricing</Link>
           </div>
         </div>
         <div className="mkt-footer-bottom">
-          <span>© {new Date().getFullYear()} StudyNexs. All rights reserved.</span>
-          <span>Built for Indian K-12 · Privacy-first · SOC-ready architecture</span>
+          <span>{copyrightNotice()}</span>
+          <span>
+            {LEGAL.productLine} · {LEGAL.company} · Owner {LEGAL.owner} ({LEGAL.ownerAlias}) ·{" "}
+            {LEGAL.license}
+          </span>
         </div>
       </div>
     </footer>

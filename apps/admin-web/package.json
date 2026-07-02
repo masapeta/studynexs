@@ -2,11 +2,15 @@
   "name": "admin-web",
   "version": "0.1.0",
   "private": true,
+  "description": "StudyNexs admin & marketing web app — Noustriks product",
+  "author": "Noustriks (Avinash Reddy Masapeta)",
+  "license": "UNLICENSED",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "e2e-smoke": "node e2e-smoke.cjs"
   },
   "dependencies": {
     "framer-motion": "^12.42.0",
@@ -22,6 +26,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "playwright": "^1.52.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

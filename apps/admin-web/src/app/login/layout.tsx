@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import "@/styles/marketing-tokens.css";
 import "@/styles/marketing.css";
 import { MarketingBackground, MarketingNav } from "@/components/marketing/MarketingShell";
 

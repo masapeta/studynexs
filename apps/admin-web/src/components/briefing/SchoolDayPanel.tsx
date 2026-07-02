@@ -130,7 +130,7 @@ export function SchoolDayPanel({ defaultClassId }: Props) {
   }, [classId]);
 
   return (
-    <div className="briefing-card briefing-panel briefing-panel--school-day">
+    <div className="briefing-glass-chip briefing-card briefing-panel briefing-panel--school-day">
       <div className="briefing-panel-head briefing-school-day-head">
         <div className="briefing-school-day-title">
           <Clock size={16} className="briefing-tone-brass" aria-hidden />

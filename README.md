@@ -108,4 +108,5 @@ python scripts/seed_synthetic.py
 
 ## License
 
-Proprietary — © 2026 StudyNexs Technologies Pvt Ltd. All rights reserved. See [LICENSE](LICENSE).
+Proprietary — © 2026 Noustriks. All rights reserved.  
+Owner: Avinash Reddy Masapeta (ARM). StudyNexs is a Noustriks product. See [LICENSE](LICENSE).

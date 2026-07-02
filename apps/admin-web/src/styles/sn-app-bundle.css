@@ -1,0 +1,10 @@
+/* App shell styles — import only in authenticated route layouts (not root). */
+@import "./sn-app-premium.css";
+@import "./sn-app-vision.css";
+@import "./app-responsive.css";
+@import "./sn-topbar.css";
+@import "./sn-vision-glass.css";
+@import "./app-select.css";
+@import "./app-file-input.css";
+@import "./sn-page-density.css";
+@import "./sn-briefing-executive.css";

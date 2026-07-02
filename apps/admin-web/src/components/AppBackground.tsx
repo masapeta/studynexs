@@ -1,17 +1,41 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { useReducedMotion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 
 type Node = { x: number; y: number; vx: number; vy: number };
 
-/** Lightweight neural mesh — same language as marketing, tuned for app UI. */
+function usePrefersReducedMotion() {
+  const [reduce, setReduce] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduce(mq.matches);
+    const onChange = () => setReduce(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  return reduce;
+}
+
+/** Lightweight neural mesh — deferred until idle to keep first paint fast. */
 function AppNeuralCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const reduce = useReducedMotion();
+  const reduce = usePrefersReducedMotion();
+  const [active, setActive] = useState(false);
 
   useEffect(() => {
     if (reduce) return;
+    if (typeof requestIdleCallback !== "undefined") {
+      const idleId = requestIdleCallback(() => setActive(true), { timeout: 2500 });
+      return () => cancelIdleCallback(idleId);
+    }
+    const timerId = window.setTimeout(() => setActive(true), 1200);
+    return () => clearTimeout(timerId);
+  }, [reduce]);
+
+  useEffect(() => {
+    if (!active || reduce) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -19,7 +43,7 @@ function AppNeuralCanvas() {
 
     let raf = 0;
     let nodes: Node[] = [];
-    const count = 28;
+    const count = 22;
     const linkDist = 120;
 
     const resize = () => {
@@ -87,9 +111,9 @@ function AppNeuralCanvas() {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
     };
-  }, [reduce]);
+  }, [active, reduce]);
 
-  if (reduce) return null;
+  if (reduce || !active) return null;
   return <canvas ref={canvasRef} className="sn-app-neural" aria-hidden />;
 }
 

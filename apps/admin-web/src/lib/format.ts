@@ -4,6 +4,13 @@ export function inr(n: number | null | undefined): string {
   return "₹" + v.toLocaleString("en-IN");
 }
 
+/** Compact date for top bar chips (e.g. Jul 2, Thu). */
+export function todayCompact(d = new Date()): string {
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${months[d.getMonth()]} ${d.getDate()}, ${days[d.getDay()]}`;
+}
+
 export function briefingDate(d = new Date()): string {
   return d.toLocaleDateString("en-IN", {
     weekday: "long",

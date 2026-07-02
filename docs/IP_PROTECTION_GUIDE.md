@@ -1,9 +1,10 @@
 # StudyNexs — Intellectual Property (IP) Protection Guide
 
 > Owner: Avinash Reddy Masapeta (ARM)  
-> Product: StudyNexs / Academix Platform  
+> Company: **Noustriks**  
+> Product: StudyNexs Platform (and related Noustriks products in this repo)  
 > Jurisdiction focus: **India** (with notes for international expansion)  
-> Last updated: 2026-06-26  
+> Last updated: 2026-07-02  
 
 **Disclaimer:** This document is operational guidance for founders and engineers. It is **not legal advice**. Engage a qualified IP lawyer and company secretary before filings, contracts, or investor diligence.
 
@@ -43,8 +44,8 @@ StudyNexs is a **commercial SaaS product** — not open source. IP protection en
 
 **Current repo state (as of push to GitHub):**
 
-- README states: *Proprietary — © 2026 StudyNexs. All rights reserved.*
-- **`LICENSE` file** at repo root — proprietary, all rights reserved
+- README states: *Proprietary — © 2026 Noustriks. All rights reserved. Owner: Avinash Reddy Masapeta (ARM).*
+- **`LICENSE` file** at repo root — proprietary, Noustriks / ARM ownership
 - GitHub repo: `https://github.com/masapeta/academix-platform` — prefer **Private** until legal pack is complete
 
 ---
@@ -55,9 +56,9 @@ StudyNexs is a **commercial SaaS product** — not open source. IP protection en
 
 | Asset | Examples in this repo | Owner should be |
 |-------|----------------------|-----------------|
-| **Source code** | `apps/api/`, `apps/admin-web/` | StudyNexs legal entity (Pvt Ltd) |
-| **Database schemas** | Alembic migrations, SQLAlchemy models | Company |
-| **UI/UX** | Next.js pages, CSS, components | Company |
+| **Source code** | `apps/api/`, `apps/admin-web/` | **Noustriks** (Avinash Reddy Masapeta) |
+| **Database schemas** | Alembic migrations, SQLAlchemy models | Noustriks |
+| **UI/UX** | Next.js pages, CSS, components | Noustriks |
 | **Documentation** | `docs/PRODUCT.md`, API docs, runbooks | Company |
 | **Marketing copy** | `(marketing)/` pages, pricing | Company |
 | **AI prompts & rubrics** | Gateway prompts, eval rubrics, SSC blueprints | Company (trade secret + copyright) |
@@ -121,7 +122,7 @@ Phase 6 (Optional)     → Patent consultation if novel technical invention iden
 
 ### 4.3 Practical steps
 
-1. Incorporate company (if not done): e.g. **StudyNexs Technologies Pvt Ltd**
+1. Confirm legal entity / ownership documentation: **Noustriks**, owner **Avinash Reddy Masapeta (ARM)**
 2. Ensure **all authors assign** rights to company (see §8)
 3. Prepare application via IP attorney or online filing:
    - Title of work
@@ -135,7 +136,8 @@ Phase 6 (Optional)     → Patent consultation if novel technical invention iden
 Add to key files:
 
 ```text
-Copyright (c) 2026 StudyNexs Technologies Pvt Ltd. All rights reserved.
+Copyright (c) 2026 Noustriks. All rights reserved.
+Owner: Avinash Reddy Masapeta (ARM).
 Proprietary and confidential. Unauthorized copying or distribution is prohibited.
 ```
 
@@ -146,12 +148,14 @@ Do not over-clutter every file — `LICENSE` at root + employment contracts are 
 Create `/LICENSE` in repo:
 
 ```text
-Copyright (c) 2026 StudyNexs Technologies Pvt Ltd. All rights reserved.
+Copyright (c) 2026 Noustriks. All rights reserved.
+
+Owner: Avinash Reddy Masapeta (ARM)
 
 This software and associated documentation files (the "Software") are proprietary
 and confidential. No part of the Software may be copied, modified, merged, published,
 distributed, sublicensed, sold, or used to create derivative works without express
-written permission from the copyright holder.
+written permission from Noustriks or the copyright owner named above.
 
 THE SOFTWARE IS PROVIDED FOR INTERNAL AND LICENSED CUSTOMER USE ONLY.
 ```
@@ -447,7 +451,7 @@ Investors will ask:
 
 ### Immediate (this week)
 
-- [ ] Confirm company entity name matches brand (StudyNexs Technologies Pvt Ltd)
+- [ ] Confirm company / ownership records match **Noustriks** and **Avinash Reddy Masapeta (ARM)**
 - [x] Add `LICENSE` file to repo root
 - [ ] Set GitHub repo to **Private** (if public, assess exposure)
 - [ ] Rotate any API keys ever in `.env` on disk or review context

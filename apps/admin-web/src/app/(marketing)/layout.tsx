@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import "@/styles/marketing-tokens.css";
 import "@/styles/marketing.css";
 import { MarketingBackground, MarketingNav } from "@/components/marketing/MarketingShell";
 
@@ -10,9 +11,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "StudyNexs — AI School Operating System",
+  title: "Noustriks — Engineering Intelligent Systems",
   description:
-    "The intelligence layer for modern schools. AI papers, mastery insights, and family portals — one premium platform.",
+    "Noustriks builds intelligent platforms — StudyNexs for education, Memory Fabric for enterprise — at the intersection of AI, memory, and infrastructure.",
 };
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {

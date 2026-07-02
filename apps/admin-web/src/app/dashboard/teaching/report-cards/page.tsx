@@ -7,7 +7,7 @@ import { DocumentPreviewModal } from "@/components/DocumentPreviewModal";
 import { AppSelect } from "@/components/ui/AppSelect";
 import { PageHeaderCard } from "@/components/layout/PageHeaderCard";
 import { formatClassLabel } from "@/lib/format";
-import { AI_INPUT, clampText } from "@/lib/ai-input-limits";
+import { AI_INPUT, clampText, sanitizeAiText } from "@/lib/ai-input-limits";
 
 type SubjectRow = { subject: string; marks_obtained: number; total_marks: number };
 type Report = {
@@ -138,9 +138,12 @@ export default function ReportCardsPage() {
     setSaving(true);
     setError("");
     try {
+      const remark = report.ai_remark
+        ? sanitizeAiText(report.ai_remark, AI_INPUT.reportRemarkMaxLength, "Remark")
+        : report.ai_remark;
       const res = await api(`/api/v1/ai/report-cards/${report.id}`, {
         method: "PUT",
-        body: JSON.stringify({ title: report.title, ai_remark: report.ai_remark }),
+        body: JSON.stringify({ title: report.title, ai_remark: remark }),
       });
       setReport(res);
       loadReports();

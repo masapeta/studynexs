@@ -6,7 +6,7 @@ import { api, getApiErrorMessage } from "@/lib/api";
 import { PageHeaderCard } from "@/components/layout/PageHeaderCard";
 import { FilterPillBar } from "@/components/layout/FilterPillBar";
 import { TEACHING } from "@/lib/dashboard-routes";
-import { AI_INPUT, clampText } from "@/lib/ai-input-limits";
+import { AI_INPUT, clampText, sanitizeAiText } from "@/lib/ai-input-limits";
 
 const TABS = [
   { key: "pending_review", label: "Pending review" },
@@ -76,9 +76,10 @@ export default function MasteryFlagsPage() {
         // Save any narrative edits before sending.
         const edited = drafts[flag.id];
         if (edited !== undefined && edited !== flag.narrative) {
+          const narrative = sanitizeAiText(edited, AI_INPUT.masteryNarrativeMaxLength, "Note");
           await api(`/api/v1/mastery/flags/${flag.id}/narrative`, {
             method: "PUT",
-            body: JSON.stringify({ narrative: edited }),
+            body: JSON.stringify({ narrative }),
           });
         }
         const res = await api(`/api/v1/mastery/flags/${flag.id}/notify`, { method: "POST" });

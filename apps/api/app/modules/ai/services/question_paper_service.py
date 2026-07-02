@@ -20,6 +20,7 @@ from app.db.models.academic import Class, Subject
 from app.db.models.ai_usage import AIUsage
 from app.db.models.question_paper import PaperStatus, QuestionPaper
 from app.modules.ai.gateway import LLMMessage, LLMResult, generate_llm, record_usage
+from app.modules.ai.gateway.output_guard import sanitize_paper_sections
 from app.modules.ai.services.ai_credits import credits_for_purpose, reserve_ai_credits
 from app.modules.ai.services.question_bank_service import (
     compose_sections_from_plan,
@@ -126,27 +127,7 @@ def _build_gap_fill_messages(
 
 
 def normalize_sections(raw_sections) -> list[dict]:
-    out: list[dict] = []
-    for s in raw_sections or []:
-        questions = []
-        for q in (s.get("questions") or []):
-            item = {
-                "number": str(q.get("number", "")),
-                "text": str(q.get("text", "")),
-                "marks": float(q.get("marks", 0) or 0),
-                "type": str(q.get("type", "short")),
-            }
-            if q.get("options"):
-                item["options"] = [str(o) for o in q["options"]]
-            if q.get("answer_key") is not None:
-                item["answer_key"] = str(q.get("answer_key"))
-            questions.append(item)
-        out.append({
-            "title": str(s.get("title", "")),
-            "instructions": str(s["instructions"]) if s.get("instructions") else None,
-            "questions": questions,
-        })
-    return out
+    return sanitize_paper_sections(raw_sections or [])
 
 
 async def _record_qp_llm_usage(

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { GraduationCap, School, Search, UserCog, X } from "lucide-react";
+import { GraduationCap, School, Search, UserCog } from "lucide-react";
 import { api } from "@/lib/api";
 
 type Result = {
@@ -15,11 +15,12 @@ type Result = {
 
 type Props = {
   open: boolean;
-  onClose: () => void;
+  onOpenChange: (open: boolean) => void;
 };
 
-export function GlobalSearch({ open, onClose }: Props) {
+export function TopBarSearch({ open, onOpenChange }: Props) {
   const router = useRouter();
+  const wrapRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Result[]>([]);
@@ -29,9 +30,29 @@ export function GlobalSearch({ open, onClose }: Props) {
     if (open) {
       setQuery("");
       setResults([]);
-      setTimeout(() => inputRef.current?.focus(), 50);
+      setTimeout(() => inputRef.current?.focus(), 30);
     }
   }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onOpenChange(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onOpenChange]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        onOpenChange(false);
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [open, onOpenChange]);
 
   const search = useCallback(async (q: string) => {
     const term = q.trim();
@@ -95,47 +116,52 @@ export function GlobalSearch({ open, onClose }: Props) {
     return () => clearTimeout(t);
   }, [query, open, search]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  if (!open) return null;
-
   const iconFor = (kind: Result["kind"]) => {
     if (kind === "student") return GraduationCap;
     if (kind === "staff") return UserCog;
     return School;
   };
 
+  const trimmed = query.trim();
+  const showDropdown = open && (loading || trimmed.length >= 2);
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        className="topbar-search-trigger"
+        onClick={() => onOpenChange(true)}
+      >
+        <Search size={16} aria-hidden />
+        <span className="topbar-search-placeholder">Search students, teachers, classes…</span>
+        <kbd className="topbar-search-kbd">⌘K</kbd>
+      </button>
+    );
+  }
+
   return (
-    <div className="topbar-search-overlay" onClick={onClose} role="presentation">
-      <div className="topbar-search-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="topbar-search-input-row">
-          <Search size={18} className="topbar-search-icon" />
-          <input
-            ref={inputRef}
-            className="topbar-search-input"
-            placeholder="Search students, teachers, classes..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <kbd className="topbar-search-kbd">Esc</kbd>
-          <button type="button" className="topbar-icon-btn" onClick={onClose} aria-label="Close">
-            <X size={18} />
-          </button>
-        </div>
-        <div className="topbar-search-results">
-          {loading && <p className="topbar-search-hint">Searching…</p>}
-          {!loading && query.length >= 2 && results.length === 0 && (
-            <p className="topbar-search-hint">No matches for &ldquo;{query}&rdquo;</p>
-          )}
-          {!loading && query.length < 2 && (
-            <p className="topbar-search-hint">Type at least 2 characters</p>
+    <div ref={wrapRef} className="topbar-search-combobox">
+      <div className="topbar-search-bar" role="search">
+        <Search size={16} className="topbar-search-bar-icon" aria-hidden />
+        <input
+          ref={inputRef}
+          type="text"
+          className="topbar-search-input"
+          placeholder="Search students, teachers, classes…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label="Search students, teachers, classes"
+          autoComplete="off"
+          spellCheck={false}
+        />
+        <kbd className="topbar-search-kbd">⌘K</kbd>
+      </div>
+
+      {showDropdown && (
+        <div className="topbar-search-suggestions" role="listbox">
+          {loading && <p className="topbar-notif-empty">Searching…</p>}
+          {!loading && trimmed.length >= 2 && results.length === 0 && (
+            <p className="topbar-notif-empty">No results for &ldquo;{trimmed}&rdquo;</p>
           )}
           {results.map((r) => {
             const Icon = iconFor(r.kind);
@@ -143,20 +169,21 @@ export function GlobalSearch({ open, onClose }: Props) {
               <button
                 key={`${r.kind}-${r.id}`}
                 type="button"
-                className="topbar-search-result"
+                className="topbar-profile-item"
+                role="option"
                 onClick={() => {
-                  onClose();
+                  onOpenChange(false);
                   router.push(r.href);
                 }}
               >
-                <Icon size={16} />
+                <Icon size={16} aria-hidden />
                 <span className="topbar-search-result-label">{r.label}</span>
                 {r.meta && <span className="topbar-search-result-meta">{r.meta}</span>}
               </button>
             );
           })}
         </div>
-      </div>
+      )}
     </div>
   );
 }

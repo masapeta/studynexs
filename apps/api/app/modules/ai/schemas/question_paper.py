@@ -6,6 +6,7 @@ import uuid
 from pydantic import BaseModel, Field, field_validator
 
 from app.modules.ai.gateway.input_guard import ALLOWED_DIFFICULTIES, sanitize_prompt_text, sanitize_topic_list
+from app.modules.ai.gateway.output_guard import sanitize_paper_sections
 
 
 class GenerateRequest(BaseModel):
@@ -101,7 +102,7 @@ class UpdatePaperRequest(BaseModel):
     def _sanitize_title(cls, v: object) -> str | None:
         if v is None or v == "":
             return None
-        return sanitize_prompt_text(str(v), max_length=200, field_name="title", reject_injection=False)
+        return sanitize_prompt_text(str(v), max_length=200, field_name="title", reject_injection=True)
 
     @field_validator("general_instructions", mode="before")
     @classmethod
@@ -109,8 +110,15 @@ class UpdatePaperRequest(BaseModel):
         if v is None or v == "":
             return None
         return sanitize_prompt_text(
-            str(v), max_length=4000, field_name="general_instructions", reject_injection=False
+            str(v), max_length=4000, field_name="general_instructions", reject_injection=True
         )
+
+    @field_validator("sections", mode="before")
+    @classmethod
+    def _sanitize_sections(cls, v: object) -> list | None:
+        if v is None:
+            return None
+        return sanitize_paper_sections(v)
 
 
 class DuplicatePaperRequest(BaseModel):
@@ -123,3 +131,11 @@ class DuplicatePaperRequest(BaseModel):
 
 class RejectPaperRequest(BaseModel):
     reason: str = Field(..., min_length=1, max_length=500)
+
+    @field_validator("reason", mode="before")
+    @classmethod
+    def _sanitize_reason(cls, v: object) -> str:
+        cleaned = sanitize_prompt_text(str(v), max_length=500, field_name="reason")
+        if not cleaned:
+            raise ValueError("reason is required")
+        return cleaned

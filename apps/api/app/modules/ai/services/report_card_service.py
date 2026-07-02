@@ -22,6 +22,7 @@ from app.db.models.examination import Exam, ExamMark
 from app.db.models.report_card import ReportCard, ReportStatus
 from app.db.models.student import Student
 from app.modules.ai.gateway import LLMMessage, generate_llm, record_usage
+from app.modules.ai.gateway.output_guard import sanitize_llm_plain_text
 from app.modules.ai.services.ai_credits import credits_for_purpose, reserve_ai_credits
 
 logger = structlog.get_logger()
@@ -227,7 +228,7 @@ async def generate_report_for_student(
             )
         else:
             raise
-    remark = (result.text or "").strip() or None
+    remark = sanitize_llm_plain_text(result.text, max_length=4000) or None
 
     report = ReportCard(
         school_id=school_id,

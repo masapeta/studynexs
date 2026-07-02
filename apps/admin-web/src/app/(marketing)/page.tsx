@@ -1,24 +1,21 @@
-import { AIStorySection } from "@/components/marketing/AIStorySection";
+import { CompanyFocusSection } from "@/components/marketing/CompanyFocusSection";
+import { HomeCTASection } from "@/components/marketing/HomeCTASection";
+import { HomeHeroSection } from "@/components/marketing/HomeHeroSection";
+import { HomeProductsSection } from "@/components/marketing/HomeProductsSection";
+import { AboutNoustriksSection, VisionSection } from "@/components/marketing/NoustriksSections";
 import { TrustBar } from "@/components/marketing/TrustBar";
-import {
-  CTASection,
-  FeaturesSection,
-  HeroSection,
-  MarketingFooter,
-  StatsSection,
-  TestimonialsSection,
-} from "@/components/marketing/Sections";
+import { MarketingFooter } from "@/components/marketing/Sections";
 
 export default function HomePage() {
   return (
     <main>
-      <HeroSection />
+      <HomeHeroSection />
       <TrustBar />
-      <StatsSection />
-      <FeaturesSection />
-      <AIStorySection />
-      <TestimonialsSection />
-      <CTASection />
+      <HomeProductsSection />
+      <CompanyFocusSection />
+      <AboutNoustriksSection />
+      <VisionSection />
+      <HomeCTASection />
       <MarketingFooter />
     </main>
   );

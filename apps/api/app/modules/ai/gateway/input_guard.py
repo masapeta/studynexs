@@ -6,12 +6,18 @@ import re
 _CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 _INJECTION_PATTERNS = re.compile(
     r"(ignore\s+(all\s+)?(previous|prior|above)\s+instructions?"
-    r"|disregard\s+(the\s+)?(system|above)"
+    r"|forget\s+(all\s+)?(previous|prior|your)\s+instructions?"
+    r"|disregard\s+(all\s+)?(previous|prior|above)\s+instructions?"
     r"|you\s+are\s+now"
+    r"|new\s+instructions?\s*:"
+    r"|override\s+(system|safety|content)\s+(prompt|rules|policy)"
     r"|<\s*/?\s*system\s*>"
-    r"|```\s*system)",
+    r"|```\s*system"
+    r"|\[INST\]|<\|im_start\|>|<\|im_end\|>|<<SYS>>)",
     re.IGNORECASE,
 )
+
+_TTS_VOICE_RE = re.compile(r"^[a-z]{2}-[A-Z]{2}-[A-Za-z]+Neural$")
 
 ALLOWED_DIFFICULTIES = frozenset({"easy", "balanced", "hard"})
 
@@ -90,6 +96,14 @@ def sanitize_lesson_key(key: str) -> str:
     if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,79}", k):
         raise ValueError("Invalid lesson key")
     return k
+
+
+def sanitize_tts_voice(voice: str | None, *, default: str) -> str:
+    """Allowlist Azure Neural voice names — blocks arbitrary SSML voice injection."""
+    v = (voice or default).strip()
+    if not _TTS_VOICE_RE.fullmatch(v):
+        raise ValueError("Invalid voice")
+    return v
 
 
 def safe_provider_error_detail(exc: BaseException) -> str:

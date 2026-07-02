@@ -8,13 +8,17 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.authorization import assert_can_access_student
-from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, get_current_user
 from app.core.rate_limit import rate_limit
-from app.modules.ai.gateway.input_guard import sanitize_lesson_key, sanitize_prompt_text
+from app.modules.ai.gateway.input_guard import sanitize_lesson_key, sanitize_prompt_text, sanitize_tts_voice
 from app.modules.tutor.schemas.tutor import TutorLessonOut, TutorRecommendationOut
-from app.modules.tutor.services.tts_service import synthesize_speech, tts_enabled
+from app.modules.tutor.services.tts_service import (
+    default_tts_voice,
+    resolve_tts_backend,
+    synthesize_speech,
+    tts_enabled,
+)
 from app.modules.tutor.services.tutor_service import get_lesson, list_recommendations
 from app.shared.schemas.common import APIResponse
 
@@ -31,10 +35,17 @@ class TtsRequest(BaseModel):
     @field_validator("text", mode="before")
     @classmethod
     def _sanitize_text(cls, v: object) -> str:
-        cleaned = sanitize_prompt_text(str(v), max_length=1200, field_name="text", reject_injection=False)
+        cleaned = sanitize_prompt_text(str(v), max_length=1200, field_name="text", reject_injection=True)
         if not cleaned:
             raise ValueError("text is required")
         return cleaned
+
+    @field_validator("voice", mode="before")
+    @classmethod
+    def _sanitize_voice(cls, v: object) -> str | None:
+        if v is None or v == "":
+            return None
+        return sanitize_tts_voice(str(v), default=default_tts_voice())
 
 
 @router.get(
@@ -84,7 +95,14 @@ async def tutor_lesson(
 @router.get("/tts/status")
 async def tts_status(current_user: CurrentUser = Depends(get_current_user)):
     """Whether cloud Neural TTS is available — the client uses it, else Web Speech."""
-    return APIResponse(data={"enabled": tts_enabled(), "voice": get_settings().AZURE_SPEECH_VOICE})
+    backend = resolve_tts_backend()
+    return APIResponse(
+        data={
+            "enabled": backend != "off",
+            "voice": default_tts_voice(),
+            "backend": backend,
+        }
+    )
 
 
 @router.post("/tts", dependencies=[rate_limit("tutor_tts", **_TTS_RATE)])

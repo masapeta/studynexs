@@ -83,6 +83,10 @@ export function DocumentPreviewModal({ title, blobUrl, onClose }: Props) {
           ref={iframeRef}
           src={blobUrl}
           title={title}
+          // Render server-generated document HTML without executing any scripts it
+          // may contain (defense-in-depth). allow-same-origin lets the parent call
+          // print(); allow-modals lets the print dialog open.
+          sandbox="allow-same-origin allow-modals"
           style={{ flex: 1, width: "100%", border: "none", background: "white" }}
         />
       </div>

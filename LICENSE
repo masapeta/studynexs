@@ -1,8 +1,16 @@
-Copyright (c) 2026 StudyNexs Technologies Pvt Ltd. All rights reserved.
+Copyright (c) 2026 Noustriks. All rights reserved.
 
-This software and associated documentation files (the "Software") are proprietary
-and confidential. No part of the Software may be copied, modified, merged, published,
-distributed, sublicensed, sold, or used to create derivative works without express
-written permission from the copyright holder.
+Owner: Avinash Reddy Masapeta (ARM)
+
+This software and associated documentation files (the "Software"), including
+the StudyNexs platform, Memory Fabric, and related Noustriks products in
+this repository, are proprietary and confidential.
+
+No part of the Software may be copied, modified, merged, published, distributed,
+sublicensed, sold, or used to create derivative works without express written
+permission from Noustriks or the copyright owner named above.
 
 THE SOFTWARE IS PROVIDED FOR INTERNAL AND LICENSED CUSTOMER USE ONLY.
+
+Third-party open-source components remain subject to their respective licenses.
+See documentation for dependency compliance.

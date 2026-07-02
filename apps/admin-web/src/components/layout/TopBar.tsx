@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Bell, Calendar, ChevronDown, CircleHelp, GraduationCap, LogOut, Search, Settings } from "lucide-react";
+import { Bell, Calendar, ChevronDown, CircleHelp, GraduationCap, LogOut, Settings } from "lucide-react";
 import { api } from "@/lib/api";
 import { PersonMono } from "@/components/briefing/PersonMono";
 import { roleLabel } from "@/lib/permissions";
-import { GlobalSearch } from "./GlobalSearch";
+import { todayCompact } from "@/lib/format";
+import { TopBarSearch } from "./GlobalSearch";
 
 type Notification = {
   id: string;
@@ -25,14 +26,9 @@ type Props = {
   onLogout: () => void | Promise<void>;
 };
 
-function formatToday() {
-  const d = new Date();
-  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  return `${months[d.getMonth()]} ${d.getDate()}, ${days[d.getDay()]}`;
-}
 
 export function TopBar({ userName, userRole, academicLabel, showSettings = true, onLogout }: Props) {
+  const [scrolled, setScrolled] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -54,10 +50,20 @@ export function TopBar({ userName, userRole, academicLabel, showSettings = true,
   }, []);
 
   useEffect(() => {
-    loadNotifications();
-    const id = setInterval(loadNotifications, 60000);
-    return () => clearInterval(id);
+    const id = window.setTimeout(() => loadNotifications(), 500);
+    const poll = window.setInterval(loadNotifications, 60000);
+    return () => {
+      clearTimeout(id);
+      clearInterval(poll);
+    };
   }, [loadNotifications]);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -66,6 +72,7 @@ export function TopBar({ userName, userRole, academicLabel, showSettings = true,
         setSearchOpen(true);
       }
       if (e.key === "Escape") {
+        setSearchOpen(false);
         setProfileOpen(false);
         setNotifOpen(false);
       }
@@ -114,7 +121,7 @@ export function TopBar({ userName, userRole, academicLabel, showSettings = true,
 
   return (
     <>
-      <header className="header topbar">
+      <header className={`header topbar${scrolled ? " topbar--scrolled" : ""}`}>
         <div className="topbar-left">
           <div className="topbar-chip topbar-chip--static topbar-context-chip">
             <GraduationCap size={14} aria-hidden />
@@ -123,15 +130,7 @@ export function TopBar({ userName, userRole, academicLabel, showSettings = true,
         </div>
 
         <div className="topbar-center">
-          <button
-            type="button"
-            className="topbar-search-trigger"
-            onClick={() => setSearchOpen(true)}
-          >
-            <Search size={16} />
-            <span className="topbar-search-placeholder">Search students, teachers, classes…</span>
-            <kbd className="topbar-search-kbd">⌘K</kbd>
-          </button>
+          <TopBarSearch open={searchOpen} onOpenChange={setSearchOpen} />
         </div>
 
         <div className="topbar-actions">
@@ -179,7 +178,7 @@ export function TopBar({ userName, userRole, academicLabel, showSettings = true,
 
           <div className="topbar-chip topbar-date-chip">
             <Calendar size={14} aria-hidden />
-            <span>{formatToday()}</span>
+            <span>{todayCompact()}</span>
           </div>
 
           <div className="topbar-profile-wrap" ref={profileRef}>
@@ -248,8 +247,6 @@ export function TopBar({ userName, userRole, academicLabel, showSettings = true,
           </div>
         </div>
       </header>
-
-      <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
     </>
   );
 }

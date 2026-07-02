@@ -172,8 +172,12 @@ class Settings(BaseSettings):
     OTEL_TRACES_SAMPLE_RATE: float = 1.0  # 0.0–1.0; lower in high-traffic prod
     OTEL_METRIC_EXPORT_INTERVAL_MS: int = 15000
 
-    # ── Azure Speech (Neural TTS for the AI-tutor voice) ─────────
-    # When unset, the tutor falls back to the browser's Web Speech voice.
+    # ── Tutor TTS (Neural voice for AI tutor lessons) ─────────────
+    # Provider: auto (Azure if key set, else Edge TTS), azure, edge, or off.
+    # Edge TTS uses the same Microsoft Neural voices without an API key — good for pilot/demo.
+    # Azure Speech is the production-grade path when you have a subscription + data residency needs.
+    TUTOR_TTS_PROVIDER: str = "auto"  # auto | azure | edge | off
+    TUTOR_TTS_RATE: str = "-8%"  # edge-tts / SSML prosody rate (slightly slower, teacher-like)
     AZURE_SPEECH_KEY: str = ""
     AZURE_SPEECH_REGION: str = "centralindia"  # data residency: keep Indian region
     AZURE_SPEECH_VOICE: str = "en-IN-NeerjaNeural"  # soft, natural female Indian English

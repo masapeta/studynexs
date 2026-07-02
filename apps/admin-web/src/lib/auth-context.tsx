@@ -37,14 +37,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   async function loadProfile() {
-    const profile = await api<{ data: User }>("/api/v1/users/me");
+    const [profile, permsRes] = await Promise.all([
+      api<{ data: User }>("/api/v1/users/me"),
+      api<{ data: UserPermissions }>("/api/v1/users/me/permissions").catch(() => null),
+    ]);
     setUser(profile.data);
-    try {
-      const permsRes = await api<{ data: UserPermissions }>("/api/v1/users/me/permissions");
-      setPermissions(permsRes.data);
-    } catch {
-      setPermissions(EMPTY_PERMISSIONS);
-    }
+    setPermissions(permsRes?.data ?? EMPTY_PERMISSIONS);
   }
 
   // Try to restore session on mount
