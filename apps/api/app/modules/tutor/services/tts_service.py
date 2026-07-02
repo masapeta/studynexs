@@ -8,7 +8,6 @@ When neither is available, `tts_enabled()` is False and the client falls back to
 """
 from __future__ import annotations
 
-import html
 import io
 import time
 from typing import Literal
@@ -18,6 +17,11 @@ import httpx
 from app.core.config import get_settings
 from app.modules.ai.gateway.input_guard import sanitize_tts_voice
 from app.modules.ai.telemetry import classify_llm_error, emit_tts_call
+from app.modules.tutor.services.speech_prepare import (
+    build_teacher_ssml,
+    prepare_teacher_speech_text,
+    rate_for_step_title,
+)
 
 settings = get_settings()
 
@@ -58,20 +62,24 @@ def tts_enabled() -> bool:
 
 
 def default_tts_voice() -> str:
-    return settings.AZURE_SPEECH_VOICE
+    return (settings.TUTOR_TTS_VOICE or settings.AZURE_SPEECH_VOICE).strip()
 
 
-def _ssml(text: str, voice: str) -> str:
-    safe = html.escape(text)
-    return (
-        "<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-IN'>"
-        f"<voice xml:lang='en-IN' name='{html.escape(voice, quote=True)}'>"
-        f"<prosody rate='-8%'>{safe}</prosody>"
-        "</voice></speak>"
-    )
+def tts_voice_display(voice_id: str | None = None) -> str:
+    """Human label shown in the tutor UI."""
+    vid = (voice_id or default_tts_voice()).strip()
+    if "NeerjaExpressive" in vid:
+        return "Neerja (expressive)"
+    if "Neerja" in vid:
+        return "Neerja"
+    if "Swara" in vid:
+        return "Swara (Hindi)"
+    if "Shruti" in vid:
+        return "Shruti (Telugu)"
+    return vid
 
 
-async def _synthesize_azure(text: str, voice: str) -> bytes:
+async def _synthesize_azure(ssml: str) -> bytes:
     url = f"https://{settings.AZURE_SPEECH_REGION}.tts.speech.microsoft.com/cognitiveservices/v1"
     headers = {
         "Ocp-Apim-Subscription-Key": settings.AZURE_SPEECH_KEY,
@@ -80,15 +88,17 @@ async def _synthesize_azure(text: str, voice: str) -> bytes:
         "User-Agent": "studynexs-tutor",
     }
     async with httpx.AsyncClient(timeout=20.0) as client:
-        resp = await client.post(url, headers=headers, content=_ssml(text, voice).encode("utf-8"))
+        resp = await client.post(url, headers=headers, content=ssml.encode("utf-8"))
     resp.raise_for_status()
     return resp.content
 
 
-async def _synthesize_edge(text: str, voice: str) -> bytes:
+async def _synthesize_edge(text: str, voice: str, *, rate: str) -> bytes:
     import edge_tts
 
-    communicate = edge_tts.Communicate(text, voice, rate=settings.TUTOR_TTS_RATE)
+    pitch = (settings.TUTOR_TTS_PITCH or "+0Hz").strip()
+    plain = prepare_teacher_speech_text(text)
+    communicate = edge_tts.Communicate(plain, voice, rate=rate, pitch=pitch)
     buf = io.BytesIO()
     async for message in communicate.stream():
         if message["type"] == "audio":
@@ -99,19 +109,27 @@ async def _synthesize_edge(text: str, voice: str) -> bytes:
     return audio
 
 
-async def synthesize_speech(text: str, voice: str | None = None) -> bytes:
-    """Return MP3 audio bytes for `text`. Raises RuntimeError if TTS is not configured."""
+async def synthesize_speech(
+    text: str,
+    voice: str | None = None,
+    *,
+    step_title: str | None = None,
+) -> bytes:
+    """Return MP3 audio bytes. Raises RuntimeError if TTS is not configured."""
     backend = resolve_tts_backend()
     if backend == "off":
         raise RuntimeError("TTS is not configured")
 
     voice = sanitize_tts_voice(voice, default=default_tts_voice())
+    rate = rate_for_step_title(step_title)
+
     started = time.perf_counter()
     try:
         if backend == "azure":
-            audio = await _synthesize_azure(text, voice)
+            ssml = build_teacher_ssml(text, voice, rate=rate)
+            audio = await _synthesize_azure(ssml)
         else:
-            audio = await _synthesize_edge(text, voice)
+            audio = await _synthesize_edge(text, voice, rate=rate)
     except Exception as exc:
         latency_ms = int((time.perf_counter() - started) * 1000)
         emit_tts_call(

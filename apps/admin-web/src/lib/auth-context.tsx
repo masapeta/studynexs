@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { api, getAccessTokenFromAuthResponse, setAccessToken } from "@/lib/api";
+import { api, getAccessToken, getAccessTokenFromAuthResponse, setAccessToken } from "@/lib/api";
 import { EMPTY_PERMISSIONS, UserPermissions } from "@/lib/permissions";
 
 interface User {
@@ -55,13 +55,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const token = getAccessTokenFromAuthResponse(res);
         if (token) {
           setAccessToken(token);
-          await loadProfile();
         }
       } catch {
-        setAccessToken(null);
-      } finally {
-        setLoading(false);
+        // Refresh can fail cross-origin (localhost web → 127.0.0.1 API) while the
+        // access token in sessionStorage is still valid — do not wipe it.
+        if (!getAccessToken()) {
+          setAccessToken(null);
+        }
       }
+
+      if (getAccessToken()) {
+        try {
+          await loadProfile();
+        } catch {
+          setAccessToken(null);
+          setUser(null);
+          setPermissions(null);
+        }
+      }
+
+      setLoading(false);
     }
     init();
   }, []);

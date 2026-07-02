@@ -36,13 +36,13 @@ Focus: **confidence and clarity**. No production infra, no real PII.
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
 | G1-01 | Visible **“Demo data”** banner in UI (not live parent/student data) | ✅ | `DemoDataBanner`; tenant `test` / `demo`, `development`, or `NEXT_PUBLIC_DEMO_MODE=true` |
-| G1-02 | Pre-seed **one clean E2E journey**: principal → teacher → QP → marks/eval → report card → parent view | ⬜ | See seed scripts + DEMO-03 below |
+| G1-02 | Pre-seed **one clean E2E journey**: principal → teacher → QP → marks/eval → report card → parent view | ✅ | `scripts/seed_demo_e2e_journey.py` + tutor misconception |
 | G1-03 | **AI fallback** on heavy screens (timeout → show pre-approved draft or stub message) | ⬜ | Partial: report card has stub fallback; QP needs backup paper |
 | G1-04 | **Hide or label** incomplete modules (payments, full notifications, parent rollout at scale) | ⬜ | Roadmap page or “Preview” badges |
 | G1-05 | **“Not live yet”** talking points: privacy, consent, storage, parent onboarding | ⬜ | Verbal + optional 1-pager; see G1-06 |
 | G1-06 | Hands-on **cheat sheet** + optional `docs/pilot/HANDS_ON_RUNBOOK.md` | ✅ | [HANDS_ON_RUNBOOK.md](./pilot/HANDS_ON_RUNBOOK.md) |
 | G1-07 | Deploy **HTTPS URL** (not localhost) | ⬜ | DEMO-02 |
-| G1-08 | Run `smoke_demo_readiness.py` + `e2e-smoke.cjs` | 🟡 | DEMO-04; Playwright in package.json |
+| G1-08 | Run `smoke_demo_readiness.py` + `e2e-smoke.cjs` | ✅ | API smoke 25/25; E2E via `localhost:3002` prod build + tutor Neerja |
 | G1-09 | **Own Gemini key** or pre-approved QP backup | ⬜ | DEMO-05, DEMO-03 |
 
 **Explicitly out of Gate 1:** Azure Blob, CI/CD, consent product, async workers, malware scan, subdomain tenant routing.

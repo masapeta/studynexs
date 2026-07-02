@@ -89,28 +89,31 @@ def record_llm_otel(
 ) -> None:
     if not otel_enabled(get_settings()):
         return
-    _init_instruments()
-    attrs = _attrs(
-        feature=feature,
-        provider=provider,
-        model=model,
-        status=status,
-        primary_provider=primary_provider,
-    )
-    if error_type:
-        attrs["error_type"] = error_type
-    if caller:
-        attrs["caller"] = caller
+    try:
+        _init_instruments()
+        attrs = _attrs(
+            feature=feature,
+            provider=provider,
+            model=model,
+            status=status,
+            primary_provider=primary_provider,
+        )
+        if error_type:
+            attrs["error_type"] = error_type
+        if caller:
+            attrs["caller"] = caller
 
-    _llm_requests.add(1, attrs)
-    if tokens_in:
-        _llm_tokens_in.add(tokens_in, attrs)
-    if tokens_out:
-        _llm_tokens_out.add(tokens_out, attrs)
-    if latency_ms > 0:
-        _llm_latency.record(latency_ms, attrs)
-    if used_fallback and status != "error":
-        _llm_fallbacks.add(1, attrs)
+        _llm_requests.add(1, attrs)
+        if tokens_in:
+            _llm_tokens_in.add(tokens_in, attrs)
+        if tokens_out:
+            _llm_tokens_out.add(tokens_out, attrs)
+        if latency_ms > 0:
+            _llm_latency.record(latency_ms, attrs)
+        if used_fallback and status != "error":
+            _llm_fallbacks.add(1, attrs)
+    except Exception:
+        return
 
 
 def record_tts_otel(
@@ -122,15 +125,19 @@ def record_tts_otel(
 ) -> None:
     if not otel_enabled(get_settings()):
         return
-    _init_instruments()
-    attrs: dict[str, str] = {"status": status}
-    if voice:
-        attrs["voice"] = voice
-    if error_type:
-        attrs["error_type"] = error_type
-    _tts_requests.add(1, attrs)
-    if latency_ms > 0:
-        _tts_latency.record(latency_ms, attrs)
+    try:
+        _init_instruments()
+        attrs: dict[str, str] = {"status": status}
+        if voice:
+            attrs["voice"] = voice
+        if error_type:
+            attrs["error_type"] = error_type
+        _tts_requests.add(1, attrs)
+        if latency_ms > 0:
+            _tts_latency.record(latency_ms, attrs)
+    except Exception:
+        # Telemetry must never break tutor TTS or other user-facing AI paths.
+        return
 
 
 def llm_span(

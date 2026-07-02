@@ -19,6 +19,14 @@ _INJECTION_PATTERNS = re.compile(
 
 _TTS_VOICE_RE = re.compile(r"^[a-z]{2}-[A-Z]{2}-[A-Za-z]+Neural$")
 
+# Tutor: Indian female Neural voices only (blocks en-IN-PrabhatNeural and arbitrary voices).
+ALLOWED_TUTOR_VOICES = frozenset({
+    "en-IN-NeerjaNeural",
+    "en-IN-NeerjaExpressiveNeural",
+    "hi-IN-SwaraNeural",
+    "te-IN-ShrutiNeural",
+})
+
 ALLOWED_DIFFICULTIES = frozenset({"easy", "balanced", "hard"})
 
 _SENSITIVE_RUNTIME = re.compile(
@@ -99,9 +107,9 @@ def sanitize_lesson_key(key: str) -> str:
 
 
 def sanitize_tts_voice(voice: str | None, *, default: str) -> str:
-    """Allowlist Azure Neural voice names — blocks arbitrary SSML voice injection."""
+    """Allowlist Indian female Neural voices — blocks male/other voices for tutor TTS."""
     v = (voice or default).strip()
-    if not _TTS_VOICE_RE.fullmatch(v):
+    if v not in ALLOWED_TUTOR_VOICES:
         raise ValueError("Invalid voice")
     return v
 

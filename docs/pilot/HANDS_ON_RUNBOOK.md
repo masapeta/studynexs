@@ -26,6 +26,15 @@ Say this before anyone logs in:
 
 From repo root, API must have Postgres running and migrations applied.
 
+**One command (recommended — G1-02):**
+
+```powershell
+cd apps\api
+python scripts\seed_demo_e2e_journey.py
+```
+
+Or run the chain manually:
+
 ```powershell
 cd apps\api
 
@@ -47,7 +56,8 @@ python scripts\seed_working_session.py
 ```powershell
 cd apps\api
 # Ensure .env has DB + at least one AI key (Gemini recommended for demo)
-uvicorn app.main:app --reload --port 8000
+# On Windows use 127.0.0.1 — localhost may hit Docker/WSL on :8000
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 **Terminal 2 — Admin web (port 3000)**
@@ -66,10 +76,13 @@ cd apps\api
 python scripts\smoke_demo_readiness.py
 
 cd ..\admin-web
-npm run e2e-smoke
+npm run build
+npx next start -p 3002
+# In another terminal (Turbopack dev often blocks Playwright hydration):
+$env:E2E_BASE_URL='http://localhost:3002'; npm run e2e-smoke
 ```
 
-Both need servers running. E2E screenshots land in `%TEMP%\sn-e2e\`.
+Ensure API `ALLOWED_ORIGINS` includes `http://127.0.0.1:3002` (see `apps/api/.env`). Both need servers running. E2E screenshots land in `%TEMP%\sn-e2e\`.
 
 ### 2.4 Pre-approve one question paper (AI backup)
 
@@ -189,7 +202,7 @@ Use if they ask about privacy, storage, or parent rollout:
 
 | Symptom | Fix |
 |---------|-----|
-| Blank page / 401 | Re-login; confirm API on `:8000` and `X-Tenant-Slug: test` |
+| Blank page / 401 | Re-login; confirm API on `127.0.0.1:8000` and `X-Tenant-Slug: test` |
 | AI generate hangs | Use pre-approved paper; check Gemini/OpenAI key in API `.env` |
 | `e2e-smoke` connection refused | Start both servers first |
 | Parent/student login fails | Re-run `patch_demo_portal_logins.py` |

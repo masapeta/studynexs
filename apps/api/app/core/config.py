@@ -176,11 +176,14 @@ class Settings(BaseSettings):
     # Provider: auto (Azure if key set, else Edge TTS), azure, edge, or off.
     # Edge TTS uses the same Microsoft Neural voices without an API key — good for pilot/demo.
     # Azure Speech is the production-grade path when you have a subscription + data residency needs.
-    TUTOR_TTS_PROVIDER: str = "auto"  # auto | azure | edge | off
-    TUTOR_TTS_RATE: str = "-8%"  # edge-tts / SSML prosody rate (slightly slower, teacher-like)
+    TUTOR_TTS_PROVIDER: str = "edge"  # edge | auto | azure | off — edge = Neerja without Azure key
+    TUTOR_TTS_RATE: str = "-12%"  # base prosody — explain steps go slower in speech_prepare
+    TUTOR_TTS_PITCH: str = "+0Hz"  # edge-tts pitch — keep Neerja natural
+    # Expressive Neerja — warmer intonation for teaching (not flat read-aloud).
+    TUTOR_TTS_VOICE: str = "en-IN-NeerjaExpressiveNeural"
     AZURE_SPEECH_KEY: str = ""
     AZURE_SPEECH_REGION: str = "centralindia"  # data residency: keep Indian region
-    AZURE_SPEECH_VOICE: str = "en-IN-NeerjaNeural"  # soft, natural female Indian English
+    AZURE_SPEECH_VOICE: str = "en-IN-NeerjaExpressiveNeural"
 
     # ── Derived Properties ───────────────────────────────────────
     @property

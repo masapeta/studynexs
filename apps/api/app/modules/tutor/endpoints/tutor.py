@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import uuid
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,11 +19,13 @@ from app.modules.tutor.services.tts_service import (
     resolve_tts_backend,
     synthesize_speech,
     tts_enabled,
+    tts_voice_display,
 )
 from app.modules.tutor.services.tutor_service import get_lesson, list_recommendations
 from app.shared.schemas.common import APIResponse
 
 router = APIRouter()
+logger = structlog.get_logger()
 
 _TTS_RATE = {"max_requests": 40, "window_seconds": 60}
 _TTS_ROLES = frozenset({"student", "parent", "teacher", "class_incharge", "admin", "super_admin"})
@@ -31,6 +34,7 @@ _TTS_ROLES = frozenset({"student", "parent", "teacher", "class_incharge", "admin
 class TtsRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=1200)
     voice: str | None = Field(None, max_length=60)
+    step_title: str | None = Field(None, max_length=80)
 
     @field_validator("text", mode="before")
     @classmethod
@@ -46,6 +50,14 @@ class TtsRequest(BaseModel):
         if v is None or v == "":
             return None
         return sanitize_tts_voice(str(v), default=default_tts_voice())
+
+    @field_validator("step_title", mode="before")
+    @classmethod
+    def _sanitize_step_title(cls, v: object) -> str | None:
+        if v is None or v == "":
+            return None
+        cleaned = sanitize_prompt_text(str(v), max_length=80, field_name="step_title", reject_injection=False)
+        return cleaned or None
 
 
 @router.get(
@@ -93,13 +105,15 @@ async def tutor_lesson(
 
 
 @router.get("/tts/status")
-async def tts_status(current_user: CurrentUser = Depends(get_current_user)):
-    """Whether cloud Neural TTS is available — the client uses it, else Web Speech."""
+async def tts_status():
+    """Whether cloud Neural TTS (Neerja) is available — no auth required."""
     backend = resolve_tts_backend()
+    voice = default_tts_voice()
     return APIResponse(
         data={
             "enabled": backend != "off",
-            "voice": default_tts_voice(),
+            "voice": voice,
+            "voice_display": tts_voice_display(voice),
             "backend": backend,
         }
     )
@@ -116,11 +130,20 @@ async def tutor_tts(
     if not tts_enabled():
         raise HTTPException(status_code=503, detail="Voice synthesis is not configured")
     try:
-        audio = await synthesize_speech(body.text, body.voice)
-    except Exception:
-        raise HTTPException(status_code=502, detail="Voice synthesis failed")
+        audio = await synthesize_speech(body.text, body.voice, step_title=body.step_title)
+    except Exception as exc:
+        logger.warning("tutor_tts_synthesis_failed", error_type=type(exc).__name__)
+        raise HTTPException(status_code=502, detail="Voice synthesis failed") from exc
+    voice_used = sanitize_tts_voice(body.voice, default=default_tts_voice())
+    backend = resolve_tts_backend()
     return Response(
         content=audio,
         media_type="audio/mpeg",
-        headers={"Cache-Control": "private, max-age=86400", "X-Content-Type-Options": "nosniff"},
+        headers={
+            "Cache-Control": "private, max-age=86400",
+            "X-Content-Type-Options": "nosniff",
+            "X-TTS-Voice": voice_used,
+            "X-TTS-Backend": backend,
+            "X-TTS-Voice-Display": tts_voice_display(voice_used),
+        },
     )

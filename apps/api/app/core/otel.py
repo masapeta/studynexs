@@ -22,6 +22,8 @@ def otel_enabled(settings: Settings) -> bool:
         return False
     if not settings.OTEL_ENABLED:
         return False
+    if not _otel_available():
+        return False
     return bool((settings.OTEL_EXPORTER_OTLP_ENDPOINT or "").strip())
 
 

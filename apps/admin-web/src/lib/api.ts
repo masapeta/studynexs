@@ -1,7 +1,15 @@
 // API client — handles auth tokens and base URL
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// Use 127.0.0.1 (not localhost): on Windows, localhost often resolves to ::1 and can
+// hit Docker/WSL on :8000 instead of the local uvicorn with edge-tts.
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 export const TENANT_SLUG =
   process.env.NEXT_PUBLIC_TENANT_SLUG || "test";
+
+const PUBLIC_API_PATHS = ["/api/v1/tutor/tts/status", "/health", "/ready"];
+
+function isPublicApiPath(path: string): boolean {
+  return PUBLIC_API_PATHS.some((p) => path === p || path.startsWith(`${p}?`));
+}
 
 /** Auth endpoints return flat JSON; domain endpoints use { data: ... }. */
 export function getAccessTokenFromAuthResponse(
@@ -17,10 +25,29 @@ export function getAccessTokenFromAuthResponse(
   return null;
 }
 
-let accessToken: string | null = null;
+const TOKEN_KEY = "sn_access_token";
+
+function readStoredToken(): string | null {
+  if (typeof sessionStorage === "undefined") return null;
+  try {
+    return sessionStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+let accessToken: string | null = readStoredToken();
 
 export function setAccessToken(token: string | null) {
   accessToken = token;
+  if (typeof sessionStorage !== "undefined") {
+    try {
+      if (token) sessionStorage.setItem(TOKEN_KEY, token);
+      else sessionStorage.removeItem(TOKEN_KEY);
+    } catch {
+      // Private mode / disabled storage — in-memory token still works for this tab.
+    }
+  }
 }
 
 export function getAccessToken() {
@@ -42,7 +69,7 @@ export async function api<T = any>(
     headers["Content-Type"] = "application/json";
   }
 
-  if (accessToken) {
+  if (accessToken && !isPublicApiPath(path)) {
     headers["Authorization"] = `Bearer ${accessToken}`;
   }
 
@@ -66,7 +93,7 @@ export async function api<T = any>(
     // reload-loops: auth-context calls /auth/refresh on mount, the 401 forces a
     // window.location redirect to "/", which remounts and calls /auth/refresh again.
     const isAuthCall = path.includes("/auth/");
-    if (!isAuthCall) {
+    if (!isAuthCall && !isPublicApiPath(path)) {
       const refreshed = await refreshToken();
       if (refreshed) {
         headers["Authorization"] = `Bearer ${accessToken}`;
@@ -106,7 +133,7 @@ export async function api<T = any>(
 
 let refreshInFlight: Promise<boolean> | null = null;
 
-async function refreshToken(): Promise<boolean> {
+export async function refreshToken(): Promise<boolean> {
   if (!refreshInFlight) {
     refreshInFlight = doRefreshToken().finally(() => {
       refreshInFlight = null;
@@ -189,6 +216,92 @@ export async function fetchProtectedDocumentUrl(path: string): Promise<string> {
 
   _fetchDocInFlight.set(path, promise);
   return promise;
+}
+
+/** Public TTS capability probe — no auth, no 401 redirect. */
+export type TutorTtsStatus = {
+  enabled: boolean;
+  voice: string;
+  voice_display: string;
+  backend: string;
+};
+
+export async function fetchTtsStatus(): Promise<TutorTtsStatus> {
+  const res = await fetch(`${API_URL}/api/v1/tutor/tts/status`, {
+    headers: { "X-Tenant-Slug": TENANT_SLUG },
+    credentials: "include",
+  });
+  if (!res.ok) {
+    throw new ApiError(res.status, "Could not check Neerja voice status.");
+  }
+  const json = (await res.json()) as { data?: TutorTtsStatus };
+  const data = json.data;
+  if (!data) {
+    throw new ApiError(502, "Invalid TTS status response from API.");
+  }
+  return data;
+}
+
+/** POST JSON → binary audio (tutor TTS). Retries once after token refresh on 401. */
+export type TutorSpeechResult = {
+  blob: Blob;
+  voice: string;
+  voiceDisplay: string;
+  backend: string;
+};
+
+export async function fetchTutorSpeechBlob(
+  text: string,
+  voice: string,
+  stepTitle?: string
+): Promise<TutorSpeechResult> {
+  const body = JSON.stringify({
+    text,
+    voice,
+    ...(stepTitle ? { step_title: stepTitle } : {}),
+  });
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${getAccessToken()}`,
+    "X-Tenant-Slug": TENANT_SLUG,
+  };
+
+  let res = await fetch(`${API_URL}/api/v1/tutor/tts`, {
+    method: "POST",
+    headers,
+    body,
+    credentials: "include",
+  });
+
+  if (res.status === 401) {
+    const refreshed = await refreshToken();
+    if (refreshed) {
+      res = await fetch(`${API_URL}/api/v1/tutor/tts`, {
+        method: "POST",
+        headers: {
+          ...headers,
+          Authorization: `Bearer ${getAccessToken()}`,
+        },
+        body,
+        credentials: "include",
+      });
+    }
+  }
+
+  if (!res.ok) {
+    throw new ApiError(res.status, "Teacher voice is temporarily unavailable.");
+  }
+
+  const blob = await res.blob();
+  if (!blob.size) {
+    throw new ApiError(502, "Teacher voice returned empty audio.");
+  }
+  return {
+    blob,
+    voice: res.headers.get("X-TTS-Voice") || voice,
+    voiceDisplay: res.headers.get("X-TTS-Voice-Display") || "Neerja",
+    backend: res.headers.get("X-TTS-Backend") || "edge",
+  };
 }
 
 export const apiAuth = {

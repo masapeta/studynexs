@@ -3,79 +3,71 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Pause, Play, RotateCcw, SkipBack, SkipForward, Volume2 } from "lucide-react";
 import TutorVisual from "./TutorVisual";
-import { API_URL, TENANT_SLUG, api, getAccessToken } from "@/lib/api";
+import { fetchTtsStatus, fetchTutorSpeechBlob } from "@/lib/api";
 import type { TutorLesson, TutorStep } from "@/lib/student-portal";
 
+/** Microsoft Neural Neerja — must match API TUTOR_TTS_VOICE. */
+const NEERJA_VOICE = "en-IN-NeerjaExpressiveNeural";
+
 type SpeechState = "idle" | "playing" | "paused";
-
-// Prefer a soft female Indian-English voice (e.g. Windows "Heera", Azure "Neerja",
-// Chrome "English (India)"). Avoid the male Indian voices ("Ravi" etc.).
-const FEMALE_INDIAN = /(heera|neerja|aarohi|ananya|kalpana|swara|asha|veena|priya|isha|female)/i;
-const MALE_HINT = /(ravi|prabhat|madhur|hemant|valluvar|\bmale\b)/i;
-
-function pickTeacherVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
-  if (!voices.length) return null;
-  const en = voices.filter((v) => (v.lang || "").toLowerCase().startsWith("en"));
-  const indian = en.filter(
-    (v) => (v.lang || "").toLowerCase() === "en-in" || /india/i.test(v.name)
-  );
-  return (
-    indian.find((v) => FEMALE_INDIAN.test(v.name) && !MALE_HINT.test(v.name)) ||
-    indian.find((v) => !MALE_HINT.test(v.name)) ||
-    indian[0] ||
-    en.find((v) => FEMALE_INDIAN.test(v.name) && !MALE_HINT.test(v.name)) ||
-    en[0] ||
-    null
-  );
-}
 
 export default function TutorLessonPlayer({ lesson }: { lesson: TutorLesson }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [speechState, setSpeechState] = useState<SpeechState>("idle");
-  const [voiceReady, setVoiceReady] = useState(false);
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const voiceRef = useRef<SpeechSynthesisVoice | null>(null);
+  const [ttsStatusLoaded, setTtsStatusLoaded] = useState(false);
+  const [cloudEnabled, setCloudEnabled] = useState(false);
+  const [voiceError, setVoiceError] = useState("");
+  const [activeVoiceLabel, setActiveVoiceLabel] = useState("Neerja");
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const objUrlRef = useRef<string | null>(null);
-  const cloudRef = useRef(false); // cloud Neural TTS available?
-  const modeRef = useRef<"cloud" | "web">("web"); // active playback path
-  const [cloudReady, setCloudReady] = useState(false);
+  const cloudEnabledRef = useRef(false);
+  const cloudVoiceRef = useRef(NEERJA_VOICE);
+  const cloudBackendRef = useRef("edge");
 
   const steps = lesson.steps;
   const step: TutorStep | undefined = steps[stepIndex];
 
   useEffect(() => {
-    const supported = typeof window !== "undefined" && "speechSynthesis" in window;
-    setVoiceReady(supported);
-    // getVoices() is often empty on first call — voices arrive async via "voiceschanged".
-    const load = () => {
-      voiceRef.current = pickTeacherVoice(window.speechSynthesis.getVoices());
-    };
-    if (supported) {
-      load();
-      window.speechSynthesis.addEventListener?.("voiceschanged", load);
-    }
-    // Cloud Neural TTS (soft female Indian voice) when configured; else Web Speech.
     const audio = new Audio();
     audio.onended = () => setSpeechState("idle");
-    audio.onerror = () => setSpeechState("idle");
+    audio.onerror = () => {
+      setSpeechState("idle");
+      setVoiceError("Could not play Neerja voice. Try Play again.");
+    };
     audioRef.current = audio;
-    api("/api/v1/tutor/tts/status")
-      .then((r: any) => {
-        cloudRef.current = !!r?.data?.enabled;
-        setCloudReady(cloudRef.current);
+
+    fetchTtsStatus()
+      .then((data) => {
+        const enabled = !!data.enabled;
+        cloudEnabledRef.current = enabled;
+        setCloudEnabled(enabled);
+        const v = data.voice || "";
+        cloudVoiceRef.current = v.includes("Neerja") ? v : NEERJA_VOICE;
+        cloudBackendRef.current = data.backend || "off";
+        setActiveVoiceLabel(data.voice_display || "Neerja");
+        if (!enabled) {
+          setVoiceError(
+            "Neerja is off on the API process your browser reached. Use API URL http://127.0.0.1:8000 (not localhost) if Docker/WSL also uses port 8000, then restart uvicorn with edge-tts in the venv."
+          );
+        }
       })
-      .catch(() => {});
+      .catch(() => {
+        cloudEnabledRef.current = false;
+        setCloudEnabled(false);
+        setVoiceError(
+          "Cannot reach the API for Neerja voice. Start uvicorn on 127.0.0.1:8000 with edge-tts in the venv."
+        );
+      })
+      .finally(() => setTtsStatusLoaded(true));
+
     return () => {
-      if (supported) window.speechSynthesis.removeEventListener?.("voiceschanged", load);
-      window.speechSynthesis?.cancel();
       audio.pause();
       if (objUrlRef.current) URL.revokeObjectURL(objUrlRef.current);
     };
   }, []);
 
   const stopSpeech = useCallback(() => {
-    window.speechSynthesis?.cancel();
     const a = audioRef.current;
     if (a) {
       a.pause();
@@ -85,86 +77,77 @@ export default function TutorLessonPlayer({ lesson }: { lesson: TutorLesson }) {
       URL.revokeObjectURL(objUrlRef.current);
       objUrlRef.current = null;
     }
-    utteranceRef.current = null;
     setSpeechState("idle");
   }, []);
-
-  const playWeb = useCallback(
-    (index: number) => {
-      const s = steps[index];
-      if (!s || !voiceReady) return;
-      const utter = new SpeechSynthesisUtterance(s.narration);
-      utter.rate = 0.88; // a touch slower — calmer, clearer for a young learner
-      utter.pitch = 1.08; // gently higher — softer, warmer
-      const voice = voiceRef.current ?? pickTeacherVoice(window.speechSynthesis.getVoices());
-      if (voice) utter.voice = voice;
-      utter.lang = voice?.lang || "en-IN"; // bias to Indian English even on a default voice
-      utter.onend = () => setSpeechState("idle");
-      utter.onerror = () => setSpeechState("idle");
-      utteranceRef.current = utter;
-      modeRef.current = "web";
-      window.speechSynthesis.speak(utter);
-      setSpeechState("playing");
-    },
-    [steps, voiceReady]
-  );
 
   const speakStep = useCallback(
     async (index: number) => {
       const s = steps[index];
       if (!s) return;
       stopSpeech();
-      if (!cloudRef.current) {
-        playWeb(index);
+      setVoiceError("");
+
+      if (!cloudEnabledRef.current) {
         return;
       }
-      // Cloud Neural TTS — soft female Indian voice; fall back to Web Speech on any error.
-      try {
-        const res = await fetch(`${API_URL}/api/v1/tutor/tts`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${getAccessToken()}`,
-            "X-Tenant-Slug": TENANT_SLUG,
-          },
-          body: JSON.stringify({ text: s.narration }),
-          credentials: "include",
-        });
-        if (!res.ok) throw new Error("tts");
-        const url = URL.createObjectURL(await res.blob());
-        objUrlRef.current = url;
-        const a = audioRef.current;
-        if (!a) throw new Error("audio");
-        a.src = url;
-        modeRef.current = "cloud";
-        await a.play();
-        setSpeechState("playing");
-      } catch {
-        cloudRef.current = false; // give up on cloud for the rest of the session
-        playWeb(index);
+
+      const voice = cloudVoiceRef.current.includes("Neerja")
+        ? cloudVoiceRef.current
+        : NEERJA_VOICE;
+
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const { blob, voice: used, voiceDisplay, backend } = await fetchTutorSpeechBlob(
+            s.narration,
+            voice,
+            s.title
+          );
+          if (!used.includes("Neerja")) {
+            throw new Error("wrong voice");
+          }
+          setActiveVoiceLabel(voiceDisplay);
+          cloudBackendRef.current = backend;
+          const url = URL.createObjectURL(blob);
+          if (objUrlRef.current) URL.revokeObjectURL(objUrlRef.current);
+          objUrlRef.current = url;
+          const a = audioRef.current;
+          if (!a) throw new Error("audio");
+          a.src = url;
+          await a.play();
+          setSpeechState("playing");
+          return;
+        } catch {
+          if (attempt === 1) {
+            setVoiceError(
+              "Neerja cloud voice failed. Confirm edge-tts is installed in the API venv and restart the server."
+            );
+          }
+        }
       }
     },
-    [steps, stopSpeech, playWeb]
+    [steps, stopSpeech]
   );
 
   const handlePlay = () => {
+    if (!ttsStatusLoaded) return;
     if (speechState === "paused") {
-      if (modeRef.current === "cloud") audioRef.current?.play();
-      else window.speechSynthesis.resume();
+      audioRef.current?.play();
       setSpeechState("playing");
       return;
     }
-    speakStep(stepIndex);
+    void speakStep(stepIndex);
   };
 
   const handlePause = () => {
     if (speechState !== "playing") return;
-    if (modeRef.current === "cloud") audioRef.current?.pause();
-    else window.speechSynthesis.pause();
+    audioRef.current?.pause();
     setSpeechState("paused");
   };
 
-  const handleReplay = () => speakStep(stepIndex);
+  const handleReplay = () => {
+    if (!ttsStatusLoaded) return;
+    void speakStep(stepIndex);
+  };
 
   const goStep = (next: number) => {
     stopSpeech();
@@ -176,6 +159,10 @@ export default function TutorLessonPlayer({ lesson }: { lesson: TutorLesson }) {
   }, [stepIndex, stopSpeech]);
 
   if (!step) return null;
+
+  const voiceHint = cloudEnabled
+    ? `${activeVoiceLabel} · Microsoft Neural (${cloudBackendRef.current}) · English (India)`
+    : "Neerja voice unavailable — confirm API at 127.0.0.1:8000 (not localhost) with edge-tts in the venv.";
 
   return (
     <div className="tutor-player">
@@ -226,11 +213,23 @@ export default function TutorLessonPlayer({ lesson }: { lesson: TutorLesson }) {
             <Pause size={22} /> Pause
           </button>
         ) : (
-          <button type="button" className="btn btn-primary tutor-ctrl-main" onClick={handlePlay}>
-            <Play size={22} /> {speechState === "paused" ? "Resume" : "Play voice"}
+          <button
+            type="button"
+            className="btn btn-primary tutor-ctrl-main"
+            onClick={handlePlay}
+            disabled={!ttsStatusLoaded}
+          >
+            <Play size={22} />{" "}
+            {!ttsStatusLoaded ? "Loading Neerja…" : speechState === "paused" ? "Resume" : "Play voice"}
           </button>
         )}
-        <button type="button" className="btn btn-ghost tutor-ctrl" onClick={handleReplay} aria-label="Replay step">
+        <button
+          type="button"
+          className="btn btn-ghost tutor-ctrl"
+          onClick={handleReplay}
+          disabled={!ttsStatusLoaded}
+          aria-label="Replay step"
+        >
           <RotateCcw size={20} />
         </button>
         <button
@@ -244,13 +243,11 @@ export default function TutorLessonPlayer({ lesson }: { lesson: TutorLesson }) {
         </button>
       </div>
 
+      {voiceError ? <p className="tutor-voice-hint tutor-voice-hint--warn">{voiceError}</p> : null}
+
       <p className="tutor-voice-hint">
         <Volume2 size={14} style={{ verticalAlign: "middle", marginRight: 4 }} />
-        {voiceReady || cloudReady
-          ? cloudReady
-            ? "Soft Indian teacher voice + diagram — pause or replay any step until it clicks."
-            : "Teacher-style voice + diagram — pause or replay any step until it clicks."
-          : "Voice not supported in this browser — read the steps below."}
+        {voiceHint}
       </p>
     </div>
   );

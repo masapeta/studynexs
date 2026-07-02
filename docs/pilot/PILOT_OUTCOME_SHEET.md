@@ -2,7 +2,7 @@
 
 > Copy this file per school: `docs/pilot/<school-slug>/outcome-YYYY-MM-DD.md`  
 > Fill **immediately after** the discovery meeting. Be honest — polite nos are data.  
-> Questions & demo: [PILOT_DISCOVERY.md](../PILOT_DISCOVERY.md) · Hands-on: [HANDS_ON_RUNBOOK.md](./HANDS_ON_RUNBOOK.md) · Runbook: [TRACK_AB_EXECUTION.md](../TRACK_AB_EXECUTION.md)
+> Questions & demo: [PILOT_DISCOVERY.md](../PILOT_DISCOVERY.md) · **Meeting pack:** [CLASS_10_MATHS_EXAM_LOOP.md](./CLASS_10_MATHS_EXAM_LOOP.md) · Hands-on: [HANDS_ON_RUNBOOK.md](./HANDS_ON_RUNBOOK.md) · Runbook: [TRACK_AB_EXECUTION.md](../TRACK_AB_EXECUTION.md)
 
 ---
 

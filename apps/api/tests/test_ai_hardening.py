@@ -84,11 +84,16 @@ def test_sanitize_lesson_key_rejects_path_traversal():
 def test_sanitize_tts_voice_rejects_arbitrary_ssml():
     with pytest.raises(ValueError):
         sanitize_tts_voice("'; DROP TABLE--", default="en-IN-NeerjaNeural")
+    with pytest.raises(ValueError):
+        sanitize_tts_voice("en-IN-PrabhatNeural", default="en-IN-NeerjaNeural")
 
 
-def test_sanitize_tts_voice_accepts_neural_voice():
+def test_sanitize_tts_voice_accepts_indian_female():
     assert sanitize_tts_voice(None, default="en-IN-NeerjaNeural") == "en-IN-NeerjaNeural"
-    assert sanitize_tts_voice("en-US-JennyNeural", default="en-IN-NeerjaNeural") == "en-US-JennyNeural"
+    assert (
+        sanitize_tts_voice("en-IN-NeerjaExpressiveNeural", default="en-IN-NeerjaNeural")
+        == "en-IN-NeerjaExpressiveNeural"
+    )
 
 
 def test_generate_request_validates_difficulty():

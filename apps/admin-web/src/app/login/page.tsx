@@ -31,14 +31,25 @@ function LoginPageInner() {
 
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  useEffect(() => {
-    const p = searchParams.get("portal");
-    if (p === "parent" || p === "student" || p === "teacher" || p === "staff") {
-      setPortalTab(p);
+  const applyPortalFromQuery = (portal: string | null) => {
+    if (portal === "parent" || portal === "student" || portal === "teacher" || portal === "staff") {
+      setPortalTab(portal);
       setStep("password");
-      const creds = DEMO_LOGINS[p];
+      const creds = DEMO_LOGINS[portal];
       setUsername(creds.username);
       setPassword(creds.password);
+    }
+  };
+
+  useEffect(() => {
+    const fromRouter = searchParams.get("portal");
+    if (fromRouter) {
+      applyPortalFromQuery(fromRouter);
+      return;
+    }
+    // Fallback: useSearchParams can lag behind the URL on first client paint (e2e / deep links).
+    if (typeof window !== "undefined") {
+      applyPortalFromQuery(new URLSearchParams(window.location.search).get("portal"));
     }
   }, [searchParams]);
 
@@ -140,9 +151,9 @@ function LoginPageInner() {
   const cardAnim = reduce
     ? {}
     : {
-        initial: { opacity: 0, y: 24, filter: "blur(10px)" },
-        animate: { opacity: 1, y: 0, filter: "blur(0px)" },
-        transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] as const },
+        initial: { y: 20, filter: "blur(8px)" },
+        animate: { y: 0, filter: "blur(0px)" },
+        transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as const },
       };
 
   return (

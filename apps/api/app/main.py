@@ -25,6 +25,26 @@ async def lifespan(app: FastAPI):
     setup_opentelemetry(settings)
     logger.info("StudyNexs API starting", environment=settings.ENVIRONMENT.value)
 
+    from app.modules.tutor.services.tts_service import (
+        default_tts_voice,
+        resolve_tts_backend,
+        tts_enabled,
+    )
+
+    tts_backend = resolve_tts_backend()
+    logger.info(
+        "tutor_tts_config",
+        backend=tts_backend,
+        voice=default_tts_voice(),
+        enabled=tts_enabled(),
+        provider=settings.TUTOR_TTS_PROVIDER,
+    )
+    if settings.TUTOR_TTS_PROVIDER.strip().lower() in ("edge", "auto") and not tts_enabled():
+        logger.warning(
+            "tutor_tts_unavailable",
+            hint="Install edge-tts in this Python env: python -m pip install edge-tts",
+        )
+
     outbox_task: asyncio.Task | None = None
     if (
         settings.OUTBOX_WORKER_ENABLED

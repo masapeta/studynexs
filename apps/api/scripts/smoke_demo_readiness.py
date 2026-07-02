@@ -3,6 +3,7 @@ endpoints over real HTTP, exactly as the admin-web does. Catches anything that w
 500 or blank a page in front of the school. Read-only.
 
 Run (with the API server up on :8000):  python scripts/smoke_demo_readiness.py
+Uses 127.0.0.1 (not localhost) to avoid Docker/WSL port conflicts on Windows.
 """
 from __future__ import annotations
 
@@ -11,7 +12,7 @@ from datetime import date
 
 import httpx
 
-BASE = "http://localhost:8000"
+BASE = "http://127.0.0.1:8000"
 H = {"X-Tenant-Slug": "test"}
 TODAY = date.today().isoformat()
 
@@ -101,6 +102,48 @@ def main() -> int:
     check(client, "finance: recent", "/api/v1/fees/recent?limit=10")
     check(client, "settings: profile", "/api/v1/school/profile")
     check(client, "settings: academic-years", "/api/v1/school/academic-years")
+
+    # Tutor + student portal (G1-02 E2E)
+    check(client, "tutor: tts status (public)", "/api/v1/tutor/tts/status")
+    stu = client.post(
+        BASE + "/api/v1/auth/login",
+        headers={"X-Tenant-Slug": "test"},
+        json={"username": "student_demo", "password": "Demo@1234"},
+        timeout=30,
+    )
+    if stu.status_code < 400:
+        sj = stu.json()
+        stoken = sj.get("access_token") or (sj.get("data") or {}).get("access_token")
+        if stoken:
+            sh = {"X-Tenant-Slug": "test", "Authorization": f"Bearer {stoken}"}
+            try:
+                ctx = client.get(BASE + "/api/v1/portal/context", headers=sh, timeout=30)
+                info = ""
+                sid = None
+                if ctx.status_code < 400:
+                    body = ctx.json()
+                    sid = (body.get("data") or {}).get("student_id")
+                    info = f"student_id={sid}" if sid else "no student_id"
+                results.append((ctx.status_code < 400, ctx.status_code, "student: portal context", info))
+                if sid:
+                    rec = client.get(
+                        BASE + f"/api/v1/tutor/students/{sid}/recommendations",
+                        headers=sh,
+                        timeout=30,
+                    )
+                    n = ""
+                    try:
+                        d = rec.json().get("data") or []
+                        n = f"recs[{len(d)}]"
+                    except Exception:  # noqa: BLE001
+                        n = rec.text[:40]
+                    results.append((rec.status_code < 400, rec.status_code, "student: tutor recs", n))
+            except Exception as exc:  # noqa: BLE001
+                results.append((False, 0, "student: portal/tutor", str(exc)[:80]))
+        else:
+            results.append((False, stu.status_code, "student: login", "no token"))
+    else:
+        results.append((False, stu.status_code, "student: login", stu.text[:80]))
 
     print(f"\n{'RES':<4} {'CODE':<5} {'ENDPOINT':<32} INFO")
     print("-" * 72)
