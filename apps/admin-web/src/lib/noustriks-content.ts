@@ -48,6 +48,7 @@ export const NOUSTRIKS = {
 export const NAV_LINKS = [
   { href: "/", label: "Home" },
   { href: "/products", label: "Products" },
+  { href: "/pricing", label: "Pricing" },
   { href: "/company", label: "Company" },
   { href: "/technology", label: "Technology" },
   { href: "/research", label: "Research" },
@@ -313,5 +314,6 @@ export const HOME_CTA = {
   title: "Build with intelligence that lasts",
   lead: "From StudyNexs in education to Memory Fabric in enterprise — discover how Noustriks products share one commitment to human-approved AI.",
   primary: { href: "/contact", label: "Contact us" },
-  secondary: { href: "/products/studynexs", label: "StudyNexs demo" },
+  secondary: { href: "/pricing", label: "View pricing" },
+  tertiary: { href: "/products/studynexs", label: "StudyNexs demo" },
 } as const;

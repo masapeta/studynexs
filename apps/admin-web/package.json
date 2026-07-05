@@ -11,7 +11,10 @@
     "start": "next start",
     "lint": "eslint",
     "e2e-smoke": "node e2e-smoke.cjs",
-    "e2e-smoke:prod": "node e2e-smoke.cjs"
+    "e2e-smoke:prod": "node e2e-smoke.cjs",
+    "cf:build": "opennextjs-cloudflare build",
+    "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview"
   },
   "dependencies": {
     "framer-motion": "^12.42.0",
@@ -21,6 +24,7 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -29,6 +33,7 @@
     "eslint-config-next": "16.2.6",
     "playwright": "^1.52.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.107.0"
   }
 }

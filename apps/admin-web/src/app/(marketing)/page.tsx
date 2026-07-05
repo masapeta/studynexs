@@ -3,8 +3,8 @@ import { HomeCTASection } from "@/components/marketing/HomeCTASection";
 import { HomeHeroSection } from "@/components/marketing/HomeHeroSection";
 import { HomeProductsSection } from "@/components/marketing/HomeProductsSection";
 import { AboutNoustriksSection, VisionSection } from "@/components/marketing/NoustriksSections";
+import { CTASection, MarketingFooter } from "@/components/marketing/Sections";
 import { TrustBar } from "@/components/marketing/TrustBar";
-import { MarketingFooter } from "@/components/marketing/Sections";
 
 export default function HomePage() {
   return (
@@ -15,6 +15,7 @@ export default function HomePage() {
       <CompanyFocusSection />
       <AboutNoustriksSection />
       <VisionSection />
+      <CTASection />
       <HomeCTASection />
       <MarketingFooter />
     </main>

@@ -22,6 +22,9 @@ export function HomeCTASection() {
               <MagneticButton href={HOME_CTA.secondary.href} className="mkt-btn mkt-btn--glass mkt-btn--lg">
                 {HOME_CTA.secondary.label}
               </MagneticButton>
+              <MagneticButton href={HOME_CTA.tertiary.href} className="mkt-btn mkt-btn--ghost mkt-btn--lg">
+                {HOME_CTA.tertiary.label}
+              </MagneticButton>
             </div>
           </div>
         </FadeIn>
