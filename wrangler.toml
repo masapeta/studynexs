@@ -1,0 +1,6 @@
+# Cloudflare Workers static site — studynexs.com landing (Git deploy: npx wrangler deploy)
+name = "studynexs-web"
+compatibility_date = "2024-01-01"
+
+[assets]
+directory = "sites/studynexs-web"
