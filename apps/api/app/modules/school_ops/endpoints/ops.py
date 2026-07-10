@@ -1,10 +1,12 @@
 """School operations endpoints — library, events."""
 
 import uuid
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.api_route import CommitOnSuccessRoute
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, get_current_user, require_roles
 from app.db.models.school_ops import AdmissionStage
@@ -26,10 +28,11 @@ from app.modules.school_ops.schemas.ops import (
 from app.modules.school_ops.services.ops_service import SchoolOpsService
 from app.shared.schemas.common import APIResponse
 
-router = APIRouter()
+router = APIRouter(route_class=CommitOnSuccessRoute)
 
 
 # ── Library ──────────────────────────────────────────────────────────────────
+
 
 @router.get("/library/books", response_model=APIResponse)
 async def list_books(
@@ -84,6 +87,7 @@ async def return_book(
 
 # ── Events ───────────────────────────────────────────────────────────────────
 
+
 @router.get("/events", response_model=APIResponse[list[EventOut]])
 async def list_events(
     current_user: CurrentUser = Depends(get_current_user),
@@ -108,6 +112,7 @@ async def create_event(
 
 
 # ── Transport ──────────────────────────────────────────────────────────────────
+
 
 @router.get("/transport/routes", response_model=APIResponse)
 async def list_transport_routes(
@@ -162,6 +167,7 @@ async def assign_transport(
 
 # ── Residential ────────────────────────────────────────────────────────────────
 
+
 @router.get("/residential/blocks", response_model=APIResponse)
 async def list_residential_blocks(
     current_user: CurrentUser = Depends(require_roles("admin", "super_admin", "operations")),
@@ -214,6 +220,7 @@ async def allocate_resident(
 
 
 # ── Admissions ────────────────────────────────────────────────────────────────
+
 
 @router.get("/admissions", response_model=APIResponse)
 async def list_admissions(
@@ -314,6 +321,7 @@ async def update_admission_stage(
 
 # ── Payroll ───────────────────────────────────────────────────────────────────
 
+
 @router.get("/payroll", response_model=APIResponse)
 async def list_payroll(
     current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
@@ -321,9 +329,32 @@ async def list_payroll(
 ):
     service = SchoolOpsService(db)
     rows = await service.list_payroll(uuid.UUID(current_user.school_id))
-    total = sum(r["gross_amount"] for r in rows)
-    paid = sum(r["gross_amount"] for r in rows if r["status"] == "paid")
-    return APIResponse(data={"entries": rows, "total_gross": total, "paid_gross": paid})
+    # Rows carry gross_amount as a float (wire contract). Accumulate in Decimal for exactness,
+    # then emit JSON numbers so the response shape is unchanged.
+    total = sum((Decimal(str(r["gross_amount"])) for r in rows), Decimal("0"))
+    paid = sum(
+        (Decimal(str(r["gross_amount"])) for r in rows if r["status"] == "paid"), Decimal("0")
+    )
+    return APIResponse(
+        data={"entries": rows, "total_gross": float(total), "paid_gross": float(paid)}
+    )
+
+
+@router.post("/payroll/generate", response_model=APIResponse)
+async def generate_payroll(
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create this month's payroll entries for staff who don't have one yet (idempotent).
+
+    Explicit, admin-triggered write — the payroll list is read-only and never mints entries.
+    """
+    service = SchoolOpsService(db)
+    created = await service.generate_payroll(uuid.UUID(current_user.school_id))
+    return APIResponse(
+        data={"created": created},
+        message=f"Generated {created} payroll {'entry' if created == 1 else 'entries'}",
+    )
 
 
 @router.post("/payroll/{entry_id}/mark-paid", response_model=APIResponse)
@@ -341,6 +372,7 @@ async def mark_payroll_paid(
 
 
 # ── Expenses ──────────────────────────────────────────────────────────────────
+
 
 @router.get("/expenses", response_model=APIResponse)
 async def list_expenses(
@@ -367,6 +399,7 @@ async def create_expense(
 
 
 # ── Staff directory ───────────────────────────────────────────────────────────
+
 
 @router.post("/staff/onboard", response_model=APIResponse, status_code=201)
 async def onboard_staff(

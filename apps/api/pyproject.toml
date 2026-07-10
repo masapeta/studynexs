@@ -55,6 +55,10 @@ ai = [
     "openai>=1.50.0",
     "google-genai>=0.3.0",
 ]
+rag = [
+    # Vector store client for the RAG platform (lazy-imported; pip install -e ".[rag]")
+    "qdrant-client>=1.12.0",
+]
 observability = [
     "opentelemetry-api>=1.27.0",
     "opentelemetry-sdk>=1.27.0",

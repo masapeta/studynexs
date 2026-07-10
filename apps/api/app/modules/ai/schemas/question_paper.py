@@ -12,9 +12,20 @@ from app.modules.ai.gateway.output_guard import sanitize_paper_sections
 class GenerateRequest(BaseModel):
     class_id: uuid.UUID
     subject_id: uuid.UUID
+    pack_id: uuid.UUID | None = Field(
+        default=None,
+        description=(
+            "APPROVED CurriculumPack to ground generation in. When set, every question is drawn "
+            "from and cited to the pack's curriculum (grounded Assessment Intelligence); when "
+            "omitted, generation falls back to the free-text topics below."
+        ),
+    )
     topics: list[str] = Field(
         default_factory=list,
-        description="Chapters/topics to cover (Phase 1 free-text; CurriculumPack grounding in Phase 1.5)",
+        description=(
+            "Chapters/topics to focus on. With a pack_id these steer retrieval; without one "
+            "they are the sole (ungrounded) syllabus."
+        ),
         max_length=20,
     )
     total_marks: int = Field(default=80, ge=1, le=200)
@@ -60,6 +71,12 @@ class QuestionOut(BaseModel):
     type: str = "short"              # mcq | short | long | very_long | fill_blank
     options: list[str] | None = None  # for MCQ
     answer_key: str | None = None     # model answer / key (teacher-only)
+    # Assessment-Intelligence metadata (present on curriculum-grounded papers).
+    bloom: str | None = None          # Bloom's level, e.g. "Understand", "Apply"
+    difficulty: str | None = None     # easy | medium | hard
+    learning_outcome: str | None = None
+    concepts: list[str] | None = None
+    citations: list[int] | None = None  # 1-based indices into paper.grounding_sources
 
 
 class SectionOut(BaseModel):
@@ -83,6 +100,10 @@ class QuestionPaperOut(BaseModel):
     status: str
     ai_model: str | None = None
     created_by: uuid.UUID | None = None
+    # Curriculum grounding provenance (Assessment Intelligence).
+    pack_id: uuid.UUID | None = None
+    grounded: bool = False
+    grounding_sources: list[dict] | None = None
     can_approve: bool = False
     can_edit: bool = False
     can_submit: bool = False

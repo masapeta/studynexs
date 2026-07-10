@@ -1,4 +1,5 @@
 """Fee service — payment processing with atomic receipt generation."""
+
 from __future__ import annotations
 
 import uuid
@@ -36,10 +37,12 @@ class FeeService:
         self, school_id: uuid.UUID, student_id: uuid.UUID
     ) -> list[StudentFeeRecord]:
         result = await self.db.execute(
-            select(StudentFeeRecord).where(
+            select(StudentFeeRecord)
+            .where(
                 StudentFeeRecord.school_id == school_id,
                 StudentFeeRecord.student_id == student_id,
-            ).order_by(StudentFeeRecord.due_date.desc())
+            )
+            .order_by(StudentFeeRecord.due_date.desc())
         )
         return list(result.scalars().all())
 
@@ -59,6 +62,7 @@ class FeeService:
         (sequential retries return the existing receipt; truly-concurrent dups hit the partial
         unique index and surface as a 409).
         """
+        pay_amount = Decimal(str(amount))
         for field, value in (
             ("transaction_id", transaction_id),
             ("idempotency_key", idempotency_key),
@@ -73,6 +77,13 @@ class FeeService:
                     )
                 ).scalar_one_or_none()
                 if existing_receipt:
+                    # Idempotent replay only when the key is reused for the SAME amount. A key
+                    # reused with a different amount is a client error — returning the earlier
+                    # (unrelated) receipt would silently mis-record the new payment.
+                    if Decimal(str(existing_receipt.amount_paid)) != pay_amount:
+                        raise ValueError(
+                            f"{field} was already used for a payment of a different amount"
+                        )
                     return existing_receipt
 
         result = await self.db.execute(
@@ -90,7 +101,6 @@ class FeeService:
         if fee_record.status == FeeStatus.PAID:
             raise ValueError("Fee already paid")
 
-        pay_amount = Decimal(str(amount))
         total_due = Decimal(str(fee_record.amount))
         already_paid = Decimal(str(fee_record.paid_amount or 0))
         remaining = total_due - already_paid
@@ -116,6 +126,7 @@ class FeeService:
         fee_struct = fee_struct_result.scalar_one()
 
         from app.db.models.academic import Class
+
         class_result = await self.db.execute(select(Class).where(Class.id == student.class_id))
         cls = class_result.scalar_one()
 
@@ -183,9 +194,7 @@ class FeeService:
         fee_record.payment_mode = payment_mode
         fee_record.razorpay_payment_id = razorpay_payment_id
         fee_record.receipt_id = receipt.id
-        fee_record.status = (
-            FeeStatus.PAID if new_paid >= total_due else FeeStatus.PARTIAL
-        )
+        fee_record.status = FeeStatus.PAID if new_paid >= total_due else FeeStatus.PARTIAL
 
         await self.db.flush()
         return receipt
@@ -206,43 +215,39 @@ class FeeService:
         total_collected = await self.db.scalar(total_collected_query) or 0.0
 
         # Pending Fees
-        pending_fees_query = select(func.sum(StudentFeeRecord.amount - StudentFeeRecord.paid_amount)).where(
-            StudentFeeRecord.school_id == school_id,
-            StudentFeeRecord.status != FeeStatus.PAID
-        )
+        pending_fees_query = select(
+            func.sum(StudentFeeRecord.amount - StudentFeeRecord.paid_amount)
+        ).where(StudentFeeRecord.school_id == school_id, StudentFeeRecord.status != FeeStatus.PAID)
         pending_amount = await self.db.scalar(pending_fees_query) or 0.0
 
         # This Month
         this_month_query = select(func.sum(FeeReceipt.amount_paid)).where(
-            FeeReceipt.school_id == school_id,
-            FeeReceipt.paid_at >= current_month_start
+            FeeReceipt.school_id == school_id, FeeReceipt.paid_at >= current_month_start
         )
         this_month = await self.db.scalar(this_month_query) or 0.0
 
         return {
             "total_collected": float(total_collected),
             "pending_amount": float(pending_amount),
-            "this_month": float(this_month)
+            "this_month": float(this_month),
         }
 
     async def get_recent_payments(self, school_id: uuid.UUID, limit: int = 10) -> list[FeeReceipt]:
         """Get recent fee receipts."""
         result = await self.db.execute(
-            select(FeeReceipt).where(
-                FeeReceipt.school_id == school_id
-            ).order_by(FeeReceipt.paid_at.desc()).limit(limit)
+            select(FeeReceipt)
+            .where(FeeReceipt.school_id == school_id)
+            .order_by(FeeReceipt.paid_at.desc())
+            .limit(limit)
         )
         return list(result.scalars().all())
 
     async def list_fee_roster(self, school_id: uuid.UUID) -> dict:
-        """Per-student fee summary for admin fees screen."""
-        from datetime import date as date_cls
-
+        """Per-student fee summary for the admin fees screen."""
         from app.db.models.academic import Class
         from app.db.models.student import Student
         from app.db.models.user import User
 
-        today = date_cls.today()
         rows = (
             await self.db.execute(
                 select(
@@ -252,7 +257,6 @@ class FeeService:
                     Class.section,
                     func.coalesce(func.sum(StudentFeeRecord.amount), 0).label("total_due"),
                     func.coalesce(func.sum(StudentFeeRecord.paid_amount), 0).label("total_paid"),
-                    func.min(StudentFeeRecord.id).label("sample_record_id"),
                 )
                 .join(User, User.id == Student.user_id)
                 .join(Class, Class.id == Student.class_id)
@@ -267,48 +271,77 @@ class FeeService:
             )
         ).all()
 
-        overdue_exists = (
+        # Each still-owing student's earliest-due unpaid record — the target the "Record
+        # payment" action pays against. One bounded query (not per student); keep the first
+        # row per student (earliest due). Replaces a broken `min(id)` aggregate: Postgres has
+        # no min(uuid), so the previous roster query 500'd outright.
+        next_record: dict[uuid.UUID, uuid.UUID] = {}
+        owing_rows = (
             await self.db.execute(
-                select(StudentFeeRecord.student_id)
+                select(StudentFeeRecord.student_id, StudentFeeRecord.id)
                 .where(
                     StudentFeeRecord.school_id == school_id,
-                    StudentFeeRecord.status == FeeStatus.OVERDUE,
+                    StudentFeeRecord.status != FeeStatus.PAID,
+                )
+                .order_by(
+                    StudentFeeRecord.student_id,
+                    StudentFeeRecord.due_date.asc(),
+                    StudentFeeRecord.id,
                 )
             )
-        ).scalars().all()
-        overdue_set = set(overdue_exists)
+        ).all()
+        for stud_id, rec_id in owing_rows:
+            next_record.setdefault(stud_id, rec_id)
+
+        overdue_set = set(
+            (
+                await self.db.execute(
+                    select(StudentFeeRecord.student_id).where(
+                        StudentFeeRecord.school_id == school_id,
+                        StudentFeeRecord.status == FeeStatus.OVERDUE,
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
 
         students_out = []
-        total_due_all = 0.0
-        total_paid_all = 0.0
-        for sid, name, grade, section, total_due, total_paid, record_id in rows:
-            due = float(total_due or 0)
-            paid = float(total_paid or 0)
+        # Accumulate money in Decimal — summing per-student floats drifts (money is exact).
+        total_due_all = Decimal("0")
+        total_paid_all = Decimal("0")
+        for sid, name, grade, section, total_due, total_paid in rows:
+            due = Decimal(str(total_due or 0))
+            paid = Decimal(str(total_paid or 0))
             total_due_all += due
             total_paid_all += paid
-            if due <= 0:
+            # paid (nothing owed or fully covered) → overdue → partially paid → pending.
+            # The previous chain made the 'pending' case unreachable and mislabeled
+            # never-paid students as 'partial'.
+            if due <= 0 or paid >= due:
                 status = "paid"
-            elif paid >= due:
-                status = "paid"
-            elif sid in overdue_set or (due > paid and paid == 0):
-                status = "overdue" if sid in overdue_set else "partial"
+            elif sid in overdue_set:
+                status = "overdue"
             elif paid > 0:
                 status = "partial"
             else:
                 status = "pending"
-            students_out.append({
-                "student_id": str(sid),
-                "name": name,
-                "class_label": f"{grade} {section}".strip(),
-                "total_due": due,
-                "paid_amount": paid,
-                "status": status,
-                "fee_record_id": str(record_id) if record_id else None,
-            })
+            record_id = next_record.get(sid)
+            students_out.append(
+                {
+                    "student_id": str(sid),
+                    "name": name,
+                    "class_label": f"{grade} {section}".strip(),
+                    "total_due": float(due),
+                    "paid_amount": float(paid),
+                    "status": status,
+                    "fee_record_id": str(record_id) if record_id else None,
+                }
+            )
 
         return {
             "students": students_out,
-            "total_due": total_due_all,
-            "total_collected": total_paid_all,
+            "total_due": float(total_due_all),
+            "total_collected": float(total_paid_all),
             "term_label": "Term 1",
         }

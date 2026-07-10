@@ -15,24 +15,36 @@ from app.db.models.file import FileCategory, UploadedFile
 from app.db.models.school import School
 from app.db.models.student import Student
 from app.db.models.user import User, UserRole
-from tests.conftest import auth_headers, get_auth_token, access_token_for
+from tests.conftest import access_token_for, auth_headers, get_auth_token
 
 
 async def _make_student(
-    db: AsyncSession, school: School, test_class: Class,
-    *, admission_no: str, username: str, mobile: str,
+    db: AsyncSession,
+    school: School,
+    test_class: Class,
+    *,
+    admission_no: str,
+    username: str,
+    mobile: str,
 ) -> Student:
     """Create an unrelated student (User + Student) for negative authz cases."""
     user = User(
-        school_id=school.id, username=username, mobile=mobile,
-        full_name="Other Student", role=UserRole.STUDENT,
-        password_hash=hash_password("Other@123"), is_active=True,
+        school_id=school.id,
+        username=username,
+        mobile=mobile,
+        full_name="Other Student",
+        role=UserRole.STUDENT,
+        password_hash=hash_password("Other@123"),
+        is_active=True,
     )
     db.add(user)
     await db.flush()
     student = Student(
-        school_id=school.id, user_id=user.id, class_id=test_class.id,
-        admission_no=admission_no, roll_no="9",
+        school_id=school.id,
+        user_id=user.id,
+        class_id=test_class.id,
+        admission_no=admission_no,
+        roll_no="9",
     )
     db.add(student)
     await db.flush()
@@ -93,9 +105,7 @@ async def test_student_cannot_pay_fees(
     fee_setup: FeeStructure,
     db_session: AsyncSession,
 ):
-    res = await db_session.execute(
-        select(Student).where(Student.user_id == student_user.id)
-    )
+    res = await db_session.execute(select(Student).where(Student.user_id == student_user.id))
     student = res.scalar_one()
 
     fee_record = StudentFeeRecord(
@@ -122,6 +132,7 @@ async def test_student_cannot_pay_fees(
 
 
 # ── Academic roster / profile / parents ────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_student_roster_is_staff_only(
@@ -150,8 +161,12 @@ async def test_student_profile_object_level_access(
 ):
     child = await _student_of(db_session, student_user)
     other = await _make_student(
-        db_session, test_school, test_class,
-        admission_no="ADM999", username="other_student", mobile="+919000000999",
+        db_session,
+        test_school,
+        test_class,
+        admission_no="ADM999",
+        username="other_student",
+        mobile="+919000000999",
     )
 
     parent_token = await get_auth_token(client, "test_parent", "Parent@123")
@@ -185,8 +200,12 @@ async def test_student_parents_object_level_access(
 ):
     child = await _student_of(db_session, student_user)
     other = await _make_student(
-        db_session, test_school, test_class,
-        admission_no="ADM998", username="other_student2", mobile="+919000000998",
+        db_session,
+        test_school,
+        test_class,
+        admission_no="ADM998",
+        username="other_student2",
+        mobile="+919000000998",
     )
 
     parent_token = await get_auth_token(client, "test_parent", "Parent@123")
@@ -203,6 +222,7 @@ async def test_student_parents_object_level_access(
 
 
 # ── Receipt download ────────────────────────────────────────────────────────────
+
 
 async def _make_receipt(
     db: AsyncSession, school: School, student: Student, number: str, seq: int
@@ -236,8 +256,12 @@ async def test_receipt_download_object_level_access(
 ):
     child = await _student_of(db_session, student_user)
     other = await _make_student(
-        db_session, test_school, test_class,
-        admission_no="ADM997", username="other_student3", mobile="+919000000997",
+        db_session,
+        test_school,
+        test_class,
+        admission_no="ADM997",
+        username="other_student3",
+        mobile="+919000000997",
     )
     own_receipt = await _make_receipt(db_session, test_school, child, "TST-2026-00001", 1)
     other_receipt = await _make_receipt(db_session, test_school, other, "TST-2026-00002", 2)
@@ -289,10 +313,13 @@ async def test_identity_document_staff_download_admin_only(
 
 @pytest.mark.asyncio
 async def test_file_download_owner_and_staff_only(
-    client: AsyncClient, admin_user: User, student_user: User, parent_user: User,
+    client: AsyncClient,
+    admin_user: User,
+    student_user: User,
+    parent_user: User,
     db_session: AsyncSession,
 ):
-    """Non-staff may download only their own non-identity uploads; staff may download school files."""
+    """Non-staff download only their own non-identity uploads; staff download school files."""
     parent_token = access_token_for(parent_user)
     _MIN_PNG = bytes.fromhex(
         "89504e470d0a1a0a0000000d494844520000000100000001"
@@ -308,9 +335,7 @@ async def test_file_download_owner_and_staff_only(
     file_id = up.json()["data"]["id"]
 
     row = (
-        await db_session.execute(
-            select(UploadedFile).where(UploadedFile.id == uuid.UUID(file_id))
-        )
+        await db_session.execute(select(UploadedFile).where(UploadedFile.id == uuid.UUID(file_id)))
     ).scalar_one()
     assert row.category == FileCategory.PROFILE_PHOTO
 
@@ -330,6 +355,7 @@ async def test_file_download_owner_and_staff_only(
 
 
 # ── School-ops rosters (transport / residential) ────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_ops_rosters_are_staff_only(
@@ -374,6 +400,7 @@ async def test_ops_rosters_are_staff_only(
 
 
 # ── Timetable ───────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_teacher_timetable_staff_only(

@@ -42,14 +42,17 @@ def mock_llm(monkeypatch):
 
 async def _flag_of(db_session, student_id):
     return (
-        await db_session.execute(
-            select(MasteryFlag).where(MasteryFlag.student_id == student_id)
-        )
+        await db_session.execute(select(MasteryFlag).where(MasteryFlag.student_id == student_id))
     ).scalar_one()
 
 
 async def _out_of_scope_maths_flag_and_science_teacher_token(
-    client, db_session, test_school, test_class, student_user, teacher_user,
+    client,
+    db_session,
+    test_school,
+    test_class,
+    student_user,
+    teacher_user,
 ):
     """Maths weakness flag + teacher who only teaches Science in the same class."""
     from app.db.models.academic import Subject, TeacherSubjectMapping
@@ -58,9 +61,7 @@ async def _out_of_scope_maths_flag_and_science_teacher_token(
         client, db_session, test_school, test_class, student_user
     )
     flag = await _flag_of(db_session, weak.id)
-    science = Subject(
-        school_id=test_school.id, class_id=test_class.id, name="Science", code="SCI"
-    )
+    science = Subject(school_id=test_school.id, class_id=test_class.id, name="Science", code="SCI")
     db_session.add(science)
     await db_session.flush()
     db_session.add(
@@ -79,7 +80,13 @@ async def _out_of_scope_maths_flag_and_science_teacher_token(
 
 @pytest.mark.asyncio
 async def test_approve_drafts_narrative_then_edit_then_notify(
-    client, admin_user, student_user, parent_user, test_school, test_class, db_session,
+    client,
+    admin_user,
+    student_user,
+    parent_user,
+    test_school,
+    test_class,
+    db_session,
 ):
     weak, subject, token = await _seed_flagging_scenario(
         client, db_session, test_school, test_class, student_user
@@ -87,9 +94,7 @@ async def test_approve_drafts_narrative_then_edit_then_notify(
     flag = await _flag_of(db_session, weak.id)
 
     # Notify before approval → 409.
-    resp = await client.post(
-        f"/api/v1/mastery/flags/{flag.id}/notify", headers=auth_headers(token)
-    )
+    resp = await client.post(f"/api/v1/mastery/flags/{flag.id}/notify", headers=auth_headers(token))
     assert resp.status_code == 409
 
     # Approve → LLM draft attached, status APPROVED.
@@ -118,19 +123,21 @@ async def test_approve_drafts_narrative_then_edit_then_notify(
     assert resp.json()["data"]["narrative"] == "Edited note for the parent."
 
     # Notify → one in-app notification per linked parent user.
-    resp = await client.post(
-        f"/api/v1/mastery/flags/{flag.id}/notify", headers=auth_headers(token)
-    )
+    resp = await client.post(f"/api/v1/mastery/flags/{flag.id}/notify", headers=auth_headers(token))
     assert resp.status_code == 200, resp.text
     body = resp.json()["data"]
     assert body["parents_notified"] == 1  # parent_user fixture links one parent
     assert body["flag"]["status"] == "notified"
 
     notifs = (
-        await db_session.execute(
-            select(Notification).where(Notification.user_id == parent_user.id)
+        (
+            await db_session.execute(
+                select(Notification).where(Notification.user_id == parent_user.id)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(notifs) == 1
     assert notifs[0].body == "Edited note for the parent."
     assert "Algebra" in notifs[0].title
@@ -138,7 +145,13 @@ async def test_approve_drafts_narrative_then_edit_then_notify(
 
 @pytest.mark.asyncio
 async def test_flags_list_and_role_gates(
-    client, admin_user, student_user, parent_user, test_school, test_class, db_session,
+    client,
+    admin_user,
+    student_user,
+    parent_user,
+    test_school,
+    test_class,
+    db_session,
 ):
     weak, subject, token = await _seed_flagging_scenario(
         client, db_session, test_school, test_class, student_user
@@ -167,7 +180,13 @@ async def test_flags_list_and_role_gates(
 
 @pytest.mark.asyncio
 async def test_teacher_cannot_approve_flag_outside_teaching_scope(
-    client, admin_user, teacher_user, student_user, test_school, test_class, db_session,
+    client,
+    admin_user,
+    teacher_user,
+    student_user,
+    test_school,
+    test_class,
+    db_session,
 ):
     """Regression: mastery mutations require class+subject teaching scope."""
     flag, token = await _out_of_scope_maths_flag_and_science_teacher_token(
@@ -182,7 +201,13 @@ async def test_teacher_cannot_approve_flag_outside_teaching_scope(
 
 @pytest.mark.asyncio
 async def test_teacher_cannot_dismiss_flag_outside_teaching_scope(
-    client, admin_user, teacher_user, student_user, test_school, test_class, db_session,
+    client,
+    admin_user,
+    teacher_user,
+    student_user,
+    test_school,
+    test_class,
+    db_session,
 ):
     """Wiring guard: dismiss must call _assert_flag_mutation_scope."""
     flag, token = await _out_of_scope_maths_flag_and_science_teacher_token(
@@ -198,7 +223,13 @@ async def test_teacher_cannot_dismiss_flag_outside_teaching_scope(
 
 @pytest.mark.asyncio
 async def test_teacher_cannot_notify_flag_outside_teaching_scope(
-    client, admin_user, teacher_user, student_user, test_school, test_class, db_session,
+    client,
+    admin_user,
+    teacher_user,
+    student_user,
+    test_school,
+    test_class,
+    db_session,
 ):
     """Wiring guard: notify_parents must call _assert_flag_mutation_scope."""
     flag, wrong_token = await _out_of_scope_maths_flag_and_science_teacher_token(
@@ -220,7 +251,12 @@ async def test_teacher_cannot_notify_flag_outside_teaching_scope(
 
 @pytest.mark.asyncio
 async def test_digest_groups_by_student(
-    client, admin_user, student_user, test_school, test_class, db_session,
+    client,
+    admin_user,
+    student_user,
+    test_school,
+    test_class,
+    db_session,
 ):
     weak, subject, token = await _seed_flagging_scenario(
         client, db_session, test_school, test_class, student_user
@@ -237,3 +273,97 @@ async def test_digest_groups_by_student(
     entry = digest["students"][0]
     assert entry["flags"][0]["topic_display"] == "Algebra"
     assert entry["flags"][0]["narrative"]
+
+
+@pytest.mark.asyncio
+async def test_teacher_cannot_read_heatmap_outside_teaching_scope(
+    client,
+    admin_user,
+    teacher_user,
+    student_user,
+    test_school,
+    test_class,
+    db_session,
+):
+    """Regression: mastery heatmap must enforce staff scope, not just tenant scope.
+
+    A Science-only teacher must not be able to pull the per-student Maths mastery matrix
+    for the class.
+    """
+    flag, science_token = await _out_of_scope_maths_flag_and_science_teacher_token(
+        client, db_session, test_school, test_class, student_user, teacher_user
+    )
+    resp = await client.get(
+        f"/api/v1/mastery/classes/{flag.class_id}/heatmap?subject_id={flag.subject_id}",
+        headers=auth_headers(science_token),
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_flag_list_subject_filter_cannot_escape_teaching_scope(
+    client,
+    admin_user,
+    teacher_user,
+    student_user,
+    test_school,
+    test_class,
+    db_session,
+):
+    """Regression: passing an explicit subject_id must not bypass the teaching-scope filter.
+
+    The Science teacher explicitly asks for the Maths flags they don't teach → must get none,
+    while an admin sees the same flag.
+    """
+    flag, science_token = await _out_of_scope_maths_flag_and_science_teacher_token(
+        client, db_session, test_school, test_class, student_user, teacher_user
+    )
+    # Explicit out-of-scope subject filter → empty (cannot escape scope).
+    resp = await client.get(
+        f"/api/v1/mastery/flags?subject_id={flag.subject_id}",
+        headers=auth_headers(science_token),
+    )
+    assert resp.status_code == 200
+    assert resp.json()["data"] == []
+
+    # No filter at all → still empty for the Science teacher (no Science flags exist).
+    resp = await client.get("/api/v1/mastery/flags", headers=auth_headers(science_token))
+    assert resp.status_code == 200
+    assert resp.json()["data"] == []
+
+    # Admin sees the Maths flag.
+    admin_token = await get_auth_token(client, "test_admin", "Admin@123")
+    resp = await client.get("/api/v1/mastery/flags", headers=auth_headers(admin_token))
+    assert resp.status_code == 200
+    assert any(f["id"] == str(flag.id) for f in resp.json()["data"])
+
+
+@pytest.mark.asyncio
+async def test_digest_scoped_to_teaching_assignments(
+    client,
+    admin_user,
+    teacher_user,
+    student_user,
+    test_school,
+    test_class,
+    db_session,
+):
+    """Regression: the printable digest must not expose other classes'/subjects' narratives."""
+    flag, science_token = await _out_of_scope_maths_flag_and_science_teacher_token(
+        client, db_session, test_school, test_class, student_user, teacher_user
+    )
+    admin_token = await get_auth_token(client, "test_admin", "Admin@123")
+    approve = await client.post(
+        f"/api/v1/mastery/flags/{flag.id}/approve", headers=auth_headers(admin_token)
+    )
+    assert approve.status_code == 200, approve.text
+
+    # Science teacher's digest excludes the approved Maths narrative.
+    resp = await client.get("/api/v1/mastery/digest", headers=auth_headers(science_token))
+    assert resp.status_code == 200
+    assert resp.json()["data"]["students"] == []
+
+    # Admin's digest includes it.
+    resp = await client.get("/api/v1/mastery/digest", headers=auth_headers(admin_token))
+    assert resp.status_code == 200
+    assert len(resp.json()["data"]["students"]) == 1

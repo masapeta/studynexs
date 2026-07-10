@@ -1,4 +1,5 @@
 """Tests for AI credit metering."""
+
 from __future__ import annotations
 
 import uuid
@@ -9,12 +10,12 @@ from fastapi import HTTPException
 
 from app.modules.ai.services.ai_credits import (
     CREDIT_RULES,
+    _validate_credit_charge,
     assert_credits_for_charge,
     check_ai_credits,
     credits_for_purpose,
     get_school_ai_budget,
     month_start_for_school,
-    _validate_credit_charge,
 )
 
 
@@ -54,7 +55,7 @@ async def test_teacher_blocked_at_pilot_qp_cap(monkeypatch):
     user_id = uuid.uuid4()
     db = AsyncMock()
 
-    from app.modules.ai.services.ai_credits import UsageSnapshot, check_ai_credits
+    from app.modules.ai.services.ai_credits import UsageSnapshot
 
     async def fake_lock(_db, _sid):
         return school
@@ -83,26 +84,32 @@ async def test_teacher_blocked_at_pilot_qp_cap(monkeypatch):
         AsyncMock(return_value=snap),
     )
     with pytest.raises(HTTPException) as exc:
-        await check_ai_credits(
-            db, school, user_id=user_id, role="teacher", purpose_tag="qp_full"
-        )
+        await check_ai_credits(db, school, user_id=user_id, role="teacher", purpose_tag="qp_full")
     assert exc.value.status_code == 429
     assert "pilot limit" in exc.value.detail.lower()
 
 
 def test_month_start_uses_school_timezone():
+    from datetime import datetime, timezone
     from unittest.mock import MagicMock
-    from datetime import datetime
     from zoneinfo import ZoneInfo
 
+    ist = ZoneInfo("Asia/Kolkata")
     school = MagicMock()
     school.settings = {"timezone": "Asia/Kolkata"}
     start = month_start_for_school(school)
-    ist = ZoneInfo("Asia/Kolkata")
-    # Billing month start in IST, stored as UTC — should be 1st 00:00 IST converted.
-    expected = datetime(2026, 6, 1, 0, 0, 0, tzinfo=ist).astimezone(start.tzinfo)
-    assert start.year == expected.year and start.month == expected.month
-    assert start.hour == expected.hour
+
+    # Invariant (no hardcoded month, so this can't rot): the result is a UTC instant
+    # that, viewed in the school's timezone, is the first instant of the *current* IST
+    # month — proving the boundary uses the school TZ, not naive UTC midnight.
+    assert start.tzinfo == timezone.utc
+    start_ist = start.astimezone(ist)
+    now_ist = datetime.now(ist)
+    assert (start_ist.year, start_ist.month) == (now_ist.year, now_ist.month)
+    assert (start_ist.day, start_ist.hour, start_ist.minute) == (1, 0, 0)
+    # IST is UTC+5:30, so IST midnight is 18:30 UTC the previous day — a naive-UTC
+    # implementation would instead land on 00:00 UTC. This pins the TZ correctness.
+    assert (start.hour, start.minute) == (18, 30)
 
 
 @pytest.mark.asyncio
@@ -143,7 +150,7 @@ async def test_charge_blocked_when_school_cap_exceeded(db_session, test_school, 
 async def test_admin_blocked_at_school_cap():
     from unittest.mock import MagicMock
 
-    from app.modules.ai.services.ai_credits import UsageSnapshot, _validate_credit_charge
+    from app.modules.ai.services.ai_credits import UsageSnapshot
 
     school = MagicMock()
     school.settings = {"ai_budget": {"monthly_credits": 10}}
@@ -154,7 +161,12 @@ async def test_admin_blocked_at_school_cap():
         school_used=10,
         user_limit=None,
         user_used=0,
-        usage_counts={"qp_full": 0, "qp_regen_full": 0, "qp_regen_section": 0, "qp_regen_question": 0},
+        usage_counts={
+            "qp_full": 0,
+            "qp_regen_full": 0,
+            "qp_regen_section": 0,
+            "qp_regen_question": 0,
+        },
     )
     with pytest.raises(HTTPException) as exc:
         _validate_credit_charge(snap, role="admin", purpose_tag="qp_full", cost=1)

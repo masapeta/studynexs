@@ -134,6 +134,12 @@ class Settings(BaseSettings):
     RAZORPAY_KEY_SECRET: str = ""
     WEBHOOK_SECRET: str = "webhook-secret-change-me"
 
+    # ── Field encryption (regulated PII at rest, e.g. Aadhaar) ───
+    # urlsafe-base64 Fernet keys. First encrypts; all decrypt (rotation-friendly). Empty in
+    # dev = store plaintext (transparent). Production boot refuses to start without a key.
+    # Generate a key with cryptography.fernet.Fernet.generate_key(); keep it in the secret store.
+    AADHAAR_ENCRYPTION_KEYS: list[str] = []
+
     # ── File Storage ─────────────────────────────────────────────
     AZURE_STORAGE_CONNECTION_STRING: str = ""
     AZURE_STORAGE_CONTAINER: str = "studynexs-files"
@@ -144,6 +150,8 @@ class Settings(BaseSettings):
     QDRANT_HOST: str = "localhost"
     QDRANT_PORT: int = 6333
     QDRANT_API_KEY: str = ""
+    # Vector store backend for the RAG platform: qdrant | memory (memory = tests/dev only).
+    VECTOR_STORE: str = "qdrant"
 
     # ── AI / LLM Gateway (provider-agnostic; benchmark before committing) ──
     GEMINI_API_KEY: str = ""
@@ -158,6 +166,13 @@ class Settings(BaseSettings):
     OLLAMA_VISION_MODEL: str = ""  # empty → OLLAMA_MODEL (gemma4 supports image input)
     OLLAMA_API_KEY: str = ""  # optional — Ollama cloud / authenticated endpoints
     AI_REQUEST_TIMEOUT_SECONDS: float = 120.0
+
+    # ── Embeddings (RAG) — provider-agnostic; provider exposes >=1 model ─────────
+    # EMBEDDING_PROVIDER selects the adapter (openai | ollama | stub | …); EMBEDDING_MODEL
+    # names one of that provider's models. Default: OpenAI text-embedding-3-small (1536-dim).
+    # No app code talks to a provider directly — everything goes through EmbeddingService.
+    EMBEDDING_PROVIDER: str = "openai"
+    EMBEDDING_MODEL: str = "text-embedding-3-small"
 
     # ── Observability scrape (Prometheus) ─────────────────────────
     # When set, /metrics requires Authorization: Bearer <token> or X-Metrics-Token header.
@@ -231,6 +246,12 @@ class Settings(BaseSettings):
             )
         if self.AI_DEFAULT_PROVIDER == "stub":
             errors.append("AI_DEFAULT_PROVIDER cannot be 'stub' in production")
+
+        if not [k for k in self.AADHAAR_ENCRYPTION_KEYS if k.strip()]:
+            errors.append(
+                "AADHAAR_ENCRYPTION_KEYS must be set in production (regulated PII is "
+                "encrypted at rest; generate with Fernet.generate_key())"
+            )
 
         if errors:
             raise ValueError(

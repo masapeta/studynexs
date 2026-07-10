@@ -8,6 +8,7 @@ or:
 Handlers register themselves via the `@job_task("name")` decorator; the name must
 match the `task` passed to `queue.enqueue(...)`.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -45,8 +46,14 @@ async def run_job(ctx, job_id: str):
         result = await session.execute(select(Job).where(Job.id == uuid.UUID(job_id)))
         job = result.scalar_one_or_none()
         if job is None:
-            # The enqueueing request may not have committed yet — raise so Arq retries.
-            raise RuntimeError(f"Job {job_id} not found yet")
+            # The enqueueing request's transaction may not have committed yet (enqueue flushes;
+            # the request commits later). arq.Retry re-queues with a short defer — a PLAIN
+            # exception is NOT retried by arq and would fail the job permanently. Bounded by
+            # WorkerSettings.max_tries, so a genuinely missing job still fails after a few tries.
+            from arq import Retry
+
+            logger.info("job_not_found_yet_retrying", job_id=job_id)
+            raise Retry(defer=2)
 
         handler = JOB_HANDLERS.get(job.type)
         if handler is None:
@@ -72,16 +79,30 @@ async def run_job(ctx, job_id: str):
             await session.commit()
 
 
+async def register_job_handlers(ctx: dict | None = None) -> None:
+    """Import job modules so their ``@job_task`` decorators populate JOB_HANDLERS.
+
+    This runs on worker startup for BOTH launch paths — ``arq app.core.jobs.worker.WorkerSettings``
+    (the documented command) and ``python -m app.core.jobs.worker``. The documented command
+    imports this module by dotted path, so the ``if __name__ == "__main__"`` block never runs;
+    without this hook JOB_HANDLERS would be empty and every job would dead-end as
+    "No handler registered". New job modules must be imported here.
+    """
+    import app.modules.examinations.jobs.answer_sheet_eval_job  # noqa: F401
+
+    logger.info("job_handlers_registered", handlers=sorted(JOB_HANDLERS))
+
+
 class WorkerSettings:
     """Arq worker settings — all jobs flow through the single `run_job` entrypoint."""
 
     functions = [run_job]
     redis_settings = get_redis_settings()
+    on_startup = register_job_handlers
+    max_tries = 5  # bounds the job-not-found-yet Retry loop (see run_job)
 
 
 if __name__ == "__main__":
-    import app.modules.examinations.jobs.answer_sheet_eval_job  # noqa: F401 — register handlers
-
     from arq import run_worker
 
     run_worker(WorkerSettings)  # type: ignore[arg-type]

@@ -2,14 +2,16 @@
 StudyNexs Platform — FastAPI Application Entry Point
 Creates the app, mounts CORS, routers, health checks.
 """
+
 from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager, suppress
 
 import structlog
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, PlainTextResponse
 
 from app.core.config import Environment, get_settings
 
@@ -26,10 +28,7 @@ async def lifespan(app: FastAPI):
     logger.info("StudyNexs API starting", environment=settings.ENVIRONMENT.value)
 
     outbox_task: asyncio.Task | None = None
-    if (
-        settings.OUTBOX_WORKER_ENABLED
-        and settings.ENVIRONMENT not in (Environment.TESTING,)
-    ):
+    if settings.OUTBOX_WORKER_ENABLED and settings.ENVIRONMENT not in (Environment.TESTING,):
         # Register outbox handlers (side effect on import)
         import app.workers.outbox_worker  # noqa: F401
         from app.workers.outbox_worker import run_worker
@@ -116,11 +115,8 @@ def create_app() -> FastAPI:
         return {"status": "ready" if all_ok else "degraded", "checks": checks}
 
     @app.get("/metrics", tags=["system"])
-    async def prometheus_metrics(request: "Request"):
+    async def prometheus_metrics(request: Request):
         """Prometheus scrape endpoint — LLM counters, latency histograms, fallback rates."""
-        from fastapi import HTTPException, Request
-        from fastapi.responses import PlainTextResponse
-
         from app.modules.ai.telemetry import ai_metrics
 
         token = settings.METRICS_TOKEN
@@ -138,8 +134,6 @@ def create_app() -> FastAPI:
         )
 
     # ── Exception handlers ───────────────────────────────────────
-    from fastapi import Request
-    from fastapi.responses import JSONResponse
     from sqlalchemy.exc import IntegrityError
 
     @app.exception_handler(IntegrityError)
@@ -198,8 +192,8 @@ def create_app() -> FastAPI:
 
     app.include_router(tutor_router, prefix=f"{prefix}/tutor", tags=["tutor"])
 
-    from app.modules.dashboard.endpoints.dashboard import router as dashboard_router
     from app.modules.curriculum.endpoints.lesson_plan import router as lesson_plan_router
+    from app.modules.dashboard.endpoints.dashboard import router as dashboard_router
 
     app.include_router(dashboard_router, prefix=f"{prefix}/dashboard", tags=["dashboard"])
     app.include_router(lesson_plan_router, prefix=f"{prefix}/lesson-plans", tags=["curriculum"])
