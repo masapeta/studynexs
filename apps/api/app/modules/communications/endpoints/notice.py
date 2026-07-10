@@ -5,7 +5,6 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.api_route import CommitOnSuccessRoute
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, get_current_user, require_roles
 from app.core.staff_permissions import assert_notice_publish, get_staff_scope
@@ -14,13 +13,15 @@ from app.modules.communications.schemas.notice import NoticeCreate, NoticeOut
 from app.modules.communications.services.notice_service import NoticeService
 from app.shared.schemas.common import APIResponse
 
-router = APIRouter(route_class=CommitOnSuccessRoute)
+router = APIRouter()
 
 
 @router.post("", response_model=APIResponse[NoticeOut], status_code=201)
 async def create_notice(
     body: NoticeCreate,
-    current_user: CurrentUser = Depends(require_roles("admin", "super_admin", "class_incharge")),
+    current_user: CurrentUser = Depends(
+        require_roles("admin", "super_admin", "class_incharge")
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     scope = await get_staff_scope(db, current_user)
@@ -53,7 +54,9 @@ async def list_notices(
         )
     else:
         scope = await get_staff_scope(db, current_user)
-        notices = await service.list_notices_for_staff(uuid.UUID(current_user.school_id), scope)
+        notices = await service.list_notices_for_staff(
+            uuid.UUID(current_user.school_id), scope
+        )
     return APIResponse(data=[NoticeOut.model_validate(n) for n in notices])
 
 

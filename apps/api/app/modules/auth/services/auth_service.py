@@ -1,12 +1,12 @@
 """
 Auth service — OTP management, password verification, token lifecycle.
 """
-
 from __future__ import annotations
 
 import secrets
 import string
 import uuid
+from datetime import timedelta
 
 import redis.asyncio as redis
 import structlog
@@ -17,6 +17,7 @@ from app.core.config import get_settings
 from app.core.security import (
     create_access_token,
     create_refresh_token,
+    hash_password,
     verify_password,
 )
 from app.db.models.user import User
@@ -118,7 +119,7 @@ class AuthService:
             select(User).where(
                 User.username == username,
                 User.school_id == school_id,
-                User.is_active.is_(True),
+                User.is_active == True,
             )
         )
         user = result.scalar_one_or_none()
@@ -148,17 +149,13 @@ class AuthService:
         )
         tenant_slug = slug_result.scalar_one_or_none() or ""
 
-        sid = sid or str(uuid.uuid4())
-        # Stamp the session id into the access token so single-device logout can revoke the
-        # exact session using the (always-present) access token — the refresh cookie is
-        # path-scoped to /auth/refresh and is never sent to /auth/logout.
         access_token = create_access_token(
             user_id=str(user.id),
             school_id=str(user.school_id),
             role=user.role.value,
             tenant_slug=tenant_slug,
-            extra_claims={"sid": sid},
         )
+        sid = sid or str(uuid.uuid4())
         refresh_token, jti = create_refresh_token(
             user_id=str(user.id),
             school_id=str(user.school_id),
@@ -228,7 +225,6 @@ class AuthService:
             school_id=str(user.school_id),
             role=user.role.value,
             tenant_slug=tenant_slug,
-            extra_claims={"sid": sid},
         )
         new_refresh, new_jti = create_refresh_token(
             user_id=str(user.id), school_id=str(user.school_id), sid=sid

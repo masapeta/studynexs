@@ -1,5 +1,4 @@
 """Examination endpoints."""
-
 from __future__ import annotations
 
 import uuid
@@ -8,14 +7,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.api_route import CommitOnSuccessRoute
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, require_roles
 from app.core.staff_permissions import assert_exam_class, assert_exams_access, get_staff_scope
 from app.core.tenant_scope import TenantScope
 from app.db.models.academic import Class
 from app.db.models.examination import Exam, ExamMark
-from app.modules.examinations.endpoints.evaluation import router as evaluation_router
 from app.modules.examinations.schemas.exam import (
     BulkMarkEntryRequest,
     ExamCreate,
@@ -24,14 +21,17 @@ from app.modules.examinations.schemas.exam import (
     QuestionDef,
     QuestionSchemaSet,
 )
+from app.modules.examinations.endpoints.evaluation import router as evaluation_router
 from app.modules.examinations.services.exam_service import ExamService
 from app.shared.schemas.common import APIResponse
 
-router = APIRouter(route_class=CommitOnSuccessRoute)
+router = APIRouter()
 _STAFF = ("teacher", "class_incharge", "admin", "super_admin")
 
 
-async def _scoped_exam(db: AsyncSession, current_user: CurrentUser, exam_id: uuid.UUID) -> Exam:
+async def _scoped_exam(
+    db: AsyncSession, current_user: CurrentUser, exam_id: uuid.UUID
+) -> Exam:
     scope = await get_staff_scope(db, current_user)
     assert_exams_access(scope)
     exam = await TenantScope(db, uuid.UUID(current_user.school_id)).exam(exam_id)
@@ -128,7 +128,9 @@ async def set_question_schema(
     await _scoped_exam(db, current_user, exam_id)
     service = ExamService(db)
     try:
-        exam = await service.set_question_schema(uuid.UUID(current_user.school_id), exam_id, body)
+        exam = await service.set_question_schema(
+            uuid.UUID(current_user.school_id), exam_id, body
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return APIResponse(data=ExamOut.from_exam(exam), message="Question schema saved")

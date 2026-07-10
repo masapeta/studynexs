@@ -5,14 +5,13 @@ import uuid
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.api_route import CommitOnSuccessRoute
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, get_current_user
 from app.modules.notifications.schemas.notification import NotificationOut
 from app.modules.notifications.services.notification_service import NotificationService
 from app.shared.schemas.common import APIResponse
 
-router = APIRouter(route_class=CommitOnSuccessRoute)
+router = APIRouter()
 
 
 @router.get("", response_model=APIResponse[list[NotificationOut]])

@@ -9,7 +9,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -62,17 +62,6 @@ class QuestionPaper(BaseModel):
     created_by: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
     )
-
-    # Curriculum grounding (Assessment Intelligence): when set, the paper was generated from a
-    # school's APPROVED CurriculumPack via RAG retrieval — every question is grounded and cited.
-    # Nullable so legacy / free-text papers (grounded=False) remain valid.
-    pack_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("curriculum_packs.id"), nullable=True
-    )
-    grounded: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    # Ordered citation sources aligned with per-question `citations` indices:
-    # [{"index": 1, "chapter": "...", "topic": "...", "ref_id": "..."}]
-    grounding_sources: Mapped[list | None] = mapped_column(JSONB)
 
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     board: Mapped[str] = mapped_column(String(50), nullable=False)          # e.g. "SSC"

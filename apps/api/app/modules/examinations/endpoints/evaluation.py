@@ -1,5 +1,4 @@
 """Answer sheet evaluation endpoints."""
-
 from __future__ import annotations
 
 import uuid
@@ -8,7 +7,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.api_route import CommitOnSuccessRoute
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, require_roles
 from app.core.rate_limit import rate_limit
@@ -35,12 +33,14 @@ from app.modules.examinations.services.answer_sheet_eval_service import (
 from app.modules.examinations.services.misconception_service import list_misconceptions
 from app.shared.schemas.common import APIResponse
 
-router = APIRouter(route_class=CommitOnSuccessRoute)
+router = APIRouter()
 _STAFF = ("teacher", "class_incharge", "admin", "super_admin")
 _EVAL_RATE = {"max_requests": 8, "window_seconds": 60}
 
 
-def _subject_ids_for_list(scope, class_id: uuid.UUID | None) -> set[uuid.UUID] | None:
+def _subject_ids_for_list(
+    scope, class_id: uuid.UUID | None
+) -> set[uuid.UUID] | None:
     """None = no subject filter (admin or class incharge for that class)."""
     if scope.is_admin:
         return None
@@ -54,7 +54,9 @@ def _subject_ids_for_list(scope, class_id: uuid.UUID | None) -> set[uuid.UUID] |
 
 
 async def _load_school(db: AsyncSession, school_id: uuid.UUID) -> School:
-    school = (await db.execute(select(School).where(School.id == school_id))).scalar_one_or_none()
+    school = (
+        await db.execute(select(School).where(School.id == school_id))
+    ).scalar_one_or_none()
     if not school:
         raise HTTPException(status_code=404, detail="School not found")
     return school

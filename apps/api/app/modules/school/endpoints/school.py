@@ -1,5 +1,4 @@
 """School settings endpoints — profile + academic years."""
-
 from __future__ import annotations
 
 import uuid
@@ -7,7 +6,6 @@ import uuid
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.api_route import CommitOnSuccessRoute
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, get_current_user, require_roles
 from app.modules.school.schemas.school import (
@@ -19,7 +17,7 @@ from app.modules.school.schemas.school import (
 from app.modules.school.services.school_service import SchoolService
 from app.shared.schemas.common import APIResponse
 
-router = APIRouter(route_class=CommitOnSuccessRoute)
+router = APIRouter()
 _ADMIN = ("admin", "super_admin")
 
 

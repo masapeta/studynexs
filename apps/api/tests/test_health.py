@@ -19,16 +19,3 @@ async def test_ready(client: AsyncClient):
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] in ("ready", "degraded")
-
-
-@pytest.mark.asyncio
-async def test_metrics_returns_prometheus_text(client: AsyncClient):
-    """Regression: /metrics must serve Prometheus text, not demand a `request` query param.
-
-    A stringized `Request` annotation with the import hidden inside the function made FastAPI
-    treat `request` as a required query parameter, so the scrape endpoint 422'd (and crashed
-    when a value was supplied). It must respond with text/plain and no required params.
-    """
-    resp = await client.get("/metrics")
-    assert resp.status_code == 200
-    assert resp.headers["content-type"].startswith("text/plain")

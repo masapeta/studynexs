@@ -6,7 +6,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.api_route import CommitOnSuccessRoute
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, get_current_user, require_roles
 from app.core.staff_permissions import assert_timetable_edit, get_staff_scope
@@ -16,12 +15,10 @@ from app.modules.timetable.schemas.timetable import TimetableSlotCreate, Timetab
 from app.modules.timetable.services.timetable_service import TimetableService
 from app.shared.schemas.common import APIResponse
 
-router = APIRouter(route_class=CommitOnSuccessRoute)
+router = APIRouter()
 
 
-def _slot_out(
-    slot, teacher_name: str | None = None, subject_name: str | None = None
-) -> TimetableSlotOut:
+def _slot_out(slot, teacher_name: str | None = None, subject_name: str | None = None) -> TimetableSlotOut:
     base = TimetableSlotOut.model_validate(slot)
     return base.model_copy(update={"teacher_name": teacher_name, "subject_name": subject_name})
 
@@ -45,9 +42,7 @@ async def get_class_timetable(
             await db.execute(
                 select(User).where(User.school_id == school_id, User.id.in_(teacher_ids))
             )
-        )
-        .scalars()
-        .all()
+        ).scalars().all()
     }
     subjects = {
         row.id: row.name
@@ -55,12 +50,13 @@ async def get_class_timetable(
             await db.execute(
                 select(Subject).where(Subject.school_id == school_id, Subject.id.in_(subject_ids))
             )
-        )
-        .scalars()
-        .all()
+        ).scalars().all()
     }
     return APIResponse(
-        data=[_slot_out(s, teachers.get(s.teacher_id), subjects.get(s.subject_id)) for s in slots]
+        data=[
+            _slot_out(s, teachers.get(s.teacher_id), subjects.get(s.subject_id))
+            for s in slots
+        ]
     )
 
 

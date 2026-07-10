@@ -21,63 +21,6 @@ _MAX_REMARK_LEN = 4000
 _MAX_SECTIONS = 24
 _MAX_QUESTIONS_PER_SECTION = 60
 _MAX_OPTIONS = 6
-_MAX_CONCEPTS_PER_Q = 12
-_MAX_CITATIONS_PER_Q = 24
-
-
-def _apply_question_metadata(src: dict, item: dict) -> None:
-    """Carry optional Assessment-Intelligence metadata onto a sanitized question.
-
-    Bloom level, difficulty, learning outcome, concept tags, and citation indices are only
-    added when present, so ungrounded/free-text questions stay unchanged. Citations are the
-    1-based indices into the paper's ``grounding_sources`` — coerced to positive ints so the
-    trace can never carry arbitrary strings.
-    """
-    bloom = sanitize_prompt_text(
-        src.get("bloom"), max_length=40, field_name="bloom", reject_injection=False
-    )
-    if bloom:
-        item["bloom"] = bloom
-
-    difficulty = sanitize_prompt_text(
-        src.get("difficulty"), max_length=24, field_name="difficulty", reject_injection=False
-    )
-    if difficulty:
-        item["difficulty"] = difficulty.lower()
-
-    learning_outcome = sanitize_prompt_text(
-        src.get("learning_outcome"),
-        max_length=500,
-        field_name="learning outcome",
-        reject_injection=False,
-    )
-    if learning_outcome:
-        item["learning_outcome"] = learning_outcome
-
-    concepts = src.get("concepts")
-    if isinstance(concepts, list):
-        cleaned = [
-            sanitize_prompt_text(
-                str(c), max_length=120, field_name="concept", reject_injection=False
-            )
-            for c in concepts[:_MAX_CONCEPTS_PER_Q]
-        ]
-        cleaned = [c for c in cleaned if c]
-        if cleaned:
-            item["concepts"] = cleaned
-
-    citations = src.get("citations")
-    if isinstance(citations, list):
-        idxs: list[int] = []
-        for c in citations[:_MAX_CITATIONS_PER_Q]:
-            try:
-                n = int(c)
-            except (TypeError, ValueError):
-                continue
-            if n >= 1:
-                idxs.append(n)
-        if idxs:
-            item["citations"] = idxs
 
 
 def sanitize_llm_plain_text(
@@ -175,7 +118,6 @@ def sanitize_paper_sections(raw_sections: object) -> list[dict]:
                     max_length=4000,
                     field_name="answer key",
                 ) or ""
-            _apply_question_metadata(q, item)
             questions.append(item)
 
         out.append({

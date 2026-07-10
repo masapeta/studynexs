@@ -1,5 +1,4 @@
 """Attendance endpoints — bulk mark and query."""
-
 from __future__ import annotations
 
 import uuid
@@ -8,23 +7,18 @@ from datetime import date
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.api_route import CommitOnSuccessRoute
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, require_roles
-from app.core.rate_limit import rate_limit
 from app.core.staff_permissions import assert_attendance_access, get_staff_scope
-from app.modules.attendance.schemas.attendance import (
-    AttendanceOut,
-    AttendanceSummary,
-    BulkMarkRequest,
-)
+from app.core.rate_limit import rate_limit
+
+settings = get_settings()
+from app.modules.attendance.schemas.attendance import AttendanceOut, AttendanceSummary, BulkMarkRequest
 from app.modules.attendance.services.attendance_service import AttendanceService
 from app.shared.schemas.common import APIResponse
 
-settings = get_settings()
-
-router = APIRouter(route_class=CommitOnSuccessRoute)
+router = APIRouter()
 
 
 @router.post(
@@ -94,7 +88,9 @@ async def get_summary(
 @router.get("/school-summary", response_model=APIResponse)
 async def get_school_summary(
     att_date: date = Query(..., alias="date"),
-    current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
+    current_user: CurrentUser = Depends(
+        require_roles("admin", "super_admin")
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     service = AttendanceService(db)

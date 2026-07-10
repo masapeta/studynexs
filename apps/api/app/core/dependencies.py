@@ -2,14 +2,12 @@
 StudyNexs Platform — FastAPI Dependencies
 JWT validation, RBAC enforcement, DB/Redis injection, user cache.
 """
-
 from __future__ import annotations
 
 import json
 from typing import Annotated
 
 import redis.asyncio as redis
-import structlog
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
@@ -23,7 +21,6 @@ from app.core.security import decode_token
 from app.core.tenant import validate_tenant_school_match
 
 settings = get_settings()
-logger = structlog.get_logger()
 
 # ── Security scheme ──────────────────────────────────────────────────────────
 
@@ -61,7 +58,6 @@ class CurrentUser(BaseModel):
     mobile: str
     is_active: bool
     jti: str
-    sid: str = ""  # refresh-session id (present on tokens issued after the sid-in-access change)
 
 
 # ── Token blacklist check ────────────────────────────────────────────────────
@@ -130,16 +126,8 @@ async def get_current_user(
     jti = payload.get("jti", "")
     user_id = payload.get("sub", "")
 
-    # Check blacklist. Redis is best-effort here (same degradation as the user cache below):
-    # an outage must not 500 every authenticated request — the docstring promises exactly
-    # this tolerance. Access tokens are ≤15 min, so honoring a revoked-but-unexpired token
-    # during an outage is a bounded, logged degradation rather than a full auth outage.
-    try:
-        blacklisted = await _is_token_blacklisted(jti, r)
-    except Exception:
-        logger.warning("blacklist_check_degraded", reason="redis_unavailable")
-        blacklisted = False
-    if blacklisted:
+    # Check blacklist
+    if await _is_token_blacklisted(jti, r):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has been revoked",
@@ -167,7 +155,6 @@ async def get_current_user(
             mobile=cached["mobile"],
             is_active=cached["is_active"],
             jti=jti,
-            sid=payload.get("sid", ""),
         )
         request.state.current_user = user
         return user
@@ -215,7 +202,6 @@ async def get_current_user(
         mobile=user.mobile,
         is_active=user.is_active,
         jti=jti,
-        sid=payload.get("sid", ""),
     )
     request.state.current_user = current
     return current

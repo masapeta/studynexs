@@ -1,5 +1,4 @@
 """Portal endpoints — parent, student, and teacher home context."""
-
 from __future__ import annotations
 
 import uuid
@@ -7,7 +6,6 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.api_route import CommitOnSuccessRoute
 from app.core.authorization import assert_can_access_student
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, get_current_user
@@ -28,7 +26,7 @@ from app.modules.portal.services.portal_service import (
 )
 from app.shared.schemas.common import APIResponse
 
-router = APIRouter(route_class=CommitOnSuccessRoute)
+router = APIRouter()
 
 
 @router.get("/context", response_model=APIResponse[PortalContextOut])

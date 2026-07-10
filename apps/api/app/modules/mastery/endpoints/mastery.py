@@ -1,27 +1,25 @@
 """Mastery endpoints — topic profiles, heatmap, flags review pipeline, digest."""
-
 from __future__ import annotations
 
 import uuid
 from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import false, or_, select, tuple_
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.api_route import CommitOnSuccessRoute
 from app.core.authorization import assert_can_access_student
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, get_current_user, require_roles
 from app.core.rate_limit import rate_limit
 from app.core.staff_permissions import assert_mastery_flag_review, get_staff_scope
+from app.modules.ai.gateway.errors import raise_http_for_llm_error
 from app.core.tenant_scope import TenantScope
 from app.db.models.academic import Class, Subject
 from app.db.models.mastery import FlagStatus, MasteryFlag, StudentTopicMastery
 from app.db.models.notification import NotificationChannel
 from app.db.models.student import Parent, Student, StudentParentMap
 from app.db.models.user import User
-from app.modules.ai.gateway.errors import raise_http_for_llm_error
 from app.modules.ai.services.usage_caps import enforce_monthly_ai_cap
 from app.modules.mastery.schemas.mastery import (
     ClassHeatmapOut,
@@ -43,7 +41,7 @@ from app.modules.mastery.services.narrative_service import draft_narrative
 from app.modules.notifications.services.notification_service import NotificationService
 from app.shared.schemas.common import APIResponse
 
-router = APIRouter(route_class=CommitOnSuccessRoute)
+router = APIRouter()
 
 _STAFF = ("teacher", "class_incharge", "admin", "super_admin")
 _AI_GEN_RATE = {"max_requests": 12, "window_seconds": 60}
@@ -99,15 +97,6 @@ async def class_heatmap(
     """Students × topics mastery matrix for one class+subject."""
     school_id = uuid.UUID(current_user.school_id)
     await TenantScope(db, school_id).school_class(class_id)
-    # Object-level scope: a teacher may only see mastery for classes they are incharge of
-    # or the exact class+subject they teach (admins unrestricted). Tenant scope alone would
-    # otherwise let any teacher read every class's per-student mastery in the school.
-    scope = await get_staff_scope(db, current_user)
-    if not scope.can_evaluate_answer_sheets(class_id, subject_id):
-        raise HTTPException(
-            status_code=403,
-            detail="You can only view mastery for your assigned classes or subjects.",
-        )
 
     rows = (
         await db.execute(
@@ -200,7 +189,9 @@ async def _get_school_flag(
 ) -> MasteryFlag:
     flag = (
         await db.execute(
-            select(MasteryFlag).where(MasteryFlag.id == flag_id, MasteryFlag.school_id == school_id)
+            select(MasteryFlag).where(
+                MasteryFlag.id == flag_id, MasteryFlag.school_id == school_id
+            )
         )
     ).scalar_one_or_none()
     if not flag:
@@ -215,29 +206,6 @@ async def _assert_flag_mutation_scope(
     assert_mastery_flag_review(scope, flag.class_id, flag.subject_id)
 
 
-def _flag_scope_filter(scope):
-    """SQL predicate restricting MasteryFlag rows to a non-admin staff member's scope.
-
-    Returns None for admins (unrestricted), a SQL false() when the user has no scope at all
-    (match nothing), or an OR of: their incharge classes (all subjects) and the exact
-    class+subject pairs they teach. This is applied as an AND alongside any user-supplied
-    class/subject filters, so an explicit ``subject_id`` can only ever *narrow* within scope —
-    it can never be used to read another class/subject the user isn't assigned to.
-    """
-    if scope.is_admin:
-        return None
-    clauses = []
-    if scope.incharge_class_ids:
-        clauses.append(MasteryFlag.class_id.in_(scope.incharge_class_ids))
-    if scope.teaching_pairs:
-        clauses.append(
-            tuple_(MasteryFlag.class_id, MasteryFlag.subject_id).in_(scope.teaching_pairs)
-        )
-    if not clauses:
-        return false()
-    return or_(*clauses)
-
-
 @router.get("/flags", response_model=APIResponse[list[FlagOut]])
 async def list_flags(
     status: FlagStatus | None = None,
@@ -248,7 +216,7 @@ async def list_flags(
     current_user: CurrentUser = Depends(require_roles(*_STAFF)),
     db: AsyncSession = Depends(get_db),
 ):
-    """Weakness flags for review — hard-scoped to the staff member's classes/subjects."""
+    """Weakness flags for review — scoped to teacher's assigned subjects."""
     scope = await get_staff_scope(db, current_user)
     query = (
         select(MasteryFlag, User.full_name, Class.grade, Class.section)
@@ -260,16 +228,18 @@ async def list_flags(
         .offset((page - 1) * page_size)
         .limit(page_size)
     )
-    # Enforce scope first so user-supplied filters can only narrow within it, never escape it.
-    scope_filter = _flag_scope_filter(scope)
-    if scope_filter is not None:
-        query = query.where(scope_filter)
     if status:
         query = query.where(MasteryFlag.status == status)
     if class_id:
         query = query.where(MasteryFlag.class_id == class_id)
     if subject_id:
         query = query.where(MasteryFlag.subject_id == subject_id)
+    elif scope.teaching_pairs and not scope.is_admin:
+        subject_ids = {sid for _, sid in scope.teaching_pairs}
+        query = query.where(MasteryFlag.subject_id.in_(subject_ids))
+    if class_id and scope.scoped_only and not scope.is_admin:
+        if class_id not in scope.teaching_class_ids and class_id not in scope.incharge_class_ids:
+            return APIResponse(data=[])
 
     rows = (await db.execute(query)).all()
     data = [
@@ -435,10 +405,6 @@ async def printable_digest(
     if class_id:
         await TenantScope(db, school_id).school_class(class_id)
 
-    # Same object-level scope as the flag list: without this, any teacher could print every
-    # class's approved parent-facing narratives across the school.
-    scope = await get_staff_scope(db, current_user)
-
     query = (
         select(MasteryFlag, User.full_name, Class.grade, Class.section)
         .join(Student, Student.id == MasteryFlag.student_id)
@@ -450,9 +416,6 @@ async def printable_digest(
         )
         .order_by(User.full_name, MasteryFlag.topic)
     )
-    scope_filter = _flag_scope_filter(scope)
-    if scope_filter is not None:
-        query = query.where(scope_filter)
     if class_id:
         query = query.where(MasteryFlag.class_id == class_id)
 

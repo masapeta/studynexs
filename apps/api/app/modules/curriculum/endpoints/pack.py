@@ -1,5 +1,4 @@
 """Curriculum pack API — HOD builds a draft syllabus, then approves to immutable."""
-
 from __future__ import annotations
 
 import uuid
@@ -7,7 +6,6 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.api_route import CommitOnSuccessRoute
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, require_roles
 from app.modules.curriculum.schemas.pack import (
@@ -23,7 +21,7 @@ from app.modules.curriculum.schemas.pack import (
 from app.modules.curriculum.services.pack_service import PackError, PackService
 from app.shared.schemas.common import APIResponse
 
-router = APIRouter(route_class=CommitOnSuccessRoute)
+router = APIRouter()
 
 _BUILD = ("class_incharge", "admin", "super_admin")
 _READ = ("teacher", "class_incharge", "admin", "super_admin")
@@ -31,13 +29,7 @@ _READ = ("teacher", "class_incharge", "admin", "super_admin")
 
 def _err(e: PackError) -> HTTPException:
     msg = str(e)
-    code = (
-        404
-        if "not found" in msg.lower()
-        else 409
-        if "immutable" in msg.lower() or "already" in msg.lower()
-        else 400
-    )
+    code = 404 if "not found" in msg.lower() else 409 if "immutable" in msg.lower() or "already" in msg.lower() else 400
     return HTTPException(status_code=code, detail=msg)
 
 
@@ -47,10 +39,7 @@ async def _detail(svc: PackService, pack) -> PackDetailOut:
     out = PackDetailOut.model_validate(pack)
     out.chapters = [
         ChapterOut(
-            id=c.id,
-            number=c.number,
-            title=c.title,
-            order_index=c.order_index,
+            id=c.id, number=c.number, title=c.title, order_index=c.order_index,
             topics=[TopicOut.model_validate(t) for t in topics_by_ch.get(c.id, [])],
         )
         for c in chapters
@@ -66,9 +55,7 @@ async def create_pack(
 ):
     svc = PackService(db)
     try:
-        pack = await svc.create_pack(
-            uuid.UUID(current_user.school_id), body, uuid.UUID(current_user.id)
-        )
+        pack = await svc.create_pack(uuid.UUID(current_user.school_id), body, uuid.UUID(current_user.id))
     except PackError as e:
         raise _err(e)
     return APIResponse(data=PackOut.model_validate(pack), message="Curriculum pack created (draft)")
@@ -82,9 +69,7 @@ async def list_packs(
     db: AsyncSession = Depends(get_db),
 ):
     svc = PackService(db)
-    packs = await svc.list_packs(
-        uuid.UUID(current_user.school_id), class_id=class_id, subject_id=subject_id
-    )
+    packs = await svc.list_packs(uuid.UUID(current_user.school_id), class_id=class_id, subject_id=subject_id)
     return APIResponse(data=[PackOut.model_validate(p) for p in packs])
 
 
@@ -132,10 +117,7 @@ async def add_chapter(
     topics = (await svc.get_topics_for_chapters([chapter.id])).get(chapter.id, [])
     return APIResponse(
         data=ChapterOut(
-            id=chapter.id,
-            number=chapter.number,
-            title=chapter.title,
-            order_index=chapter.order_index,
+            id=chapter.id, number=chapter.number, title=chapter.title, order_index=chapter.order_index,
             topics=[TopicOut.model_validate(t) for t in topics],
         ),
         message="Chapter added",
@@ -165,11 +147,7 @@ async def approve_pack(
 ):
     svc = PackService(db)
     try:
-        pack = await svc.approve_pack(
-            uuid.UUID(current_user.school_id), pack_id, uuid.UUID(current_user.id)
-        )
+        pack = await svc.approve_pack(uuid.UUID(current_user.school_id), pack_id, uuid.UUID(current_user.id))
     except PackError as e:
         raise _err(e)
-    return APIResponse(
-        data=PackOut.model_validate(pack), message="Curriculum pack approved — now immutable"
-    )
+    return APIResponse(data=PackOut.model_validate(pack), message="Curriculum pack approved — now immutable")

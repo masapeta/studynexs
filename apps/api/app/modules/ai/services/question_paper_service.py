@@ -18,13 +18,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.tenant_scope import TenantScope
 from app.db.models.academic import Class, Subject
 from app.db.models.ai_usage import AIUsage
-from app.db.models.curriculum_pack import PackStatus
 from app.db.models.question_paper import PaperStatus, QuestionPaper
-from app.modules.ai.embeddings import EmbeddingService
 from app.modules.ai.gateway import LLMMessage, LLMResult, generate_llm, record_usage
 from app.modules.ai.gateway.output_guard import sanitize_paper_sections
 from app.modules.ai.services.ai_credits import credits_for_purpose, reserve_ai_credits
-from app.modules.ai.services.assessment_grounding import GroundingContext, ground_for_pack
 from app.modules.ai.services.question_bank_service import (
     compose_sections_from_plan,
     fetch_compose_candidates,
@@ -32,8 +29,6 @@ from app.modules.ai.services.question_bank_service import (
     note_bank_items_used,
     renumber_sections,
 )
-from app.modules.ai.vectorstore.base import VectorStore
-from app.modules.curriculum.services.pack_service import PackError, PackService
 
 logger = structlog.get_logger()
 
@@ -98,60 +93,6 @@ def _build_messages(*, board, grade, subject, topics, total_marks, duration, dif
         '"options": [str] (only for mcq), "answer_key": str}]}]}\n'
         "Every MCQ must have exactly 4 options. Provide a concise answer_key (a full worked "
         "solution for long questions) for EVERY question — these are for the teacher only."
-    )
-    return [LLMMessage("system", system), LLMMessage("user", user)]
-
-
-def _build_grounded_messages(
-    *, board, grade, subject, topics, total_marks, duration, difficulty, plan,
-    context_text, source_count,
-):
-    """Curriculum-aware prompt: the model may use ONLY the retrieved context and must cite it.
-
-    This is the difference between Assessment Intelligence and a generic LLM paper — every
-    question is tied to the school's approved curriculum and carries a traceable citation, a
-    Bloom's level, a difficulty label, and the learning outcome it assesses (CLAUDE.md §40, §109).
-    """
-    mix = _DIFFICULTY_MIX.get(difficulty, _DIFFICULTY_MIX["balanced"])
-    plan_lines = "\n".join(
-        f"- {s['title']}: {s['count']} questions x {s['marks_per_q']} marks "
-        f"({s['type']}). {s['instructions']}"
-        for s in plan
-    )
-    topic_str = (
-        ", ".join(topics) if topics else "the topics present in the curriculum context below"
-    )
-    system = (
-        f"You are an experienced {board} board examiner setting a {grade} {subject} question "
-        f"paper for an Indian school. You MUST base every question ONLY on the CURRICULUM CONTEXT "
-        f"provided below — never use outside knowledge and never introduce out-of-syllabus "
-        f"content. For EVERY question you must: (1) cite the context source number(s) it is drawn "
-        f'from in a "citations" array; (2) classify its Bloom\'s level; (3) label its difficulty; '
-        f"(4) state the learning outcome it assesses. No duplicate or near-duplicate questions; "
-        f"every question must be clear, unambiguous and correctly solvable; follow the section "
-        f"plan and marks exactly. Return JSON only."
-    )
-    user = (
-        f"CURRICULUM CONTEXT (numbered sources 1..{source_count} — cite these by number):\n"
-        f"{context_text}\n\n"
-        f"Create a {board} {grade} {subject} question paper grounded ONLY in the context above.\n"
-        f"Total marks: {total_marks}. Duration: {duration} minutes.\n"
-        f"Focus topics: {topic_str}.\n"
-        f"Difficulty mix (approx %): easy {mix['easy']}, "
-        f"medium {mix['medium']}, hard {mix['hard']}.\n"
-        f"Follow EXACTLY this section plan:\n{plan_lines}\n\n"
-        "Return JSON of this shape:\n"
-        '{"title": str, "general_instructions": [str, ...], "sections": ['
-        '{"title": str, "instructions": str, "questions": ['
-        '{"number": str, "text": str, "marks": number, "type": str, '
-        '"options": [str] (only for mcq), "answer_key": str, '
-        '"bloom": str (one of: Remember, Understand, Apply, Analyze, Evaluate, Create), '
-        '"difficulty": str (easy | medium | hard), "learning_outcome": str, '
-        '"concepts": [str], '
-        f'"citations": [int] (source numbers from 1 to {source_count} above)}}]}}]}}\n'
-        "Every MCQ must have exactly 4 options. Provide a concise answer_key (a full worked "
-        "solution for long questions) for EVERY question — these are for the teacher only. "
-        "Every question MUST include at least one valid citation to the curriculum context."
     )
     return [LLMMessage("system", system), LLMMessage("user", user)]
 
@@ -222,17 +163,8 @@ async def generate_paper(
     role: str = "teacher",
     purpose_tag: str = "qp_full",
     credits_charged: int | None = None,
-    pack_id: uuid.UUID | None = None,
-    embedder: EmbeddingService | None = None,
-    store: VectorStore | None = None,
 ) -> QuestionPaper:
-    """Generate a DRAFT question paper via the LLM gateway. Teacher reviews/approves after.
-
-    When ``pack_id`` is given, generation is grounded in that APPROVED CurriculumPack: the paper
-    is built ONLY from curriculum context retrieved through the shared RAG platform, and every
-    question carries a citation back to it (Assessment Intelligence). ``embedder``/``store`` are
-    injectable for tests; production uses the configured shared services.
-    """
+    """Generate a DRAFT question paper via the LLM gateway. Teacher reviews/approves after."""
     cls = (
         await db.execute(select(Class).where(Class.id == class_id, Class.school_id == school_id))
     ).scalar_one_or_none()
@@ -258,45 +190,10 @@ async def generate_paper(
 
     plan = _ssc_blueprint(total_marks)
     official_total = sum(s["marks_per_q"] * s.get("answer_any", s["count"]) for s in plan)
-
-    # Curriculum grounding (Assessment Intelligence). Validate + retrieve BEFORE reserving QP
-    # credits so a bad/empty pack fails fast without charging the teacher. All retrieval goes
-    # through the shared RAG platform — the service never touches a provider/embedder directly.
-    grounded = False
-    grounding: GroundingContext | None = None
-    grounding_pack_id: uuid.UUID | None = None
-    if pack_id is not None:
-        try:
-            pack = await PackService(db).get_pack(school_id, pack_id)
-        except PackError as exc:
-            raise ValueError(str(exc)) from exc
-        if pack.class_id != class_id or pack.subject_id != subject_id:
-            raise ValueError("Curriculum pack does not match this class and subject.")
-        if pack.status != PackStatus.APPROVED:
-            raise ValueError(
-                "Approve the curriculum pack before generating grounded papers from it."
-            )
-        board = pack.board or board
-        grounding = await ground_for_pack(
-            db, pack=pack, topics=topics, embedder=embedder, store=store
-        )
-        if grounding.is_empty:
-            raise ValueError(
-                "This curriculum pack has no chapters/topics to ground on yet. "
-                "Add curriculum content, then generate."
-            )
-        grounded = True
-        grounding_pack_id = pack.id
-        messages = _build_grounded_messages(
-            board=board, grade=grade, subject=subject.name, topics=topics,
-            total_marks=total_marks, duration=duration_minutes, difficulty=difficulty,
-            plan=plan, context_text=grounding.context_text, source_count=grounding.chunk_count,
-        )
-    else:
-        messages = _build_messages(
-            board=board, grade=grade, subject=subject.name, topics=topics,
-            total_marks=total_marks, duration=duration_minutes, difficulty=difficulty, plan=plan,
-        )
+    messages = _build_messages(
+        board=board, grade=grade, subject=subject.name, topics=topics,
+        total_marks=total_marks, duration=duration_minutes, difficulty=difficulty, plan=plan,
+    )
 
     cost = credits_charged if credits_charged is not None else credits_for_purpose(purpose_tag)
     reserved: AIUsage | None = None
@@ -354,9 +251,6 @@ async def generate_paper(
         sections=sections,
         status=PaperStatus.DRAFT,
         ai_model=f"{result.provider}:{result.model}",
-        pack_id=grounding_pack_id,
-        grounded=grounded,
-        grounding_sources=(grounding.sources if grounding else None),
     )
     db.add(paper)
     await db.flush()
@@ -370,8 +264,6 @@ async def generate_paper(
         marks=computed_total,
         tokens_in=result.tokens_in,
         tokens_out=result.tokens_out,
-        grounded=grounded,
-        grounding_sources=(grounding.chunk_count if grounding else 0),
     )
     return paper
 

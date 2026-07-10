@@ -19,12 +19,15 @@ from app.db.models.answer_sheet_evaluation import (
     AnswerSheetEvaluation,
 )
 from app.db.models.examination import Exam, ExamMark
+from app.db.models.question_paper import QuestionPaper
 from app.db.models.school import School
+from app.modules.ai.gateway.base import LLMResult
 from app.modules.ai.services.ai_credits import (
     assert_credits_for_charge,
     check_ai_credits,
     credits_for_purpose,
 )
+from app.modules.ai.services.evaluation_engine import SubjectiveItem, evaluate_subjective
 from app.modules.ai.services.question_bank_service import fetch_rubrics_for_paper
 from app.modules.examinations.schemas.evaluation import EvaluationApprove
 from app.modules.examinations.schemas.exam import MarkEntry
@@ -238,7 +241,7 @@ class AnswerSheetEvalService:
         vision_result = None
         try:
             answers, vision_result = await self._resolve_student_answers(row, exam)
-            suggestions = await self._grade_exam(
+            suggestions, subjective_results = await self._grade_exam(
                 exam=exam,
                 school_id=row.school_id,
                 student_answers=answers,
@@ -246,12 +249,19 @@ class AnswerSheetEvalService:
             row.ai_suggestions = suggestions
             row.correction_summary = _build_summary(suggestions)
             row.status = EVAL_STATUS_SUGGESTED
+            # One evaluation = one credit charge. Vision (if any) leads, then subjective marking
+            # calls are recorded cost-only for observability. _record_eval_credits keeps the
+            # single-charge invariant and is idempotent across re-runs.
+            llm_results: list[LLMResult] = []
+            if isinstance(vision_result, LLMResult):
+                llm_results.append(vision_result)
+            llm_results.extend(subjective_results)
             await self._record_eval_credits(
                 school_id=row.school_id,
                 created_by=row.created_by,
                 role=role,
                 evaluation_id=row.id,
-                vision_result=vision_result,
+                llm_results=llm_results,
             )
         except Exception as exc:
             logger.exception("eval_failed", evaluation_id=str(evaluation_id))
@@ -308,10 +318,16 @@ class AnswerSheetEvalService:
         created_by: uuid.UUID,
         role: str,
         evaluation_id: uuid.UUID,
-        vision_result: object | None = None,
+        llm_results: list[LLMResult] | None = None,
     ) -> None:
+        """Charge exactly one credit per evaluation; log every real LLM call for observability.
+
+        An evaluation may fan out to several provider calls (vision OCR + one subjective marking
+        call). The school is billed once: the first LLM call carries the credit, the rest are
+        recorded cost-only. When no LLM ran (pure heuristic), an ``internal`` row carries the
+        charge. Idempotent — a re-run finds the existing charged row and does nothing.
+        """
         from app.db.models.ai_usage import AIUsage
-        from app.modules.ai.gateway.base import LLMResult
         from app.modules.ai.gateway.metering import record_usage
 
         existing = (
@@ -328,22 +344,25 @@ class AnswerSheetEvalService:
             return
 
         credits = credits_for_purpose("exam_evaluation")
-        if isinstance(vision_result, LLMResult):
-            # Provider cost is already spent; record_usage enforces caps at INSERT.
-            # Heuristic path uses assert_credits_for_charge first — asymmetry is intentional.
-            await record_usage(
-                self.db,
-                feature="answer_sheet_eval",
-                result=vision_result,
-                school_id=school_id,
-                created_by=created_by,
-                role=role,
-                purpose_tag="exam_evaluation",
-                credits_charged=credits,
-                ref_type="answer_sheet_evaluation",
-                ref_id=evaluation_id,
-                image_count=1,
-            )
+        results = [r for r in (llm_results or []) if isinstance(r, LLMResult)]
+
+        if results:
+            # First call carries the credit (record_usage enforces caps at INSERT); the rest are
+            # cost-only observability rows so a school is never billed per question.
+            for idx, result in enumerate(results):
+                await record_usage(
+                    self.db,
+                    feature="answer_sheet_eval",
+                    result=result,
+                    school_id=school_id,
+                    created_by=created_by,
+                    role=role,
+                    purpose_tag="exam_evaluation",
+                    credits_charged=credits if idx == 0 else 0,
+                    ref_type="answer_sheet_evaluation",
+                    ref_id=evaluation_id,
+                    image_count=1 if idx == 0 else 0,
+                )
             return
 
         await assert_credits_for_charge(

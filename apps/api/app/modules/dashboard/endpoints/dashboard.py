@@ -1,5 +1,4 @@
 """Dashboard API — role-tailored home summary."""
-
 from __future__ import annotations
 
 import uuid
@@ -7,7 +6,6 @@ import uuid
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.api_route import CommitOnSuccessRoute
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, require_roles
 from app.core.staff_permissions import get_staff_scope
@@ -15,7 +13,7 @@ from app.modules.dashboard.schemas.dashboard import DashboardSummaryOut
 from app.modules.dashboard.services.dashboard_service import DashboardService
 from app.shared.schemas.common import APIResponse
 
-router = APIRouter(route_class=CommitOnSuccessRoute)
+router = APIRouter()
 
 
 @router.get("/summary", response_model=APIResponse[DashboardSummaryOut])

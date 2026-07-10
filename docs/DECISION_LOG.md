@@ -242,48 +242,6 @@
 
 **Status:** Implemented in `ai_credits.py` + `metering.py`.
 
-### Decision — Commit before the response, via a route class (2026-07-10)
-
-**The call:** DB commits happen in `CommitOnSuccessRoute` (`app/core/api_route.py`) **before the
-response is sent**, not in `get_db`'s teardown. Every module `APIRouter` sets
-`route_class=CommitOnSuccessRoute`; `get_db` only stashes the session on `request.state` and rolls
-back on error. `tests/test_commit_route.py` fails if any router forgets it.
-
-**Why:** On the pinned FastAPI, `yield`-dependency teardown runs *after* the response is sent, so a
-commit-time failure returned a silent 2xx with rolled-back data.
-
-**Alternatives rejected:** explicit `commit()` in every service (too broad, easy to miss); central
-`route_class`/post-mount rehome (proven not to propagate — included routers nest under a private
-`_IncludedRouter`).
-
-**Status:** Implemented across all 21 routers; see `AGENT_HANDOVER.md` §2.
-
-### Decision — Shared AI Platform: embeddings / vector store / RAG as shared services (2026-07-10)
-
-**The call:** AI plumbing lives in shared services under `app/modules/ai/{embeddings,vectorstore,rag}`
-behind provider-agnostic ABCs (provider→model separation). Pillars **consume** them; no second
-gateway/embedder/store. `VectorStore.search` **requires** `school_id` by signature. RAG grounds on the
-curriculum **topic** (structured, copyright-safe), tenant- and pack-scoped.
-
-**Why:** `CLAUDE.md` §32/§33.1, §4.1 — one shared intelligence platform beneath the four pillars.
-
-**Config:** `EMBEDDING_PROVIDER=openai`, `EMBEDDING_MODEL=text-embedding-3-small` (1536-dim),
-`VECTOR_STORE=qdrant`. Final production LLM provider is still an open benchmark decision.
-
-**Status:** Foundation built & live-validated (OpenAI + Qdrant). Not yet wired into QP generation.
-
-### Decision — Aadhaar encryption at rest via app-level EncryptedString (2026-07-10)
-
-**The call:** Regulated Aadhaar numbers are stored encrypted via a Fernet/MultiFernet
-`EncryptedString` column type (`app/core/encryption.py`), keyed by `AADHAAR_ENCRYPTION_KEYS` (rotation
-supported), with legacy-plaintext passthrough for a backward-compatible migration. Prod boot fails
-without a key.
-
-**Why:** DPDP/Aadhaar-regulation expectation of encryption at rest; app-level keeps keys in the secret
-store and enables rotation. Chosen over pgcrypto for key control + rotation.
-
-**Status:** Implemented; migration reversible; forked alembic heads merged to a single head.
-
 ---
 
 *This is a living record — update it as decisions are made or revisited.*

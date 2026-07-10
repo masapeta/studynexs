@@ -1,6 +1,7 @@
 import os
-from datetime import date
+import uuid
 from typing import AsyncGenerator
+from datetime import date
 
 os.environ["ENVIRONMENT"] = "testing"
 os.environ["OUTBOX_WORKER_ENABLED"] = "false"
@@ -10,15 +11,16 @@ from app.core.config import get_settings
 
 get_settings.cache_clear()
 
+import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.core.database import get_db
 from app.core.dependencies import get_redis
-from app.core.security import create_access_token, hash_password
+from app.core.security import hash_password, create_access_token
 from app.db.models.academic import AcademicYear, Class
 from app.db.models.base import Base
 from app.db.models.fee import FeeFrequency, FeeStructure, FeeType, ReceiptCounter
@@ -47,7 +49,9 @@ async def _ensure_test_database() -> None:
         database="postgres",
     )
     try:
-        exists = await conn.fetchval("SELECT 1 FROM pg_database WHERE datname = $1", TEST_DB_NAME)
+        exists = await conn.fetchval(
+            "SELECT 1 FROM pg_database WHERE datname = $1", TEST_DB_NAME
+        )
         if not exists:
             await conn.execute(f'CREATE DATABASE "{TEST_DB_NAME}"')
     finally:
@@ -69,20 +73,6 @@ class _FakeRedis:
     async def exists(self, key: str) -> int:
         return 1 if key in self._store else 0
 
-    async def delete(self, *keys: str) -> int:
-        removed = 0
-        for key in keys:
-            if self._store.pop(key, None) is not None:
-                removed += 1
-        return removed
-
-    async def scan_iter(self, match: str | None = None):
-        import fnmatch
-
-        for key in list(self._store.keys()):
-            if match is None or fnmatch.fnmatch(key, match):
-                yield key
-
     async def eval(self, _script: str, _numkeys: int, _key: str, *_args) -> int:
         return 1
 
@@ -92,15 +82,7 @@ class _FakeRedis:
 
 @pytest_asyncio.fixture
 async def engine():
-    """Function-scoped engine — avoids asyncpg 'different loop' errors with httpx.
-
-    Create the schema at start, drop it (per-table, FK-ordered) at teardown. This uses light
-    per-object locks, so a committing test's still-closing connection can't be fought by the
-    next test's schema reset. A whole-schema ``DROP SCHEMA public CASCADE`` at the start of the
-    next test instead took an ACCESS EXCLUSIVE lock that raced lingering connections across
-    pytest-asyncio's per-test event loops and surfaced as 'connection closed in the middle of
-    operation' cascading through the run. drop_all is dialect-aware and drops the enum types too.
-    """
+    """Function-scoped engine — avoids asyncpg 'different loop' errors with httpx."""
     await _ensure_test_database()
     _engine = create_async_engine(TEST_DB_URL, poolclass=NullPool)
     async with _engine.begin() as conn:
@@ -125,7 +107,6 @@ async def db_session(engine) -> AsyncGenerator[AsyncSession, None]:
 
         await session.close()
         await transaction.rollback()
-
 
 @pytest_asyncio.fixture(autouse=True)
 async def reset_redis_pool():
@@ -163,17 +144,12 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
         yield c
     app.dependency_overrides.clear()
 
-
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-
 async def get_auth_token(client: AsyncClient, username: str, password: str) -> str:
-    resp = await client.post(
-        "/api/v1/auth/login", json={"username": username, "password": password}
-    )
+    resp = await client.post("/api/v1/auth/login", json={"username": username, "password": password})
     assert resp.status_code == 200, f"Login failed: {resp.text}"
     return resp.json()["access_token"]
-
 
 def auth_headers(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
@@ -188,83 +164,58 @@ def access_token_for(user: User, *, tenant_slug: str = "test") -> str:
         tenant_slug=tenant_slug,
     )
 
-
 # ── Fixtures ─────────────────────────────────────────────────────────────────
-
 
 @pytest_asyncio.fixture
 async def test_school(db_session: AsyncSession) -> School:
     school = School(
-        name="Test School",
-        code="TST",
-        tenant_slug="test",
-        board="CBSE",
-        contact_email="admin@test.com",
-        contact_phone="+911234567890",
-        is_active=True,
+        name="Test School", code="TST", tenant_slug="test", board="CBSE",
+        contact_email="admin@test.com", contact_phone="+911234567890", is_active=True
     )
     db_session.add(school)
     await db_session.flush()
     return school
 
-
 @pytest_asyncio.fixture
 async def admin_user(db_session: AsyncSession, test_school: School) -> User:
     user = User(
-        school_id=test_school.id,
-        username="test_admin",
-        mobile="+919876543210",
-        full_name="Test Admin",
-        role=UserRole.SUPER_ADMIN,
-        password_hash=hash_password("Admin@123"),
-        is_active=True,
+        school_id=test_school.id, username="test_admin", mobile="+919876543210",
+        full_name="Test Admin", role=UserRole.SUPER_ADMIN,
+        password_hash=hash_password("Admin@123"), is_active=True
     )
     db_session.add(user)
     await db_session.flush()
     return user
-
 
 @pytest_asyncio.fixture
 async def teacher_user(db_session: AsyncSession, test_school: School) -> User:
     user = User(
-        school_id=test_school.id,
-        username="test_teacher",
-        mobile="+919876543211",
-        full_name="Test Teacher",
-        role=UserRole.TEACHER,
-        password_hash=hash_password("Teacher@123"),
-        is_active=True,
+        school_id=test_school.id, username="test_teacher", mobile="+919876543211",
+        full_name="Test Teacher", role=UserRole.TEACHER,
+        password_hash=hash_password("Teacher@123"), is_active=True
     )
     db_session.add(user)
     await db_session.flush()
     return user
 
-
 @pytest_asyncio.fixture
 async def academic_year(db_session: AsyncSession, test_school: School) -> AcademicYear:
     ay = AcademicYear(
-        school_id=test_school.id,
-        year_label="2026-2027",
-        start_date=date(2026, 6, 1),
-        end_date=date(2027, 5, 31),
-        is_active=True,
+        school_id=test_school.id, year_label="2026-2027",
+        start_date=date(2026, 6, 1), end_date=date(2027, 5, 31), is_active=True
     )
     db_session.add(ay)
     await db_session.flush()
     return ay
 
-
 @pytest_asyncio.fixture
-async def test_class(
-    db_session: AsyncSession, test_school: School, academic_year: AcademicYear
-) -> Class:
+async def test_class(db_session: AsyncSession, test_school: School, academic_year: AcademicYear) -> Class:
     cls = Class(
         school_id=test_school.id, grade="Grade 1", section="A", academic_year_id=academic_year.id
     )
     db_session.add(cls)
     await db_session.flush()
     return cls
-
 
 @pytest_asyncio.fixture
 async def fee_setup(
@@ -293,22 +244,15 @@ async def fee_setup(
 @pytest_asyncio.fixture
 async def student_user(db_session: AsyncSession, test_school: School, test_class: Class) -> User:
     user = User(
-        school_id=test_school.id,
-        username="test_student",
-        mobile="+919876543212",
-        full_name="Test Student",
-        role=UserRole.STUDENT,
-        password_hash=hash_password("Student@123"),
-        is_active=True,
+        school_id=test_school.id, username="test_student", mobile="+919876543212",
+        full_name="Test Student", role=UserRole.STUDENT,
+        password_hash=hash_password("Student@123"), is_active=True
     )
     db_session.add(user)
     await db_session.flush()
     student = Student(
-        school_id=test_school.id,
-        user_id=user.id,
-        class_id=test_class.id,
-        admission_no="ADM001",
-        roll_no="1",
+        school_id=test_school.id, user_id=user.id, class_id=test_class.id,
+        admission_no="ADM001", roll_no="1"
     )
     db_session.add(student)
     await db_session.flush()
@@ -316,23 +260,20 @@ async def student_user(db_session: AsyncSession, test_school: School, test_class
 
 
 @pytest_asyncio.fixture
-async def parent_user(db_session: AsyncSession, test_school: School, student_user: User) -> User:
+async def parent_user(
+    db_session: AsyncSession, test_school: School, student_user: User
+) -> User:
     """A parent linked to `student_user` (via StudentParentMap)."""
     user = User(
-        school_id=test_school.id,
-        username="test_parent",
-        mobile="+919876543213",
-        full_name="Test Parent",
-        role=UserRole.PARENT,
-        password_hash=hash_password("Parent@123"),
-        is_active=True,
+        school_id=test_school.id, username="test_parent", mobile="+919876543213",
+        full_name="Test Parent", role=UserRole.PARENT,
+        password_hash=hash_password("Parent@123"), is_active=True,
     )
     db_session.add(user)
     await db_session.flush()
 
     parent = Parent(
-        school_id=test_school.id,
-        user_id=user.id,
+        school_id=test_school.id, user_id=user.id,
         relationship_type=Relationship.FATHER,
     )
     db_session.add(parent)
@@ -341,6 +282,8 @@ async def parent_user(db_session: AsyncSession, test_school: School, student_use
     student = (
         await db_session.execute(select(Student).where(Student.user_id == student_user.id))
     ).scalar_one()
-    db_session.add(StudentParentMap(student_id=student.id, parent_id=parent.id, is_primary=True))
+    db_session.add(
+        StudentParentMap(student_id=student.id, parent_id=parent.id, is_primary=True)
+    )
     await db_session.flush()
     return user

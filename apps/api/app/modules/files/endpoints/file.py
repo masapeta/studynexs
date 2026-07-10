@@ -6,12 +6,13 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.api_route import CommitOnSuccessRoute
-from app.core.authorization import assert_can_access_file
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.core.dependencies import CurrentUser, get_current_user
 from app.core.rate_limit import rate_limit
+
+settings = get_settings()
+from app.core.authorization import assert_can_access_file
+from app.core.dependencies import CurrentUser, get_current_user
 from app.db.models.file import FileCategory
 from app.modules.files.schemas.file import FileOut
 from app.modules.files.services.file_service import FileService
@@ -24,16 +25,16 @@ from app.modules.files.services.file_validation import (
 )
 from app.shared.schemas.common import APIResponse
 
-settings = get_settings()
-
-router = APIRouter(route_class=CommitOnSuccessRoute)
+router = APIRouter()
 
 
 @router.post(
     "/upload",
     response_model=APIResponse[FileOut],
     status_code=201,
-    dependencies=[rate_limit("files:upload", max_requests=settings.API_RATE_LIMIT_UPLOAD_PER_MIN)],
+    dependencies=[
+        rate_limit("files:upload", max_requests=settings.API_RATE_LIMIT_UPLOAD_PER_MIN)
+    ],
 )
 async def upload_file(
     file: UploadFile = File(...),

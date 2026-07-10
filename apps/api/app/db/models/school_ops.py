@@ -5,23 +5,10 @@ import enum
 import uuid
 from datetime import date, datetime, time
 
-from sqlalchemy import (
-    Boolean,
-    Date,
-    DateTime,
-    Enum,
-    ForeignKey,
-    Integer,
-    Numeric,
-    String,
-    Text,
-    Time,
-    UniqueConstraint,
-)
+from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text, Time, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.core.encryption import EncryptedString
 from app.db.models.base import BaseModel
 
 
@@ -153,7 +140,7 @@ class AdmissionCandidate(BaseModel):
     previous_school_name: Mapped[str | None] = mapped_column(String(200))
     previous_grade: Mapped[str | None] = mapped_column(String(40))
     enquiry_source: Mapped[str | None] = mapped_column(String(40))
-    aadhaar_number: Mapped[str | None] = mapped_column(EncryptedString(512))
+    aadhaar_number: Mapped[str | None] = mapped_column(String(12))
     birth_certificate_number: Mapped[str | None] = mapped_column(String(40))
     apaar_number: Mapped[str | None] = mapped_column(String(30))
     stage_details: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
@@ -205,7 +192,7 @@ class StaffProfile(BaseModel):
     last_name: Mapped[str] = mapped_column(String(100), nullable=False)
     date_of_birth: Mapped[date | None] = mapped_column(Date)
     gender: Mapped[str | None] = mapped_column(String(10))
-    aadhaar_number: Mapped[str | None] = mapped_column(EncryptedString(512))
+    aadhaar_number: Mapped[str | None] = mapped_column(String(12))
     address_line: Mapped[str | None] = mapped_column(String(300))
     city: Mapped[str | None] = mapped_column(String(80))
     qualification: Mapped[str | None] = mapped_column(Text)
