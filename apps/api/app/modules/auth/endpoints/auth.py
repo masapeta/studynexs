@@ -1,15 +1,18 @@
 """
 Auth API endpoints — OTP, password login, refresh, logout.
 """
+
 from __future__ import annotations
 
 import redis.asyncio as redis
 import structlog
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.api_route import CommitOnSuccessRoute
 from app.core.config import get_settings
+from app.core.csrf import validate_refresh_origin
 from app.core.database import get_db
 from app.core.dependencies import (
     CurrentUser,
@@ -17,8 +20,8 @@ from app.core.dependencies import (
     get_current_user,
     get_redis,
 )
+from app.core.pii import mask_mobile
 from app.core.security import decode_token
-from app.core.csrf import validate_refresh_origin
 from app.core.tenant import resolve_auth_school_id, validate_tenant_school_match
 from app.modules.auth.cookie_util import clear_refresh_cookie, set_refresh_cookie
 from app.modules.auth.schemas.auth import (
@@ -33,7 +36,7 @@ from app.modules.auth.services.auth_service import AuthService
 
 settings = get_settings()
 logger = structlog.get_logger()
-router = APIRouter()
+router = APIRouter(route_class=CommitOnSuccessRoute)
 
 
 def _get_client_ip(request: Request) -> str:
@@ -130,7 +133,7 @@ async def verify_otp(
     access_token, refresh_token = await service.issue_tokens(user)
     set_refresh_cookie(response, refresh_token)
 
-    logger.info("user_login_otp", user_id=str(user.id), mobile=body.mobile)
+    logger.info("user_login_otp", user_id=str(user.id), mobile=mask_mobile(body.mobile))
 
     return TokenResponse(
         access_token=access_token,
@@ -184,7 +187,8 @@ async def login_password(
     access_token, refresh_token = await service.issue_tokens(user)
     set_refresh_cookie(response, refresh_token)
 
-    logger.info("user_login_password", user_id=str(user.id), username=body.username)
+    # Correlate by user_id only — usernames can be a mobile/email (PII); user_id is stable and safe.
+    logger.info("user_login_password", user_id=str(user.id))
 
     return TokenResponse(
         access_token=access_token,
@@ -249,8 +253,9 @@ async def refresh_token(
         )
 
     # Load user from DB
-    from app.db.models.user import User
     from sqlalchemy import select
+
+    from app.db.models.user import User
 
     user_id = payload.get("sub", "")
     result = await db.execute(select(User).where(User.id == user_id))
@@ -289,7 +294,12 @@ async def logout(
     db: AsyncSession = Depends(get_db),
     r: redis.Redis = Depends(get_redis),
 ):
-    """Logout — blacklist access token + clear refresh cookie."""
+    """Logout — blacklist the access token and revoke this device's refresh session.
+
+    The refresh cookie is path-scoped to /auth/refresh, so browsers do NOT send it here.
+    We therefore revoke the session using the sid carried in the access token; the cookie
+    path (below) remains as a fallback for non-browser clients that do send it.
+    """
     # Blacklist the access token
     await r.setex(
         f"{settings.REDIS_TOKEN_BLACKLIST_PREFIX}{current_user.jti}",
@@ -297,7 +307,11 @@ async def logout(
         "1",
     )
 
-    # Blacklist refresh cookie if present + drop this session's refresh slot
+    # Primary revocation path: drop the refresh session named by the access token's sid.
+    if current_user.sid:
+        await AuthService(db, r).revoke_session(current_user.id, current_user.sid)
+
+    # Fallback: if a client did send the refresh cookie, blacklist its jti and drop its slot.
     cookie_token = request.cookies.get(settings.REFRESH_COOKIE_NAME)
     if cookie_token:
         try:

@@ -1,4 +1,5 @@
 """Academic API endpoints — classes, subjects, enrollment, parent linking."""
+
 from __future__ import annotations
 
 import math
@@ -7,13 +8,12 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.api_route import CommitOnSuccessRoute
+from app.core.authorization import assert_can_access_student
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.core.rate_limit import rate_limit
-
-settings = get_settings()
-from app.core.authorization import assert_can_access_student
 from app.core.dependencies import CurrentUser, get_current_user, require_roles
+from app.core.rate_limit import rate_limit
 from app.core.staff_permissions import assert_class_access, assert_class_roster, get_staff_scope
 from app.modules.academic.schemas.academic import (
     ClassCreate,
@@ -31,10 +31,13 @@ from app.modules.academic.schemas.academic import (
 from app.modules.academic.services.academic_service import AcademicService
 from app.shared.schemas.common import APIResponse, PaginatedResponse
 
-router = APIRouter()
+settings = get_settings()
+
+router = APIRouter(route_class=CommitOnSuccessRoute)
 
 
 # ── Classes ──────────────────────────────────────────────────────────────────
+
 
 @router.get("/classes", response_model=PaginatedResponse[ClassOut])
 async def list_classes(
@@ -52,7 +55,9 @@ async def list_classes(
         total = len(classes)
     return PaginatedResponse(
         items=[ClassOut.model_validate(c) for c in classes],
-        total=total, page=page, page_size=page_size,
+        total=total,
+        page=page,
+        page_size=page_size,
         total_pages=math.ceil(total / page_size) if total else 0,
     )
 
@@ -104,6 +109,7 @@ async def get_class_roster(
 
 # ── Subjects ─────────────────────────────────────────────────────────────────
 
+
 @router.get("/subjects", response_model=APIResponse[list[SubjectOut]])
 async def list_subjects(
     class_id: uuid.UUID | None = None,
@@ -145,6 +151,7 @@ async def create_subject(
 
 
 # ── Students ─────────────────────────────────────────────────────────────────
+
 
 @router.get(
     "/students",
@@ -204,6 +211,7 @@ async def enroll_student(
 
 # ── Parent Linking ───────────────────────────────────────────────────────────
 
+
 @router.post("/students/{student_id}/parents", response_model=APIResponse, status_code=201)
 async def link_parent(
     student_id: uuid.UUID,
@@ -227,10 +235,8 @@ async def get_student_parents(
 ):
     await assert_can_access_student(current_user, db, student_id)
     service = AcademicService(db)
-    links = await service.get_student_parents(
-        uuid.UUID(current_user.school_id), student_id
-    )
-    return APIResponse(data=[ParentLinkOut.model_validate(l) for l in links])
+    links = await service.get_student_parents(uuid.UUID(current_user.school_id), student_id)
+    return APIResponse(data=[ParentLinkOut.model_validate(link) for link in links])
 
 
 @router.get("/students/{student_id}/profile", response_model=APIResponse)
@@ -250,6 +256,7 @@ async def get_student_profile(
 
 
 # ── Teacher Mapping ──────────────────────────────────────────────────────────
+
 
 @router.post("/teacher-mappings", response_model=APIResponse[TeacherMappingOut], status_code=201)
 async def map_teacher(

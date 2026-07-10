@@ -1,4 +1,5 @@
 """Tutor endpoints — Mistake Recovery lessons for students (and parents viewing child)."""
+
 from __future__ import annotations
 
 import uuid
@@ -8,11 +9,16 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.api_route import CommitOnSuccessRoute
 from app.core.authorization import assert_can_access_student
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, get_current_user
 from app.core.rate_limit import rate_limit
-from app.modules.ai.gateway.input_guard import sanitize_lesson_key, sanitize_prompt_text, sanitize_tts_voice
+from app.modules.ai.gateway.input_guard import (
+    sanitize_lesson_key,
+    sanitize_prompt_text,
+    sanitize_tts_voice,
+)
 from app.modules.tutor.schemas.tutor import TutorLessonOut, TutorRecommendationOut
 from app.modules.tutor.services.tts_service import (
     default_tts_voice,
@@ -24,8 +30,12 @@ from app.modules.tutor.services.tts_service import (
 from app.modules.tutor.services.tutor_service import get_lesson, list_recommendations
 from app.shared.schemas.common import APIResponse
 
+<<<<<<< HEAD
 router = APIRouter()
 logger = structlog.get_logger()
+=======
+router = APIRouter(route_class=CommitOnSuccessRoute)
+>>>>>>> claude/studynexs-engineering-kickoff-a6761c
 
 _TTS_RATE = {"max_requests": 40, "window_seconds": 60}
 _TTS_ROLES = frozenset({"student", "parent", "teacher", "class_incharge", "admin", "super_admin"})
@@ -39,7 +49,9 @@ class TtsRequest(BaseModel):
     @field_validator("text", mode="before")
     @classmethod
     def _sanitize_text(cls, v: object) -> str:
-        cleaned = sanitize_prompt_text(str(v), max_length=1200, field_name="text", reject_injection=True)
+        cleaned = sanitize_prompt_text(
+            str(v), max_length=1200, field_name="text", reject_injection=True
+        )
         if not cleaned:
             raise ValueError("text is required")
         return cleaned
@@ -126,7 +138,9 @@ async def tutor_tts(
 ):
     """Synthesize a lesson step to MP3 (soft female Indian voice). 503 → client falls back."""
     if current_user.role not in _TTS_ROLES:
-        raise HTTPException(status_code=403, detail="Voice synthesis is not available for this role")
+        raise HTTPException(
+            status_code=403, detail="Voice synthesis is not available for this role"
+        )
     if not tts_enabled():
         raise HTTPException(status_code=503, detail="Voice synthesis is not configured")
     try:

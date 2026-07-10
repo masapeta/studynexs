@@ -1,4 +1,5 @@
 """Lesson plan API — teacher-scoped draft → approve workflow."""
+
 from __future__ import annotations
 
 import uuid
@@ -7,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.api_route import CommitOnSuccessRoute
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, require_roles
 from app.core.rate_limit import rate_limit
@@ -21,7 +23,7 @@ from app.modules.curriculum.schemas.lesson_plan import (
 from app.modules.curriculum.services.lesson_plan_service import LessonPlanService
 from app.shared.schemas.common import APIResponse
 
-router = APIRouter()
+router = APIRouter(route_class=CommitOnSuccessRoute)
 _TEACH = ("teacher", "class_incharge", "admin", "super_admin")
 _LP_RATE = {"max_requests": 20, "window_seconds": 60}
 
