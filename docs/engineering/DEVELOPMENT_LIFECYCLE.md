@@ -1,12 +1,16 @@
 # Development Lifecycle
 
+**Version:** 1.1  
+**Last updated:** 2026-07-11  
+**Applies to:** Cursor · Claude Code · ChatGPT-assisted reviews
+
 > **Process document** — how engineering work flows through this repository.  
 > **Not** architecture (`CLAUDE.md`, `docs/modules/`) and **not** git mechanics alone ([`002-git-workflow.md`](./002-git-workflow.md)).
 
 | Doc | Answers |
 |-----|---------|
 | [`/CLAUDE.md`](../../CLAUDE.md) | **What** must be true — standards, architecture, prime directives |
-| **This file** | **How** work is done — read → verify → plan → ship → document → review |
+| **This file** | **How** work is done — health check → read → verify → plan → ship → document → review |
 | [`003-engineering-dashboard.md`](./003-engineering-dashboard.md) | **What to update** when a batch completes |
 | [`002-git-workflow.md`](./002-git-workflow.md) | **When** git operations are allowed |
 
@@ -23,6 +27,8 @@ If docs and code disagree: inspect code → run tests → update docs. Never shi
 ## Lifecycle (every batch, feature, or fix)
 
 ```
+Repository health check
+    ↓
 Read docs
     ↓
 Verify implementation
@@ -37,12 +43,26 @@ Update documentation
     ↓
 Review
     ↓
-Wait for approval
+Request Product Owner approval
     ↓
 Commit
 ```
 
 Each step is mandatory unless explicitly scoped out by the product owner.
+
+---
+
+## 0. Repository health check
+
+Before reading documentation:
+
+- Confirm you are in the **correct repository**
+- Confirm the **current branch**
+- Confirm **working tree status**
+- Do **not** perform Git operations automatically
+- Report any **unexpected local modifications**
+
+This prevents working in the wrong repo, branch, or against unreviewed local changes.
 
 ---
 
@@ -84,9 +104,30 @@ See also: [`testing-guidelines.md`](./testing-guidelines.md).
 Prefer the **smallest safe change** (`CLAUDE.md` — incremental over rewrite).
 
 - Define scope: which batch, which files, which tests prove done
-- Identify reuse: gateway, RAG, existing services — no duplicate AI paths
 - Note product-owner decisions needed **before** coding (authz, money, breaking API)
 - If scope is large, split into reviewable commits (logical units, not one monolith)
+
+### Reuse check
+
+Before creating any of the following, verify whether an equivalent already exists. **Prefer extending existing implementations.**
+
+| Layer | Examples |
+|-------|----------|
+| API | service, endpoint, schema, model |
+| Platform | provider, utility |
+| Admin UI | React component |
+
+Also reuse shared platform paths (gateway, RAG, existing services) — no duplicate AI or integration paths.
+
+### Rollback thinking
+
+For larger changes, ask before implementation:
+
+- Can this change be **reverted cleanly**?
+- Is it **isolated enough** for a focused commit?
+- Will it be **easy to debug** if issues arise?
+
+This is a design mindset, not a Git operation — but it leads to smaller, safer diffs.
 
 Do not start implementation while blocked on an owner decision — state the blocker and a recommended default.
 
@@ -111,9 +152,11 @@ Validation is not optional for significant changes.
 Build → Lint → Test → fix → repeat until clean
 ```
 
+Run **only the relevant tests** during development. Reserve the **full test suite** for closing a batch or before significant integration.
+
 | Scope | Minimum |
 |-------|---------|
-| API logic | Focused `pytest` for touched modules |
+| API logic (during development) | Focused `pytest` for touched modules |
 | Cross-cutting / batch close | `pytest tests/` (full suite) |
 | Admin UI | `npm run build` / lint on touched app |
 
@@ -160,11 +203,11 @@ Use [`testing-guidelines.md`](./testing-guidelines.md) closing checklist for the
 
 ---
 
-## 8. Wait for approval
+## 8. Request Product Owner approval
 
 **Prime Directive 9:** commit only when explicitly asked.
 
-Git operations (commit, push, merge, branch switch) require owner approval. See [`002-git-workflow.md`](./002-git-workflow.md).
+The workflow **pauses here** until approval is received. Git operations (commit, push, merge, branch switch) require owner approval. See [`002-git-workflow.md`](./002-git-workflow.md).
 
 Provide in the handover:
 
@@ -187,7 +230,7 @@ After approval:
 
 ## When to stop vs continue
 
-**Continue autonomously** through steps 1–7 when progress is clear and guardrails are met.
+**Continue autonomously** through steps 0–7 when progress is clear and guardrails are met.
 
 **Stop and ask** when:
 
@@ -198,6 +241,21 @@ After approval:
 5. A change could significantly impact business behavior
 
 State what is done, what is blocked, why, and a recommended default.
+
+---
+
+## Definition of Done
+
+A batch is considered complete only when:
+
+- Implementation matches the approved scope
+- Relevant tests pass
+- No regressions are introduced
+- Documentation is updated
+- Dashboard reflects the verified implementation
+- Product Owner approval has been requested
+
+This is the closing checklist — it complements the lifecycle above without repeating each step.
 
 ---
 
