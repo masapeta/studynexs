@@ -3,6 +3,7 @@
 Phase-1 hero: generate a board-style question paper from syllabus topics, let the
 teacher edit and APPROVE it (human-in-the-loop), then export. Tutor/grading/etc. come later.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -12,12 +13,12 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.api_route import CommitOnSuccessRoute
+from app.core.authorization import get_student_in_school
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, require_roles
 from app.core.rate_limit import rate_limit
-from app.modules.ai.telemetry import ai_metrics, bind_ai_context
-from app.modules.ai.gateway.errors import raise_http_for_llm_error
 from app.core.staff_permissions import (
     StaffScope,
     assert_qp_approve,
@@ -27,11 +28,18 @@ from app.core.staff_permissions import (
     assert_report_cards,
     get_staff_scope,
 )
-from app.core.authorization import get_student_in_school
 from app.db.models.ai_usage import AIUsage
 from app.db.models.question_paper import PaperStatus, QuestionPaper
 from app.db.models.report_card import ReportCard, ReportStatus
 from app.db.models.school import School
+from app.modules.ai.gateway.errors import raise_http_for_llm_error
+from app.modules.ai.schemas.credits import (
+    CreditStatusOut,
+    OverrideRequest,
+    SchoolAIReportOut,
+    UsageLogEntry,
+    UsageLogOut,
+)
 from app.modules.ai.schemas.question_paper import (
     BankSummaryOut,
     DuplicatePaperRequest,
@@ -44,6 +52,12 @@ from app.modules.ai.schemas.report_card import (
     GenerateReportRequest,
     ReportCardOut,
     UpdateReportRequest,
+)
+from app.modules.ai.services.ai_credits import (
+    get_credit_status,
+    get_school_ai_budget,
+    month_start_for_school,
+    set_principal_override,
 )
 from app.modules.ai.services.paper_pdf import generate_paper_pdf
 from app.modules.ai.services.question_bank_service import (
@@ -58,26 +72,14 @@ from app.modules.ai.services.question_paper_service import (
 )
 from app.modules.ai.services.report_card_pdf import generate_report_pdf
 from app.modules.ai.services.report_card_service import generate_report_for_student
-from app.modules.ai.schemas.credits import (
-    CreditStatusOut,
-    OverrideRequest,
-    SchoolAIReportOut,
-    UsageLogEntry,
-    UsageLogOut,
-)
-from app.modules.ai.services.ai_credits import (
-    get_credit_status,
-    get_school_ai_budget,
-    month_start_for_school,
-    set_principal_override,
-)
+from app.modules.ai.services.telemetry_summary import db_telemetry_summary, school_month_telemetry
 from app.modules.ai.services.usage_caps import enforce_monthly_ai_cap
 from app.modules.ai.services.usage_log import list_question_paper_usage_log
-from app.modules.ai.services.telemetry_summary import db_telemetry_summary, school_month_telemetry
+from app.modules.ai.telemetry import ai_metrics, bind_ai_context
 from app.shared.schemas.common import APIResponse
 
 settings = get_settings()
-router = APIRouter()
+router = APIRouter(route_class=CommitOnSuccessRoute)
 
 _TEACH_ROLES = ("teacher", "class_incharge", "admin", "super_admin")
 
@@ -145,34 +147,34 @@ async def ai_usage_summary(
     scope = await get_staff_scope(db, current_user)
     school_id = uuid.UUID(current_user.school_id)
     user_id = uuid.UUID(current_user.id)
-    school = (
-        await db.execute(select(School).where(School.id == school_id))
-    ).scalar_one()
+    school = (await db.execute(select(School).where(School.id == school_id))).scalar_one()
     billing_month_start = month_start_for_school(school)
     scoped_user = not scope.is_admin and not scope.incharge_class_ids
 
     def _base(feature: str):
-        q = select(func.count()).select_from(AIUsage).where(
-            AIUsage.school_id == school_id, AIUsage.feature == feature
+        q = (
+            select(func.count())
+            .select_from(AIUsage)
+            .where(AIUsage.school_id == school_id, AIUsage.feature == feature)
         )
         if scoped_user:
             q = q.where(AIUsage.created_by == user_id)
         return q
 
     papers_total = await db.scalar(_base("question_paper")) or 0
-    papers_month = await db.scalar(
-        _base("question_paper").where(AIUsage.created_at >= billing_month_start)
-    ) or 0
+    papers_month = (
+        await db.scalar(_base("question_paper").where(AIUsage.created_at >= billing_month_start))
+        or 0
+    )
     reports_total = await db.scalar(_base("report_card")) or 0
-    reports_month = await db.scalar(
-        _base("report_card").where(AIUsage.created_at >= billing_month_start)
-    ) or 0
+    reports_month = (
+        await db.scalar(_base("report_card").where(AIUsage.created_at >= billing_month_start)) or 0
+    )
     if scoped_user:
         reports_total = 0
         reports_month = 0
     est_hours = round(
-        (papers_total * _MINUTES_SAVED_PER_PAPER + reports_total * _MINUTES_SAVED_PER_REPORT)
-        / 60,
+        (papers_total * _MINUTES_SAVED_PER_PAPER + reports_total * _MINUTES_SAVED_PER_REPORT) / 60,
         1,
     )
     return {
@@ -197,15 +199,18 @@ async def ai_credit_status(
         db, school, user_id=uuid.UUID(current_user.id), role=current_user.role
     )
     billing_month_start = month_start_for_school(school)
-    papers_month = await db.scalar(
-        select(func.count())
-        .select_from(AIUsage)
-        .where(
-            AIUsage.school_id == school.id,
-            AIUsage.feature == "question_paper",
-            AIUsage.created_at >= billing_month_start,
+    papers_month = (
+        await db.scalar(
+            select(func.count())
+            .select_from(AIUsage)
+            .where(
+                AIUsage.school_id == school.id,
+                AIUsage.feature == "question_paper",
+                AIUsage.created_at >= billing_month_start,
+            )
         )
-    ) or 0
+        or 0
+    )
     est_hours = round(
         (status_row.usage_counts.get("qp_full", 0) * _MINUTES_SAVED_PER_PAPER) / 60, 1
     )
@@ -229,29 +234,38 @@ async def ai_school_report(
         db, school, user_id=uuid.UUID(current_user.id), role=current_user.role
     )
     billing_month_start = month_start_for_school(school)
-    papers_total = await db.scalar(
-        select(func.count())
-        .select_from(AIUsage)
-        .where(AIUsage.school_id == school.id, AIUsage.feature == "question_paper")
-    ) or 0
-    papers_month = await db.scalar(
-        select(func.count())
-        .select_from(AIUsage)
-        .where(
-            AIUsage.school_id == school.id,
-            AIUsage.feature == "question_paper",
-            AIUsage.created_at >= billing_month_start,
+    papers_total = (
+        await db.scalar(
+            select(func.count())
+            .select_from(AIUsage)
+            .where(AIUsage.school_id == school.id, AIUsage.feature == "question_paper")
         )
-    ) or 0
-    reports_month = await db.scalar(
-        select(func.count())
-        .select_from(AIUsage)
-        .where(
-            AIUsage.school_id == school.id,
-            AIUsage.feature == "report_card",
-            AIUsage.created_at >= billing_month_start,
+        or 0
+    )
+    papers_month = (
+        await db.scalar(
+            select(func.count())
+            .select_from(AIUsage)
+            .where(
+                AIUsage.school_id == school.id,
+                AIUsage.feature == "question_paper",
+                AIUsage.created_at >= billing_month_start,
+            )
         )
-    ) or 0
+        or 0
+    )
+    reports_month = (
+        await db.scalar(
+            select(func.count())
+            .select_from(AIUsage)
+            .where(
+                AIUsage.school_id == school.id,
+                AIUsage.feature == "report_card",
+                AIUsage.created_at >= billing_month_start,
+            )
+        )
+        or 0
+    )
     est_hours = round(
         (papers_total * _MINUTES_SAVED_PER_PAPER + reports_month * _MINUTES_SAVED_PER_REPORT) / 60,
         1,
@@ -279,9 +293,7 @@ async def ai_usage_log(
 ) -> UsageLogOut:
     """Principal/admin log — credits charged at generation vs current approval status."""
     school_id = uuid.UUID(current_user.school_id)
-    school = (
-        await db.execute(select(School).where(School.id == school_id))
-    ).scalar_one()
+    school = (await db.execute(select(School).where(School.id == school_id))).scalar_one()
     billing_month_start = month_start_for_school(school)
     rows = await list_question_paper_usage_log(db, school_id, since=billing_month_start)
     return UsageLogOut(items=[UsageLogEntry(**r) for r in rows])
@@ -330,6 +342,9 @@ def _to_out(
         status=p.status.value,
         ai_model=p.ai_model,
         created_by=p.created_by,
+        pack_id=p.pack_id,
+        grounded=p.grounded,
+        grounding_sources=p.grounding_sources,
         can_approve=can_approve,
         can_edit=can_edit,
         can_submit=can_submit,
@@ -394,9 +409,7 @@ def _report_visibility_filter(scope: StaffScope):
     return ReportCard.id.is_(None)
 
 
-async def _get_owned_paper(
-    db: AsyncSession, school_id: str, paper_id: uuid.UUID
-) -> QuestionPaper:
+async def _get_owned_paper(db: AsyncSession, school_id: str, paper_id: uuid.UUID) -> QuestionPaper:
     paper = (
         await db.execute(
             select(QuestionPaper).where(
@@ -422,7 +435,9 @@ async def generate_question_paper(
     current_user: CurrentUser = Depends(require_roles(*_TEACH_ROLES)),
     db: AsyncSession = Depends(get_db),
 ) -> QuestionPaperOut:
-    """Generate a DRAFT paper from topics. Teacher must review + approve before use."""
+    """Generate a DRAFT paper. With a ``pack_id`` it is grounded in the approved CurriculumPack
+    (every question cited); otherwise it falls back to free-text topics. Teacher reviews + approves
+    before use — AI never publishes."""
     bind_ai_context(
         school_id=current_user.school_id,
         user_id=current_user.id,
@@ -453,6 +468,7 @@ async def generate_question_paper(
             role=current_user.role,
             purpose_tag="qp_full",
             credits_charged=credits,
+            pack_id=body.pack_id,
         )
     except Exception as exc:
         raise_http_for_llm_error(
@@ -542,9 +558,7 @@ async def list_question_papers(
     db: AsyncSession = Depends(get_db),
 ) -> list[QuestionPaperOut]:
     scope = await get_staff_scope(db, current_user)
-    q = select(QuestionPaper).where(
-        QuestionPaper.school_id == uuid.UUID(current_user.school_id)
-    )
+    q = select(QuestionPaper).where(QuestionPaper.school_id == uuid.UUID(current_user.school_id))
     vis = _paper_visibility_filter(scope)
     if vis is not None:
         q = q.where(vis)
@@ -639,7 +653,9 @@ async def submit_question_paper(
     scope = await get_staff_scope(db, current_user)
     paper = await _get_owned_paper(db, current_user.school_id, paper_id)
     if not scope.can_submit_question_paper(paper):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot submit this paper")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Cannot submit this paper"
+        )
     paper.status = PaperStatus.PENDING_APPROVAL
     paper.submitted_at = datetime.now(timezone.utc)
     paper.rejection_reason = None
@@ -691,11 +707,15 @@ async def reject_question_paper(
     db: AsyncSession = Depends(get_db),
 ) -> QuestionPaperOut:
     """Class incharge rejects — credits already consumed at generation.
-    Paper kept as audit + salvage asset: editable, clonable, resubmittable; bank ingest only on (re-)approve."""
+
+    Paper kept as audit + salvage asset: editable, clonable, resubmittable; bank ingest only
+    on (re-)approve."""
     scope = await get_staff_scope(db, current_user)
     paper = await _get_owned_paper(db, current_user.school_id, paper_id)
     if not scope.can_reject_question_paper(paper):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot reject this paper")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Cannot reject this paper"
+        )
     paper.status = PaperStatus.REJECTED
     paper.rejected_by = uuid.UUID(current_user.id)
     paper.rejected_at = datetime.now(timezone.utc)
@@ -737,6 +757,7 @@ async def download_question_paper(
 # Report cards — consolidate marks + attendance + an AI-drafted remark; teacher approves.
 # ---------------------------------------------------------------------------
 
+
 def _to_report_out(r: ReportCard) -> ReportCardOut:
     return ReportCardOut(
         id=r.id,
@@ -758,9 +779,7 @@ def _to_report_out(r: ReportCard) -> ReportCardOut:
     )
 
 
-async def _get_owned_report(
-    db: AsyncSession, school_id: str, report_id: uuid.UUID
-) -> ReportCard:
+async def _get_owned_report(db: AsyncSession, school_id: str, report_id: uuid.UUID) -> ReportCard:
     report = (
         await db.execute(
             select(ReportCard).where(
@@ -770,9 +789,7 @@ async def _get_owned_report(
         )
     ).scalar_one_or_none()
     if report is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Report card not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report card not found")
     return report
 
 
@@ -913,9 +930,7 @@ async def download_report_card(
     school = (
         await db.execute(select(School).where(School.id == report.school_id))
     ).scalar_one_or_none()
-    content, media_type = generate_report_pdf(
-        report, school_name=(school.name if school else None)
-    )
+    content, media_type = generate_report_pdf(report, school_name=(school.name if school else None))
     ext = "pdf" if media_type == "application/pdf" else "html"
     filename = f"{report.student_name}_report.{ext}".replace(" ", "_")
     return Response(

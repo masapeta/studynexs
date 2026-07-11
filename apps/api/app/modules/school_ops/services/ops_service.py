@@ -2,12 +2,15 @@
 
 import uuid
 from datetime import date, datetime, timezone
+from decimal import Decimal
 
 from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pii import mask_aadhaar, mask_id_number
 from app.core.tenant_scope import TenantScope
+from app.db.models.file import FileCategory
 from app.db.models.residential import BlockGender, ResidentialBlock, RoomAllocation
 from app.db.models.school_ops import (
     ADMISSION_STAGE_ORDER,
@@ -27,10 +30,8 @@ from app.db.models.school_ops import (
 from app.db.models.student import Student
 from app.db.models.teacher import Teacher
 from app.db.models.user import User, UserRole
-from app.modules.school_ops.services.admission_document_extract import extract_document_number
 from app.modules.files.services.file_service import FileService
 from app.modules.files.services.file_validation import read_file_bytes_bounded
-from app.db.models.file import FileCategory
 from app.modules.school_ops.schemas.ops import (
     AdmissionCandidateCreate,
     AppliedStageDetails,
@@ -46,6 +47,7 @@ from app.modules.school_ops.schemas.ops import (
     TransportAssignRequest,
     TransportRouteCreate,
 )
+from app.modules.school_ops.services.admission_document_extract import extract_document_number
 
 
 class SchoolOpsService:
@@ -59,8 +61,8 @@ class SchoolOpsService:
         if search:
             query = query.where(LibraryBook.title.ilike(f"%{search}%"))
         books = (
-            await self.db.execute(query.order_by(LibraryBook.title).limit(100))
-        ).scalars().all()
+            (await self.db.execute(query.order_by(LibraryBook.title).limit(100))).scalars().all()
+        )
         if not books:
             return []
         book_ids = [b.id for b in books]
@@ -106,7 +108,9 @@ class SchoolOpsService:
         await self.db.flush()
         return book
 
-    async def issue_book(self, school_id: uuid.UUID, book_id: uuid.UUID, user_id: uuid.UUID) -> LibraryIssue:
+    async def issue_book(
+        self, school_id: uuid.UUID, book_id: uuid.UUID, user_id: uuid.UUID
+    ) -> LibraryIssue:
         await TenantScope(self.db, school_id).user_in_school(user_id)
         book = (
             await self.db.execute(
@@ -157,11 +161,16 @@ class SchoolOpsService:
 
     async def list_events(self, school_id: uuid.UUID) -> list[Event]:
         result = await self.db.execute(
-            select(Event).where(Event.school_id == school_id).order_by(Event.event_date.desc()).limit(50)
+            select(Event)
+            .where(Event.school_id == school_id)
+            .order_by(Event.event_date.desc())
+            .limit(50)
         )
         return list(result.scalars().all())
 
-    async def create_event(self, school_id: uuid.UUID, data: EventCreate, created_by: uuid.UUID) -> Event:
+    async def create_event(
+        self, school_id: uuid.UUID, data: EventCreate, created_by: uuid.UUID
+    ) -> Event:
         event = Event(
             school_id=school_id,
             title=data.title,
@@ -179,12 +188,16 @@ class SchoolOpsService:
 
     async def list_transport_routes(self, school_id: uuid.UUID) -> list[dict]:
         routes = (
-            await self.db.execute(
-                select(TransportRoute)
-                .where(TransportRoute.school_id == school_id)
-                .order_by(TransportRoute.route_name)
+            (
+                await self.db.execute(
+                    select(TransportRoute)
+                    .where(TransportRoute.school_id == school_id)
+                    .order_by(TransportRoute.route_name)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         route_ids = [r.id for r in routes]
         counts: dict = {}
         names_map: dict[uuid.UUID, list[str]] = {}
@@ -210,11 +223,15 @@ class SchoolOpsService:
                 names_map.setdefault(rid, []).append(name.split()[0])
         return [
             {
-                "id": str(r.id), "route_name": r.route_name,
-                "vehicle_number": r.vehicle_number, "driver_name": r.driver_name,
-                "driver_contact": r.driver_contact, "stops": r.stops or [],
+                "id": str(r.id),
+                "route_name": r.route_name,
+                "vehicle_number": r.vehicle_number,
+                "driver_name": r.driver_name,
+                "driver_contact": r.driver_contact,
+                "stops": r.stops or [],
                 "capacity": r.capacity,
-                "is_active": r.is_active, "student_count": counts.get(r.id, 0),
+                "is_active": r.is_active,
+                "student_count": counts.get(r.id, 0),
                 "student_names": names_map.get(r.id, []),
             }
             for r in routes
@@ -224,9 +241,12 @@ class SchoolOpsService:
         self, school_id: uuid.UUID, data: TransportRouteCreate
     ) -> TransportRoute:
         route = TransportRoute(
-            school_id=school_id, route_name=data.route_name,
-            vehicle_number=data.vehicle_number, driver_name=data.driver_name,
-            driver_contact=data.driver_contact, stops=data.stops or [],
+            school_id=school_id,
+            route_name=data.route_name,
+            vehicle_number=data.vehicle_number,
+            driver_name=data.driver_name,
+            driver_contact=data.driver_contact,
+            stops=data.stops or [],
             capacity=data.capacity or 30,
         )
         self.db.add(route)
@@ -253,8 +273,12 @@ class SchoolOpsService:
             )
         ).all()
         return [
-            {"student_id": str(st.student_id), "name": name,
-             "admission_no": adm, "boarding_stop": st.boarding_stop}
+            {
+                "student_id": str(st.student_id),
+                "name": name,
+                "admission_no": adm,
+                "boarding_stop": st.boarding_stop,
+            }
             for st, name, adm in rows
         ]
 
@@ -272,9 +296,7 @@ class SchoolOpsService:
             raise ValueError("Route not found")
         student = (
             await self.db.execute(
-                select(Student).where(
-                    Student.id == data.student_id, Student.school_id == school_id
-                )
+                select(Student).where(Student.id == data.student_id, Student.school_id == school_id)
             )
         ).scalar_one_or_none()
         if not student:
@@ -290,7 +312,8 @@ class SchoolOpsService:
             await self.db.flush()
             return existing
         st = StudentTransport(
-            student_id=data.student_id, route_id=data.route_id,
+            student_id=data.student_id,
+            route_id=data.route_id,
             boarding_stop=data.boarding_stop,
         )
         self.db.add(st)
@@ -301,12 +324,16 @@ class SchoolOpsService:
 
     async def list_residential_blocks(self, school_id: uuid.UUID) -> list[dict]:
         blocks = (
-            await self.db.execute(
-                select(ResidentialBlock)
-                .where(ResidentialBlock.school_id == school_id)
-                .order_by(ResidentialBlock.block_name)
+            (
+                await self.db.execute(
+                    select(ResidentialBlock)
+                    .where(ResidentialBlock.school_id == school_id)
+                    .order_by(ResidentialBlock.block_name)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         block_ids = [b.id for b in blocks]
         counts: dict = {}
         if block_ids:
@@ -320,10 +347,13 @@ class SchoolOpsService:
             counts = {bid: c for bid, c in rows}
         return [
             {
-                "id": str(b.id), "block_name": b.block_name,
+                "id": str(b.id),
+                "block_name": b.block_name,
                 "block_gender": b.block_gender.value if b.block_gender else "mixed",
-                "warden_name": b.warden_name, "warden_contact": b.warden_contact,
-                "total_rooms": b.total_rooms, "is_active": b.is_active,
+                "warden_name": b.warden_name,
+                "warden_contact": b.warden_contact,
+                "total_rooms": b.total_rooms,
+                "is_active": b.is_active,
                 "resident_count": counts.get(b.id, 0),
             }
             for b in blocks
@@ -337,17 +367,18 @@ class SchoolOpsService:
         except ValueError:
             gender = BlockGender.MIXED
         block = ResidentialBlock(
-            school_id=school_id, block_name=data.block_name, block_gender=gender,
-            warden_name=data.warden_name, warden_contact=data.warden_contact,
+            school_id=school_id,
+            block_name=data.block_name,
+            block_gender=gender,
+            warden_name=data.warden_name,
+            warden_contact=data.warden_contact,
             total_rooms=data.total_rooms,
         )
         self.db.add(block)
         await self.db.flush()
         return block
 
-    async def list_block_residents(
-        self, school_id: uuid.UUID, block_id: uuid.UUID
-    ) -> list[dict]:
+    async def list_block_residents(self, school_id: uuid.UUID, block_id: uuid.UUID) -> list[dict]:
         block = (
             await self.db.execute(
                 select(ResidentialBlock).where(
@@ -367,8 +398,12 @@ class SchoolOpsService:
             )
         ).all()
         return [
-            {"student_id": str(a.student_id), "name": name,
-             "admission_no": adm, "room_number": a.room_number}
+            {
+                "student_id": str(a.student_id),
+                "name": name,
+                "admission_no": adm,
+                "room_number": a.room_number,
+            }
             for a, name, adm in rows
         ]
 
@@ -387,9 +422,7 @@ class SchoolOpsService:
             raise ValueError("Block not found")
         student = (
             await self.db.execute(
-                select(Student).where(
-                    Student.id == data.student_id, Student.school_id == school_id
-                )
+                select(Student).where(Student.id == data.student_id, Student.school_id == school_id)
             )
         ).scalar_one_or_none()
         if not student:
@@ -405,8 +438,10 @@ class SchoolOpsService:
             await self.db.flush()
             return existing
         alloc = RoomAllocation(
-            school_id=school_id, student_id=data.student_id,
-            block_id=data.block_id, room_number=data.room_number,
+            school_id=school_id,
+            student_id=data.student_id,
+            block_id=data.block_id,
+            room_number=data.room_number,
         )
         self.db.add(alloc)
         await self.db.flush()
@@ -466,9 +501,7 @@ class SchoolOpsService:
         out["applied"] = masked
         return out
 
-    def admission_to_dict(
-        self, r: AdmissionCandidate, *, mask_stage_pii: bool = True
-    ) -> dict:
+    def admission_to_dict(self, r: AdmissionCandidate, *, mask_stage_pii: bool = True) -> dict:
         stage_details = self._serialize_stage_details(r.stage_details or {})
         if mask_stage_pii:
             stage_details = self._mask_identity_in_stage_details(stage_details)
@@ -502,17 +535,19 @@ class SchoolOpsService:
 
     async def list_admissions(self, school_id: uuid.UUID) -> list[dict]:
         rows = (
-            await self.db.execute(
-                select(AdmissionCandidate)
-                .where(AdmissionCandidate.school_id == school_id)
-                .order_by(AdmissionCandidate.enquiry_date.desc())
+            (
+                await self.db.execute(
+                    select(AdmissionCandidate)
+                    .where(AdmissionCandidate.school_id == school_id)
+                    .order_by(AdmissionCandidate.enquiry_date.desc())
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         return [self._admission_to_dict(r) for r in rows]
 
-    def _sync_applied_identity_fields(
-        self, row: AdmissionCandidate, applied: dict
-    ) -> None:
+    def _sync_applied_identity_fields(self, row: AdmissionCandidate, applied: dict) -> None:
         row.aadhaar_number = applied.get("aadhaar_number")
         row.birth_certificate_number = applied.get("birth_certificate_number")
         row.apaar_number = applied.get("apaar_number")
@@ -559,7 +594,9 @@ class SchoolOpsService:
             parent_email=data.parent_email.strip() if data.parent_email else None,
             address_line=data.address_line.strip() if data.address_line else None,
             city=data.city.strip() if data.city else None,
-            previous_school_name=data.previous_school_name.strip() if data.previous_school_name else None,
+            previous_school_name=data.previous_school_name.strip()
+            if data.previous_school_name
+            else None,
             previous_grade=data.previous_grade.strip() if data.previous_grade else None,
             enquiry_source=data.enquiry_source,
             notes=data.notes.strip() if data.notes else None,
@@ -592,9 +629,7 @@ class SchoolOpsService:
         await self.db.flush()
         return row
 
-    def _has_saved_stage_details(
-        self, row: AdmissionCandidate, stage: AdmissionStage
-    ) -> bool:
+    def _has_saved_stage_details(self, row: AdmissionCandidate, stage: AdmissionStage) -> bool:
         """True when this stage was completed before (details exist for it or a later stage)."""
         details = row.stage_details or {}
         existing = details.get(stage.value)
@@ -664,62 +699,139 @@ class SchoolOpsService:
 
     # ── Payroll ──────────────────────────────────────────────────
 
+    # Suggested starting salaries used only when generating a month's payroll. Decimal, never
+    # float — money is exact end to end. These are defaults a school edits, not authoritative.
+    _DEFAULT_GROSS: dict[str, Decimal] = {
+        "super_admin": Decimal("145000"),
+        "admin": Decimal("85000"),
+        "class_incharge": Decimal("65000"),
+        "teacher": Decimal("62000"),
+        "operations": Decimal("45000"),
+    }
+    _FALLBACK_GROSS = Decimal("50000")
+    # Payroll covers salaried operational staff; principals (super_admin) are excluded here,
+    # preserving the original behavior. The super_admin default above is kept for the day that
+    # policy changes, but is intentionally unreachable today.
+    _STAFF_ROLES = ("teacher", "class_incharge", "admin", "operations")
+
+    async def _active_staff(self, school_id: uuid.UUID) -> list[User]:
+        return list(
+            (
+                await self.db.execute(
+                    select(User)
+                    .where(
+                        User.school_id == school_id,
+                        User.role.in_(self._STAFF_ROLES),
+                        User.is_active.is_(True),
+                    )
+                    .order_by(User.full_name)
+                )
+            )
+            .scalars()
+            .all()
+        )
+
     async def list_payroll(
         self, school_id: uuid.UUID, period_month: date | None = None
     ) -> list[dict]:
-        from datetime import date as date_cls
+        """Read-only payroll view for the month.
 
-        month = period_month or date_cls.today().replace(day=1)
-        staff_roles = ("teacher", "class_incharge", "admin", "operations")
-        users = (
-            await self.db.execute(
-                select(User).where(
-                    User.school_id == school_id,
-                    User.role.in_(staff_roles),
-                    User.is_active.is_(True),
-                ).order_by(User.full_name)
-            )
-        ).scalars().all()
+        Staff without a saved entry are projected in memory as ``not_generated`` with a
+        suggested gross and ``entry_id: None`` — this endpoint must never create or persist
+        payroll rows (a GET silently minting salary liabilities was a real defect). Use
+        ``generate_payroll`` to create the month's entries explicitly.
+        """
+        month = period_month or date.today().replace(day=1)
+        users = await self._active_staff(school_id)
         entries = (
-            await self.db.execute(
-                select(StaffPayrollEntry).where(
-                    StaffPayrollEntry.school_id == school_id,
-                    StaffPayrollEntry.period_month == month,
+            (
+                await self.db.execute(
+                    select(StaffPayrollEntry).where(
+                        StaffPayrollEntry.school_id == school_id,
+                        StaffPayrollEntry.period_month == month,
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         entry_map = {e.user_id: e for e in entries}
-        default_gross = {
-            "super_admin": 145000,
-            "admin": 85000,
-            "class_incharge": 65000,
-            "teacher": 62000,
-            "operations": 45000,
-        }
+
         result: list[dict] = []
         for u in users:
-            e = entry_map.get(u.id)
             role_key = u.role.value
-            gross_default = default_gross.get(role_key, 50000.0)
-            if not e:
-                e = StaffPayrollEntry(
+            e = entry_map.get(u.id)
+            if e:
+                result.append(
+                    {
+                        "user_id": str(u.id),
+                        "name": u.full_name,
+                        "role": role_key.replace("_", " "),
+                        # Serialize as a JSON number (float at the boundary), matching the existing
+                        # wire contract — a raw Decimal would serialize as a JSON string and break
+                        # clients. Arithmetic elsewhere stays Decimal.
+                        "gross_amount": float(e.gross_amount),
+                        "status": e.status.value,
+                        "entry_id": str(e.id),
+                    }
+                )
+            else:
+                result.append(
+                    {
+                        "user_id": str(u.id),
+                        "name": u.full_name,
+                        "role": role_key.replace("_", " "),
+                        "gross_amount": float(
+                            self._DEFAULT_GROSS.get(role_key, self._FALLBACK_GROSS)
+                        ),
+                        "status": "not_generated",
+                        "entry_id": None,
+                    }
+                )
+        return result
+
+    async def generate_payroll(self, school_id: uuid.UUID, period_month: date | None = None) -> int:
+        """Explicitly create payroll entries for staff missing one this month. Idempotent.
+
+        Uses INSERT ... ON CONFLICT DO NOTHING against uq_payroll_user_month so concurrent
+        calls (or a retry) can't double-create or 500 on the unique constraint. Returns the
+        number of new entries created.
+        """
+        month = period_month or date.today().replace(day=1)
+        users = await self._active_staff(school_id)
+        existing_ids = {
+            uid
+            for (uid,) in (
+                await self.db.execute(
+                    select(StaffPayrollEntry.user_id).where(
+                        StaffPayrollEntry.school_id == school_id,
+                        StaffPayrollEntry.period_month == month,
+                    )
+                )
+            ).all()
+        }
+        created = 0
+        for u in users:
+            if u.id in existing_ids:
+                continue
+            gross = self._DEFAULT_GROSS.get(u.role.value, self._FALLBACK_GROSS)
+            res = await self.db.execute(
+                pg_insert(StaffPayrollEntry)
+                .values(
                     school_id=school_id,
                     user_id=u.id,
                     period_month=month,
-                    gross_amount=gross_default,
+                    gross_amount=gross,
                     status=PayrollStatus.PENDING,
                 )
-                self.db.add(e)
-            result.append({
-                "user_id": str(u.id),
-                "name": u.full_name,
-                "role": role_key.replace("_", " "),
-                "gross_amount": float(e.gross_amount),
-                "status": e.status.value,
-                "entry_id": str(e.id),
-            })
+                .on_conflict_do_nothing(constraint="uq_payroll_user_month")
+            )
+            # Count only rows that actually inserted — ON CONFLICT DO NOTHING no-ops a row that
+            # a concurrent generate created between our pre-fetch and this insert, so trust
+            # rowcount over the intended count.
+            created += res.rowcount or 0
         await self.db.flush()
-        return result
+        return created
 
     async def mark_payroll_paid(
         self, school_id: uuid.UUID, entry_id: uuid.UUID
@@ -743,13 +855,17 @@ class SchoolOpsService:
 
     async def list_expenses(self, school_id: uuid.UUID, limit: int = 50) -> list[dict]:
         rows = (
-            await self.db.execute(
-                select(SchoolExpense)
-                .where(SchoolExpense.school_id == school_id)
-                .order_by(SchoolExpense.expense_date.desc())
-                .limit(limit)
+            (
+                await self.db.execute(
+                    select(SchoolExpense)
+                    .where(SchoolExpense.school_id == school_id)
+                    .order_by(SchoolExpense.expense_date.desc())
+                    .limit(limit)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         return [
             {
                 "id": str(r.id),
@@ -854,7 +970,9 @@ class SchoolOpsService:
             department=department,
             employee_id=data.employee_id.strip() if data.employee_id else None,
             joining_date=joining,
-            previous_experience=data.previous_experience.strip() if data.previous_experience else None,
+            previous_experience=data.previous_experience.strip()
+            if data.previous_experience
+            else None,
             aadhaar_document_file_id=data.aadhaar_document_file_id,
             experience_document_file_id=data.experience_document_file_id,
             created_by=created_by,
@@ -889,38 +1007,50 @@ class SchoolOpsService:
             UserRole.OPERATIONS,
         )
         users = (
-            await self.db.execute(
-                select(User)
-                .where(
-                    User.school_id == school_id,
-                    User.role.in_(staff_roles),
-                    User.is_active.is_(True),
+            (
+                await self.db.execute(
+                    select(User)
+                    .where(
+                        User.school_id == school_id,
+                        User.role.in_(staff_roles),
+                        User.is_active.is_(True),
+                    )
+                    .order_by(User.full_name)
                 )
-                .order_by(User.full_name)
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         if not users:
             return []
 
         user_ids = [u.id for u in users]
         profile_rows = (
-            await self.db.execute(
-                select(StaffProfile).where(
-                    StaffProfile.school_id == school_id,
-                    StaffProfile.user_id.in_(user_ids),
+            (
+                await self.db.execute(
+                    select(StaffProfile).where(
+                        StaffProfile.school_id == school_id,
+                        StaffProfile.user_id.in_(user_ids),
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         profile_map = {p.user_id: p for p in profile_rows}
 
         teacher_rows = (
-            await self.db.execute(
-                select(Teacher).where(
-                    Teacher.school_id == school_id,
-                    Teacher.user_id.in_(user_ids),
+            (
+                await self.db.execute(
+                    select(Teacher).where(
+                        Teacher.school_id == school_id,
+                        Teacher.user_id.in_(user_ids),
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         teacher_map = {t.user_id: t for t in teacher_rows}
 
         incharge_rows = (
@@ -1050,26 +1180,28 @@ class SchoolOpsService:
 
             exp = experience_label(profile, teacher)
             meta_parts = [p for p in [employee_id, exp] if p]
-            result.append({
-                "id": str(u.id),
-                "name": u.full_name,
-                "role": position,
-                "department": dept_map.get(role_key, "Administration"),
-                "email": u.email,
-                "mobile": u.mobile,
-                "staff_category": staff_category,
-                "employee_id": employee_id,
-                "experience": exp,
-                "subtitle": " · ".join(meta_parts) if meta_parts else None,
-                "subject": subject,
-                "role_label": category_role.get(staff_category, "Staff"),
-                "classes": classes_label(
-                    u.id,
-                    staff_category,
-                    cls,
-                    teacher_grades.get(u.id, set()),
-                ),
-            })
+            result.append(
+                {
+                    "id": str(u.id),
+                    "name": u.full_name,
+                    "role": position,
+                    "department": dept_map.get(role_key, "Administration"),
+                    "email": u.email,
+                    "mobile": u.mobile,
+                    "staff_category": staff_category,
+                    "employee_id": employee_id,
+                    "experience": exp,
+                    "subtitle": " · ".join(meta_parts) if meta_parts else None,
+                    "subject": subject,
+                    "role_label": category_role.get(staff_category, "Staff"),
+                    "classes": classes_label(
+                        u.id,
+                        staff_category,
+                        cls,
+                        teacher_grades.get(u.id, set()),
+                    ),
+                }
+            )
         return result
 
     async def list_parents_directory(self, school_id: uuid.UUID) -> list[dict]:
@@ -1102,14 +1234,16 @@ class SchoolOpsService:
         result: list[dict] = []
         for parent, user in rows:
             kids = children_map.get(parent.id, [])
-            result.append({
-                "id": str(parent.id),
-                "user_id": str(user.id),
-                "name": user.full_name,
-                "email": user.email,
-                "mobile": user.mobile,
-                "relationship": parent.relationship_type.value,
-                "children": kids,
-                "child_label": ", ".join(kids) if kids else "No linked students",
-            })
+            result.append(
+                {
+                    "id": str(parent.id),
+                    "user_id": str(user.id),
+                    "name": user.full_name,
+                    "email": user.email,
+                    "mobile": user.mobile,
+                    "relationship": parent.relationship_type.value,
+                    "children": kids,
+                    "child_label": ", ".join(kids) if kids else "No linked students",
+                }
+            )
         return result
