@@ -1,6 +1,6 @@
 # StudyNexs AI Discovery Prompt
 
-**Version:** 1.1  
+**Version:** 1.2  
 **Last updated:** 2026-07-12  
 **Applies to:** Cursor · Claude Code · ChatGPT-assisted reviews
 
@@ -269,6 +269,22 @@ Identify:
 - Risks
 - Recommended implementation plan
 - Architectural improvement proposals (if any), with trade-offs and adopt-now vs defer recommendation
+
+---
+
+## Discovery Complete
+
+The discovery phase is complete only when:
+
+- Repository health has been verified
+- Documentation has been compared with the implementation
+- Engineering readiness has been assessed
+- The discovery report has been delivered
+- A recommended implementation plan has been presented
+
+Only then should the Product Owner decide whether to begin implementation.
+
+---
 
 Do not write code.
 
