@@ -45,6 +45,21 @@ AI Development Prompt → autonomous implementation
 
 **After discovery is approved:** switch to **AI Development** for implementation batches.
 
+### Prompt symmetry
+
+| Discovery | Development |
+|-----------|-------------|
+| Purpose | Purpose |
+| Discovery Scope | Development Scope |
+| Discovery Priority | Development Priority |
+| Engineering Constraints | Engineering Constraints |
+| Repository Health Check | Repository Health Check |
+| Engineering Startup | Engineering Startup |
+| Verification | Verification |
+| Engineering Readiness | Engineering Readiness |
+| Discovery report | Engineering report |
+| Discovery Complete | Development Complete |
+
 ---
 
 ## AI prompt versioning
