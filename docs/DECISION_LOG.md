@@ -1,6 +1,6 @@
 # StudyNexs — Decision Log, Tradeoffs & Discussion Record
 
-> Owner: Avinash Reddy Masapeta (ARM) · Status: **Living record v1.0** · Last updated: 2026-06-18
+> Owner: Avinash Reddy Masapeta (ARM) · Status: **Living record v1.0** · Last updated: 2026-07-11
 > Purpose: capture *what was decided and why*, the tradeoffs weighed, what's still open, and the
 > working agreements — so decisions aren't re-litigated and the reasoning survives.
 > Companions: [PRODUCT.md](./PRODUCT.md) · [STATUS.md](./STATUS.md) · [BACKLOG.md](./BACKLOG.md)
@@ -241,6 +241,89 @@
 **Not in scope yet:** ~~Atomic credit ledger (TOCTOU)~~ — row-locked check + charge-time enforcement (2026-06-15). IST month boundary via `school.settings.timezone` (default `Asia/Kolkata`).
 
 **Status:** Implemented in `ai_credits.py` + `metering.py`.
+
+### Decision — Commit before the response, via a route class (2026-07-10)
+
+**The call:** DB commits happen in `CommitOnSuccessRoute` (`app/core/api_route.py`) **before the
+response is sent**, not in `get_db`'s teardown. Every module `APIRouter` sets
+`route_class=CommitOnSuccessRoute`; `get_db` only stashes the session on `request.state` and rolls
+back on error. `tests/test_commit_route.py` fails if any router forgets it.
+
+**Why:** On the pinned FastAPI, `yield`-dependency teardown runs *after* the response is sent, so a
+commit-time failure returned a silent 2xx with rolled-back data.
+
+**Alternatives rejected:** explicit `commit()` in every service (too broad, easy to miss); central
+`route_class`/post-mount rehome (proven not to propagate — included routers nest under a private
+`_IncludedRouter`).
+
+**Status:** Implemented across all 21 routers; see `AGENT_HANDOVER.md` §2.
+
+### Decision — Shared AI Platform: embeddings / vector store / RAG as shared services (2026-07-10)
+
+**The call:** AI plumbing lives in shared services under `app/modules/ai/{embeddings,vectorstore,rag}`
+behind provider-agnostic ABCs (provider→model separation). Pillars **consume** them; no second
+gateway/embedder/store. `VectorStore.search` **requires** `school_id` by signature. RAG grounds on the
+curriculum **topic** (structured, copyright-safe), tenant- and pack-scoped.
+
+**Why:** `CLAUDE.md` §32/§33.1, §4.1 — one shared intelligence platform beneath the four pillars.
+
+**Config:** `EMBEDDING_PROVIDER=openai`, `EMBEDDING_MODEL=text-embedding-3-small` (1536-dim),
+`VECTOR_STORE=qdrant`. Final production LLM provider is still an open benchmark decision.
+
+**Status:** Foundation built & live-validated (OpenAI + Qdrant). Not yet wired into QP generation.
+
+### Decision — Aadhaar encryption at rest via app-level EncryptedString (2026-07-10)
+
+**The call:** Regulated Aadhaar numbers are stored encrypted via a Fernet/MultiFernet
+`EncryptedString` column type (`app/core/encryption.py`), keyed by `AADHAAR_ENCRYPTION_KEYS` (rotation
+supported), with legacy-plaintext passthrough for a backward-compatible migration. Prod boot fails
+without a key.
+
+**Why:** DPDP/Aadhaar-regulation expectation of encryption at rest; app-level keeps keys in the secret
+store and enables rotation. Chosen over pgcrypto for key control + rotation.
+
+**Status:** Implemented; migration reversible; forked alembic heads merged to a single head.
+
+### Decision — Grounded question-paper generation via `assessment_grounding` (2026-07-10)
+
+**The call:** Question-paper generation with a `pack_id` retrieves cited CurriculumPack context through
+`assessment_grounding.ground_for_pack` → shared `RagService` only. Refuses ungrounded generation when
+the pack has no curriculum. Papers store `pack_id`, `grounded`, `grounding_sources`, per-question citations.
+
+**Status:** Implemented (Batch 12). See `AGENT_HANDOVER.md` Session 02.
+
+### Decision — Rubric-per-criterion marking engine (2026-07-11)
+
+**The call:** Subjective answer-sheet marking uses a shared `evaluation_engine.py` that batches open-ended
+questions into one gateway call, decomposes each model answer into weighted criteria, and makes the
+criteria sum authoritative for the suggested mark (clamped to max). Objective questions stay deterministic
+key-match and never touch the LLM (`DECISION_LOG` §3.6). Provider failure degrades to the existing
+token-overlap heuristic per question — never fails the whole sheet.
+
+**Why:** Batch 13 Assessment Intelligence depth; teachers need explainable partial credit, not a single
+opaque number. Reuse-first: HITL approve + corrections history already existed; only the suggestion
+producer changed.
+
+**Metering:** one school credit per evaluation; vision + subjective LLM calls beyond the first are
+recorded cost-only.
+
+**Alternatives rejected:** per-question LLM calls (cost + latency); auto-publish on high confidence
+(violates HITL); keeping heuristic-only (insufficient for subjective depth).
+
+**Status:** Implemented (Batch 13). Pack-grounded marking at eval time deferred (`grounding=None` today).
+
+### Decision — Recover foundation from merge parent after accidental revert (2026-07-11)
+
+**The call:** Commit `34aec0c` ("finalize merged AI platform foundation") deleted most of the foundation
+built in `531aee2`/`5f76c00` while leaving a broken half-merge in `answer_sheet_eval_service.py`.
+Restored 87 deleted/reverted files from merge parent `5f76c00` onto `develop`; fixed eval wiring and
+`tutor.py` conflict marker separately. Kept genuine additions from `34aec0c` (`CLAUDE.md`,
+`evaluation_engine.py`, `CODE_REVIEW*`, eval tests).
+
+**Why:** The foundation was validated and must not be re-built from scratch; the accidental revert was
+a merge artifact, not a product decision.
+
+**Status:** Restored on `develop` (uncommitted). Full `tests/` suite green (289 passed, 2026-07-11).
 
 ---
 

@@ -1,7 +1,8 @@
 # StudyNexs — Build Status
 
-> Owner: Avinash Reddy Masapeta (ARM) · **As of: 2026-06-15**  
+> Owner: Avinash Reddy Masapeta (ARM) · **As of: 2026-07-11**  
 > **What's true in the repo today.** Complete product definition: [PRODUCT.md](./PRODUCT.md).  
+> **Latest engineering session + machine-readable snapshot:** [AGENT_HANDOVER.md](./AGENT_HANDOVER.md). **Milestones:** [ROADMAP.md](./ROADMAP.md). **Release notes:** [CHANGELOG.md](./CHANGELOG.md).  
 > **Enhancement inbox (discussions → build):** [BACKLOG.md](./BACKLOG.md) — **three gates:** demo polish → controlled pilot → production  
 > **AI-intelligent OS roadmap:** [PRODUCT.md §23](./PRODUCT.md#23-ai-intelligent-school-os) · phase map below.
 
@@ -13,13 +14,59 @@
 - **IA consolidation (2026-06):** Finance, Students, and Teaching **module hubs** with tab nav; sidebar ~12 items; legacy URL redirects; Reports merged into dashboard analytics; `/teacher` → dashboard.
 - **AI wedge is live in demo:** question paper generation (full + from-bank), report cards, answer-sheet vision eval, mastery narratives — proven end-to-end (~₹0.13/paper on OpenAI gpt-4o-mini).
 - **AI hardening (2026-06):** input guards, eval rate limits, answer-sheet file access, metrics token gate, tutor lesson-key validation — see `apps/api/tests/test_ai_hardening.py`.
-- **Exam loop (partial):** snap/upload → vision OCR → heuristic marks + HITL approve → corrections history; misconception library API exists.
+- **Exam loop:** snap/upload → vision OCR → **objective key-match + LLM rubric-per-criterion subjective** (heuristic fallback) → HITL approve → corrections history; misconception library API exists.
 - **Mistake Recovery Tutor (MVP):** template lessons + Azure/Web Speech TTS in `admin-web` student portal; recommendations from mastery + exam mistakes.
 - **Lesson plans:** CRUD + **template-based** generation (`template-v1`) — **not LLM-grounded yet**; AI lesson plans are Phase **A-OS** below.
 - **Topic mastery** module built (compute, flags, heatmap, digest, parent narratives on approve).
 - **Pilot school** is interested; no signed deal yet. Demand and pricing not validated.
-- **Binding constraint:** solo builder on branch `phase-0-foundation`. Scope discipline is survival.
+- **Binding constraint:** solo builder on branch **`develop`** (`D:\Projects\studynexs-platform\studynexs-dev`). Scope discipline is survival.
 - **Four of five planned portals** do not exist yet — student/parent experiences live inside `admin-web` (`/student`, `/parent`) until Flutter Phase 2.
+
+---
+
+## Since 2026-06-15 — Engineering hardening + Shared AI Platform (Batches 1–13)
+
+> Engineering passes took the platform from the Phase-1 assessment (1 Sev-1, 9 High, top-100)
+> through foundational hardening, compliance, the shared AI-platform foundation, grounded QP
+> generation, and rubric-per-criterion evaluation. **Validated on `develop` in focused + full-suite
+> runs (289 passed, 2026-07-11).** Changes are **uncommitted** on `develop` (Prime Directive 9 —
+> commit only when ARM asks). Full detail: [AGENT_HANDOVER.md](./AGENT_HANDOVER.md); reasoning:
+> [DECISION_LOG.md](./DECISION_LOG.md); release notes: [CHANGELOG.md](./CHANGELOG.md).
+
+**Security & correctness (Batches 1–6)**
+- ✅ **Sev-1 closed:** `POST /fees/pay` no longer lets a parent self-clear fees on an unverified claim (dropped `parent`; rejects `online`/gateway-claimed payments until a signature-verified Razorpay flow exists).
+- ✅ Logout revokes the refresh session (per-device `sid`); mastery heatmap/digest/flags enforce staff scope; `GET /jobs/{id}` enforces ownership (IDOR closed); role ceiling applies to a target's current role; PII removed from login logs (`mask_mobile`/`mask_email`); `class_incharge` user list masks contact PII; Redis-blacklist outage degrades gracefully.
+- ✅ `/metrics` fixed; Arq worker registers handlers via `on_startup` + `arq.Retry` (async eval actually runs now); `GET /ops/payroll` made read-only + explicit idempotent `generate`.
+- ✅ **Money:** idempotency-key fingerprint; fee roster fixed (was a latent `min(uuid)` 500) with Decimal accumulation + corrected status.
+- ✅ **Commit-before-response:** `CommitOnSuccessRoute` on all 21 routers — a commit-time failure now returns 5xx, not a false 2xx (`app/core/api_route.py`).
+
+**Compliance (Batch 8)**
+- ✅ **Aadhaar encryption at rest** — `EncryptedString` (Fernet/MultiFernet, key rotation, legacy-plaintext passthrough) on admission/staff Aadhaar columns; prod boot guardrail requires `AADHAAR_ENCRYPTION_KEYS`; reversible migration; **forked Alembic heads merged to one head**.
+
+**Shared AI Platform foundation (Batches 9–11) — validated against LIVE OpenAI + Qdrant**
+- ✅ `app/modules/ai/embeddings/` — provider-agnostic `EmbeddingProvider` (OpenAI + stub) + `EmbeddingService`. Default `text-embedding-3-small` (1536-dim).
+- ✅ `app/modules/ai/vectorstore/` — `VectorStore` ABC (`search` **requires** `school_id`) + Qdrant + in-memory adapters.
+- ✅ `app/modules/ai/rag/` — `RagService`: `index_pack` / `retrieve` (tenant + pack scoped) / `build_context` with citations. **Grounding unit = curriculum topic** (copyright-safe).
+
+**Grounded Assessment Intelligence (Batch 12) — RAG wired into question-paper generation**
+- ✅ `app/modules/ai/services/assessment_grounding.py` (`ground_for_pack`) is the seam between QP generation and the shared `RagService`: turns an **approved** CurriculumPack into a cited context block (per-topic retrieval when topics are named, else a broad pack retrieval; deduped, capped, numbered). Self-heals (indexes the pack on first use). **Refuses to generate ungrounded** when the pack has no content (§109). Consumed by `question_paper_service.py`; per-question `citations` line up with the paper's stored `grounding_sources`. Talks only to `RagService` — never a provider SDK/embedder/store directly.
+
+**Assessment Intelligence — evaluation depth (Batch 13–14)**
+- ✅ `app/modules/ai/services/evaluation_engine.py` — shared rubric-per-criterion marking engine (batch subjective LLM call via gateway; criteria authoritative; defensive clamping).
+- ✅ `answer_sheet_eval_service.py` wired: objective → deterministic key-match; subjective → engine with **heuristic fallback** on provider failure; `method` provenance (`objective` | `llm_rubric` | `heuristic_fallback`); **one credit per evaluation** (subsequent LLM calls cost-only).
+- ✅ HITL preserved: suggestions only; teacher approve + overrides + corrections history unchanged.
+- ✅ `tests/test_evaluation_engine.py` (8) + `tests/test_assessment_grounding.py` (+3 for `ground_for_evaluation`) + full `tests/` suite green (289+ passed).
+- ✅ **Batch 14:** `ground_for_evaluation` in `assessment_grounding.py` — best-effort pack RAG at mark time (never blocks marking); wired in `answer_sheet_eval_service._grade_subjective_items`. Eval UI (`exams/[examId]/evaluate`) surfaces method, confidence, rubric criteria, missing concepts.
+
+**Merge recovery (Session 03)**
+- ⚠️ Commit `34aec0c` had accidentally reverted the shared AI foundation; restored from merge parent `5f76c00` (87 files). Resolved `tutor.py` merge-conflict marker; `CommitOnSuccessRoute` restored on all routers.
+
+**Process**
+- ✅ **CI exists:** `.github/workflows/ci.yml` — pytest (main + security) + `next build` + docker image as hard gates on fresh Postgres/Redis. Lint (`ruff`/`eslint`) is **report-only** pending a dedicated formatting pass.
+- ✅ **Documentation knowledge base:** `AGENT_HANDOVER.md`, `ROADMAP.md`, `CHANGELOG.md`, and `docs/{AI_ARCHITECTURE, CURRICULUM_INTELLIGENCE, ASSESSMENT_INTELLIGENCE, KNOWLEDGE_GRAPH, MOBILE_ARCHITECTURE, DESIGN_SYSTEM}.md`.
+- ⚠️ **Known harness issue:** the local **full** pytest suite is flaky (asyncpg connections lingering across pytest-asyncio per-test event loops); focused runs and CI are green. Not a product defect — see AGENT_HANDOVER §9.
+
+**Product framing:** work is now organized around the **four intelligence pillars** (Curriculum · Assessment · Learning · School-Ops) on the shared AI platform (`CLAUDE.md` §14.2).
 
 ---
 
@@ -42,8 +89,8 @@
 - Auth: password + OTP, JWT access (in-memory) + HttpOnly refresh cookie, rotation, reuse detection, Redis blacklist
 - RBAC with role assignment guards
 - 3-layer rate limiting (WAF → Nginx → Redis); AI generate routes have additional caps
-- ~**105 backend test functions** across `apps/api/tests/` (23 files) and `apps/api/tests_security/` (4 files)
-- Alembic migrations (14 versions); ~30 entity models
+- ~**291 backend test functions** across `apps/api/tests/` + `apps/api/tests_security/` — green in focused/CI runs (local full-suite flaky, see AGENT_HANDOVER §9)
+- Alembic migrations (**33 versions**, single linear head); ~30 entity models; **20 backend modules; ~152 `/api/v1` endpoints**
 - Audit logging (fixed — was silently broken in production)
 - Fee payment idempotency (unique constraints on transaction/idempotency keys)
 - Object-level authorization on fees + academic endpoints (`assert_can_access_student`, `require_roles`)
@@ -73,7 +120,7 @@
 - **Question paper generator** — generate, edit, approve (HITL), export; `generate-from-bank` compose mode; SSC Class 10 Maths verified (100 marks, 33 Qs)
 - **Report card generator** — consolidate marks + attendance, AI-drafted remark, edit, approve (HITL), export
 - **Mastery flag narratives** — LLM-generated parent-facing note on flag approval (teacher edits before send)
-- **Answer-sheet evaluation v1** — upload image → vision OCR (async job) → heuristic objective grading + subjective assist → teacher HITL approve → marks committed; corrections history + misconception library API
+- **Answer-sheet evaluation v2** — upload image → vision OCR (async job) → **objective key-match + LLM rubric-per-criterion subjective** (heuristic fallback) → teacher HITL approve → marks committed; corrections history + misconception library API; `method` provenance per question
 - **AI input hardening** — bounded prompts, injection guards, per-route rate limits, scoped answer-sheet downloads
 
 ### Tutor & lesson plans (pre–CurriculumPack)
@@ -100,7 +147,7 @@
 |------|-----|
 | Question paper generator | SSC blueprint approximate — verify against real sample paper; export is HTML print-to-PDF (WeasyPrint not wired) |
 | Report cards | LLM remark path proven; needs pilot-school validation on tone/accuracy |
-| Answer-sheet evaluation | Vision OCR live; subjective feedback still heuristic — pilot accuracy checklist; async Arq path works but ops tuning needed |
+| Answer-sheet evaluation | Vision OCR live; **LLM rubric subjective** with heuristic fallback; pack-grounded marking + eval UI rubric display pending; pilot accuracy checklist |
 | AI generation | Synchronous on request thread for QP/report — should move heavy jobs to Arq queue for production load |
 | Lesson plans | Template-only — **AI-grounded plans blocked on Layer 1 foundation** ([PRODUCT.md §23](./PRODUCT.md#23-ai-intelligent-school-os)) |
 | Tutor MVP | Template lessons only — no Concept Cards / Content Review Queue / RAG yet |
@@ -125,8 +172,8 @@
 | **Notifications delivery** | in-app only | — | SMS/email/push handlers are `pass  # TODO` |
 | **Outbox worker** | emits events | — | Handlers log only; no real WhatsApp/SMS/email |
 | **OTP in production** | dev logs OTP | — | MSG91 / SMS provider not wired |
-| **Qdrant / RAG** | docker service + config | — | No application code uses vector store yet |
-| **CI/CD** | — | — | No `.github/workflows` found |
+| **Qdrant / RAG** | ✅ shared foundation + **grounded QP** (`assessment_grounding`) | — | Eval marking not pack-grounded yet (`grounding=None` today) |
+| **CI/CD** | 🟡 CI only | — | `.github/workflows/ci.yml` (pytest+build+docker hard gates; lint report-only). CD (deploy) not yet |
 
 ---
 
@@ -222,10 +269,11 @@ Issues from code reviews (`CODE_REVIEW*.md`, dated ~2026-06-01). Spot-checked ag
 | — | Azure Blob storage not implemented (local disk only) | Medium |
 | — | PDF generation falls back to HTML (WeasyPrint missing) | Medium |
 | — | External notification delivery stubbed (SMS/email/push) | Medium |
-| — | AI runs synchronously despite Arq infrastructure | Medium |
-| — | Razorpay payment gateway not integrated | Medium (pre-monetisation) |
-| — | Qdrant/RAG not wired | Expected (Phase 1.5) |
-| — | No frontend unit tests; no CI pipeline | Medium |
+| — | Async Arq eval path repaired (handler registration + `Retry`); heavy AI generation still largely synchronous on the request thread | Medium |
+| — | Razorpay payment gateway not integrated (`/fees/pay` records offline collections only) | Medium (pre-monetisation) |
+| — | ~~Qdrant/RAG not wired~~ → **shared foundation built**; not yet wired into QP generation | Next batch |
+| — | ~~No CI pipeline~~ → **CI added** (`.github/workflows/ci.yml`); no frontend unit tests yet; lint report-only | Medium |
+| — | **Local full pytest suite flaky** (asyncpg cross-loop; focused runs + CI green) — see AGENT_HANDOVER §9 | Medium (harness, not product) |
 | — | Main pytest suite skips Audit/Tenant/Metrics middleware — security tests run separately | Low (by design, but document) |
 | — | MSG91 OTP not wired for production | Blocker for prod OTP login |
 
@@ -315,7 +363,7 @@ Canonical execution plan from product strategy. Full design: [PRODUCT.md](./PROD
 
 ```
 apps/
-├── api/           ✅ FastAPI — 14 modules mounted
+├── api/           ✅ FastAPI — 20 modules (19 mounted; `analytics` is empty scaffolding)
 ├── admin-web/     ✅ Next.js 16 — only frontend app present
 ├── teacher-web/   ⬜ not in repo
 ├── parent-web/    ⬜ not in repo
@@ -323,7 +371,7 @@ apps/
 └── platform-web/  ⬜ not in repo
 ```
 
-**Current branch:** `phase-0-foundation`
+**Current branch:** `develop` · active repo: `D:\Projects\studynexs-platform\studynexs-dev` (uncommitted restore + Batch 13 — see [AGENT_HANDOVER.md](./AGENT_HANDOVER.md))
 
 ---
 
