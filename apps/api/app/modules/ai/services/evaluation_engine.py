@@ -24,6 +24,7 @@ from dataclasses import dataclass
 import structlog
 
 from app.modules.ai.gateway import LLMMessage, LLMResult, generate_llm
+from app.modules.ai.services.assessment_grounding import GroundingContext
 
 logger = structlog.get_logger()
 
@@ -34,24 +35,6 @@ _DEFAULT_CONFIDENCE = 0.6
 _EVAL_MAX_TOKENS = 4000
 # Low temperature: marking must be consistent across students, not creative.
 _EVAL_TEMPERATURE = 0.1
-
-
-@dataclass
-class GroundingContext:
-    """Optional curriculum context for grounded marking.
-
-    Deliberately self-contained: when a shared retrieval/RAG layer lands it can emit this same
-    shape (or a thin adapter can convert to it), so the engine takes on no dependency it does not
-    yet need. Until then callers pass ``None`` and marking runs on the answer key alone — curriculum
-    grounding only ever *improves* a suggestion, it never gates whether a paper can be marked.
-    """
-
-    context_text: str = ""
-    chunk_count: int = 0
-
-    @property
-    def is_empty(self) -> bool:
-        return self.chunk_count <= 0 or not self.context_text.strip()
 
 
 @dataclass

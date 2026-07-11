@@ -28,6 +28,7 @@ from app.modules.ai.services.ai_credits import (
     credits_for_purpose,
 )
 from app.modules.ai.services.evaluation_engine import SubjectiveItem, evaluate_subjective
+from app.modules.ai.services.assessment_grounding import ground_for_evaluation
 from app.modules.ai.services.question_bank_service import fetch_rubrics_for_paper
 from app.modules.examinations.schemas.evaluation import EvaluationApprove
 from app.modules.examinations.schemas.exam import MarkEntry
@@ -564,6 +565,14 @@ class AnswerSheetEvalService:
         grade = (paper.grade if paper else None) or ""
         subject = (paper.subject_name if paper else None) or ""
 
+        eval_topics = sorted({it.topic for it in items if it.topic})
+        grounding = await ground_for_evaluation(
+            self.db,
+            school_id=school_id,
+            pack_id=paper.pack_id if paper else None,
+            topics=eval_topics or None,
+        )
+
         engine_out: dict[str, dict] = {}
         llm_results: list[LLMResult] = []
         try:
@@ -572,7 +581,7 @@ class AnswerSheetEvalService:
                 board=board,
                 grade=grade,
                 subject=subject,
-                grounding=None,
+                grounding=grounding if not grounding.is_empty else None,
             )
             llm_results.append(result)
         except Exception:

@@ -29,7 +29,7 @@ from app.modules.ai.embeddings import EmbeddingService
 from app.modules.ai.embeddings.stub_provider import StubEmbeddingProvider
 from app.modules.ai.gateway import LLMResult
 from app.modules.ai.gateway.output_guard import sanitize_paper_sections
-from app.modules.ai.services.assessment_grounding import ground_for_pack
+from app.modules.ai.services.assessment_grounding import ground_for_evaluation, ground_for_pack
 from app.modules.ai.services.question_paper_service import generate_paper
 from app.modules.ai.vectorstore.memory_store import InMemoryVectorStore
 
@@ -328,3 +328,42 @@ def test_sanitize_preserves_and_coerces_question_metadata():
     assert q["learning_outcome"] == "Understand concept."
     assert q["concepts"] == ["a", "b"]         # empties dropped
     assert q["citations"] == [1, 2, 4]         # non-ints and <1 dropped
+
+
+@pytest.mark.asyncio
+async def test_ground_for_evaluation_returns_context_for_approved_pack(db_session):
+    ids = await _seed(db_session)
+    ctx = await ground_for_evaluation(
+        db_session,
+        school_id=ids["school"].id,
+        pack_id=ids["pack"].id,
+        topics=["Linear Equations"],
+        embedder=_stub_embedder(),
+        store=InMemoryVectorStore(),
+    )
+    assert not ctx.is_empty
+    assert ctx.chunk_count >= 1
+
+
+@pytest.mark.asyncio
+async def test_ground_for_evaluation_empty_when_no_pack(db_session):
+    ids = await _seed(db_session)
+    ctx = await ground_for_evaluation(
+        db_session,
+        school_id=ids["school"].id,
+        pack_id=None,
+        topics=["Science"],
+    )
+    assert ctx.is_empty
+
+
+@pytest.mark.asyncio
+async def test_ground_for_evaluation_empty_for_draft_pack(db_session):
+    ids = await _seed(db_session, pack_status=PackStatus.DRAFT)
+    ctx = await ground_for_evaluation(
+        db_session,
+        school_id=ids["school"].id,
+        pack_id=ids["pack"].id,
+        topics=["Linear Equations"],
+    )
+    assert ctx.is_empty

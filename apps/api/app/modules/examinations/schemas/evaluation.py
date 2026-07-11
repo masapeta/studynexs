@@ -37,6 +37,9 @@ class QuestionSuggestion(BaseModel):
     feedback: str
     confidence: float = Field(ge=0, le=1)
     student_answer: str = ""
+    method: Optional[str] = None
+    criteria: list[dict[str, Any]] = Field(default_factory=list)
+    missing_concepts: list[str] = Field(default_factory=list)
 
 
 class EvaluationOut(BaseModel):

@@ -1,31 +1,37 @@
-"""Assessment Intelligence grounding — the seam between question generation and the RAG platform.
+"""Assessment Intelligence grounding — the seam between generation/evaluation and the RAG platform.
 
 Flow: Teacher → Assessment Intelligence → RAG → Embedding → Vector store → provider.
 This module is the "→ RAG" hop: it turns a school's APPROVED CurriculumPack into a cited context
-block for grounded question-paper generation. It talks ONLY to the shared ``RagService`` (never a
-provider SDK, embedder, or vector store directly), so the provider-agnostic contract and the
-tenant + pack isolation guarantees of the platform hold automatically (CLAUDE.md §4.1, §32, §39).
+block for grounded question-paper generation **and** (best-effort) answer-sheet marking. It talks
+ONLY to the shared ``RagService`` (never a provider SDK, embedder, or vector store directly), so the
+provider-agnostic contract and the tenant + pack isolation guarantees of the platform hold
+automatically (CLAUDE.md §4.1, §32, §39).
 
 Retrieval is chapter/topic-aware:
-- when the teacher names topics, each topic is retrieved on its own (precise, per-topic grounding);
+- when topics are named, each topic is retrieved on its own (precise, per-topic grounding);
 - otherwise a single broad retrieval with a high ``top_k`` returns the whole pack's topic set.
 Either way the result is deduplicated, capped, and numbered so per-question ``citations`` line up
-with the paper's stored ``grounding_sources``.
+with the numbered sources in ``context_text``.
 """
 from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
 
+import structlog
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.curriculum_pack import CurriculumPack
+from app.db.models.curriculum_pack import CurriculumPack, PackStatus
 from app.modules.ai.embeddings import EmbeddingService
 from app.modules.ai.rag import RagService, RetrievedChunk
 from app.modules.ai.vectorstore.base import VectorStore
 
+logger = structlog.get_logger()
+
 # A paper grounds on many topics; keep the context bounded so the prompt stays within budget.
 _MAX_GROUNDING_CHUNKS = 24
+_MAX_EVAL_GROUNDING_CHUNKS = 12
 _PER_TOPIC_TOP_K = 4
 
 
@@ -124,6 +130,53 @@ async def ground_for_pack(
         for i, c in enumerate(chunks, start=1)
     ]
     return GroundingContext(context_text=context_text, sources=sources)
+
+
+async def ground_for_evaluation(
+    db: AsyncSession,
+    *,
+    school_id: uuid.UUID,
+    pack_id: uuid.UUID | None,
+    topics: list[str] | None = None,
+    embedder: EmbeddingService | None = None,
+    store: VectorStore | None = None,
+) -> GroundingContext:
+    """Best-effort curriculum grounding for answer-sheet marking.
+
+    Unlike ``ground_for_pack`` at generation time, this **never raises** and never blocks marking.
+    When the source paper has no pack, the pack is unapproved, or retrieval fails, an empty context
+    is returned and the engine marks from the answer key alone. Grounding only improves suggestions.
+    """
+    empty = GroundingContext(context_text="", sources=[])
+    if not pack_id:
+        return empty
+    try:
+        pack = (
+            await db.execute(
+                select(CurriculumPack).where(
+                    CurriculumPack.id == pack_id,
+                    CurriculumPack.school_id == school_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if pack is None or pack.status != PackStatus.APPROVED:
+            return empty
+        return await ground_for_pack(
+            db,
+            pack=pack,
+            topics=topics,
+            embedder=embedder,
+            store=store,
+            max_chunks=_MAX_EVAL_GROUNDING_CHUNKS,
+        )
+    except Exception:
+        logger.warning(
+            "ground_for_evaluation_failed",
+            school_id=str(school_id),
+            pack_id=str(pack_id),
+            exc_info=True,
+        )
+        return empty
 
 
 def resolve_citations(sources: list[dict], indices: list[int]) -> list[dict]:
