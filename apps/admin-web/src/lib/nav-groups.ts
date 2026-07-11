@@ -4,6 +4,7 @@ import {
   Bus,
   CalendarDays,
   ClipboardCheck,
+  Cpu,
   FileText,
   GraduationCap,
   LayoutDashboard,
@@ -13,7 +14,7 @@ import {
   Wallet,
 } from "lucide-react";
 import type { UserPermissions } from "./permissions";
-import { FINANCE, STUDENTS, TEACHING } from "./dashboard-routes";
+import { FINANCE, PLATFORM, STUDENTS, TEACHING } from "./dashboard-routes";
 
 export type NavItem = {
   label: string;
@@ -23,6 +24,8 @@ export type NavItem = {
   perm?: keyof UserPermissions;
   /** Show when the user has any of these permissions. */
   anyPerm?: (keyof UserPermissions)[];
+  /** Restrict to these roles (e.g. super_admin, admin). */
+  roles?: string[];
 };
 
 export type NavGroup = {
@@ -84,6 +87,17 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Finance",
     items: [
       { label: "Finance", href: FINANCE.root, icon: Wallet, module: "finance", perm: "can_use_finance" },
+    ],
+  },
+  {
+    label: "Platform",
+    items: [
+      {
+        label: "Engineering",
+        href: PLATFORM.engineering,
+        icon: Cpu,
+        roles: ["super_admin", "admin"],
+      },
     ],
   },
   {

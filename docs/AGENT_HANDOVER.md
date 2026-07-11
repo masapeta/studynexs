@@ -276,6 +276,10 @@ ingestion.
 
 ## Closing checklist (run before ending any session)
 
+- [ ] `CHANGELOG.md`, `STATUS.md`, `ROADMAP.md`, `AGENT_HANDOVER.md` updated
+- [ ] **`PLATFORM_STATUS.md`** + **`docs/engineering/{platform,modules,roadmap}.json`** + affected **`docs/modules/*.md`**
+- [ ] Tests run; counts reflected in `engineering-status.json`
+
 - [x] `AGENT_HANDOVER.md` updated with a new/append session reflecting current state.
 - [x] `STATUS.md` reflects the current implementation state (refreshed 2026-07-10 — "Since 2026-06-15" section + corrected stats/CI/RAG/known-issues).
 - [x] `DECISION_LOG.md` contains this session's architectural decisions (commit-before-response, shared AI platform, Aadhaar encryption).
@@ -601,6 +605,10 @@ The next agent should **not** re-review, re-implement, or undo:
 - Do not chase the local test-suite flakiness as a code bug (§9).
 
 ## Closing checklist (run before ending any session)
+
+- [ ] `CHANGELOG.md`, `STATUS.md`, `ROADMAP.md`, `AGENT_HANDOVER.md` updated
+- [ ] **`PLATFORM_STATUS.md`** + **`docs/engineering/{platform,modules,roadmap}.json`** + affected **`docs/modules/*.md`**
+- [ ] Tests run; counts reflected in `engineering-status.json`
 
 - [x] `AGENT_HANDOVER.md` appended with Session 02 reflecting current state (Session 01 preserved).
 - [x] `STATUS.md` reflects current state (reconciled this session — see docs).

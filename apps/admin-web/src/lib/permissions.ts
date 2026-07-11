@@ -95,6 +95,8 @@ export const NAV_PERMISSION: Record<string, NavGate | undefined> = {
   "/dashboard/reports": "can_view_dashboard",
   "/dashboard/gradebook": "can_use_exams",
   "/dashboard/lesson-plans": "can_use_exams",
+  "/dashboard/platform": "can_use_settings",
+  "/dashboard/platform/engineering": "can_use_settings",
 };
 
 export const PORTAL_ROLES = new Set(["parent", "student"]);
@@ -144,6 +146,9 @@ export function routeAllowed(pathname: string, perms: UserPermissions | null): b
   }
   if (pathname.startsWith(`${TEACHING.root}/`) || pathname === TEACHING.root) {
     return teachingRouteAllowed(pathname, perms);
+  }
+  if (pathname.startsWith("/dashboard/platform")) {
+    return perms.role === "super_admin" || perms.role === "admin";
   }
 
   const prefixes = Object.keys(NAV_PERMISSION).sort((a, b) => b.length - a.length);

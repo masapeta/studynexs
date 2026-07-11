@@ -1,0 +1,53 @@
+---
+description: End-of-batch engineering dashboard maintenance — verify implementation first, then update PLATFORM_STATUS and docs/engineering/*.json.
+alwaysApply: true
+---
+
+# Engineering Dashboard Maintenance
+
+**The dashboard summarizes the platform; it is not a substitute for verification.** If docs and code
+differ, **implementation wins** — run tests, inspect code, then update docs.
+
+At the **end of every engineering batch**, update:
+
+## Required updates (in order)
+
+1. **Verify** — `pytest tests/` (or focused suite); record counts in `docs/engineering/platform.json`
+2. **`docs/CHANGELOG.md`**, **`docs/STATUS.md`**, **`docs/ROADMAP.md`**, **`docs/AGENT_HANDOVER.md`**
+3. **`docs/engineering/platform.json`** — architecture version, capability matrix + `verified` field
+4. **`docs/engineering/modules.json`** — module status, `verified`, `depends_on` (satisfied/pending)
+5. **`docs/engineering/roadmap.json`** — `next_milestone`, batch estimates, completed batch
+6. **`docs/PLATFORM_STATUS.md`** — human-readable master (must agree with JSON)
+7. **Affected `docs/modules/*.md`**
+
+## Verification values (`verified` field)
+
+| Value | Meaning |
+|-------|---------|
+| `tests_passing` | Covered by green automated tests |
+| `integration_pending` | Unit-tested; E2E or live integration not yet proven |
+| `partial` | Shipped but incomplete test/UI coverage |
+| `not_started` | Planned only |
+
+Distinguish **implemented** from **verified** — never mark `tests_passing` without test evidence.
+
+## Architecture version
+
+Bump `architecture_version` in `platform.json` only for material platform contract changes (new
+shared service, breaking internal API, major pillar restructure). Increment minor for batch shipments.
+
+## Data layout
+
+```
+docs/engineering/
+  platform.json   # architecture version, tests, providers, capability_matrix
+  modules.json    # modules + depends_on
+  roadmap.json    # next_milestone, upcoming batches
+```
+
+Do not reintroduce a monolithic `engineering-status.json`.
+
+## In-app dashboard
+
+- API: `GET /api/v1/platform/engineering-status`
+- UI: `/dashboard/platform/engineering` (admin / super_admin)

@@ -1,6 +1,7 @@
 # StudyNexs — Build Status
 
 > Owner: Avinash Reddy Masapeta (ARM) · **As of: 2026-07-11**  
+> **Engineering dashboard (master):** [PLATFORM_STATUS.md](./PLATFORM_STATUS.md) · **In-app:** Dashboard → Platform → Engineering  
 > **What's true in the repo today.** Complete product definition: [PRODUCT.md](./PRODUCT.md).  
 > **Latest engineering session + machine-readable snapshot:** [AGENT_HANDOVER.md](./AGENT_HANDOVER.md). **Milestones:** [ROADMAP.md](./ROADMAP.md). **Release notes:** [CHANGELOG.md](./CHANGELOG.md).  
 > **Enhancement inbox (discussions → build):** [BACKLOG.md](./BACKLOG.md) — **three gates:** demo polish → controlled pilot → production  

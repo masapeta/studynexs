@@ -1,0 +1,129 @@
+{
+  "schema_version": 2,
+  "modules": [
+    {
+      "id": "AI_PLATFORM",
+      "name": "AI Platform",
+      "status": "complete",
+      "verified": "tests_passing",
+      "doc": "docs/modules/AI_PLATFORM.md",
+      "depends_on": { "satisfied": [], "pending": [] }
+    },
+    {
+      "id": "EMBEDDINGS",
+      "name": "Embeddings",
+      "status": "complete",
+      "verified": "tests_passing",
+      "doc": "docs/modules/EMBEDDINGS.md",
+      "depends_on": { "satisfied": ["AI_PLATFORM"], "pending": [] }
+    },
+    {
+      "id": "VECTOR_STORE",
+      "name": "Vector Store",
+      "status": "complete",
+      "verified": "tests_passing",
+      "doc": "docs/modules/VECTOR_STORE.md",
+      "depends_on": { "satisfied": ["AI_PLATFORM"], "pending": [] }
+    },
+    {
+      "id": "RAG",
+      "name": "RAG",
+      "status": "in_progress",
+      "verified": "integration_pending",
+      "doc": "docs/modules/RAG.md",
+      "depends_on": { "satisfied": ["EMBEDDINGS", "VECTOR_STORE"], "pending": [] }
+    },
+    {
+      "id": "ASSESSMENT_INTELLIGENCE",
+      "name": "Assessment Intelligence",
+      "status": "complete",
+      "verified": "tests_passing",
+      "batch": 14,
+      "doc": "docs/modules/ASSESSMENT_INTELLIGENCE.md",
+      "depends_on": { "satisfied": ["RAG", "AI_PLATFORM"], "pending": [] }
+    },
+    {
+      "id": "CURRICULUM_INTELLIGENCE",
+      "name": "Curriculum Intelligence",
+      "status": "in_progress",
+      "verified": "tests_passing",
+      "doc": "docs/modules/CURRICULUM_INTELLIGENCE.md",
+      "depends_on": { "satisfied": ["RAG", "EMBEDDINGS"], "pending": ["FILE_PROCESSING"] }
+    },
+    {
+      "id": "MASTERY_ENGINE",
+      "name": "Mastery Engine",
+      "status": "complete",
+      "verified": "tests_passing",
+      "doc": "docs/modules/MASTERY_ENGINE.md",
+      "depends_on": { "satisfied": ["AUTHORIZATION"], "pending": [] }
+    },
+    {
+      "id": "KNOWLEDGE_GRAPH",
+      "name": "Knowledge Graph",
+      "status": "planned",
+      "verified": "not_started",
+      "doc": "docs/modules/KNOWLEDGE_GRAPH.md",
+      "depends_on": { "satisfied": ["CURRICULUM_INTELLIGENCE"], "pending": ["FILE_PROCESSING"] }
+    },
+    {
+      "id": "TEACHER_COPILOT",
+      "name": "Teacher Copilot",
+      "status": "planned",
+      "verified": "not_started",
+      "batch": 15,
+      "doc": "docs/modules/TEACHER_COPILOT.md",
+      "depends_on": {
+        "satisfied": ["EMBEDDINGS", "RAG", "CURRICULUM_INTELLIGENCE", "AI_PLATFORM"],
+        "pending": ["KNOWLEDGE_GRAPH"]
+      }
+    },
+    {
+      "id": "STUDENT_COPILOT",
+      "name": "Student Copilot",
+      "status": "planned",
+      "verified": "not_started",
+      "doc": "docs/modules/STUDENT_COPILOT.md",
+      "depends_on": {
+        "satisfied": ["MASTERY_ENGINE", "AI_PLATFORM"],
+        "pending": ["KNOWLEDGE_GRAPH", "RAG"]
+      }
+    },
+    {
+      "id": "PARENT_COPILOT",
+      "name": "Parent Copilot",
+      "status": "planned",
+      "verified": "not_started",
+      "doc": "docs/modules/PARENT_COPILOT.md",
+      "depends_on": {
+        "satisfied": ["MASTERY_ENGINE", "AUTHORIZATION"],
+        "pending": ["STUDENT_COPILOT"]
+      }
+    },
+    {
+      "id": "FILE_PROCESSING",
+      "name": "File Processing",
+      "status": "planned",
+      "verified": "not_started",
+      "batch": 16,
+      "doc": "docs/modules/FILE_PROCESSING.md",
+      "depends_on": { "satisfied": ["AI_PLATFORM"], "pending": ["OCR_PIPELINE"] }
+    },
+    {
+      "id": "OCR_PIPELINE",
+      "name": "OCR Pipeline",
+      "status": "in_progress",
+      "verified": "partial",
+      "doc": "docs/modules/OCR_PIPELINE.md",
+      "depends_on": { "satisfied": ["AI_PLATFORM"], "pending": ["FILE_PROCESSING"] }
+    },
+    {
+      "id": "AUTHORIZATION",
+      "name": "Authorization",
+      "status": "complete",
+      "verified": "tests_passing",
+      "doc": "docs/modules/AUTHORIZATION.md",
+      "depends_on": { "satisfied": [], "pending": [] }
+    }
+  ]
+}

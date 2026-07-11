@@ -28,3 +28,8 @@ export const TEACHING = {
   corrections: "/dashboard/teaching/exams/corrections",
   evaluate: (examId: string) => `/dashboard/teaching/exams/${examId}/evaluate`,
 } as const;
+
+export const PLATFORM = {
+  root: "/dashboard/platform",
+  engineering: "/dashboard/platform/engineering",
+} as const;

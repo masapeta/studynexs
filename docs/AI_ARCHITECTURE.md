@@ -1,8 +1,7 @@
 # AI Architecture — the Shared Intelligence Platform
 
-> **Engineering companion** to [`/CLAUDE.md`](../CLAUDE.md) Part V (§33–§44). CLAUDE.md is canonical
-> policy; this doc records the **current implementation, code locations, and how to extend it**. When
-> they disagree, CLAUDE.md wins and this doc is corrected.
+> **Module dashboards:** [`docs/modules/AI_PLATFORM.md`](./modules/AI_PLATFORM.md) · [`RAG.md`](./modules/RAG.md) · [`EMBEDDINGS.md`](./modules/EMBEDDINGS.md) · [`VECTOR_STORE.md`](./modules/VECTOR_STORE.md)  
+> **Master engineering view:** [`PLATFORM_STATUS.md`](./PLATFORM_STATUS.md)
 
 ## Principle
 

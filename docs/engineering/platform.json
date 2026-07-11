@@ -1,0 +1,55 @@
+{
+  "schema_version": 2,
+  "architecture_version": "1.4",
+  "updated_at": "2026-07-11",
+  "last_engineering_batch": 14,
+  "branch": "develop",
+  "last_commit": "a2286bf",
+  "tests": {
+    "suite": "apps/api/tests/",
+    "passed": 292,
+    "skipped": 1,
+    "failed": 0,
+    "last_run": "2026-07-11",
+    "verified": true
+  },
+  "providers": {
+    "llm_default": "gemini",
+    "embedding_provider": "openai",
+    "embedding_model": "text-embedding-3-small",
+    "vector_store": "qdrant"
+  },
+  "capability_matrix": [
+    { "capability": "LLM provider abstraction", "status": "complete", "verified": "tests_passing", "batch": "9", "module": "AI_PLATFORM" },
+    { "capability": "Embeddings (OpenAI + stub)", "status": "complete", "verified": "tests_passing", "batch": "9-11", "module": "EMBEDDINGS" },
+    { "capability": "Embeddings (Ollama)", "status": "planned", "verified": "not_started", "batch": null, "module": "EMBEDDINGS" },
+    { "capability": "Embeddings (Azure OpenAI)", "status": "planned", "verified": "not_started", "batch": null, "module": "EMBEDDINGS" },
+    { "capability": "Vector store (Qdrant + memory)", "status": "complete", "verified": "tests_passing", "batch": "9-11", "module": "VECTOR_STORE" },
+    { "capability": "RAG index / retrieve / citations", "status": "complete", "verified": "tests_passing", "batch": "9-12", "module": "RAG" },
+    { "capability": "RAG hybrid search + re-ranking", "status": "in_progress", "verified": "integration_pending", "batch": "15+", "module": "RAG" },
+    { "capability": "Grounded question-paper generation", "status": "complete", "verified": "tests_passing", "batch": "12", "module": "ASSESSMENT_INTELLIGENCE" },
+    { "capability": "Rubric-per-criterion evaluation", "status": "complete", "verified": "tests_passing", "batch": "13", "module": "ASSESSMENT_INTELLIGENCE" },
+    { "capability": "Pack-grounded evaluation marking", "status": "complete", "verified": "tests_passing", "batch": "14", "module": "ASSESSMENT_INTELLIGENCE" },
+    { "capability": "Eval UI rubric breakdown", "status": "complete", "verified": "partial", "batch": "14", "module": "ASSESSMENT_INTELLIGENCE" },
+    { "capability": "CurriculumPack + approval lifecycle", "status": "complete", "verified": "tests_passing", "batch": "pre-12", "module": "CURRICULUM_INTELLIGENCE" },
+    { "capability": "Document Intelligence pipeline", "status": "planned", "verified": "not_started", "batch": "16", "module": "FILE_PROCESSING" },
+    { "capability": "Knowledge Graph schema", "status": "planned", "verified": "not_started", "batch": "17", "module": "KNOWLEDGE_GRAPH" },
+    { "capability": "Teacher Copilot", "status": "planned", "verified": "not_started", "batch": "15", "module": "TEACHER_COPILOT" },
+    { "capability": "Student Copilot", "status": "planned", "verified": "not_started", "batch": null, "module": "STUDENT_COPILOT" },
+    { "capability": "Parent Copilot", "status": "planned", "verified": "not_started", "batch": null, "module": "PARENT_COPILOT" },
+    { "capability": "Mastery compute + narratives", "status": "complete", "verified": "tests_passing", "batch": "pre-12", "module": "MASTERY_ENGINE" },
+    { "capability": "Answer-sheet vision OCR", "status": "complete", "verified": "tests_passing", "batch": "pre-12", "module": "OCR_PIPELINE" },
+    { "capability": "Tenant isolation + RBAC", "status": "complete", "verified": "tests_passing", "batch": "1-6", "module": "AUTHORIZATION" },
+    { "capability": "Commit-before-response routes", "status": "complete", "verified": "tests_passing", "batch": "restore", "module": "AI_PLATFORM" },
+    { "capability": "Aadhaar encryption at rest", "status": "complete", "verified": "tests_passing", "batch": "8", "module": "AI_PLATFORM" }
+  ],
+  "doc_links": {
+    "master": "docs/PLATFORM_STATUS.md",
+    "handover": "docs/AGENT_HANDOVER.md",
+    "roadmap": "docs/ROADMAP.md",
+    "changelog": "docs/CHANGELOG.md",
+    "status": "docs/STATUS.md",
+    "decisions": "docs/DECISION_LOG.md",
+    "engineering_dir": "docs/engineering/"
+  }
+}

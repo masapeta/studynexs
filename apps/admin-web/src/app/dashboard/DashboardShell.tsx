@@ -66,6 +66,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   };
 
   const itemVisible = (item: NavItem) => {
+    if (item.roles && permissions && !item.roles.includes(permissions.role)) {
+      return false;
+    }
+    if (item.roles && !item.perm && !item.anyPerm) {
+      return true;
+    }
     if (item.anyPerm && permissions) {
       if (!item.anyPerm.some((p) => permissions[p])) return false;
     } else if (item.perm && permissions && !permissions[item.perm]) {

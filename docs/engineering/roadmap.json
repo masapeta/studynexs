@@ -1,0 +1,27 @@
+{
+  "schema_version": 2,
+  "last_completed_batch": {
+    "number": 14,
+    "title": "Pack-grounded eval marking + eval UI rubric display",
+    "completed_at": "2026-07-11"
+  },
+  "current_batch": null,
+  "next_milestone": {
+    "batch": 15,
+    "title": "AI Teacher Copilot",
+    "summary": "Grounded, cited assistance for lesson planning, QP review, and feedback drafting.",
+    "estimated_days": 6,
+    "dependencies_blocking": [],
+    "dependencies_satisfied": [
+      "EMBEDDINGS",
+      "RAG",
+      "CURRICULUM_INTELLIGENCE",
+      "AI_PLATFORM"
+    ],
+    "dependencies_optional": ["KNOWLEDGE_GRAPH"]
+  },
+  "upcoming": [
+    { "batch": 16, "title": "Document Intelligence ingestion", "estimated_days": 10 },
+    { "batch": 17, "title": "Knowledge Graph schema (curriculum spine)", "estimated_days": 8 }
+  ]
+}
