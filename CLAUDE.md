@@ -3325,8 +3325,40 @@ Before enterprise/district:
 [ ] Cost-per-school modelled and within target (§36)
 [ ] Runbooks exist for top incidents (§77)
 ```
+## Continuous Improvement
 
+The platform architecture is expected to evolve.
+
+The AI assistant should:
+
+- Continuously evaluate existing designs.
+- Identify opportunities for simplification.
+- Identify opportunities for reuse.
+- Identify opportunities for improved scalability.
+- Identify opportunities for improved maintainability.
+
+Architectural improvements should be proposed, not implemented automatically.
+
+Every proposal should include:
+
+- Current approach
+- Proposed approach
+- Benefits
+- Trade-offs
+- Migration effort
+- Recommendation
+
+## Engineering Framework Stability
+
+- The engineering governance documents are considered stable.
+- Do not redesign the engineering workflow unless recurring practical issues demonstrate that improvements are necessary.
+- Prefer evolving the product over continually redesigning the engineering process.
+
+
+Implementation requires Product Owner approval.
 ---
+
+
 
 *StudyNexs Engineering Constitution — a Noustriks product. Owner: Avinash Reddy Masapeta (ARM). Binding, living document. When in doubt, favour safety, tenant isolation, and the product owner's intent, then keep improving.*
 
