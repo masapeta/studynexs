@@ -311,12 +311,21 @@ export default function EvaluateExamPage() {
                 </div>
               )}
               <table className="data-table">
-                <thead><tr><th>Q</th><th>AI marks</th><th>Final marks</th><th>Feedback</th></tr></thead>
+                <thead><tr><th>Q</th><th>AI marks</th><th>Final marks</th><th>Feedback & rubric</th></tr></thead>
                 <tbody>
-                  {Object.entries(activeEval.ai_suggestions || {}).map(([qno, s]: [string, any]) => (
+                  {Object.entries(activeEval.ai_suggestions || {}).map(([qno, raw]: [string, any]) => {
+                    const s = raw as EvalSuggestion;
+                    return (
                     <tr key={qno}>
                       <td>{qno}</td>
-                      <td>{s.marks_suggested} / {s.max_marks}</td>
+                      <td>
+                        {s.marks_suggested} / {s.max_marks}
+                        {s.method && (
+                          <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
+                            {methodLabel(s.method)}
+                          </div>
+                        )}
+                      </td>
                       <td>
                         <input
                           type="number"
@@ -329,9 +338,13 @@ export default function EvaluateExamPage() {
                           disabled={activeEval.status === "approved"}
                         />
                       </td>
-                      <td style={{ fontSize: 13 }}>{s.feedback}</td>
+                      <td style={{ fontSize: 13, maxWidth: 420 }}>
+                        {s.feedback}
+                        <RubricBreakdown suggestion={s} />
+                      </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
               {activeEval.status === "suggested" && (
@@ -351,3 +364,102 @@ export default function EvaluateExamPage() {
 }
 
 const btn: React.CSSProperties = { width: "auto", padding: "8px 18px", borderRadius: "var(--radius-full)", fontSize: 13 };
+
+type EvalSuggestion = {
+  marks_suggested: number;
+  max_marks: number;
+  feedback: string;
+  confidence?: number;
+  method?: string;
+  criteria?: Array<{
+    criterion: string;
+    max_points: number;
+    awarded_points: number;
+    met?: boolean;
+    comment?: string;
+  }>;
+  missing_concepts?: string[];
+};
+
+function methodLabel(method?: string): string {
+  switch (method) {
+    case "objective":
+      return "Objective";
+    case "llm_rubric":
+      return "Rubric (AI)";
+    case "heuristic_fallback":
+      return "Heuristic";
+    default:
+      return method || "—";
+  }
+}
+
+function RubricBreakdown({ suggestion }: { suggestion: EvalSuggestion }) {
+  const criteria = suggestion.criteria || [];
+  const missing = suggestion.missing_concepts || [];
+  const hasMeta = suggestion.method || suggestion.confidence != null || missing.length > 0 || criteria.length > 0;
+  if (!hasMeta) return null;
+
+  return (
+    <div style={{ marginTop: 8, fontSize: 12, color: "var(--text-muted)" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: criteria.length ? 8 : 0 }}>
+        {suggestion.method && (
+          <span style={metaChip}>{methodLabel(suggestion.method)}</span>
+        )}
+        {suggestion.confidence != null && (
+          <span style={metaChip}>Confidence {Math.round(suggestion.confidence * 100)}%</span>
+        )}
+        {missing.map((c) => (
+          <span key={c} style={{ ...metaChip, color: "var(--warning)", borderColor: "var(--warning)" }}>
+            Missing: {c}
+          </span>
+        ))}
+      </div>
+      {criteria.length > 0 && (
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+          <thead>
+            <tr>
+              <th style={rubricTh}>Criterion</th>
+              <th style={rubricTh}>Awarded</th>
+              <th style={rubricTh}>Note</th>
+            </tr>
+          </thead>
+          <tbody>
+            {criteria.map((c) => (
+              <tr key={c.criterion}>
+                <td style={rubricTd}>{c.criterion}</td>
+                <td style={rubricTd}>
+                  {c.awarded_points} / {c.max_points}
+                  {c.met === false && " · partial"}
+                </td>
+                <td style={rubricTd}>{c.comment || "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+const metaChip: React.CSSProperties = {
+  display: "inline-block",
+  padding: "2px 8px",
+  borderRadius: 999,
+  border: "1px solid var(--border)",
+  fontSize: 11,
+  color: "var(--text-muted)",
+};
+
+const rubricTh: React.CSSProperties = {
+  textAlign: "left",
+  padding: "4px 6px",
+  borderBottom: "1px solid var(--border)",
+  fontWeight: 600,
+};
+
+const rubricTd: React.CSSProperties = {
+  padding: "4px 6px",
+  verticalAlign: "top",
+  borderBottom: "1px solid var(--border-subtle, var(--border))",
+};
