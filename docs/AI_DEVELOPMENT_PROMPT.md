@@ -1,6 +1,6 @@
 # StudyNexs AI Development Prompt
 
-**Version:** 1.0  
+**Version:** 1.1  
 **Last updated:** 2026-07-12  
 **Applies to:** Cursor · Claude Code · ChatGPT-assisted reviews
 
@@ -298,6 +298,19 @@ Build → Lint → Test → fix → repeat until clean
 ```
 
 Do not claim tests passed unless they were executed.
+
+---
+
+## Batch Completion Checklist
+
+Before producing the Engineering Report, confirm that:
+
+- All planned scope has been completed
+- Relevant tests have been executed successfully
+- Existing functionality has been verified
+- Documentation reflects the verified implementation
+- Dashboard metadata has been updated
+- No known regressions remain
 
 ---
 
