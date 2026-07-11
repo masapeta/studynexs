@@ -30,12 +30,8 @@ from app.modules.tutor.services.tts_service import (
 from app.modules.tutor.services.tutor_service import get_lesson, list_recommendations
 from app.shared.schemas.common import APIResponse
 
-<<<<<<< HEAD
-router = APIRouter()
-logger = structlog.get_logger()
-=======
 router = APIRouter(route_class=CommitOnSuccessRoute)
->>>>>>> claude/studynexs-engineering-kickoff-a6761c
+logger = structlog.get_logger()
 
 _TTS_RATE = {"max_requests": 40, "window_seconds": 60}
 _TTS_ROLES = frozenset({"student", "parent", "teacher", "class_incharge", "admin", "super_admin"})
@@ -68,7 +64,9 @@ class TtsRequest(BaseModel):
     def _sanitize_step_title(cls, v: object) -> str | None:
         if v is None or v == "":
             return None
-        cleaned = sanitize_prompt_text(str(v), max_length=80, field_name="step_title", reject_injection=False)
+        cleaned = sanitize_prompt_text(
+            str(v), max_length=80, field_name="step_title", reject_injection=False
+        )
         return cleaned or None
 
 

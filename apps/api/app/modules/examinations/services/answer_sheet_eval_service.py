@@ -19,12 +19,15 @@ from app.db.models.answer_sheet_evaluation import (
     AnswerSheetEvaluation,
 )
 from app.db.models.examination import Exam, ExamMark
+from app.db.models.question_paper import QuestionPaper
 from app.db.models.school import School
+from app.modules.ai.gateway.base import LLMResult
 from app.modules.ai.services.ai_credits import (
     assert_credits_for_charge,
     check_ai_credits,
     credits_for_purpose,
 )
+from app.modules.ai.services.evaluation_engine import SubjectiveItem, evaluate_subjective
 from app.modules.ai.services.question_bank_service import fetch_rubrics_for_paper
 from app.modules.examinations.schemas.evaluation import EvaluationApprove
 from app.modules.examinations.schemas.exam import MarkEntry
@@ -42,6 +45,9 @@ settings = get_settings()
 
 _WHITESPACE = re.compile(r"\s+")
 _OBJECTIVE_TYPES = frozenset({"mcq", "fill_blank", "true_false", "fill_in_blank"})
+# A short/very-short answer with a compact key is graded deterministically (exact match);
+# anything longer is treated as open-ended and routed to the marking engine.
+_OBJECTIVE_ANSWER_MAXLEN = 40
 
 
 class EvalError(ValueError):
@@ -83,7 +89,11 @@ def grade_objective(
         key_letter = _mcq_letter(key, options) or key.upper()
         if student_letter and key_letter and student_letter == key_letter:
             return max_marks, "Correct option selected.", 0.98
-        return 0.0, f"Selected {student_letter or student_answer}; expected {key_letter or key}.", 0.95
+        return (
+            0.0,
+            f"Selected {student_letter or student_answer}; expected {key_letter or key}.",
+            0.95,
+        )
 
     if q in ("true_false", "fill_blank", "fill_in_blank"):
         if _normalize(student_answer) == _normalize(key):
@@ -120,9 +130,13 @@ def grade_subjective_heuristic(
 
 
 def _build_summary(suggestions: dict[str, dict]) -> str:
+    ordered = sorted(
+        suggestions.items(),
+        key=lambda x: int(x[0]) if x[0].isdigit() else x[0],
+    )
     weak = [
         f"Q{qno}: {s.get('feedback', '')}"
-        for qno, s in sorted(suggestions.items(), key=lambda x: int(x[0]) if x[0].isdigit() else x[0])
+        for qno, s in ordered
         if float(s.get("marks_suggested", 0)) < float(s.get("max_marks", 0))
     ]
     if not weak:
@@ -238,7 +252,7 @@ class AnswerSheetEvalService:
         vision_result = None
         try:
             answers, vision_result = await self._resolve_student_answers(row, exam)
-            suggestions = await self._grade_exam(
+            suggestions, subjective_results = await self._grade_exam(
                 exam=exam,
                 school_id=row.school_id,
                 student_answers=answers,
@@ -246,12 +260,19 @@ class AnswerSheetEvalService:
             row.ai_suggestions = suggestions
             row.correction_summary = _build_summary(suggestions)
             row.status = EVAL_STATUS_SUGGESTED
+            # One evaluation = one credit charge. Vision (if any) leads, then subjective marking
+            # calls are recorded cost-only for observability. _record_eval_credits keeps the
+            # single-charge invariant and is idempotent across re-runs.
+            llm_results: list[LLMResult] = []
+            if isinstance(vision_result, LLMResult):
+                llm_results.append(vision_result)
+            llm_results.extend(subjective_results)
             await self._record_eval_credits(
                 school_id=row.school_id,
                 created_by=row.created_by,
                 role=role,
                 evaluation_id=row.id,
-                vision_result=vision_result,
+                llm_results=llm_results,
             )
         except Exception as exc:
             logger.exception("eval_failed", evaluation_id=str(evaluation_id))
@@ -308,10 +329,16 @@ class AnswerSheetEvalService:
         created_by: uuid.UUID,
         role: str,
         evaluation_id: uuid.UUID,
-        vision_result: object | None = None,
+        llm_results: list[LLMResult] | None = None,
     ) -> None:
+        """Charge exactly one credit per evaluation; log every real LLM call for observability.
+
+        An evaluation may fan out to several provider calls (vision OCR + one subjective marking
+        call). The school is billed once: the first LLM call carries the credit, the rest are
+        recorded cost-only. When no LLM ran (pure heuristic), an ``internal`` row carries the
+        charge. Idempotent — a re-run finds the existing charged row and does nothing.
+        """
         from app.db.models.ai_usage import AIUsage
-        from app.modules.ai.gateway.base import LLMResult
         from app.modules.ai.gateway.metering import record_usage
 
         existing = (
@@ -328,22 +355,25 @@ class AnswerSheetEvalService:
             return
 
         credits = credits_for_purpose("exam_evaluation")
-        if isinstance(vision_result, LLMResult):
-            # Provider cost is already spent; record_usage enforces caps at INSERT.
-            # Heuristic path uses assert_credits_for_charge first — asymmetry is intentional.
-            await record_usage(
-                self.db,
-                feature="answer_sheet_eval",
-                result=vision_result,
-                school_id=school_id,
-                created_by=created_by,
-                role=role,
-                purpose_tag="exam_evaluation",
-                credits_charged=credits,
-                ref_type="answer_sheet_evaluation",
-                ref_id=evaluation_id,
-                image_count=1,
-            )
+        results = [r for r in (llm_results or []) if isinstance(r, LLMResult)]
+
+        if results:
+            # First call carries the credit (record_usage enforces caps at INSERT); the rest are
+            # cost-only observability rows so a school is never billed per question.
+            for idx, result in enumerate(results):
+                await record_usage(
+                    self.db,
+                    feature="answer_sheet_eval",
+                    result=result,
+                    school_id=school_id,
+                    created_by=created_by,
+                    role=role,
+                    purpose_tag="exam_evaluation",
+                    credits_charged=credits if idx == 0 else 0,
+                    ref_type="answer_sheet_evaluation",
+                    ref_id=evaluation_id,
+                    image_count=1 if idx == 0 else 0,
+                )
             return
 
         await assert_credits_for_charge(
@@ -373,17 +403,75 @@ class AnswerSheetEvalService:
             )
         )
 
+    @staticmethod
+    def _is_objective(q_type: str, answer_key: str) -> bool:
+        """Objective = deterministic key-match (MCQ/T-F/fill), or a very-short factual key.
+
+        Objective grading is exact and never touches the LLM (DECISION_LOG §3.6); only genuinely
+        open-ended answers go to the marking engine.
+        """
+        t = q_type.lower()
+        if t in _OBJECTIVE_TYPES:
+            return True
+        return (
+            t in ("short", "very_short")
+            and bool(answer_key)
+            and len(answer_key) < _OBJECTIVE_ANSWER_MAXLEN
+        )
+
+    @staticmethod
+    def _make_suggestion(
+        *,
+        marks: float,
+        max_marks: float,
+        feedback: str,
+        confidence: float,
+        student_answer: str,
+        topic: str | None,
+        method: str,
+        misconception_hint: str | None = None,
+        criteria: list | None = None,
+        missing_concepts: list | None = None,
+    ) -> dict:
+        """One question's suggestion, in the shape the approve flow + corrections history expect.
+
+        ``method`` records how the mark was produced (``objective`` | ``llm_rubric`` |
+        ``heuristic_fallback``) so the UI can show provenance and the teacher stays the authority.
+        """
+        return {
+            "marks_suggested": marks,
+            "max_marks": max_marks,
+            "feedback": feedback,
+            "confidence": confidence,
+            "student_answer": student_answer,
+            "topic": topic,
+            "misconception_hint": misconception_hint,
+            "ocr_source": bool(student_answer),
+            "method": method,
+            "criteria": criteria or [],
+            "missing_concepts": missing_concepts or [],
+        }
+
     async def _grade_exam(
         self,
         *,
         exam: Exam,
         school_id: uuid.UUID,
         student_answers: dict[str, str],
-    ) -> dict[str, dict]:
+    ) -> tuple[dict[str, dict], list[LLMResult]]:
+        """Grade every question: objective deterministically, subjective via the marking engine.
+
+        Returns ``(suggestions, subjective_llm_results)``. Marks are always DRAFT suggestions —
+        the teacher reviews and can override each one before anything is published (HITL,
+        CLAUDE.md §40). The LLM results flow back for metering, not to bill per question.
+        """
         rubrics = await fetch_rubrics_for_paper(
             self.db, school_id=school_id, paper_id=exam.source_paper_id
         )
         suggestions: dict[str, dict] = {}
+        subjective_items: list[SubjectiveItem] = []
+        subjective_meta: dict[str, dict] = {}
+
         for q in exam.question_schema or []:
             qno = str(q["no"])
             max_marks = float(q["max_marks"])
@@ -394,9 +482,7 @@ class AnswerSheetEvalService:
             options = rubric.get("options")
             topic = q.get("topic") or exam.topic
 
-            if q_type.lower() in _OBJECTIVE_TYPES or (
-                q_type.lower() in ("short", "very_short") and answer_key and len(answer_key) < 40
-            ):
+            if self._is_objective(q_type, answer_key):
                 marks, feedback, confidence = grade_objective(
                     q_type=q_type,
                     student_answer=student_answer,
@@ -404,28 +490,137 @@ class AnswerSheetEvalService:
                     max_marks=max_marks,
                     options=options,
                 )
+                suggestions[qno] = self._make_suggestion(
+                    marks=marks,
+                    max_marks=max_marks,
+                    feedback=feedback,
+                    confidence=confidence,
+                    student_answer=student_answer,
+                    topic=topic,
+                    method="objective",
+                    misconception_hint=self._misconception_hint(rubric, marks, max_marks),
+                )
+            else:
+                subjective_items.append(
+                    SubjectiveItem(
+                        number=qno,
+                        question_text=str(rubric.get("question_text") or rubric.get("text") or ""),
+                        answer_key=answer_key,
+                        max_marks=max_marks,
+                        student_answer=student_answer,
+                        topic=topic,
+                        acceptable_answers=rubric.get("acceptable_answers"),
+                    )
+                )
+                subjective_meta[qno] = {
+                    "max_marks": max_marks,
+                    "student_answer": student_answer,
+                    "topic": topic,
+                    "answer_key": answer_key,
+                    "rubric": rubric,
+                }
+
+        subjective_results: list[LLMResult] = []
+        if subjective_items:
+            subj_suggestions, subjective_results = await self._grade_subjective_items(
+                exam=exam,
+                school_id=school_id,
+                items=subjective_items,
+                meta=subjective_meta,
+            )
+            suggestions.update(subj_suggestions)
+
+        return suggestions, subjective_results
+
+    @staticmethod
+    def _misconception_hint(rubric: dict, marks: float, max_marks: float) -> str | None:
+        if marks < max_marks and rubric.get("common_wrong_answers"):
+            return str(rubric["common_wrong_answers"][0])
+        return None
+
+    async def _grade_subjective_items(
+        self,
+        *,
+        exam: Exam,
+        school_id: uuid.UUID,
+        items: list[SubjectiveItem],
+        meta: dict[str, dict],
+    ) -> tuple[dict[str, dict], list[LLMResult]]:
+        """Mark open-ended answers with the rubric-per-criterion engine; degrade gracefully.
+
+        One grounded gateway call marks the whole batch. If the provider is unconfigured or fails,
+        or skips a question, that question falls back to the deterministic token-overlap heuristic
+        so a provider outage never blocks a teacher from getting marks to review.
+        """
+        paper = (
+            await self.db.execute(
+                select(QuestionPaper).where(
+                    QuestionPaper.id == exam.source_paper_id,
+                    QuestionPaper.school_id == school_id,
+                )
+            )
+        ).scalar_one_or_none()
+        board = (paper.board if paper else None) or "SSC"
+        grade = (paper.grade if paper else None) or ""
+        subject = (paper.subject_name if paper else None) or ""
+
+        engine_out: dict[str, dict] = {}
+        llm_results: list[LLMResult] = []
+        try:
+            engine_out, result = await evaluate_subjective(
+                items,
+                board=board,
+                grade=grade,
+                subject=subject,
+                grounding=None,
+            )
+            llm_results.append(result)
+        except Exception:
+            # No mark is worse than a heuristic mark the teacher can fix — never fail the sheet.
+            logger.warning(
+                "subjective_llm_eval_failed_fallback_heuristic",
+                exam_id=str(exam.id),
+                questions=len(items),
+            )
+
+        suggestions: dict[str, dict] = {}
+        for item in items:
+            m = meta[item.number]
+            eng = engine_out.get(item.number)
+            if eng is not None:
+                suggestions[item.number] = self._make_suggestion(
+                    marks=eng["marks_suggested"],
+                    max_marks=m["max_marks"],
+                    feedback=eng["feedback"],
+                    confidence=eng["confidence"],
+                    student_answer=m["student_answer"],
+                    topic=m["topic"],
+                    method="llm_rubric",
+                    misconception_hint=self._misconception_hint(
+                        m["rubric"], eng["marks_suggested"], m["max_marks"]
+                    ),
+                    criteria=eng.get("criteria"),
+                    missing_concepts=eng.get("missing_concepts"),
+                )
             else:
                 marks, feedback, confidence = grade_subjective_heuristic(
-                    student_answer=student_answer,
-                    answer_key=answer_key,
-                    max_marks=max_marks,
+                    student_answer=m["student_answer"],
+                    answer_key=m["answer_key"],
+                    max_marks=m["max_marks"],
                 )
-
-            misconception_hint = None
-            if marks < max_marks and rubric.get("common_wrong_answers"):
-                misconception_hint = str(rubric["common_wrong_answers"][0])
-
-            suggestions[qno] = {
-                "marks_suggested": marks,
-                "max_marks": max_marks,
-                "feedback": feedback,
-                "confidence": confidence,
-                "student_answer": student_answer,
-                "topic": topic,
-                "misconception_hint": misconception_hint,
-                "ocr_source": bool(student_answer),
-            }
-        return suggestions
+                suggestions[item.number] = self._make_suggestion(
+                    marks=marks,
+                    max_marks=m["max_marks"],
+                    feedback=feedback,
+                    confidence=confidence,
+                    student_answer=m["student_answer"],
+                    topic=m["topic"],
+                    method="heuristic_fallback",
+                    misconception_hint=self._misconception_hint(
+                        m["rubric"], marks, m["max_marks"]
+                    ),
+                )
+        return suggestions, llm_results
 
     async def list_for_exam(
         self, school_id: uuid.UUID, exam_id: uuid.UUID
