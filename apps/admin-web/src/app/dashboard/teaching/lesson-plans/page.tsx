@@ -7,7 +7,7 @@ import { AppSelect } from "@/components/ui/AppSelect";
 import { PageHeaderCard } from "@/components/layout/PageHeaderCard";
 import { formatClassLabel, sortClasses } from "@/lib/format";
 
-type Segment = { duration_min: number; activity: string };
+type Segment = { duration_min: number; activity: string; citations?: number[]; citation_sources?: { chapter?: string; topic?: string }[] };
 type Plan = {
   id: string;
   title: string;
@@ -17,9 +17,15 @@ type Plan = {
   segments: Segment[];
   status: string;
   notes?: string | null;
+  pack_id?: string | null;
+  grounded?: boolean;
+  grounding_sources?: { chapter?: string; topic?: string; index?: number }[] | null;
+  ai_model?: string | null;
   can_edit?: boolean;
   can_approve?: boolean;
 };
+
+type CurriculumPack = { id: string; status: string; board: string; book_title?: string | null };
 
 const btn: React.CSSProperties = { width: "auto", padding: "8px 18px", borderRadius: "var(--radius-full)", fontSize: 13 };
 
@@ -29,6 +35,9 @@ export default function LessonPlansPage() {
   const [classId, setClassId] = useState("");
   const [subjectId, setSubjectId] = useState("");
   const [topic, setTopic] = useState("");
+  const [packId, setPackId] = useState("");
+  const [packs, setPacks] = useState<CurriculumPack[]>([]);
+  const [useCopilot, setUseCopilot] = useState(false);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -57,14 +66,41 @@ export default function LessonPlansPage() {
       .catch(() => {});
   }, [classId]);
 
+  useEffect(() => {
+    if (!classId || !subjectId) {
+      setPacks([]);
+      setPackId("");
+      return;
+    }
+    api(`/api/v1/curriculum/packs?class_id=${classId}&subject_id=${subjectId}`)
+      .then((r) => {
+        const items: CurriculumPack[] = (r.data || []).filter(
+          (p: CurriculumPack) => p.status === "approved"
+        );
+        setPacks(items);
+        setPackId(items[0]?.id || "");
+      })
+      .catch(() => setPacks([]));
+  }, [classId, subjectId]);
+
   async function generate() {
     if (!classId || !subjectId) { setError("Pick a class and subject first."); return; }
+    if (useCopilot && !packId) {
+      setError("Select an approved curriculum pack for grounded generation.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
+      const body: Record<string, unknown> = {
+        class_id: classId,
+        subject_id: subjectId,
+        topic: topic.trim() || null,
+      };
+      if (useCopilot && packId) body.pack_id = packId;
       const res = await api<Plan>("/api/v1/lesson-plans/generate", {
         method: "POST",
-        body: JSON.stringify({ class_id: classId, subject_id: subjectId, topic: topic.trim() || null }),
+        body: JSON.stringify(body),
       });
       setPlan(res);
     } catch (e) {
@@ -94,7 +130,7 @@ export default function LessonPlansPage() {
     <>
       <PageHeaderCard
         title="Lesson Plans"
-        subtitle="Generate a period plan from a topic (or your class's weakest topic), edit, and approve."
+        subtitle="Generate a period plan from a topic (template or curriculum-grounded Teacher Copilot), edit, and approve."
       />
 
       {error && <div className="card sn-inline-alert sn-inline-alert--error">{error}</div>}
@@ -127,6 +163,38 @@ export default function LessonPlansPage() {
           <label className="stat-label">Topic (optional — defaults to weakest)</label>
           <input className="form-input sn-inline-field" value={topic} placeholder="e.g. Quadratic Equations" onChange={(e) => setTopic(e.target.value)} />
         </div>
+        <div>
+          <label className="stat-label">Generation mode</label>
+          <AppSelect
+            variant="field"
+            value={useCopilot ? "copilot" : "template"}
+            onChange={(v) => setUseCopilot(v === "copilot")}
+            aria-label="Generation mode"
+            options={[
+              { value: "template", label: "Template (no AI credits)" },
+              { value: "copilot", label: "Teacher Copilot (grounded, uses credits)" },
+            ]}
+          />
+        </div>
+        {useCopilot && (
+          <div>
+            <label className="stat-label">Approved curriculum pack</label>
+            <AppSelect
+              variant="field"
+              value={packId}
+              onChange={setPackId}
+              aria-label="Curriculum pack"
+              options={
+                packs.length
+                  ? packs.map((p) => ({
+                      value: p.id,
+                      label: p.book_title ? `${p.board} — ${p.book_title}` : `${p.board} pack`,
+                    }))
+                  : [{ value: "", label: "No approved packs" }]
+              }
+            />
+          </div>
+        )}
         <button className="btn btn-primary" style={btn} onClick={generate} disabled={busy}>
           <Sparkles size={15} style={{ marginRight: 6 }} />{busy ? "Working…" : "Generate"}
         </button>
@@ -143,15 +211,31 @@ export default function LessonPlansPage() {
               </div>
             </div>
             <span className={`badge ${approved ? "badge-success" : "badge-warning"}`} style={{ textTransform: "capitalize" }}>{plan.status}</span>
+            {plan.grounded && (
+              <span className="badge badge-info" style={{ marginLeft: 8 }}>Grounded · Copilot</span>
+            )}
           </div>
+
+          {plan.notes && (
+            <div style={{ marginTop: 12, fontSize: 13, color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>{plan.notes}</div>
+          )}
 
           <div style={{ marginTop: 16 }}>
             {(plan.segments || []).map((s, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderTop: i ? "1px solid var(--border-light)" : "none" }}>
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "10px 0", borderTop: i ? "1px solid var(--border-light)" : "none" }}>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 700, color: "var(--info)", minWidth: 54 }}>
                   <Clock size={13} /> {s.duration_min}m
                 </span>
-                <span style={{ fontSize: 14 }}>{s.activity}</span>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: 14 }}>{s.activity}</span>
+                  {s.citation_sources && s.citation_sources.length > 0 && (
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
+                      Sources: {s.citation_sources.map((c, j) => (
+                        <span key={j}>{j ? " · " : ""}{c.chapter}{c.topic ? ` › ${c.topic}` : ""}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>

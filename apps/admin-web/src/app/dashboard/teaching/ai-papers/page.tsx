@@ -32,6 +32,9 @@ type Paper = {
   sections: Section[];
   status: string;
   ai_model?: string | null;
+  pack_id?: string | null;
+  grounded?: boolean;
+  grounding_sources?: { chapter?: string; topic?: string; index?: number }[] | null;
   can_approve?: boolean;
   can_edit?: boolean;
   can_submit?: boolean;
@@ -39,6 +42,20 @@ type Paper = {
   rejection_reason?: string | null;
   credits_used?: number | null;
 };
+
+type CopilotReview = {
+  summary: string;
+  overall_quality: string;
+  suggestions: {
+    section_title?: string | null;
+    question_number?: string | null;
+    issue?: string | null;
+    suggestion?: string | null;
+    citation_sources?: { chapter?: string; topic?: string }[];
+  }[];
+};
+
+type CurriculumPack = { id: string; status: string; board: string; book_title?: string | null };
 
 function AiPapersPageInner() {
   const { permissions } = useAuth();
@@ -59,6 +76,11 @@ function AiPapersPageInner() {
   const [duration, setDuration] = useState(180);
   const [difficulty, setDifficulty] = useState(searchParams.get("difficulty") || "balanced");
   const [generateMode, setGenerateMode] = useState<"full" | "from_bank">("full");
+  const [packId, setPackId] = useState("");
+  const [packs, setPacks] = useState<CurriculumPack[]>([]);
+  const [useGrounding, setUseGrounding] = useState(false);
+  const [copilotReview, setCopilotReview] = useState<CopilotReview | null>(null);
+  const [reviewBusy, setReviewBusy] = useState(false);
   const [bankCount, setBankCount] = useState<number | null>(null);
 
   const [generating, setGenerating] = useState(false);
@@ -125,11 +147,22 @@ function AiPapersPageInner() {
   useEffect(() => {
     if (!classId || !subjectId) {
       setBankCount(null);
+      setPacks([]);
+      setPackId("");
       return;
     }
     api(`/api/v1/ai/question-bank/summary?class_id=${classId}&subject_id=${subjectId}`)
       .then((r) => setBankCount(typeof r.count === "number" ? r.count : 0))
       .catch(() => setBankCount(null));
+    api(`/api/v1/curriculum/packs?class_id=${classId}&subject_id=${subjectId}`)
+      .then((r) => {
+        const items: CurriculumPack[] = (r.data || []).filter(
+          (p: CurriculumPack) => p.status === "approved"
+        );
+        setPacks(items);
+        setPackId(items[0]?.id || "");
+      })
+      .catch(() => setPacks([]));
   }, [classId, subjectId]);
 
   useEffect(() => {
@@ -154,6 +187,10 @@ function AiPapersPageInner() {
   async function generate() {
     if (!classId || !subjectId) {
       setError("Pick a class and subject first.");
+      return;
+    }
+    if (useGrounding && generateMode === "full" && !packId) {
+      setError("Select an approved curriculum pack for grounded generation.");
       return;
     }
     const cost =
@@ -187,6 +224,7 @@ function AiPapersPageInner() {
     setError("");
     setGenerating(true);
     setPaper(null);
+    setCopilotReview(null);
     try {
       let topicList: string[];
       try {
@@ -209,6 +247,7 @@ function AiPapersPageInner() {
           total_marks: Number(totalMarks),
           duration_minutes: Number(duration),
           difficulty,
+          ...(useGrounding && generateMode === "full" && packId ? { pack_id: packId } : {}),
         }),
       });
       setPaper(res);
@@ -220,6 +259,29 @@ function AiPapersPageInner() {
       setError(getApiErrorMessage(e, "Failed to generate paper. Please try again."));
     } finally {
       setGenerating(false);
+    }
+  }
+
+  async function runCopilotReview() {
+    if (!paper?.id || !paper.grounded) return;
+    const cost = credits?.purpose_costs?.quality_check ?? 1;
+    const remaining = credits?.user_credits_remaining ?? credits?.credits_remaining;
+    if (remaining !== undefined && remaining !== null && remaining < cost) {
+      setError("Not enough AI credits for Teacher Copilot review.");
+      return;
+    }
+    setReviewBusy(true);
+    setError("");
+    try {
+      const res = await api<CopilotReview>(`/api/v1/ai/copilot/question-papers/${paper.id}/review`, {
+        method: "POST",
+      });
+      setCopilotReview(res);
+      api("/api/v1/ai/credits").then(setCredits).catch(() => {});
+    } catch (e) {
+      setError(getApiErrorMessage(e, "Copilot review failed."));
+    } finally {
+      setReviewBusy(false);
     }
   }
 
@@ -471,7 +533,7 @@ function AiPapersPageInner() {
         <div style={{ marginBottom: 16 }}>
           <label className="stat-label">Topics / chapters (one per line or comma-separated)</label>
           <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "0 0 6px" }}>
-            Phase 1: enter topics manually. CurriculumPack selection comes in Phase 1.5.
+            With curriculum grounding, topics steer RAG retrieval from the approved pack.
           </p>
           <textarea
             className="form-input"
@@ -483,6 +545,43 @@ function AiPapersPageInner() {
             style={{ ...selStyle, resize: "vertical", fontFamily: "inherit" }}
           />
         </div>
+
+        {generateMode === "full" && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+            <div>
+              <label className="stat-label">Curriculum grounding</label>
+              <AppSelect
+                variant="field"
+                value={useGrounding ? "grounded" : "free"}
+                onChange={(v) => setUseGrounding(v === "grounded")}
+                aria-label="Curriculum grounding"
+                options={[
+                  { value: "free", label: "Free-text topics (legacy)" },
+                  { value: "grounded", label: "Grounded in approved pack" },
+                ]}
+              />
+            </div>
+            {useGrounding && (
+              <div>
+                <label className="stat-label">Approved curriculum pack</label>
+                <AppSelect
+                  variant="field"
+                  value={packId}
+                  onChange={setPackId}
+                  aria-label="Curriculum pack"
+                  options={
+                    packs.length
+                      ? packs.map((p) => ({
+                          value: p.id,
+                          label: p.book_title ? `${p.board} — ${p.book_title}` : `${p.board} pack`,
+                        }))
+                      : [{ value: "", label: "No approved packs" }]
+                  }
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr auto", gap: 16, alignItems: "end" }}>
           <div>
@@ -608,7 +707,16 @@ function AiPapersPageInner() {
           <div style={{ color: "var(--text-muted)", fontSize: 13, margin: "8px 0 16px" }}>
             {paper.board} · {paper.grade} · {paper.subject_name} · {paper.total_marks} marks ·{" "}
             {paper.duration_minutes} min{paper.ai_model ? ` · ${paper.ai_model}` : ""}
+            {paper.grounded && " · Grounded"}
           </div>
+
+          {paper.grounded && paper.grounding_sources && paper.grounding_sources.length > 0 && (
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>
+              Curriculum sources: {paper.grounding_sources.slice(0, 4).map((s, i) => (
+                <span key={i}>{i ? " · " : ""}{s.chapter}{s.topic ? ` › ${s.topic}` : ""}</span>
+              ))}
+            </div>
+          )}
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20 }}>
             {canEdit && (
@@ -634,6 +742,11 @@ function AiPapersPageInner() {
             <button className="btn btn-outline" onClick={duplicate} style={btnSm} title="Reuse this paper as a new editable draft (no AI cost)">
               <Copy size={15} /> Duplicate
             </button>
+            {paper.grounded && canEdit && (
+              <button className="btn btn-outline" onClick={runCopilotReview} disabled={reviewBusy} style={btnSm}>
+                <Sparkles size={15} /> {reviewBusy ? "Reviewing…" : "Copilot review"}
+              </button>
+            )}
             <button type="button" className="btn btn-outline" onClick={() => openPdf(false)} disabled={openingDoc} style={btnSm}>
               <Printer size={15} /> {openingDoc ? "Opening…" : "Open / print paper"}
             </button>
@@ -644,6 +757,31 @@ function AiPapersPageInner() {
               {showAnswers ? "Hide answers" : "Show answers inline"}
             </button>
           </div>
+
+          {copilotReview && (
+            <div
+              className="card"
+              style={{
+                marginBottom: 20,
+                padding: 16,
+                background: "var(--bg)",
+                border: "1px solid var(--border-light)",
+              }}
+            >
+              <div style={{ fontWeight: 700, marginBottom: 8 }}>Teacher Copilot review</div>
+              <p style={{ fontSize: 14, margin: "0 0 12px" }}>{copilotReview.summary}</p>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>
+                Overall: {copilotReview.overall_quality.replace(/_/g, " ")}
+              </div>
+              {copilotReview.suggestions.map((s, i) => (
+                <div key={i} style={{ fontSize: 13, padding: "8px 0", borderTop: i ? "1px solid var(--border-light)" : "none" }}>
+                  <strong>{s.section_title}{s.question_number ? ` · Q${s.question_number}` : ""}</strong>
+                  {s.issue && <div style={{ color: "var(--text-muted)" }}>{s.issue}</div>}
+                  {s.suggestion && <div>{s.suggestion}</div>}
+                </div>
+              ))}
+            </div>
+          )}
 
           {paper.general_instructions && (
             <div style={{ marginBottom: 16 }}>
