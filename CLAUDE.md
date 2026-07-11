@@ -1,7 +1,7 @@
 # StudyNexs Engineering Constitution
 
 > **The permanent engineering charter for StudyNexs — a Noustriks product.**
-> Owner: Avinash Reddy Masapeta (ARM). Status: **Binding, living document — v1.0**.
+> Owner: Avinash Reddy Masapeta (ARM). Status: **Binding, living document — v1.3**.
 > This file is the single source of truth for how this repository is built, evolved, and operated.
 
 ---
@@ -38,7 +38,22 @@ This document is the **canonical charter**. Tool-specific rule files are thin po
 
 Security and multi-tenant isolation rules (see Prime Directives and Part VIII) are **never** overridden by convenience, deadline, or "just for the demo."
 
-### 0.3 Session ritual (do this every session)
+### 0.3 Scope
+
+This constitution defines **enduring engineering policy**.
+
+It intentionally does **not** contain:
+
+- Current implementation status
+- Active roadmap items
+- Temporary engineering decisions
+- Sprint tasks
+
+Those belong in `docs/STATUS.md`, `docs/ROADMAP.md`, `docs/DECISION_LOG.md`, and `docs/AGENT_HANDOVER.md`.
+
+This keeps the constitution from slowly turning into a project notebook.
+
+### 0.4 Session ritual (do this every session)
 
 Before writing code in a new session, Claude must:
 
@@ -48,11 +63,15 @@ Before writing code in a new session, Claude must:
 4. **Check `docs/DECISION_LOG.md`, `docs/PRODUCT.md`, `docs/STATUS.md`** when the task touches product scope or a previously-decided tradeoff — do not re-litigate settled decisions.
 5. **Form a plan**, then execute in the engineering cycles defined in Part I.
 
-### 0.4 Maintenance
+### 0.5 Maintenance
 
 This is a living record. When a durable decision is made, record it in `docs/DECISION_LOG.md` and, if it changes policy, amend this constitution (see §92, Amendment Process). Amendments are part of normal engineering work — the constitution should get sharper over time, never stale. That said, the document is now comprehensive: **prefer stability to expansion** and amend only when real work reveals a genuine gap (§92).
 
-### 0.5 First principles (read this before the rest)
+When a rule no longer reflects the actual engineering practices of the repository, **update or remove it** rather than preserving obsolete policy.
+
+**Freeze discipline:** do not expand this document because you think of another good idea. Only amend it when real development exposes a genuine gap or a recurring engineering problem.
+
+### 0.6 First principles (read this before the rest)
 
 If you remember nothing else, remember these. They are the mental model that the entire document elaborates — the compass to fall back on when a specific rule doesn't obviously apply:
 
@@ -3325,6 +3344,9 @@ Before enterprise/district:
 [ ] Cost-per-school modelled and within target (§36)
 [ ] Runbooks exist for top incidents (§77)
 ```
+
+---
+
 ## Continuous Improvement
 
 The platform architecture is expected to evolve.
@@ -3348,17 +3370,26 @@ Every proposal should include:
 - Migration effort
 - Recommendation
 
+Implementation requires Product Owner approval.
+
 ## Engineering Framework Stability
 
 - The engineering governance documents are considered stable.
 - Do not redesign the engineering workflow unless recurring practical issues demonstrate that improvements are necessary.
 - Prefer evolving the product over continually redesigning the engineering process.
 
-
-Implementation requires Product Owner approval.
 ---
 
+## Version history
 
+| Version | Summary |
+|---------|---------|
+| **v1.0** | Initial Engineering Constitution |
+| **v1.1** | Added AI platform architecture |
+| **v1.2** | Added Product DNA and Mobile Architecture |
+| **v1.3** | Scope boundaries, policy evolution discipline, continuous improvement, framework stability |
+
+---
 
 *StudyNexs Engineering Constitution — a Noustriks product. Owner: Avinash Reddy Masapeta (ARM). Binding, living document. When in doubt, favour safety, tenant isolation, and the product owner's intent, then keep improving.*
 
