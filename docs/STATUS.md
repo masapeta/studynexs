@@ -1,6 +1,6 @@
 # StudyNexs — Build Status
 
-> Owner: Avinash Reddy Masapeta (ARM) · **As of: 2026-07-11**  
+> Owner: Avinash Reddy Masapeta (ARM) · **As of: 2026-07-12**  
 > **Engineering dashboard (master):** [PLATFORM_STATUS.md](./PLATFORM_STATUS.md) · **In-app:** Dashboard → Platform → Engineering  
 > **What's true in the repo today.** Complete product definition: [PRODUCT.md](./PRODUCT.md).  
 > **Latest engineering session + machine-readable snapshot:** [AGENT_HANDOVER.md](./AGENT_HANDOVER.md). **Milestones:** [ROADMAP.md](./ROADMAP.md). **Release notes:** [CHANGELOG.md](./CHANGELOG.md).  
@@ -17,10 +17,10 @@
 - **AI hardening (2026-06):** input guards, eval rate limits, answer-sheet file access, metrics token gate, tutor lesson-key validation — see `apps/api/tests/test_ai_hardening.py`.
 - **Exam loop:** snap/upload → vision OCR → **objective key-match + LLM rubric-per-criterion subjective** (heuristic fallback) → HITL approve → corrections history; misconception library API exists.
 - **Mistake Recovery Tutor (MVP):** template lessons + Azure/Web Speech TTS in `admin-web` student portal; recommendations from mastery + exam mistakes.
-- **Lesson plans:** CRUD + **template-based** generation (`template-v1`) — **not LLM-grounded yet**; AI lesson plans are Phase **A-OS** below.
+- **Lesson plans:** CRUD + **template-based** generation (`template-v1`) or **Teacher Copilot** grounded generation when `pack_id` is supplied (Batch 15).
 - **Topic mastery** module built (compute, flags, heatmap, digest, parent narratives on approve).
 - **Pilot school** is interested; no signed deal yet. Demand and pricing not validated.
-- **Binding constraint:** solo builder on branch **`develop`** (`D:\Projects\studynexs-platform\studynexs-dev`). Scope discipline is survival.
+- **Binding constraint:** solo builder on branch **`develop`** (`D:\Projects\studynexs-platform\studynexs-dev`). Batch 15 (Teacher Copilot) implemented — **uncommitted** until ARM asks.
 - **Four of five planned portals** do not exist yet — student/parent experiences live inside `admin-web` (`/student`, `/parent`) until Flutter Phase 2.
 
 ---
@@ -58,6 +58,13 @@
 - ✅ HITL preserved: suggestions only; teacher approve + overrides + corrections history unchanged.
 - ✅ `tests/test_evaluation_engine.py` (8) + `tests/test_assessment_grounding.py` (+3 for `ground_for_evaluation`) + full `tests/` suite green (289+ passed).
 - ✅ **Batch 14:** `ground_for_evaluation` in `assessment_grounding.py` — best-effort pack RAG at mark time (never blocks marking); wired in `answer_sheet_eval_service._grade_subjective_items`. Eval UI (`exams/[examId]/evaluate`) surfaces method, confidence, rubric criteria, missing concepts.
+
+**Teacher Copilot (Batch 15) — uncommitted on `develop`**
+- ✅ `teacher_copilot_service.py` — grounded lesson plans, QP review, feedback drafting (gateway + RAG + credits).
+- ✅ Copilot API: `POST /api/v1/ai/copilot/question-papers/{id}/review`, `POST /api/v1/ai/copilot/feedback-draft`.
+- ✅ Lesson plans: optional `pack_id` on generate; migration adds grounding columns.
+- ✅ Admin UI: pack picker on lesson plans + AI papers; Copilot review panel.
+- ✅ Tests: `test_teacher_copilot.py` (5 passed, 2026-07-12).
 
 **Merge recovery (Session 03)**
 - ⚠️ Commit `34aec0c` had accidentally reverted the shared AI foundation; restored from merge parent `5f76c00` (87 files). Resolved `tutor.py` merge-conflict marker; `CommitOnSuccessRoute` restored on all routers.

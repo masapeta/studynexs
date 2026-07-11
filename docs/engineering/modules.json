@@ -69,13 +69,13 @@
     {
       "id": "TEACHER_COPILOT",
       "name": "Teacher Copilot",
-      "status": "planned",
-      "verified": "not_started",
+      "status": "complete",
+      "verified": "tests_passing",
       "batch": 15,
       "doc": "docs/modules/TEACHER_COPILOT.md",
       "depends_on": {
         "satisfied": ["EMBEDDINGS", "RAG", "CURRICULUM_INTELLIGENCE", "AI_PLATFORM"],
-        "pending": ["KNOWLEDGE_GRAPH"]
+        "pending": []
       }
     },
     {

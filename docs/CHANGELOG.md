@@ -7,9 +7,24 @@ changes under **[Unreleased]** until the first tagged release. Architectural *re
 
 ## [Unreleased]
 
-> Session 2026-07-11 — Merge recovery + Batch 13 (evaluation depth). Active repo:
+> Session 2026-07-12 — Batch 15 (AI Teacher Copilot). Active repo:
 > `D:\Projects\studynexs-platform\studynexs-dev`, branch **`develop`**, **uncommitted**
 > (Prime Directive 9).
+
+### Added
+- **`teacher_copilot_service.py`** — grounded lesson plans, QP review, feedback drafting via shared RAG + gateway.
+- **Copilot API routes** — `POST /api/v1/ai/copilot/question-papers/{id}/review`, `POST /api/v1/ai/copilot/feedback-draft`.
+- **Grounded lesson plans** — optional `pack_id` on `POST /api/v1/lesson-plans/generate`; `lesson_plans` grounding columns (migration `w3d4e5f6a7b8`).
+- **Credit rules** — `lesson_plan` (2), `feedback_draft` (1); features `teacher_copilot`, `teacher_copilot_review`, `teacher_copilot_feedback`.
+- **`tests/test_teacher_copilot.py`** (5) — grounded lesson plan, QP review, feedback draft, refusal paths.
+- **Admin UI** — curriculum pack picker + grounded mode on lesson plans and AI papers; Copilot review panel on grounded papers.
+
+### Changed
+- Engineering dashboard metadata refreshed for Batch 15 (`platform.json`, `modules.json`, `roadmap.json`, `PLATFORM_STATUS.md`).
+
+---
+
+> Session 2026-07-11 — Merge recovery + Batches 13–14. Committed on `develop`.
 
 ### Fixed
 - **Merge recovery:** commit `34aec0c` had accidentally reverted the shared AI platform foundation

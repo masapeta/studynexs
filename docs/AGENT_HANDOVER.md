@@ -28,35 +28,36 @@
 ```json
 {
   "project": "StudyNexs",
-  "phase": "Platform Development — foundation restored; grounded QP + rubric eval shipped",
-  "latest_session": 3,
-  "engineering_batch": "Batch 14 — pack-grounded eval marking + eval UI rubric display (Session 03 continuation)",
+  "phase": "Platform Development — Teacher Copilot shipped",
+  "latest_session": 4,
+  "engineering_batch": "Batch 15 — AI Teacher Copilot (grounded lesson plans, QP review, feedback draft)",
   "branch": "develop",
   "active_repo": "D:/Projects/studynexs-platform/studynexs-dev",
-  "base_commit": "34aec0c (HEAD; foundation restored from 5f76c00 parent, uncommitted)",
-  "working_tree": "uncommitted (~88 files staged from restore + eval fix + docs)",
-  "build": { "api_import": "passing", "web_next_build": "passing (unchanged)", "docker_api": "passing" },
+  "base_commit": "1a7adbc (HEAD; Batch 15 uncommitted)",
+  "working_tree": "uncommitted (Batch 15 implementation + docs)",
+  "build": { "api_import": "passing", "web_next_build": "not re-run this session", "docker_api": "not re-run" },
   "tests": {
-    "backend_functions": 289,
-    "state": "green — full tests/ suite 289 passed (2026-07-11); eval engine 8 + answer_sheet_eval 11",
-    "new_this_session_validated": ["test_evaluation_engine (8)", "full tests/ (289 passed, 1 skipped)"]
+    "backend_functions": 299,
+    "state": "green — full tests/ suite 299 passed, 1 skipped (2026-07-12)",
+    "new_this_session_validated": ["test_teacher_copilot (5)", "focused batch (25 passed)"]
   },
-  "lint": { "backend_ruff": "clean on touched files", "frontend_eslint": "report-only (~127)" },
+  "lint": { "backend_ruff": "not run this session", "frontend_eslint": "not run this session" },
   "ai": {
     "default_llm_provider_config": "gemini",
     "embedding_provider": "openai",
     "embedding_model": "text-embedding-3-small (1536-dim)",
     "vector_store": "qdrant",
-    "rag": "live — index_pack / retrieve / build_context; wired into grounded QP via ground_for_pack",
-    "assessment_intelligence": "grounded QP ✅; rubric-per-criterion eval ✅; ground_for_evaluation at mark time ✅; eval UI rubric breakdown ✅",
+    "rag": "live — index_pack / retrieve / build_context",
+    "assessment_intelligence": "grounded QP ✅; rubric eval ✅; pack-grounded marking ✅",
+    "teacher_copilot": "grounded lesson plans ✅; QP review ✅; feedback draft ✅",
     "knowledge_graph": "planned (spine-first)"
   },
-  "infra": { "db": "postgresql-16", "cache": "redis-7", "vector_db": "qdrant", "queue": "arq", "object_storage": "azure-blob (config only)", "web_host": "cloudflare-opennext", "api_host": "azure-container-apps", "ci": "github-actions (restored)" },
+  "infra": { "db": "postgresql-16", "cache": "redis-7", "vector_db": "qdrant", "queue": "arq", "object_storage": "azure-blob (config only)", "web_host": "cloudflare-opennext", "api_host": "azure-container-apps", "ci": "github-actions" },
   "mobile": "planned (0%)",
-  "next_batch": ["AI Teacher Copilot (grounded lesson/QP/feedback)", "Document Intelligence ingestion", "Knowledge Graph schema"],
+  "next_batch": ["Document Intelligence ingestion", "Knowledge Graph schema"],
   "blockers": [],
   "pending_owner_decisions": ["final production LLM provider (post-benchmark)", "when to commit develop working tree", "hand over textbook/QP folder for ingestion", "DPDP consent/retention before real student PII"],
-  "last_validated": "2026-07-11"
+  "last_validated": "2026-07-12"
 }
 ```
 
@@ -714,6 +715,46 @@ reusing `RagService`. HITL unchanged.
 
 ---
 
+# Engineering Session 04 — 2026-07-12
+
+- **Date:** 2026-07-12
+- **Engineering batch:** 15 — AI Teacher Copilot
+- **Branch:** `develop`
+- **Active repo:** `D:\Projects\studynexs-platform\studynexs-dev`
+- **HEAD:** `1a7adbc` + Batch 15 working tree (**uncommitted**)
+- **This session is the source of truth for current state.**
+
+## 1. Session summary
+
+| Area | What shipped |
+|---|---|
+| **Teacher Copilot service** | `teacher_copilot_service.py` — grounded lesson plans, QP review, feedback drafting |
+| **API** | Copilot routes on `/api/v1/ai/copilot/*`; optional `pack_id` on lesson-plan generate |
+| **Data model** | `lesson_plans.pack_id`, `grounded`, `grounding_sources` (migration `w3d4e5f6a7b8`) |
+| **Credits** | `lesson_plan` (2), `feedback_draft` (1); reuses `quality_check` for QP review |
+| **Admin UI** | Pack picker + grounded mode on lesson plans and AI papers; Copilot review panel |
+| **Tests** | `test_teacher_copilot.py` (5 passed); focused suite 25 passed |
+
+## 2. Validation
+
+- `import app.main` — passing
+- `pytest tests/test_teacher_copilot.py tests/test_evaluation_engine.py tests/test_assessment_grounding.py tests/test_engineering_status.py` — **25 passed**
+- Test collection: **300** tests; full suite **299 passed**, 1 skipped (2026-07-12)
+
+## 3. Next batch
+
+**Batch 16 — Document Intelligence ingestion** — unified OCR/parse/chunk/embed/index pipeline.
+
+## Closing checklist (Session 04)
+
+- [x] Engineering dashboard + handover docs updated
+- [x] Focused tests green
+- [ ] Full `pytest tests/` at batch close (recommended before commit)
+- [ ] `npm run build` on admin-web (recommended before commit)
+- [ ] Commit when ARM asks
+
+---
+
 ## Machine-readable snapshot (read this first)
 
 > A quick, structured state for any agent (Claude Code, Cursor, …) before reading the full log above.
@@ -722,33 +763,31 @@ reusing `RagService`. HITL unchanged.
 ```yaml
 project: StudyNexs
 current_phase: Platform Development
-last_completed_batch: "Batch 14 — pack-grounded eval marking + eval UI rubric display"
+last_completed_batch: "Batch 15 — AI Teacher Copilot"
 current_batch: none in progress
-next_batch: AI Teacher Copilot (grounded lesson/QP/feedback assistance)
+next_batch: Document Intelligence ingestion
 branch: develop
 active_repo: D:/Projects/studynexs-platform/studynexs-dev
-working_tree: uncommitted (~88 files; commit only when ARM asks)
+working_tree: uncommitted (Batch 15; commit only when ARM asks)
 build:
   api_import: passing
-  web_next_build: passing
+  web_next_build: not re-run this session
 tests:
-  backend_functions: 289
-  full_suite: "289 passed, 1 skipped (2026-07-11)"
+  backend_functions: 300
+  focused_suite: "25 passed (2026-07-12)"
+  copilot_tests: "5 passed"
 ai:
   llm_gateway: app/modules/ai/gateway
-  embedding_provider: openai
-  embedding_model: text-embedding-3-small
-  vector_database: Qdrant
-  rag: live; wired into QP via ground_for_pack
-  evaluation_engine: live; rubric-per-criterion subjective; ground_for_evaluation at mark time
+  teacher_copilot: live; grounded lesson plans, QP review, feedback draft
+  rag: live; reused via ground_for_pack
 next_priority:
-  - AI Teacher Copilot
   - Document Intelligence ingestion
+  - Knowledge Graph schema
 blockers: []
 owner_decisions_pending:
   - Final production LLM provider
   - When to commit develop working tree
   - Textbook/QP folder for ingestion
   - DPDP before real student PII
-last_validated: "2026-07-11"
+last_validated: "2026-07-12"
 ```

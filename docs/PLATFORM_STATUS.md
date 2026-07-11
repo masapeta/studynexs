@@ -20,11 +20,11 @@ Documentation must be updated whenever implementation changes (end of every engi
 
 | Field | Value |
 |-------|-------|
-| **Architecture version** | **1.4** |
-| **Last updated** | 2026-07-11 |
-| **Last engineering batch** | 14 (pack-grounded eval + eval UI) |
+| **Architecture version** | **1.5** |
+| **Last updated** | 2026-07-12 |
+| **Last engineering batch** | 15 (AI Teacher Copilot) |
 | **Branch** | `develop` |
-| **Commit** | `a2286bf` (refresh via API runtime or `git rev-parse`) |
+| **Commit** | `1a7adbc` (refresh via API runtime or `git rev-parse`) |
 
 ---
 
@@ -32,9 +32,9 @@ Documentation must be updated whenever implementation changes (end of every engi
 
 | Field | Value |
 |-------|-------|
-| **Next batch** | **15 — AI Teacher Copilot** |
-| **Summary** | Grounded, cited assistance for lesson planning, QP review, and feedback drafting |
-| **Estimated** | ~6 days |
+| **Next batch** | **16 — Document Intelligence ingestion** |
+| **Summary** | One OCR/parse/chunk/embed/index/version pipeline feeding RAG and the knowledge graph |
+| **Estimated** | ~10 days |
 | **Dependencies blocking** | None |
 | **Dependencies satisfied** | Embeddings · RAG · Curriculum Intelligence · AI Platform |
 | **Optional** | Knowledge Graph (enhances, not required for MVP) |
@@ -45,7 +45,7 @@ Documentation must be updated whenever implementation changes (end of every engi
 
 | Signal | Status | Verified |
 |--------|--------|----------|
-| Tests (`apps/api/tests/`) | 292 passed, 1 skipped | Tests passing |
+| Tests (`apps/api/tests/`) | 299 passed, 1 skipped | Tests passing |
 | LLM gateway | ✅ live | Tests passing |
 | Embeddings | ✅ OpenAI + stub | Tests passing |
 | Vector DB | ✅ Qdrant | Tests passing |
@@ -53,7 +53,7 @@ Documentation must be updated whenever implementation changes (end of every engi
 | RAG (advanced) | 🟡 hybrid + re-rank pending | Integration pending |
 | Assessment Intelligence | ✅ Batch 14 | Tests passing |
 | Curriculum Intelligence | 🟡 pack + RAG | Tests passing (ingestion pending) |
-| Teacher Copilot | 🟡 Batch 15 planned | Not started |
+| Teacher Copilot | ✅ Batch 15 | Tests passing |
 | Knowledge Graph | 🔴 planned | Not started |
 
 **Verified legend:** `tests_passing` · `integration_pending` · `partial` · `not_started`
@@ -74,7 +74,7 @@ Documentation must be updated whenever implementation changes (end of every engi
 | Pack-grounded evaluation marking | ✅ | Tests passing | 14 |
 | Eval UI rubric breakdown | ✅ | Partial (no UI tests) | 14 |
 | CurriculumPack + approval | ✅ | Tests passing | pre-12 |
-| Teacher Copilot | 🟡 | Not started | 15 |
+| Teacher Copilot | ✅ | Tests passing | 15 |
 | Document Intelligence | 🔴 | Not started | 16 |
 | Knowledge Graph | 🔴 | Not started | 17 |
 | Mastery engine | ✅ | Tests passing | pre-12 |
@@ -94,7 +94,7 @@ Full matrix: [`engineering/platform.json`](./engineering/platform.json)
 | RAG | 🟡 | Integration pending | Embeddings, Vector Store | — |
 | Assessment Intelligence | ✅ | Tests passing | RAG, AI Platform | — |
 | Curriculum Intelligence | 🟡 | Tests passing | RAG, Embeddings | File Processing |
-| Teacher Copilot | 🟡 | Not started | Embeddings, RAG, Curriculum, AI Platform | Knowledge Graph |
+| Teacher Copilot | ✅ | Tests passing | Embeddings, RAG, Curriculum, AI Platform | — |
 | Student Copilot | 🔴 | Not started | Mastery, AI Platform | Knowledge Graph, RAG |
 | Parent Copilot | 🔴 | Not started | Mastery, Authorization | Student Copilot |
 | Knowledge Graph | 🔴 | Not started | Curriculum Intelligence | File Processing |

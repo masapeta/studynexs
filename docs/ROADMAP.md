@@ -36,7 +36,7 @@
 1. ~~**Wire `RagService` into question-paper generation**~~ — ✅ Batch 12 (`assessment_grounding.ground_for_pack`).
 2. ~~**Rubric-per-criterion + LLM subjective evaluation**~~ — ✅ Batch 13 (`evaluation_engine` + `answer_sheet_eval_service` wiring).
 3. ~~**Pack-grounded evaluation marking**~~ — ✅ Batch 14 (`ground_for_evaluation` + eval UI rubric display).
-4. **AI Teacher Copilot enhancements** — grounded, cited assistance for lesson planning / QP review / feedback, reusing `RagService`.
+4. **AI Teacher Copilot enhancements** — ✅ Batch 15 (`teacher_copilot_service`, grounded lesson plans, QP review, feedback draft).
 5. **Document Intelligence ingestion** — one OCR/parse/chunk/embed/index/version pipeline (`CLAUDE.md` §38.1) feeding RAG + the graph.
 6. **`ConceptCard` first-class table** — tutor grounding + Content Review Queue.
 7. **Knowledge Graph schema** — curriculum spine first (`Curriculum→Subject→Chapter→Topic→Concept`).
