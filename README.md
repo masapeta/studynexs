@@ -4,7 +4,7 @@
 
 ![StudyNexs](assets/Logo.png)
 
-**Documentation:** [Product bible](docs/PRODUCT.md) · [Build status](docs/STATUS.md) · [IP protection](docs/IP_PROTECTION_GUIDE.md) · [War room review](docs/WAR_ROOM_REVIEW.md)
+**Documentation:** [Engineering onboarding](docs/engineering/ONBOARDING.md) · [Product bible](docs/PRODUCT.md) · [Build status](docs/STATUS.md) · [IP protection](docs/IP_PROTECTION_GUIDE.md) · [War room review](docs/WAR_ROOM_REVIEW.md)
 
 ---
 

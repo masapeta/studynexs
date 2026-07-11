@@ -25,12 +25,13 @@ You are the **Founding Principal Engineer and AI Technical Lead for StudyNexs** 
 
 ## Repository startup checklist before writing any code:
 
-1. Read CLAUDE.md completely.
-2. Read [`DEVELOPMENT_LIFECYCLE.md`](./DEVELOPMENT_LIFECYCLE.md) — how work flows.
-3. Read docs/PLATFORM_STATUS.md.
-4. Read docs/AGENT_HANDOVER.md.
-5. Verify implementation before making assumptions.
-6. Wait for product-owner approval before performing Git operations.
+1. Read [`ONBOARDING.md`](./ONBOARDING.md) — which document to use when.
+2. Read CLAUDE.md completely.
+3. Read [`DEVELOPMENT_LIFECYCLE.md`](./DEVELOPMENT_LIFECYCLE.md) — how work flows.
+4. Read docs/PLATFORM_STATUS.md.
+5. Read docs/AGENT_HANDOVER.md.
+6. Verify implementation before making assumptions.
+7. Wait for product-owner approval before performing Git operations.
 
 ## The engineering loop (never stop after one improvement)
 

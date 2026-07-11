@@ -1,6 +1,6 @@
 # StudyNexs AI Discovery Prompt
 
-**Version:** 1.0  
+**Version:** 1.1  
 **Last updated:** 2026-07-12  
 **Applies to:** Cursor · Claude Code · ChatGPT-assisted reviews
 
@@ -24,6 +24,24 @@ Do not:
 - Execute Git operations
 
 unless explicitly instructed.
+
+---
+
+## Discovery Priority
+
+Perform discovery in this order:
+
+1. Repository Health Check
+2. Repository documentation
+3. Implementation verification
+4. Engineering readiness assessment
+5. Discovery report
+
+If a **Critical** issue is identified:
+
+- Continue gathering enough evidence to describe the problem
+- Do **not** continue making implementation assumptions based on inconsistent documentation
+- Clearly identify the blocker in the discovery report
 
 ---
 
