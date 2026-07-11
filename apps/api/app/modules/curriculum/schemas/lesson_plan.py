@@ -23,6 +23,10 @@ class LessonPlanOut(BaseModel):
     segments: list[LessonSegmentOut] = Field(default_factory=list)
     status: str
     notes: str | None = None
+    pack_id: uuid.UUID | None = None
+    grounded: bool = False
+    grounding_sources: list[dict] | None = None
+    ai_model: str | None = None
     can_edit: bool = True
     can_approve: bool = False
 
@@ -33,6 +37,7 @@ class GenerateLessonPlanRequest(BaseModel):
     topic: str | None = None
     chapter: str | None = None
     scheduled_for: date | None = None
+    pack_id: uuid.UUID | None = None
 
 
 class UpdateLessonPlanRequest(BaseModel):

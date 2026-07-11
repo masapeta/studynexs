@@ -8,7 +8,7 @@ import enum
 import uuid
 from datetime import date
 
-from sqlalchemy import Date, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Date, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -49,3 +49,8 @@ class LessonPlan(BaseModel):
     )
     ai_model: Mapped[str | None] = mapped_column(String(100))
     notes: Mapped[str | None] = mapped_column(Text)
+    pack_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("curriculum_packs.id"), nullable=True
+    )
+    grounded: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    grounding_sources: Mapped[list | None] = mapped_column(JSONB)

@@ -21,6 +21,10 @@ from app.modules.curriculum.schemas.lesson_plan import (
     UpdateLessonPlanRequest,
 )
 from app.modules.curriculum.services.lesson_plan_service import LessonPlanService
+from app.modules.ai.services.teacher_copilot_service import TeacherCopilotService
+from app.modules.ai.services.usage_caps import enforce_monthly_ai_cap
+from app.modules.ai.telemetry import bind_ai_context
+from app.modules.ai.gateway.errors import raise_http_for_llm_error
 from app.shared.schemas.common import APIResponse
 
 router = APIRouter(route_class=CommitOnSuccessRoute)
@@ -40,6 +44,10 @@ def _out(plan: LessonPlan, scope, svc: LessonPlanService) -> LessonPlanOut:
         segments=[LessonSegmentOut(**s) for s in (plan.segments or [])],
         status=plan.status.value,
         notes=plan.notes,
+        pack_id=plan.pack_id,
+        grounded=bool(plan.grounded),
+        grounding_sources=plan.grounding_sources,
+        ai_model=plan.ai_model,
         can_edit=svc.can_edit(scope, plan),
         can_approve=svc.can_approve(scope, plan),
     )
@@ -71,20 +79,57 @@ async def generate_lesson_plan(
     db: AsyncSession = Depends(get_db),
 ) -> LessonPlanOut:
     scope = await get_staff_scope(db, current_user)
-    svc = LessonPlanService(db)
+    school_id = uuid.UUID(current_user.school_id)
     try:
-        plan = await svc.generate(
-            uuid.UUID(current_user.school_id),
-            scope,
-            class_id=body.class_id,
-            subject_id=body.subject_id,
-            topic=body.topic,
-            chapter=body.chapter,
-            scheduled_for=body.scheduled_for,
-        )
+        if body.pack_id is not None:
+            bind_ai_context(
+                school_id=current_user.school_id,
+                user_id=current_user.id,
+                feature="teacher_copilot",
+            )
+            credits = await enforce_monthly_ai_cap(
+                db,
+                school_id,
+                user_id=uuid.UUID(current_user.id),
+                role=current_user.role,
+                feature="teacher_copilot",
+                purpose_tag="lesson_plan",
+            )
+            copilot = TeacherCopilotService(db)
+            try:
+                plan = await copilot.generate_grounded_lesson_plan(
+                    school_id,
+                    scope,
+                    class_id=body.class_id,
+                    subject_id=body.subject_id,
+                    pack_id=body.pack_id,
+                    topic=body.topic,
+                    chapter=body.chapter,
+                    scheduled_for=body.scheduled_for,
+                    created_by=uuid.UUID(current_user.id),
+                    role=current_user.role,
+                    credits_charged=credits,
+                )
+            except ValueError:
+                raise
+            except Exception as exc:
+                raise_http_for_llm_error(exc)
+                raise
+        else:
+            svc = LessonPlanService(db)
+            plan = await svc.generate(
+                school_id,
+                scope,
+                class_id=body.class_id,
+                subject_id=body.subject_id,
+                topic=body.topic,
+                chapter=body.chapter,
+                scheduled_for=body.scheduled_for,
+            )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     await db.commit()
+    svc = LessonPlanService(db)
     return _out(plan, scope, svc)
 
 

@@ -53,6 +53,12 @@ from app.modules.ai.schemas.report_card import (
     ReportCardOut,
     UpdateReportRequest,
 )
+from app.modules.ai.schemas.teacher_copilot import (
+    CopilotFeedbackOut,
+    CopilotFeedbackRequest,
+    CopilotPaperReviewOut,
+    CopilotSuggestionOut,
+)
 from app.modules.ai.services.ai_credits import (
     get_credit_status,
     get_school_ai_budget,
@@ -72,6 +78,7 @@ from app.modules.ai.services.question_paper_service import (
 )
 from app.modules.ai.services.report_card_pdf import generate_report_pdf
 from app.modules.ai.services.report_card_service import generate_report_for_student
+from app.modules.ai.services.teacher_copilot_service import TeacherCopilotService
 from app.modules.ai.services.telemetry_summary import db_telemetry_summary, school_month_telemetry
 from app.modules.ai.services.usage_caps import enforce_monthly_ai_cap
 from app.modules.ai.services.usage_log import list_question_paper_usage_log
@@ -938,3 +945,109 @@ async def download_report_card(
         media_type=media_type,
         headers={"Content-Disposition": f"inline; filename={filename}"},
     )
+
+
+@router.post(
+    "/copilot/question-papers/{paper_id}/review",
+    response_model=CopilotPaperReviewOut,
+    dependencies=[rate_limit("ai_copilot", **_AI_GEN_RATE)],
+)
+async def copilot_review_question_paper(
+    paper_id: uuid.UUID,
+    current_user: CurrentUser = Depends(require_roles(*_TEACH_ROLES)),
+    db: AsyncSession = Depends(get_db),
+) -> CopilotPaperReviewOut:
+    """Teacher Copilot: curriculum-grounded review suggestions for a question paper (HITL)."""
+    bind_ai_context(
+        school_id=current_user.school_id,
+        user_id=current_user.id,
+        feature="teacher_copilot_review",
+    )
+    scope = await get_staff_scope(db, current_user)
+    paper = await _get_owned_paper(db, current_user.school_id, paper_id)
+    if not scope.can_edit_question_paper(paper):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    credits = await _enforce_monthly_cap(
+        db,
+        uuid.UUID(current_user.school_id),
+        user_id=uuid.UUID(current_user.id),
+        role=current_user.role,
+        feature="teacher_copilot_review",
+        purpose_tag="quality_check",
+    )
+    svc = TeacherCopilotService(db)
+    try:
+        result = await svc.review_question_paper(
+            uuid.UUID(current_user.school_id),
+            paper=paper,
+            user_id=uuid.UUID(current_user.id),
+            role=current_user.role,
+            credits_charged=credits,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    except Exception as exc:
+        raise_http_for_llm_error(exc)
+        raise
+    await db.commit()
+    suggestions = [
+        CopilotSuggestionOut(**s) if isinstance(s, dict) else s
+        for s in result.get("suggestions", [])
+    ]
+    return CopilotPaperReviewOut(
+        paper_id=uuid.UUID(result["paper_id"]),
+        summary=result.get("summary", ""),
+        overall_quality=result.get("overall_quality", "needs_work"),
+        suggestions=suggestions,
+        grounding_sources=result.get("grounding_sources") or [],
+        model=result.get("model"),
+    )
+
+
+@router.post(
+    "/copilot/feedback-draft",
+    response_model=CopilotFeedbackOut,
+    dependencies=[rate_limit("ai_copilot", **_AI_GEN_RATE)],
+)
+async def copilot_feedback_draft(
+    body: CopilotFeedbackRequest,
+    current_user: CurrentUser = Depends(require_roles(*_TEACH_ROLES)),
+    db: AsyncSession = Depends(get_db),
+) -> CopilotFeedbackOut:
+    """Teacher Copilot: draft constructive feedback grounded in curriculum (HITL)."""
+    bind_ai_context(
+        school_id=current_user.school_id,
+        user_id=current_user.id,
+        feature="teacher_copilot_feedback",
+    )
+    scope = await get_staff_scope(db, current_user)
+    assert_qp_generate(scope, body.class_id, body.subject_id)
+    credits = await _enforce_monthly_cap(
+        db,
+        uuid.UUID(current_user.school_id),
+        user_id=uuid.UUID(current_user.id),
+        role=current_user.role,
+        feature="teacher_copilot_feedback",
+        purpose_tag="feedback_draft",
+    )
+    svc = TeacherCopilotService(db)
+    try:
+        result = await svc.draft_feedback(
+            uuid.UUID(current_user.school_id),
+            class_id=body.class_id,
+            subject_id=body.subject_id,
+            pack_id=body.pack_id,
+            topic=body.topic,
+            student_answer=body.student_answer,
+            rubric=body.rubric,
+            user_id=uuid.UUID(current_user.id),
+            role=current_user.role,
+            credits_charged=credits,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    except Exception as exc:
+        raise_http_for_llm_error(exc)
+        raise
+    await db.commit()
+    return CopilotFeedbackOut(**result)

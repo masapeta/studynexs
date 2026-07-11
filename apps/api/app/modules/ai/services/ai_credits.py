@@ -40,6 +40,8 @@ CREDIT_RULES: dict[str, int] = {
     "report_card": 3,
     "mastery_narrative": 1,
     "exam_evaluation": 2,
+    "lesson_plan": 2,
+    "feedback_draft": 1,
 }
 
 BILLING_POLICY = (
@@ -51,6 +53,9 @@ FEATURE_DEFAULT_PURPOSE: dict[str, str] = {
     "question_paper": "qp_full",
     "report_card": "report_card",
     "mastery_flag": "mastery_narrative",
+    "teacher_copilot": "lesson_plan",
+    "teacher_copilot_review": "quality_check",
+    "teacher_copilot_feedback": "feedback_draft",
 }
 
 # Pilot defaults — 1 school can run safely without cost explosion.
