@@ -50,6 +50,7 @@
     "changelog": "docs/CHANGELOG.md",
     "status": "docs/STATUS.md",
     "decisions": "docs/DECISION_LOG.md",
-    "engineering_dir": "docs/engineering/"
+    "engineering_dir": "docs/engineering/",
+    "development_lifecycle": "docs/engineering/DEVELOPMENT_LIFECYCLE.md"
   }
 }

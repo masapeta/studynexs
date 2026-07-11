@@ -109,6 +109,8 @@ Module detail: [`docs/modules/`](./modules/) · structured deps: [`engineering/m
 
 ## Maintenance (every engineering batch)
 
+Follow [`engineering/DEVELOPMENT_LIFECYCLE.md`](./engineering/DEVELOPMENT_LIFECYCLE.md).
+
 1. Implement + validate (tests are the verification source)
 2. Update `docs/engineering/platform.json`, `modules.json`, `roadmap.json`
 3. Update this file + affected `docs/modules/*.md`

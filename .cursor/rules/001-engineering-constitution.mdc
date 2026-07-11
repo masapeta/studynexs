@@ -1,0 +1,48 @@
+---
+alwaysApply: true
+---
+---
+description: StudyNexs Engineering Constitution
+alwaysApply: true
+---
+
+# StudyNexs Engineering Constitution
+
+Repository:
+D:\Projects\studynexs-platform\studynexs-dev
+
+Primary Branch:
+develop
+
+## Engineering Principles
+
+- Work only in this repository.
+- Stay on the current branch.
+- Build production-quality software.
+- Prefer reusable abstractions over feature-specific implementations.
+- Extend existing services before creating new ones.
+- Keep the architecture modular, testable, and maintainable.
+- Avoid duplicate implementations.
+- Treat the implementation as the source of truth.
+- Verify existing functionality before introducing new code.
+- Never redesign validated architecture unless explicitly instructed.
+- Follow existing coding conventions and architectural patterns.
+- Keep modules loosely coupled and highly cohesive.
+
+## Documentation
+
+Before starting work, read:
+
+- CLAUDE.md
+- docs/PLATFORM_STATUS.md
+- docs/AGENT_HANDOVER.md
+- docs/STATUS.md
+- docs/ROADMAP.md
+- docs/DECISION_LOG.md
+
+Treat:
+
+- CLAUDE.md as the engineering constitution.
+- PLATFORM_STATUS.md as the engineering dashboard.
+
+Always verify documentation against the implementation before making assumptions.

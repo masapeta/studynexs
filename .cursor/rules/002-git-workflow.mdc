@@ -1,0 +1,43 @@
+---
+alwaysApply: true
+---
+---
+description: StudyNexs Git Workflow
+alwaysApply: true
+---
+
+# Git Workflow
+
+Never perform Git operations without explicit approval.
+
+Do NOT:
+
+- Switch branches
+- Create branches
+- Merge branches
+- Rebase
+- Cherry-pick
+- Reset
+- Stash
+- Push
+- Commit
+
+If a Git operation is required:
+
+1. Explain why.
+2. Explain what will happen.
+3. Wait for approval.
+
+Development branch:
+
+develop
+
+Release branch:
+
+main
+
+Production branch:
+
+production
+
+Never develop directly on main or production.
