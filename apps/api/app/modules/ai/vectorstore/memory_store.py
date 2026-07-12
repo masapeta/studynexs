@@ -55,6 +55,17 @@ class InMemoryVectorStore(VectorStore):
         scored.sort(key=lambda m: m.score, reverse=True)
         return scored[:top_k]
 
+    async def count(
+        self,
+        collection: str,
+        *,
+        school_id: str,
+        filters: dict[str, Any] | None = None,
+    ) -> int:
+        required = {"school_id": school_id, **(filters or {})}
+        store = self._collections.get(collection, {})
+        return sum(1 for p in store.values() if match_payload(p.payload, required))
+
     async def delete(
         self, collection: str, *, school_id: str, filters: dict[str, Any] | None = None
     ) -> None:

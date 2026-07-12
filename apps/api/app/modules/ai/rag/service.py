@@ -1,10 +1,11 @@
 """RAG service: index a CurriculumPack and retrieve grounded, cited context.
 
-Grounding unit today = a curriculum TOPIC (chapter title + topic title + its concept list).
-That is the structured, copyright-safe substrate the constitution calls for (§38/§39) — full
-textbook/question-paper ingestion is a later slice that reuses the same embed→index→retrieve
-pipeline. Retrieval is always scoped to (school_id, pack_id); context carries citations so the
-teacher/tutor can trace every grounded claim (§109.3).
+Grounding units:
+- curriculum TOPIC (chapter title + topic title + its concept list) — structured substrate
+- document CHUNK (school-uploaded worksheets, notes, circulars) — Batch 16 Document Intelligence
+
+Both share the same embed→index→retrieve pipeline, scoped to (school_id, pack_id). Context
+carries citations so the teacher/tutor can trace every grounded claim (§109.3).
 """
 from __future__ import annotations
 
@@ -118,6 +119,59 @@ class RagService:
         await self.store.ensure_collection(collection, dimensions=result.dimensions)
         return await self.store.upsert(collection, points)
 
+    async def index_document_chunks(
+        self,
+        pack: CurriculumPack,
+        *,
+        file_id: uuid.UUID | str,
+        doc_type: str,
+        source_name: str,
+        chunks: list[str],
+    ) -> int:
+        """Embed + index document chunks for a pack. Re-ingest replaces prior chunks for file_id."""
+        if not chunks:
+            return 0
+
+        collection = self._collection()
+        fid = str(file_id)
+
+        # Remove stale vectors for this file before upserting the new version.
+        await self.store.delete(
+            collection,
+            school_id=str(pack.school_id),
+            filters={"pack_id": str(pack.id), "file_id": fid},
+        )
+
+        result = await self.embedder.embed(
+            chunks, feature="document_ingest", school_id=str(pack.school_id)
+        )
+        await self.store.ensure_collection(collection, dimensions=result.dimensions)
+
+        points: list[VectorPoint] = []
+        for idx, (text, vector) in enumerate(zip(chunks, result.vectors)):
+            point_id = f"doc:{fid}:{idx}"
+            points.append(
+                VectorPoint(
+                    id=point_id,
+                    vector=vector,
+                    payload={
+                        "school_id": str(pack.school_id),
+                        "pack_id": str(pack.id),
+                        "class_id": str(pack.class_id),
+                        "subject_id": str(pack.subject_id),
+                        "file_id": fid,
+                        "doc_type": doc_type,
+                        "source_name": source_name,
+                        "chapter": doc_type,
+                        "topic": source_name,
+                        "text": text,
+                        "kind": "document_chunk",
+                        "chunk_index": idx,
+                    },
+                )
+            )
+        return await self.store.upsert(collection, points)
+
     async def retrieve(
         self,
         query: str,
@@ -162,6 +216,22 @@ class RagService:
             return ""
         blocks = []
         for i, c in enumerate(chunks, start=1):
-            source = " › ".join(x for x in (c.chapter, c.topic) if x) or "curriculum"
+            parts = [x for x in (c.chapter, c.topic) if x]
+            source = " › ".join(parts) if parts else "curriculum"
             blocks.append(f"[{i}] (source: {source})\n{c.text}")
         return "\n\n".join(blocks)
+
+    async def count_document_chunks(
+        self,
+        *,
+        school_id: uuid.UUID | str,
+        pack_id: uuid.UUID | str,
+    ) -> int:
+        """Count indexed document chunks for a pack (best-effort; store-dependent)."""
+        if hasattr(self.store, "count"):
+            return await self.store.count(  # type: ignore[attr-defined]
+                self._collection(),
+                school_id=str(school_id),
+                filters={"pack_id": str(pack_id), "kind": "document_chunk"},
+            )
+        return 0

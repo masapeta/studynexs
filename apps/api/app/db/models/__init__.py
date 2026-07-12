@@ -53,3 +53,8 @@ from app.db.models.curriculum_pack import (  # noqa: F401
 from app.db.models.audit import AuditLog  # noqa: F401
 from app.db.models.notification import Notification  # noqa: F401
 from app.db.models.file import UploadedFile  # noqa: F401
+from app.db.models.document_ingestion import (  # noqa: F401
+    DocumentIngestion,
+    DocumentType,
+    IngestStatus,
+)
