@@ -4,26 +4,37 @@
 
 ## Status
 
-**🔴 Planned** (Batch 16 — Document Intelligence)
+**✅ Complete** (Batch 16 — Document Intelligence MVP)
 
 ## Owner
 
 Shared document pipeline (one path for all school documents)
 
-## Target pipeline
+## Pipeline
 
 OCR → parse → chunk → embed → metadata → index → version
 
-## Current fragments
+## Implementation
 
-- Admissions document OCR (`pytesseract` in school_ops)
-- File upload service (`apps/api/app/modules/files/`)
-- Answer-sheet images (vision path — see OCR_PIPELINE)
+| Layer | Path |
+|-------|------|
+| Shared OCR | `apps/api/app/modules/files/services/document_ocr.py` |
+| Orchestrator | `apps/api/app/modules/ai/services/document_intelligence_service.py` |
+| RAG extension | `RagService.index_document_chunks()` |
+| Audit | `document_ingestions` table (migration `x4e5f6a7b8c9`) |
+| API | `POST /api/v1/curriculum/packs/{pack_id}/ingest-document`, `GET .../ingest-status` |
+| Admin UI | `apps/admin-web/.../teaching/document-ingest/page.tsx` |
+| Tests | `apps/api/tests/test_document_intelligence.py` (6) |
+
+## Fragments unified
+
+- Admissions OCR now delegates to shared `document_ocr.py`
+- Answer-sheet vision remains eval-specific (not merged into curriculum ingest)
 
 ## Rule
 
 Never re-implement per-feature OCR/embed pipelines.
 
-## Used by (planned)
+## Used by
 
-Curriculum ingestion · RAG · Knowledge Graph
+Curriculum pack grounding (RAG) · Knowledge Graph (Batch 17, planned)

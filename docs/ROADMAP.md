@@ -12,7 +12,7 @@
 
 | Pillar | Progress | State |
 |---|---|---|
-| Curriculum Intelligence | ~40% | CurriculumPack model + versioning + RAG retrieval exist; ingestion + Knowledge Graph pending → [`CURRICULUM_INTELLIGENCE.md`](./CURRICULUM_INTELLIGENCE.md) |
+| Curriculum Intelligence | ~55% | CurriculumPack + RAG + document ingest ✅; Knowledge Graph pending → [`CURRICULUM_INTELLIGENCE.md`](./CURRICULUM_INTELLIGENCE.md) |
 | Assessment Intelligence | ~60% | Grounded+cited QP ✅; rubric-per-criterion eval ✅; pack-grounded marking + eval UI rubric display ✅ → [`ASSESSMENT_INTELLIGENCE.md`](./ASSESSMENT_INTELLIGENCE.md) |
 | Learning Intelligence | ~15% | mastery compute + template tutor; adaptive + analytics pending |
 | School Operations Intelligence | ~60% | students/staff/fees/attendance/exams/finance built |
@@ -25,7 +25,7 @@
 | Horizon | Focus | Status |
 |---|---|---|
 | **Now** | Pilot-ready SMS core + Teacher-AI question papers (HITL) + grounded eval assist | 🟡 in progress |
-| **Next** | Document Intelligence · Teacher Copilot | 🟡 Batch 14 eval grounding + UI shipped |
+| **Next** | Knowledge Graph schema · Concept Cards | 🟡 Batch 16 document ingest shipped |
 | **Then** | AI Tutor (mistake-recovery) → voice; Concept Cards + Content Review Queue | 🔧 template tutor shipped |
 | **Later** | Parent/Student copilots, adaptive learning, learning + behaviour analytics | ⬜ |
 | **Platform** | Integrations, workflow automation, tool-using agents on the gateway | ⬜ |
@@ -37,7 +37,7 @@
 2. ~~**Rubric-per-criterion + LLM subjective evaluation**~~ — ✅ Batch 13 (`evaluation_engine` + `answer_sheet_eval_service` wiring).
 3. ~~**Pack-grounded evaluation marking**~~ — ✅ Batch 14 (`ground_for_evaluation` + eval UI rubric display).
 4. **AI Teacher Copilot enhancements** — ✅ Batch 15 (`teacher_copilot_service`, grounded lesson plans, QP review, feedback draft).
-5. **Document Intelligence ingestion** — one OCR/parse/chunk/embed/index/version pipeline (`CLAUDE.md` §38.1) feeding RAG + the graph.
+5. ~~**Document Intelligence ingestion**~~ — ✅ Batch 16 (`document_intelligence_service`, pack document ingest API, RAG document chunks).
 6. **`ConceptCard` first-class table** — tutor grounding + Content Review Queue.
 7. **Knowledge Graph schema** — curriculum spine first (`Curriculum→Subject→Chapter→Topic→Concept`).
 8. **Curriculum management UI.**

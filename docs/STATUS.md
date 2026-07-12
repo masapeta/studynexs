@@ -20,7 +20,7 @@
 - **Lesson plans:** CRUD + **template-based** generation (`template-v1`) or **Teacher Copilot** grounded generation when `pack_id` is supplied (Batch 15).
 - **Topic mastery** module built (compute, flags, heatmap, digest, parent narratives on approve).
 - **Pilot school** is interested; no signed deal yet. Demand and pricing not validated.
-- **Binding constraint:** solo builder on branch **`develop`** (`D:\Projects\studynexs-platform\studynexs-dev`). Batch 15 (Teacher Copilot) implemented — **uncommitted** until ARM asks.
+- **Binding constraint:** solo builder on branch **`develop`** (`D:\Projects\studynexs-platform\studynexs-dev`). Batch 16 (Document Intelligence) implemented — **uncommitted** until ARM asks.
 - **Four of five planned portals** do not exist yet — student/parent experiences live inside `admin-web` (`/student`, `/parent`) until Flutter Phase 2.
 
 ---
@@ -59,12 +59,20 @@
 - ✅ `tests/test_evaluation_engine.py` (8) + `tests/test_assessment_grounding.py` (+3 for `ground_for_evaluation`) + full `tests/` suite green (289+ passed).
 - ✅ **Batch 14:** `ground_for_evaluation` in `assessment_grounding.py` — best-effort pack RAG at mark time (never blocks marking); wired in `answer_sheet_eval_service._grade_subjective_items`. Eval UI (`exams/[examId]/evaluate`) surfaces method, confidence, rubric criteria, missing concepts.
 
-**Teacher Copilot (Batch 15) — uncommitted on `develop`**
+**Teacher Copilot (Batch 15) — committed on `develop`**
 - ✅ `teacher_copilot_service.py` — grounded lesson plans, QP review, feedback drafting (gateway + RAG + credits).
 - ✅ Copilot API: `POST /api/v1/ai/copilot/question-papers/{id}/review`, `POST /api/v1/ai/copilot/feedback-draft`.
 - ✅ Lesson plans: optional `pack_id` on generate; migration adds grounding columns.
 - ✅ Admin UI: pack picker on lesson plans + AI papers; Copilot review panel.
 - ✅ Tests: `test_teacher_copilot.py` (5 passed, 2026-07-12).
+
+**Document Intelligence (Batch 16) — uncommitted on `develop`**
+- ✅ Shared OCR (`document_ocr.py`); admissions delegates to unified path.
+- ✅ `document_intelligence_service.py` — OCR → chunk → sanitize → embed → index for approved packs.
+- ✅ `RagService.index_document_chunks()` — document chunks in same curriculum collection.
+- ✅ Ingest API + `document_ingestions` audit table (migration `x4e5f6a7b8c9`).
+- ✅ Admin UI: Teaching → Documents (`/dashboard/teaching/document-ingest`).
+- ✅ Tests: `test_document_intelligence.py` (6 passed, 2026-07-12). Full suite: **305 passed**, 1 skipped.
 
 **Merge recovery (Session 03)**
 - ⚠️ Commit `34aec0c` had accidentally reverted the shared AI foundation; restored from merge parent `5f76c00` (87 files). Resolved `tutor.py` merge-conflict marker; `CommitOnSuccessRoute` restored on all routers.

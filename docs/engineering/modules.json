@@ -103,11 +103,11 @@
     {
       "id": "FILE_PROCESSING",
       "name": "File Processing",
-      "status": "planned",
-      "verified": "not_started",
+      "status": "complete",
+      "verified": "tests_passing",
       "batch": 16,
       "doc": "docs/modules/FILE_PROCESSING.md",
-      "depends_on": { "satisfied": ["AI_PLATFORM"], "pending": ["OCR_PIPELINE"] }
+      "depends_on": { "satisfied": ["AI_PLATFORM", "OCR_PIPELINE", "RAG", "EMBEDDINGS"], "pending": [] }
     },
     {
       "id": "OCR_PIPELINE",
@@ -115,7 +115,7 @@
       "status": "in_progress",
       "verified": "partial",
       "doc": "docs/modules/OCR_PIPELINE.md",
-      "depends_on": { "satisfied": ["AI_PLATFORM"], "pending": ["FILE_PROCESSING"] }
+      "depends_on": { "satisfied": ["AI_PLATFORM", "FILE_PROCESSING"], "pending": [] }
     },
     {
       "id": "AUTHORIZATION",

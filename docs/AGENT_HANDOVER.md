@@ -755,6 +755,46 @@ reusing `RagService`. HITL unchanged.
 
 ---
 
+# Engineering Session 05 — 2026-07-12
+
+- **Date:** 2026-07-12
+- **Engineering batch:** 16 — Document Intelligence ingestion
+- **Branch:** `develop`
+- **Active repo:** `D:\Projects\studynexs-platform\studynexs-dev`
+- **HEAD:** `8406f6e` + Batch 16 working tree (**uncommitted**)
+- **This session is the source of truth for current state.**
+
+## 1. Session summary
+
+| Area | What shipped |
+|---|---|
+| **Shared OCR** | `document_ocr.py`; admissions OCR delegates (§38.1) |
+| **Document Intelligence service** | `document_intelligence_service.py` — OCR → chunk → sanitize → embed → index |
+| **RAG extension** | `RagService.index_document_chunks()` — `kind: document_chunk` in curriculum collection |
+| **Data model** | `document_ingestions` audit table (migration `x4e5f6a7b8c9`) |
+| **API** | `POST /api/v1/curriculum/packs/{pack_id}/ingest-document`, `GET .../ingest-status` |
+| **Admin UI** | Teaching → Documents (`/dashboard/teaching/document-ingest`) |
+| **Tests** | `test_document_intelligence.py` (6 passed) |
+
+## 2. Validation
+
+- `alembic upgrade head` — applied `x4e5f6a7b8c9`
+- `pytest tests/` — **305 passed**, 1 skipped (2026-07-12)
+- `npm run build` (admin-web) — passing
+
+## 3. Next batch
+
+**Batch 17 — Knowledge Graph schema (curriculum spine)**
+
+## Closing checklist (Session 05)
+
+- [x] Engineering dashboard + handover docs updated
+- [x] Full `pytest tests/` green
+- [x] `npm run build` on admin-web
+- [ ] Commit when ARM asks
+
+---
+
 ## Machine-readable snapshot (read this first)
 
 > A quick, structured state for any agent (Claude Code, Cursor, …) before reading the full log above.
@@ -763,31 +803,32 @@ reusing `RagService`. HITL unchanged.
 ```yaml
 project: StudyNexs
 current_phase: Platform Development
-last_completed_batch: "Batch 15 — AI Teacher Copilot"
+last_completed_batch: "Batch 16 — Document Intelligence ingestion"
 current_batch: none in progress
-next_batch: Document Intelligence ingestion
+next_batch: Knowledge Graph schema (curriculum spine)
 branch: develop
 active_repo: D:/Projects/studynexs-platform/studynexs-dev
-working_tree: uncommitted (Batch 15; commit only when ARM asks)
+working_tree: uncommitted (Batch 16; commit only when ARM asks)
 build:
   api_import: passing
-  web_next_build: not re-run this session
+  web_next_build: passing (2026-07-12)
 tests:
-  backend_functions: 300
-  focused_suite: "25 passed (2026-07-12)"
-  copilot_tests: "5 passed"
+  backend_functions: 306
+  full_suite: "305 passed, 1 skipped (2026-07-12)"
+  document_intelligence_tests: "6 passed"
 ai:
   llm_gateway: app/modules/ai/gateway
   teacher_copilot: live; grounded lesson plans, QP review, feedback draft
-  rag: live; reused via ground_for_pack
+  document_intelligence: live; pack document ingest → RAG document chunks
+  rag: live; topics + document chunks in curriculum collection
 next_priority:
-  - Document Intelligence ingestion
-  - Knowledge Graph schema
+  - Knowledge Graph schema (Batch 17)
+  - ConceptCard table
 blockers: []
 owner_decisions_pending:
   - Final production LLM provider
   - When to commit develop working tree
-  - Textbook/QP folder for ingestion
+  - Textbook/QP folder for bulk ingestion (optional; structured + school uploads work)
   - DPDP before real student PII
 last_validated: "2026-07-12"
 ```

@@ -4,7 +4,7 @@
 
 ## Status
 
-**🟡 In progress** (~40%)
+**🟡 In progress** (~55%)
 
 ## Owner
 
@@ -18,8 +18,8 @@ Pillar 1 — source of truth for academic AI
 | HOD approval → immutable approved pack | ✅ |
 | RAG index on approved pack | ✅ |
 | Grounded QP generation | ✅ |
-| Document Intelligence (OCR→chunk→embed pipeline) | ⬜ |
-| Knowledge Graph spine tables | ⬜ |
+| Document Intelligence (OCR→chunk→embed pipeline) | ✅ Batch 16 |
+| Knowledge Graph spine tables | ⬜ Batch 17 |
 | Curriculum management UI | ⬜ |
 
 ## Files
@@ -32,12 +32,12 @@ All academic AI runs against an **approved** pack — never free-text board assu
 
 ## Used by
 
-RAG · Assessment Intelligence · Teacher Copilot (planned)
+RAG · Assessment Intelligence · Teacher Copilot · Document Intelligence
 
 ## Tests
 
-`tests/test_curriculum_pack.py`
+`tests/test_curriculum_pack.py` · `tests/test_document_intelligence.py`
 
 ## Next batch
 
-Document Intelligence ingestion (Batch 16)
+Knowledge Graph schema (Batch 17)

@@ -1,21 +1,19 @@
 {
   "schema_version": 2,
   "last_completed_batch": {
-    "number": 15,
-    "title": "AI Teacher Copilot — grounded lesson plans, QP review, feedback drafting",
+    "number": 16,
+    "title": "Document Intelligence ingestion",
     "completed_at": "2026-07-12"
   },
   "current_batch": null,
   "next_milestone": {
-    "batch": 16,
-    "title": "Document Intelligence ingestion",
-    "summary": "One OCR/parse/chunk/embed/index/version pipeline feeding RAG and the knowledge graph.",
-    "estimated_days": 10,
+    "batch": 17,
+    "title": "Knowledge Graph schema (curriculum spine)",
+    "summary": "Curriculum spine graph schema linking packs, topics, and document chunks for richer grounding.",
+    "estimated_days": 8,
     "dependencies_blocking": [],
-    "dependencies_satisfied": ["AI_PLATFORM", "EMBEDDINGS", "RAG", "OCR_PIPELINE"],
+    "dependencies_satisfied": ["AI_PLATFORM", "EMBEDDINGS", "RAG", "FILE_PROCESSING", "CURRICULUM_INTELLIGENCE"],
     "dependencies_optional": []
   },
-  "upcoming": [
-    { "batch": 17, "title": "Knowledge Graph schema (curriculum spine)", "estimated_days": 8 }
-  ]
+  "upcoming": []
 }

@@ -20,11 +20,11 @@ Documentation must be updated whenever implementation changes (end of every engi
 
 | Field | Value |
 |-------|-------|
-| **Architecture version** | **1.5** |
+| **Architecture version** | **1.6** |
 | **Last updated** | 2026-07-12 |
-| **Last engineering batch** | 15 (AI Teacher Copilot) |
+| **Last engineering batch** | 16 (Document Intelligence ingestion) |
 | **Branch** | `develop` |
-| **Commit** | `1a7adbc` (refresh via API runtime or `git rev-parse`) |
+| **Commit** | `8406f6e` (refresh via API runtime or `git rev-parse`) |
 
 ---
 
@@ -32,9 +32,9 @@ Documentation must be updated whenever implementation changes (end of every engi
 
 | Field | Value |
 |-------|-------|
-| **Next batch** | **16 — Document Intelligence ingestion** |
-| **Summary** | One OCR/parse/chunk/embed/index/version pipeline feeding RAG and the knowledge graph |
-| **Estimated** | ~10 days |
+| **Next batch** | **17 — Knowledge Graph schema (curriculum spine)** |
+| **Summary** | Curriculum spine graph linking packs, topics, and document chunks |
+| **Estimated** | ~8 days |
 | **Dependencies blocking** | None |
 | **Dependencies satisfied** | Embeddings · RAG · Curriculum Intelligence · AI Platform |
 | **Optional** | Knowledge Graph (enhances, not required for MVP) |
@@ -45,15 +45,16 @@ Documentation must be updated whenever implementation changes (end of every engi
 
 | Signal | Status | Verified |
 |--------|--------|----------|
-| Tests (`apps/api/tests/`) | 299 passed, 1 skipped | Tests passing |
+| Tests (`apps/api/tests/`) | 305 passed, 1 skipped | Tests passing |
 | LLM gateway | ✅ live | Tests passing |
 | Embeddings | ✅ OpenAI + stub | Tests passing |
 | Vector DB | ✅ Qdrant | Tests passing |
 | RAG (core) | ✅ index/retrieve/citations | Tests passing |
 | RAG (advanced) | 🟡 hybrid + re-rank pending | Integration pending |
 | Assessment Intelligence | ✅ Batch 14 | Tests passing |
-| Curriculum Intelligence | 🟡 pack + RAG | Tests passing (ingestion pending) |
+| Curriculum Intelligence | ✅ pack + RAG + document ingest | Tests passing |
 | Teacher Copilot | ✅ Batch 15 | Tests passing |
+| Document Intelligence | ✅ Batch 16 | Tests passing |
 | Knowledge Graph | 🔴 planned | Not started |
 
 **Verified legend:** `tests_passing` · `integration_pending` · `partial` · `not_started`
@@ -75,7 +76,7 @@ Documentation must be updated whenever implementation changes (end of every engi
 | Eval UI rubric breakdown | ✅ | Partial (no UI tests) | 14 |
 | CurriculumPack + approval | ✅ | Tests passing | pre-12 |
 | Teacher Copilot | ✅ | Tests passing | 15 |
-| Document Intelligence | 🔴 | Not started | 16 |
+| Document Intelligence | ✅ | Tests passing | 16 |
 | Knowledge Graph | 🔴 | Not started | 17 |
 | Mastery engine | ✅ | Tests passing | pre-12 |
 | Authorization / tenant isolation | ✅ | Tests passing | 1–6 |
@@ -93,13 +94,13 @@ Full matrix: [`engineering/platform.json`](./engineering/platform.json)
 | Vector Store | ✅ | Tests passing | AI Platform | — |
 | RAG | 🟡 | Integration pending | Embeddings, Vector Store | — |
 | Assessment Intelligence | ✅ | Tests passing | RAG, AI Platform | — |
-| Curriculum Intelligence | 🟡 | Tests passing | RAG, Embeddings | File Processing |
+| Curriculum Intelligence | ✅ | Tests passing | RAG, Embeddings, File Processing | — |
 | Teacher Copilot | ✅ | Tests passing | Embeddings, RAG, Curriculum, AI Platform | — |
 | Student Copilot | 🔴 | Not started | Mastery, AI Platform | Knowledge Graph, RAG |
 | Parent Copilot | 🔴 | Not started | Mastery, Authorization | Student Copilot |
-| Knowledge Graph | 🔴 | Not started | Curriculum Intelligence | File Processing |
-| File Processing | 🔴 | Not started | AI Platform | OCR Pipeline (unified) |
-| OCR Pipeline | 🟡 | Partial | AI Platform | File Processing |
+| Knowledge Graph | 🔴 | Not started | Curriculum Intelligence, File Processing | — |
+| File Processing | ✅ | Tests passing | AI Platform, OCR Pipeline, RAG | — |
+| OCR Pipeline | 🟡 | Partial | AI Platform, File Processing | Vision unification |
 | Mastery Engine | ✅ | Tests passing | Authorization | — |
 | Authorization | ✅ | Tests passing | — | — |
 
