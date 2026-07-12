@@ -58,6 +58,7 @@ from app.db.models.document_ingestion import (  # noqa: F401
     DocumentType,
     IngestStatus,
 )
+from app.db.models.concept_card import ConceptCard, ConceptCardStatus  # noqa: F401
 from app.db.models.knowledge_graph import (  # noqa: F401
     ConceptSource,
     CurriculumConcept,

@@ -11,6 +11,8 @@ from app.db.models.mastery import StudentTopicMastery
 from app.db.models.misconception import MisconceptionEntry
 from app.db.models.student import Student
 from app.modules.tutor.schemas.tutor import TutorLessonOut, TutorRecommendationOut
+from app.modules.curriculum.services.concept_card_service import ConceptCardService
+from app.modules.tutor.services.concept_card_lesson import build_lesson_from_concept_card
 from app.modules.tutor.services.lesson_templates import (
     LESSON_TEMPLATES,
     build_lesson_from_template,
@@ -118,6 +120,27 @@ async def get_lesson(
     ).scalar_one_or_none()
     if not student:
         return None
+
+    card_match = await ConceptCardService(db).get_approved_by_slug(
+        school_id=school_id, slug=lesson_key
+    )
+    if card_match is not None:
+        card, concept = card_match
+        weak = await _weak_topics(db, school_id, student_id)
+        pct = None
+        subject = "Curriculum"
+        for t, s, p in weak:
+            if slugify_lesson_key(t) == lesson_key or slugify_lesson_key(concept.title) == lesson_key:
+                pct = p
+                subject = s
+                break
+        return build_lesson_from_concept_card(
+            card=card,
+            concept=concept,
+            subject_name=subject,
+            mastery_pct=pct,
+            trigger="concept_card",
+        )
 
     if lesson_key in LESSON_TEMPLATES:
         weak = await _weak_topics(db, school_id, student_id)
