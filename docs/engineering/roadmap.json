@@ -1,21 +1,19 @@
 {
   "schema_version": 2,
   "last_completed_batch": {
-    "number": 17,
-    "title": "Knowledge Graph schema (curriculum spine)",
+    "number": 18,
+    "title": "ConceptCard first-class table",
     "completed_at": "2026-07-12"
   },
   "current_batch": null,
   "next_milestone": {
-    "batch": 18,
-    "title": "ConceptCard first-class table",
-    "summary": "Approved concept cards as first-class entities for tutor grounding and content review.",
-    "estimated_days": 6,
+    "batch": 19,
+    "title": "Question → Concept graph links",
+    "summary": "Link QuestionBankItem entries to curriculum concepts for precise retrieval and difficulty calibration.",
+    "estimated_days": 5,
     "dependencies_blocking": [],
-    "dependencies_satisfied": ["KNOWLEDGE_GRAPH", "CURRICULUM_INTELLIGENCE", "RAG"],
+    "dependencies_satisfied": ["KNOWLEDGE_GRAPH", "CURRICULUM_INTELLIGENCE", "ASSESSMENT_INTELLIGENCE"],
     "dependencies_optional": []
   },
-  "upcoming": [
-    { "batch": 19, "title": "Question → Concept graph links", "estimated_days": 5 }
-  ]
+  "upcoming": []
 }

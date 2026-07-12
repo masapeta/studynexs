@@ -7,22 +7,21 @@ changes under **[Unreleased]** until the first tagged release. Architectural *re
 
 ## [Unreleased]
 
-> Session 2026-07-12 — Batch 17 (Knowledge Graph curriculum spine). Active repo:
-> `D:\Projects\studynexs-platform\studynexs-dev`, branch **`develop`**, **uncommitted**.
+> Session 2026-07-12 — Batch 18 (ConceptCard first-class table). **Uncommitted.**
 
 ### Added
-- **`curriculum_concepts` + `kg_edges` tables** — typed spine nodes and edges (migration `y5f6a7b8c9d0`).
-- **`KnowledgeGraphService`** — `build_spine_from_pack`, `get_spine`, `backfill_approved_packs`.
-- **Pack approve hook** — spine materialized automatically on approval.
-- **Graph API** — `GET /api/v1/curriculum/packs/{pack_id}/graph`.
-- **`tests/test_knowledge_graph.py`** (6) — spine build, idempotency, tenant isolation, HTTP.
+- **`concept_cards` table** — teacher-approved explanation, examples, hints (migration `z6a7b8c9d0e1`).
+- **`ConceptCardService`** — draft → approve workflow; one card per concept.
+- **ConceptCard API** — CRUD + approve under `/api/v1/curriculum/`.
+- **Tutor integration** — approved cards served via `get_lesson` when concept slug matches.
+- **`tests/test_concept_card.py`** (4).
 
 ### Changed
-- Engineering dashboard refreshed for Batch 17.
+- Engineering dashboard refreshed for Batch 18.
 
 ---
 
-> Session 2026-07-12 — Batch 16 (Document Intelligence ingestion). Committed on `develop`.
+> Session 2026-07-12 — Batch 17 (Knowledge Graph). Committed on `develop`.
 
 > Session 2026-07-11 — Merge recovery + Batches 13–14. Committed on `develop`.
 

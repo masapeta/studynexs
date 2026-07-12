@@ -825,6 +825,24 @@ reusing `RagService`. HITL unchanged.
 
 ---
 
+# Engineering Session 07 — 2026-07-12
+
+- **Engineering batch:** 18 — ConceptCard first-class table
+- **HEAD:** `e349e43` + Batch 18 working tree (**uncommitted**)
+
+## Shipped
+
+- `concept_cards` table + `ConceptCardService` (draft → approve)
+- API: `/curriculum/concepts/{id}/cards`, `/concept-cards/{id}/approve`, pack list
+- Tutor: approved cards served in `get_lesson` by concept slug
+- Tests: `test_concept_card.py` (4 passed)
+
+## Next batch
+
+**Batch 19 — Question → Concept graph links**
+
+---
+
 ## Machine-readable snapshot (read this first)
 
 > A quick, structured state for any agent (Claude Code, Cursor, …) before reading the full log above.
@@ -833,28 +851,17 @@ reusing `RagService`. HITL unchanged.
 ```yaml
 project: StudyNexs
 current_phase: Platform Development
-last_completed_batch: "Batch 17 — Knowledge Graph schema (curriculum spine)"
-current_batch: none in progress
-next_batch: ConceptCard first-class table
-branch: develop
-active_repo: D:/Projects/studynexs-platform/studynexs-dev
-working_tree: uncommitted (Batch 17; commit only when ARM asks)
-build:
-  api_import: passing
-  web_next_build: passing (2026-07-12)
+last_completed_batch: "Batch 18 — ConceptCard first-class table"
+next_batch: Question → Concept graph links
+working_tree: uncommitted (Batch 18)
 tests:
-  backend_functions: 312
-  kg_tests: "6 passed"
-  full_suite: "311 passed, 1 skipped (2026-07-12)"
+  full_suite: "315 passed, 1 skipped (2026-07-12)"
+  concept_card_tests: "4 passed"
 ai:
-  llm_gateway: app/modules/ai/gateway
-  teacher_copilot: live
-  document_intelligence: live
-  knowledge_graph: live; spine on pack approve
-  rag: live; topics + document chunks
+  concept_cards: live; tutor retrieval by concept slug
 next_priority:
-  - ConceptCard table (Batch 18)
   - Question → Concept links (Batch 19)
+  - Content Review Queue
 blockers: []
 owner_decisions_pending:
   - Final production LLM provider

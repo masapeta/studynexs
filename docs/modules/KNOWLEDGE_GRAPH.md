@@ -18,7 +18,7 @@ Shared spine — Pack → Chapter → Topic → Concept
 | `curriculum_concepts` + `kg_edges` tables | ✅ Batch 17 |
 | Spine build on pack approve | ✅ |
 | `GET /packs/{id}/graph` read API | ✅ |
-| `ConceptCard` first-class model | ⬜ Batch 18 |
+| `ConceptCard` first-class model | ✅ Batch 18 |
 | Question → Concept links | ⬜ Batch 19 |
 | Graph queries for copilots | ⬜ |
 

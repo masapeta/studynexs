@@ -4,7 +4,7 @@
 
 ## Status
 
-**🟡 In progress** (~65%)
+**🟡 In progress** (~75%)
 
 ## Owner
 
@@ -20,7 +20,8 @@ Pillar 1 — source of truth for academic AI
 | Grounded QP generation | ✅ |
 | Document Intelligence (OCR→chunk→embed pipeline) | ✅ Batch 16 |
 | Knowledge Graph spine tables | ✅ Batch 17 |
-| Knowledge Graph (full ontology) | ⬜ Batch 18+ |
+| ConceptCard first-class table | ✅ Batch 18 |
+| Content Review Queue | ⬜ planned |
 | Curriculum management UI | ⬜ |
 
 ## Files
@@ -37,8 +38,8 @@ RAG · Assessment Intelligence · Teacher Copilot · Document Intelligence
 
 ## Tests
 
-`tests/test_curriculum_pack.py` · `tests/test_document_intelligence.py`
+`tests/test_curriculum_pack.py` · `tests/test_document_intelligence.py` · `tests/test_concept_card.py`
 
 ## Next batch
 
-ConceptCard table + content review (Batch 18)
+Question → Concept graph links (Batch 19)
