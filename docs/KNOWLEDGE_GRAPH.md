@@ -46,6 +46,7 @@ Teacher    → Lesson             Textbook → Chapter → Concept   (planning +
   concept edges. Do not fork a second store.
 
 ## Current state
-Modeled in the constitution; the curriculum hierarchy exists as pack data. **No graph tables/queries
-implemented yet.** Sequenced after grounding QP generation and Document Intelligence
-(→ [`ROADMAP.md`](./ROADMAP.md)).
+
+Curriculum spine is **implemented** in Postgres (`curriculum_concepts`, `kg_edges`). Pack approval
+materializes `Pack → Chapter → Topic → Concept` edges plus `Pack → Subject`. Question links,
+student weak-concept edges, and Concept Cards are sequenced next (→ [`ROADMAP.md`](./ROADMAP.md)).

@@ -795,6 +795,36 @@ reusing `RagService`. HITL unchanged.
 
 ---
 
+# Engineering Session 06 — 2026-07-12
+
+- **Date:** 2026-07-12
+- **Engineering batch:** 17 — Knowledge Graph schema (curriculum spine)
+- **Branch:** `develop`
+- **Active repo:** `D:\Projects\studynexs-platform\studynexs-dev`
+- **HEAD:** `f184db3` + Batch 17 working tree (**uncommitted**)
+
+## 1. Session summary
+
+| Area | What shipped |
+|---|---|
+| **Graph tables** | `curriculum_concepts`, `kg_edges` (migration `y5f6a7b8c9d0`) |
+| **KnowledgeGraphService** | `build_spine_from_pack`, `get_spine`, `backfill_approved_packs` |
+| **Approve hook** | Pack approval materializes Pack→Chapter→Topic→Concept edges |
+| **API** | `GET /api/v1/curriculum/packs/{pack_id}/graph` |
+| **Tests** | `test_knowledge_graph.py` (6 passed) |
+
+## 2. Validation
+
+- `alembic upgrade head` — applied `y5f6a7b8c9d0`
+- Focused KG + curriculum tests — **9 passed**
+- Full `pytest tests/` — pending at batch close
+
+## 3. Next batch
+
+**Batch 18 — ConceptCard first-class table**
+
+---
+
 ## Machine-readable snapshot (read this first)
 
 > A quick, structured state for any agent (Claude Code, Cursor, …) before reading the full log above.
@@ -803,32 +833,32 @@ reusing `RagService`. HITL unchanged.
 ```yaml
 project: StudyNexs
 current_phase: Platform Development
-last_completed_batch: "Batch 16 — Document Intelligence ingestion"
+last_completed_batch: "Batch 17 — Knowledge Graph schema (curriculum spine)"
 current_batch: none in progress
-next_batch: Knowledge Graph schema (curriculum spine)
+next_batch: ConceptCard first-class table
 branch: develop
 active_repo: D:/Projects/studynexs-platform/studynexs-dev
-working_tree: uncommitted (Batch 16; commit only when ARM asks)
+working_tree: uncommitted (Batch 17; commit only when ARM asks)
 build:
   api_import: passing
   web_next_build: passing (2026-07-12)
 tests:
-  backend_functions: 306
-  full_suite: "305 passed, 1 skipped (2026-07-12)"
-  document_intelligence_tests: "6 passed"
+  backend_functions: 312
+  kg_tests: "6 passed"
+  full_suite: "311 passed, 1 skipped (2026-07-12)"
 ai:
   llm_gateway: app/modules/ai/gateway
-  teacher_copilot: live; grounded lesson plans, QP review, feedback draft
-  document_intelligence: live; pack document ingest → RAG document chunks
-  rag: live; topics + document chunks in curriculum collection
+  teacher_copilot: live
+  document_intelligence: live
+  knowledge_graph: live; spine on pack approve
+  rag: live; topics + document chunks
 next_priority:
-  - Knowledge Graph schema (Batch 17)
-  - ConceptCard table
+  - ConceptCard table (Batch 18)
+  - Question → Concept links (Batch 19)
 blockers: []
 owner_decisions_pending:
   - Final production LLM provider
   - When to commit develop working tree
-  - Textbook/QP folder for bulk ingestion (optional; structured + school uploads work)
   - DPDP before real student PII
 last_validated: "2026-07-12"
 ```

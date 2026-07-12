@@ -4,7 +4,7 @@
 
 ## Status
 
-**🟡 In progress** (~55%)
+**🟡 In progress** (~65%)
 
 ## Owner
 
@@ -19,7 +19,8 @@ Pillar 1 — source of truth for academic AI
 | RAG index on approved pack | ✅ |
 | Grounded QP generation | ✅ |
 | Document Intelligence (OCR→chunk→embed pipeline) | ✅ Batch 16 |
-| Knowledge Graph spine tables | ⬜ Batch 17 |
+| Knowledge Graph spine tables | ✅ Batch 17 |
+| Knowledge Graph (full ontology) | ⬜ Batch 18+ |
 | Curriculum management UI | ⬜ |
 
 ## Files
@@ -40,4 +41,4 @@ RAG · Assessment Intelligence · Teacher Copilot · Document Intelligence
 
 ## Next batch
 
-Knowledge Graph schema (Batch 17)
+ConceptCard table + content review (Batch 18)

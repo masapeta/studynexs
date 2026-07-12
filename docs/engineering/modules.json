@@ -61,10 +61,11 @@
     {
       "id": "KNOWLEDGE_GRAPH",
       "name": "Knowledge Graph",
-      "status": "planned",
-      "verified": "not_started",
+      "status": "complete",
+      "verified": "tests_passing",
+      "batch": 17,
       "doc": "docs/modules/KNOWLEDGE_GRAPH.md",
-      "depends_on": { "satisfied": ["CURRICULUM_INTELLIGENCE"], "pending": ["FILE_PROCESSING"] }
+      "depends_on": { "satisfied": ["CURRICULUM_INTELLIGENCE", "FILE_PROCESSING"], "pending": [] }
     },
     {
       "id": "TEACHER_COPILOT",
@@ -86,7 +87,7 @@
       "doc": "docs/modules/STUDENT_COPILOT.md",
       "depends_on": {
         "satisfied": ["MASTERY_ENGINE", "AI_PLATFORM"],
-        "pending": ["KNOWLEDGE_GRAPH", "RAG"]
+        "pending": ["RAG"]
       }
     },
     {

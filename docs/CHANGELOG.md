@@ -7,25 +7,22 @@ changes under **[Unreleased]** until the first tagged release. Architectural *re
 
 ## [Unreleased]
 
-> Session 2026-07-12 — Batch 16 (Document Intelligence ingestion). Active repo:
-> `D:\Projects\studynexs-platform\studynexs-dev`, branch **`develop`**, **uncommitted**
-> (Prime Directive 9).
+> Session 2026-07-12 — Batch 17 (Knowledge Graph curriculum spine). Active repo:
+> `D:\Projects\studynexs-platform\studynexs-dev`, branch **`develop`**, **uncommitted**.
 
 ### Added
-- **Shared OCR** — `document_ocr.py`; admissions OCR delegates to shared path (§38.1).
-- **`document_intelligence_service.py`** — OCR → chunk → sanitize → embed → index for approved packs.
-- **`RagService.index_document_chunks()`** — document chunks alongside topic vectors (`kind: document_chunk`).
-- **`document_ingestions` table** — audit/version tracking (migration `x4e5f6a7b8c9`).
-- **Ingest API** — `POST /api/v1/curriculum/packs/{pack_id}/ingest-document`, `GET .../ingest-status`.
-- **`tests/test_document_intelligence.py`** (6) — chunking, ingest, status, re-ingest versioning.
-- **Admin UI** — Teaching → Documents (`/dashboard/teaching/document-ingest`).
+- **`curriculum_concepts` + `kg_edges` tables** — typed spine nodes and edges (migration `y5f6a7b8c9d0`).
+- **`KnowledgeGraphService`** — `build_spine_from_pack`, `get_spine`, `backfill_approved_packs`.
+- **Pack approve hook** — spine materialized automatically on approval.
+- **Graph API** — `GET /api/v1/curriculum/packs/{pack_id}/graph`.
+- **`tests/test_knowledge_graph.py`** (6) — spine build, idempotency, tenant isolation, HTTP.
 
 ### Changed
-- Engineering dashboard metadata refreshed for Batch 16 (`platform.json`, `modules.json`, `roadmap.json`, `PLATFORM_STATUS.md`).
+- Engineering dashboard refreshed for Batch 17.
 
 ---
 
-> Session 2026-07-12 — Batch 15 (AI Teacher Copilot). Committed on `develop`.
+> Session 2026-07-12 — Batch 16 (Document Intelligence ingestion). Committed on `develop`.
 
 > Session 2026-07-11 — Merge recovery + Batches 13–14. Committed on `develop`.
 

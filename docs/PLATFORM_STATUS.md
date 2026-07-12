@@ -20,9 +20,9 @@ Documentation must be updated whenever implementation changes (end of every engi
 
 | Field | Value |
 |-------|-------|
-| **Architecture version** | **1.6** |
+| **Architecture version** | **1.7** |
 | **Last updated** | 2026-07-12 |
-| **Last engineering batch** | 16 (Document Intelligence ingestion) |
+| **Last engineering batch** | 17 (Knowledge Graph schema) |
 | **Branch** | `develop` |
 | **Commit** | `8406f6e` (refresh via API runtime or `git rev-parse`) |
 
@@ -32,9 +32,9 @@ Documentation must be updated whenever implementation changes (end of every engi
 
 | Field | Value |
 |-------|-------|
-| **Next batch** | **17 — Knowledge Graph schema (curriculum spine)** |
-| **Summary** | Curriculum spine graph linking packs, topics, and document chunks |
-| **Estimated** | ~8 days |
+| **Next batch** | **18 — ConceptCard first-class table** |
+| **Summary** | Approved concept cards for tutor grounding and content review |
+| **Estimated** | ~6 days |
 | **Dependencies blocking** | None |
 | **Dependencies satisfied** | Embeddings · RAG · Curriculum Intelligence · AI Platform |
 | **Optional** | Knowledge Graph (enhances, not required for MVP) |
@@ -45,7 +45,8 @@ Documentation must be updated whenever implementation changes (end of every engi
 
 | Signal | Status | Verified |
 |--------|--------|----------|
-| Tests (`apps/api/tests/`) | 305 passed, 1 skipped | Tests passing |
+| Tests (`apps/api/tests/`) | 311 passed, 1 skipped | Tests passing |
+| Knowledge Graph (spine) | ✅ Batch 17 | Tests passing |
 | LLM gateway | ✅ live | Tests passing |
 | Embeddings | ✅ OpenAI + stub | Tests passing |
 | Vector DB | ✅ Qdrant | Tests passing |
@@ -77,7 +78,7 @@ Documentation must be updated whenever implementation changes (end of every engi
 | CurriculumPack + approval | ✅ | Tests passing | pre-12 |
 | Teacher Copilot | ✅ | Tests passing | 15 |
 | Document Intelligence | ✅ | Tests passing | 16 |
-| Knowledge Graph | 🔴 | Not started | 17 |
+| Knowledge Graph | ✅ | Tests passing | 17 |
 | Mastery engine | ✅ | Tests passing | pre-12 |
 | Authorization / tenant isolation | ✅ | Tests passing | 1–6 |
 
@@ -98,7 +99,7 @@ Full matrix: [`engineering/platform.json`](./engineering/platform.json)
 | Teacher Copilot | ✅ | Tests passing | Embeddings, RAG, Curriculum, AI Platform | — |
 | Student Copilot | 🔴 | Not started | Mastery, AI Platform | Knowledge Graph, RAG |
 | Parent Copilot | 🔴 | Not started | Mastery, Authorization | Student Copilot |
-| Knowledge Graph | 🔴 | Not started | Curriculum Intelligence, File Processing | — |
+| Knowledge Graph | ✅ | Tests passing | Curriculum Intelligence, File Processing | — |
 | File Processing | ✅ | Tests passing | AI Platform, OCR Pipeline, RAG | — |
 | OCR Pipeline | 🟡 | Partial | AI Platform, File Processing | Vision unification |
 | Mastery Engine | ✅ | Tests passing | Authorization | — |

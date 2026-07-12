@@ -1,19 +1,21 @@
 {
   "schema_version": 2,
   "last_completed_batch": {
-    "number": 16,
-    "title": "Document Intelligence ingestion",
+    "number": 17,
+    "title": "Knowledge Graph schema (curriculum spine)",
     "completed_at": "2026-07-12"
   },
   "current_batch": null,
   "next_milestone": {
-    "batch": 17,
-    "title": "Knowledge Graph schema (curriculum spine)",
-    "summary": "Curriculum spine graph schema linking packs, topics, and document chunks for richer grounding.",
-    "estimated_days": 8,
+    "batch": 18,
+    "title": "ConceptCard first-class table",
+    "summary": "Approved concept cards as first-class entities for tutor grounding and content review.",
+    "estimated_days": 6,
     "dependencies_blocking": [],
-    "dependencies_satisfied": ["AI_PLATFORM", "EMBEDDINGS", "RAG", "FILE_PROCESSING", "CURRICULUM_INTELLIGENCE"],
+    "dependencies_satisfied": ["KNOWLEDGE_GRAPH", "CURRICULUM_INTELLIGENCE", "RAG"],
     "dependencies_optional": []
   },
-  "upcoming": []
+  "upcoming": [
+    { "batch": 19, "title": "Question → Concept graph links", "estimated_days": 5 }
+  ]
 }
