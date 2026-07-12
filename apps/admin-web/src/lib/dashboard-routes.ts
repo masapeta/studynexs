@@ -23,6 +23,7 @@ export const TEACHING = {
   reportCards: "/dashboard/teaching/report-cards",
   aiPapers: "/dashboard/teaching/ai-papers",
   lessonPlans: "/dashboard/teaching/lesson-plans",
+  documentIngest: "/dashboard/teaching/document-ingest",
   mastery: "/dashboard/teaching/mastery",
   masteryDigest: "/dashboard/teaching/mastery/digest",
   corrections: "/dashboard/teaching/exams/corrections",
