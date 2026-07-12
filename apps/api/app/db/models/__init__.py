@@ -58,3 +58,10 @@ from app.db.models.document_ingestion import (  # noqa: F401
     DocumentType,
     IngestStatus,
 )
+from app.db.models.knowledge_graph import (  # noqa: F401
+    ConceptSource,
+    CurriculumConcept,
+    KgEdge,
+    KgEdgeType,
+    KgNodeType,
+)

@@ -196,4 +196,9 @@ class PackService:
         pack.approved_by = approved_by
         pack.approved_at = datetime.now(timezone.utc)
         await self.db.flush()
+        from app.modules.knowledge_graph.services.graph_service import KnowledgeGraphService
+
+        await KnowledgeGraphService(self.db).build_spine_from_pack(
+            school_id=school_id, pack_id=pack_id
+        )
         return pack
