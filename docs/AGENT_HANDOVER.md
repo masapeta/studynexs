@@ -843,6 +843,27 @@ reusing `RagService`. HITL unchanged.
 
 ---
 
+# Engineering Session 08 — 2026-07-12
+
+- **Engineering batch:** 19 — Question → Concept graph links
+- **HEAD:** `aade136` + Batch 19 working tree (**uncommitted**)
+
+## Shipped
+
+- Extended KG enums: `QUESTION_BANK_ITEM` node type, `TESTS` edge type (migration `a8b9c0d1e2f3`)
+- `QuestionConceptLinkService` — resolves citations + concept labels → spine concepts
+- Bank ingest hook: grounded paper approval creates TESTS edges per question
+- Spine rebuild remaps question links when concept ids rotate
+- API: `GET /api/v1/ai/question-bank/items/{item_id}/concepts`
+- Tests: `test_question_concept_links.py` (6 passed)
+- Full suite: **321 passed**, 1 skipped
+
+## Next batch
+
+**Batch 20 — Content Review Queue**
+
+---
+
 ## Machine-readable snapshot (read this first)
 
 > A quick, structured state for any agent (Claude Code, Cursor, …) before reading the full log above.
@@ -851,17 +872,17 @@ reusing `RagService`. HITL unchanged.
 ```yaml
 project: StudyNexs
 current_phase: Platform Development
-last_completed_batch: "Batch 18 — ConceptCard first-class table"
-next_batch: Question → Concept graph links
-working_tree: uncommitted (Batch 18)
+last_completed_batch: "Batch 19 — Question → Concept graph links"
+next_batch: Content Review Queue
+working_tree: uncommitted (Batch 19)
 tests:
-  full_suite: "315 passed, 1 skipped (2026-07-12)"
-  concept_card_tests: "4 passed"
+  full_suite: "321 passed, 1 skipped (2026-07-12)"
+  question_concept_links_tests: "6 passed"
 ai:
   concept_cards: live; tutor retrieval by concept slug
+  question_concept_links: live on bank ingest for grounded papers
 next_priority:
-  - Question → Concept links (Batch 19)
-  - Content Review Queue
+  - Content Review Queue (Batch 20)
 blockers: []
 owner_decisions_pending:
   - Final production LLM provider

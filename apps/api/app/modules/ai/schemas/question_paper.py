@@ -64,6 +64,21 @@ class BankSummaryOut(BaseModel):
     subject_id: uuid.UUID
 
 
+class BankItemConceptOut(BaseModel):
+    id: uuid.UUID
+    topic_id: uuid.UUID
+    slug: str
+    title: str
+    order_index: int
+
+    model_config = {"from_attributes": True}
+
+
+class BankItemConceptsOut(BaseModel):
+    item_id: uuid.UUID
+    concepts: list[BankItemConceptOut] = Field(default_factory=list)
+
+
 class QuestionOut(BaseModel):
     number: str                      # "1", "2(a)", etc.
     text: str

@@ -29,6 +29,7 @@ from app.core.staff_permissions import (
     get_staff_scope,
 )
 from app.db.models.ai_usage import AIUsage
+from app.db.models.question_bank import QuestionBankItem
 from app.db.models.question_paper import PaperStatus, QuestionPaper
 from app.db.models.report_card import ReportCard, ReportStatus
 from app.db.models.school import School
@@ -41,6 +42,7 @@ from app.modules.ai.schemas.credits import (
     UsageLogOut,
 )
 from app.modules.ai.schemas.question_paper import (
+    BankItemConceptsOut,
     BankSummaryOut,
     DuplicatePaperRequest,
     GenerateRequest,
@@ -70,6 +72,9 @@ from app.modules.ai.services.question_bank_service import (
     BankIngestError,
     count_compose_candidates,
     ingest_from_paper,
+)
+from app.modules.knowledge_graph.services.question_concept_link_service import (
+    QuestionConceptLinkService,
 )
 from app.modules.ai.services.question_paper_service import (
     duplicate_paper,
@@ -504,6 +509,41 @@ async def question_bank_summary(
         db, school_id=school_id, class_id=class_id, subject_id=subject_id
     )
     return BankSummaryOut(count=count, class_id=class_id, subject_id=subject_id)
+
+
+@router.get(
+    "/question-bank/items/{item_id}/concepts",
+    response_model=APIResponse[BankItemConceptsOut],
+)
+async def question_bank_item_concepts(
+    item_id: uuid.UUID,
+    current_user: CurrentUser = Depends(require_roles(*_TEACH_ROLES)),
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse[BankItemConceptsOut]:
+    """Concepts linked to an approved question bank item (Knowledge Graph TESTS edges)."""
+    school_id = uuid.UUID(current_user.school_id)
+    item = (
+        await db.execute(
+            select(QuestionBankItem).where(
+                QuestionBankItem.id == item_id,
+                QuestionBankItem.school_id == school_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if item is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bank item not found")
+
+    scope = await get_staff_scope(db, current_user)
+    assert_qp_generate(scope, item.class_id, item.subject_id)
+
+    linker = QuestionConceptLinkService(db)
+    concepts = await linker.get_concepts_for_item(school_id=school_id, item_id=item_id)
+    return APIResponse(
+        data=BankItemConceptsOut(
+            item_id=item_id,
+            concepts=concepts,
+        )
+    )
 
 
 @router.post(

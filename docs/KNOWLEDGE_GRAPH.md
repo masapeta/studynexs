@@ -1,8 +1,8 @@
 # The School Knowledge Graph
 
-> **Engineering companion** to [`/CLAUDE.md`](../CLAUDE.md) §39.3 (canonical). **Status: planned — no
-> tables yet.** This doc captures the model, the build order, and the rules so it's built correctly
-> when its turn comes. It is the backbone of Curriculum Intelligence.
+> **Engineering companion** to [`/CLAUDE.md`](../CLAUDE.md) §39.3 (canonical). **Status: spine +
+> question links live in Postgres.** This doc captures the model, build order, and rules. It is the
+> backbone of Curriculum Intelligence.
 
 ## Why it exists
 
@@ -48,5 +48,6 @@ Teacher    → Lesson             Textbook → Chapter → Concept   (planning +
 ## Current state
 
 Curriculum spine is **implemented** in Postgres (`curriculum_concepts`, `kg_edges`). Pack approval
-materializes `Pack → Chapter → Topic → Concept` edges plus `Pack → Subject`. Question links,
-student weak-concept edges, and Concept Cards are sequenced next (→ [`ROADMAP.md`](./ROADMAP.md)).
+materializes `Pack → Chapter → Topic → Concept` edges plus `Pack → Subject`. Question bank ingest
+creates `QuestionBankItem → Concept` TESTS edges from grounded paper citations. Student weak-concept
+edges and Content Review Queue are sequenced next (→ [`ROADMAP.md`](./ROADMAP.md)).

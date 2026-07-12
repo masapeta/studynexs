@@ -6,7 +6,7 @@ import uuid
 from dataclasses import dataclass
 
 import structlog
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.curriculum_pack import (
@@ -33,6 +33,7 @@ from app.modules.knowledge_graph.schemas.graph import (
 logger = structlog.get_logger()
 
 _SLUG_RE = re.compile(r"[^\w\s-]", re.UNICODE)
+_SPINE_EDGE_TYPES = (KgEdgeType.CONTAINS, KgEdgeType.PART_OF)
 
 
 class KnowledgeGraphError(ValueError):
@@ -63,6 +64,7 @@ class KnowledgeGraphService:
             delete(KgEdge).where(
                 KgEdge.school_id == school_id,
                 KgEdge.pack_id == pack_id,
+                KgEdge.edge_type.in_(_SPINE_EDGE_TYPES),
             )
         )
         await self.db.execute(
@@ -97,6 +99,57 @@ class KnowledgeGraphService:
         self.db.add(edge)
         return edge
 
+    async def _snapshot_tests_links(
+        self, *, school_id: uuid.UUID, pack_id: uuid.UUID
+    ) -> list[tuple[uuid.UUID, uuid.UUID, uuid.UUID, str]]:
+        """Capture TESTS edge targets before spine rebuild replaces concept ids."""
+        rows = await self.db.execute(
+            select(
+                KgEdge.id,
+                KgEdge.from_id,
+                CurriculumConcept.topic_id,
+                CurriculumConcept.slug,
+            )
+            .join(CurriculumConcept, KgEdge.to_id == CurriculumConcept.id)
+            .where(
+                KgEdge.school_id == school_id,
+                KgEdge.pack_id == pack_id,
+                KgEdge.edge_type == KgEdgeType.TESTS,
+            )
+        )
+        return list(rows.all())
+
+    async def _remap_tests_links(
+        self,
+        *,
+        school_id: uuid.UUID,
+        pack_id: uuid.UUID,
+        snapshots: list[tuple[uuid.UUID, uuid.UUID, uuid.UUID, str]],
+    ) -> None:
+        if not snapshots:
+            return
+        concepts = list(
+            (
+                await self.db.execute(
+                    select(CurriculumConcept).where(
+                        CurriculumConcept.school_id == school_id,
+                        CurriculumConcept.pack_id == pack_id,
+                    )
+                )
+            ).scalars().all()
+        )
+        by_topic_slug = {(c.topic_id, c.slug): c.id for c in concepts}
+        for edge_id, _from_id, topic_id, slug in snapshots:
+            new_concept_id = by_topic_slug.get((topic_id, slug))
+            if new_concept_id is None:
+                await self.db.execute(delete(KgEdge).where(KgEdge.id == edge_id))
+            else:
+                await self.db.execute(
+                    update(KgEdge)
+                    .where(KgEdge.id == edge_id)
+                    .values(to_id=new_concept_id)
+                )
+
     async def build_spine_from_pack(
         self, *, school_id: uuid.UUID, pack_id: uuid.UUID
     ) -> SpineBuildResult:
@@ -105,6 +158,9 @@ class KnowledgeGraphService:
         if pack.status != PackStatus.APPROVED:
             raise KnowledgeGraphError("Spine can only be built from approved packs")
 
+        tests_snapshots = await self._snapshot_tests_links(
+            school_id=school_id, pack_id=pack_id
+        )
         await self.delete_spine_for_pack(school_id=school_id, pack_id=pack_id)
 
         chapters = list(
@@ -210,6 +266,9 @@ class KnowledgeGraphService:
                     edges_created += 1
 
         await self.db.flush()
+        await self._remap_tests_links(
+            school_id=school_id, pack_id=pack_id, snapshots=tests_snapshots
+        )
         logger.info(
             "kg_spine_built",
             school_id=str(school_id),

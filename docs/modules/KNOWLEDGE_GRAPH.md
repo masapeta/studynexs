@@ -4,7 +4,7 @@
 
 ## Status
 
-**✅ Complete (spine MVP)** — Batch 17
+**✅ Complete (spine + question links MVP)** — Batch 19
 
 ## Owner
 
@@ -19,7 +19,7 @@ Shared spine — Pack → Chapter → Topic → Concept
 | Spine build on pack approve | ✅ |
 | `GET /packs/{id}/graph` read API | ✅ |
 | `ConceptCard` first-class model | ✅ Batch 18 |
-| Question → Concept links | ⬜ Batch 19 |
+| Question → Concept links | ✅ Batch 19 |
 | Graph queries for copilots | ⬜ |
 
 ## Implementation
@@ -28,9 +28,11 @@ Shared spine — Pack → Chapter → Topic → Concept
 |-------|------|
 | Models | `apps/api/app/db/models/knowledge_graph.py` |
 | Service | `apps/api/app/modules/knowledge_graph/services/graph_service.py` |
+| Question links | `apps/api/app/modules/knowledge_graph/services/question_concept_link_service.py` |
 | API | `GET /api/v1/curriculum/packs/{pack_id}/graph` |
-| Hook | `PackService.approve_pack` → `build_spine_from_pack` |
-| Tests | `apps/api/tests/test_knowledge_graph.py` (6) |
+| Bank concepts API | `GET /api/v1/ai/question-bank/items/{item_id}/concepts` |
+| Hook | `PackService.approve_pack` → `build_spine_from_pack`; `ingest_from_paper` → TESTS edges |
+| Tests | `apps/api/tests/test_knowledge_graph.py` (6) · `test_question_concept_links.py` (6) |
 
 ## Used by
 

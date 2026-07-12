@@ -26,11 +26,13 @@ class KgNodeType(str, enum.Enum):
     CHAPTER = "chapter"
     TOPIC = "topic"
     CONCEPT = "concept"
+    QUESTION_BANK_ITEM = "question_bank_item"
 
 
 class KgEdgeType(str, enum.Enum):
     CONTAINS = "contains"
     PART_OF = "part_of"
+    TESTS = "tests"
 
 
 class CurriculumConcept(BaseModel):
@@ -91,4 +93,5 @@ class KgEdge(BaseModel):
         ),
         Index("ix_kg_edges_school_pack", "school_id", "pack_id"),
         Index("ix_kg_edges_to", "school_id", "to_node_type", "to_id"),
+        Index("ix_kg_edges_from", "school_id", "from_node_type", "from_id"),
     )

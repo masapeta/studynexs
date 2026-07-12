@@ -21,6 +21,7 @@ Pillar 1 — source of truth for academic AI
 | Document Intelligence (OCR→chunk→embed pipeline) | ✅ Batch 16 |
 | Knowledge Graph spine tables | ✅ Batch 17 |
 | ConceptCard first-class table | ✅ Batch 18 |
+| Question → Concept links on bank ingest | ✅ Batch 19 |
 | Content Review Queue | ⬜ planned |
 | Curriculum management UI | ⬜ |
 
@@ -42,4 +43,4 @@ RAG · Assessment Intelligence · Teacher Copilot · Document Intelligence
 
 ## Next batch
 
-Question → Concept graph links (Batch 19)
+Content Review Queue (Batch 20)

@@ -58,6 +58,13 @@ async def ingest_from_paper(
     """
     from app.modules.ai.services.question_paper_service import normalize_sections
 
+    from app.modules.knowledge_graph.services.question_concept_link_service import (
+        QuestionConceptLinkService,
+    )
+
+    linker = QuestionConceptLinkService(db)
+    await linker.delete_links_for_paper(school_id=paper.school_id, paper_id=paper.id)
+
     await db.execute(
         delete(QuestionBankItem).where(
             QuestionBankItem.source_paper_id == paper.id,
@@ -73,6 +80,7 @@ async def ingest_from_paper(
     paper_id_str = str(paper.id)
     items: list[QuestionBankItem] = []
     pending_rubrics: list[tuple[QuestionBankItem, str]] = []
+    questions_by_key: dict[tuple[str, str], dict] = {}
     # The bank's unique key is (source_paper_id, section_title, question_number).
     # A malformed paper (LLM emitting a duplicate number, or a blank number whose
     # positional fallback collides) would otherwise raise IntegrityError and fail the
@@ -122,6 +130,7 @@ async def ingest_from_paper(
                 ai_model=paper.ai_model,
             )
             items.append(item)
+            questions_by_key[(section_title, number)] = question
             answer_key = question.get("answer_key")
             if answer_key is not None and str(answer_key).strip():
                 pending_rubrics.append((item, str(answer_key)))
@@ -137,6 +146,10 @@ async def ingest_from_paper(
             RubricBankItem(question_bank_item_id=item.id, answer_key=answer_key)
             for item, answer_key in pending_rubrics
         )
+
+    await linker.link_items_from_paper(
+        paper, items, questions_by_key=questions_by_key
+    )
 
     logger.info(
         "bank_ingest_complete",

@@ -7,6 +7,21 @@ changes under **[Unreleased]** until the first tagged release. Architectural *re
 
 ## [Unreleased]
 
+> Session 2026-07-12 — Batch 19 (Question → Concept graph links). **Uncommitted.**
+
+### Added
+- **`KgNodeType.QUESTION_BANK_ITEM` + `KgEdgeType.TESTS`** — question bank items linked to spine concepts (migration `a8b9c0d1e2f3`).
+- **`QuestionConceptLinkService`** — citation/concept resolution on bank ingest; spine rebuild remaps links.
+- **API** — `GET /api/v1/ai/question-bank/items/{item_id}/concepts`.
+- **`tests/test_question_concept_links.py`** (6).
+
+### Changed
+- **`ingest_from_paper`** — creates TESTS edges for grounded papers with citations.
+- **`build_spine_from_pack`** — preserves/remaps question links on spine rebuild.
+- Engineering dashboard refreshed for Batch 19.
+
+---
+
 > Session 2026-07-12 — Batch 18 (ConceptCard first-class table). **Uncommitted.**
 
 ### Added
