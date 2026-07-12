@@ -864,6 +864,25 @@ reusing `RagService`. HITL unchanged.
 
 ---
 
+# Engineering Session 09 — 2026-07-12
+
+- **Engineering batch:** 20 — Content Review Queue
+- **HEAD:** `e54818d` + Batch 20 working tree (**uncommitted**)
+
+## Shipped
+
+- `content_review_items` table + `ContentReviewService`
+- API: `/curriculum/content-review/queue`, approve/reject, concept gap enqueue
+- Tutor auto-enqueues gap when no approved ConceptCard for slug
+- Document ingest → review queue on completion
+- Tests: `test_content_review_queue.py` (5 passed)
+
+## Next batch
+
+**Batch 21 — Curriculum management UI**
+
+---
+
 ## Machine-readable snapshot (read this first)
 
 > A quick, structured state for any agent (Claude Code, Cursor, …) before reading the full log above.
@@ -872,17 +891,18 @@ reusing `RagService`. HITL unchanged.
 ```yaml
 project: StudyNexs
 current_phase: Platform Development
-last_completed_batch: "Batch 19 — Question → Concept graph links"
-next_batch: Content Review Queue
-working_tree: uncommitted (Batch 19)
+last_completed_batch: "Batch 20 — Content Review Queue"
+next_batch: Curriculum management UI
+working_tree: uncommitted (Batch 20)
 tests:
-  full_suite: "321 passed, 1 skipped (2026-07-12)"
-  question_concept_links_tests: "6 passed"
+  full_suite: "326 passed, 1 skipped (2026-07-12)"
+  content_review_tests: "5 passed"
 ai:
   concept_cards: live; tutor retrieval by concept slug
   question_concept_links: live on bank ingest for grounded papers
+  content_review_queue: live; tutor gaps + document ingest
 next_priority:
-  - Content Review Queue (Batch 20)
+  - Curriculum management UI (Batch 21)
 blockers: []
 owner_decisions_pending:
   - Final production LLM provider

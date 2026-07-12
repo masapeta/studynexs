@@ -167,6 +167,13 @@ class DocumentIntelligenceService:
             )
             ingestion.chunks_indexed = indexed
             ingestion.status = IngestStatus.COMPLETED
+            from app.modules.curriculum.services.content_review_service import (
+                ContentReviewService,
+            )
+
+            await ContentReviewService(self.db).enqueue_document_ingest(
+                school_id=school_id, ingestion=ingestion
+            )
             logger.info(
                 "document_ingested",
                 school_id=str(school_id),

@@ -22,8 +22,8 @@ Pillar 1 — source of truth for academic AI
 | Knowledge Graph spine tables | ✅ Batch 17 |
 | ConceptCard first-class table | ✅ Batch 18 |
 | Question → Concept links on bank ingest | ✅ Batch 19 |
-| Content Review Queue | ⬜ planned |
-| Curriculum management UI | ⬜ |
+| Content Review Queue | ✅ Batch 20 |
+| Curriculum management UI | ⬜ planned |
 
 ## Files
 
@@ -39,8 +39,8 @@ RAG · Assessment Intelligence · Teacher Copilot · Document Intelligence
 
 ## Tests
 
-`tests/test_curriculum_pack.py` · `tests/test_document_intelligence.py` · `tests/test_concept_card.py`
+`tests/test_curriculum_pack.py` · `tests/test_document_intelligence.py` · `tests/test_concept_card.py` · `tests/test_content_review_queue.py`
 
 ## Next batch
 
-Content Review Queue (Batch 20)
+Curriculum management UI (Batch 21)

@@ -124,6 +124,19 @@ async def get_lesson(
     card_match = await ConceptCardService(db).get_approved_by_slug(
         school_id=school_id, slug=lesson_key
     )
+    if card_match is None:
+        from app.db.models.content_review import ContentReviewSource
+        from app.modules.curriculum.services.content_review_service import (
+            ContentReviewService,
+        )
+
+        await ContentReviewService(db).enqueue_concept_gap_by_slug(
+            school_id=school_id,
+            slug=lesson_key,
+            created_by=student.user_id,
+            source=ContentReviewSource.TUTOR_GAP,
+        )
+
     if card_match is not None:
         card, concept = card_match
         weak = await _weak_topics(db, school_id, student_id)

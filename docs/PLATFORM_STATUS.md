@@ -20,9 +20,9 @@ Documentation must be updated whenever implementation changes (end of every engi
 
 | Field | Value |
 |-------|-------|
-| **Architecture version** | **1.9** |
+| **Architecture version** | **2.0** |
 | **Last updated** | 2026-07-12 |
-| **Last engineering batch** | 19 (Question → Concept graph links) |
+| **Last engineering batch** | 20 (Content Review Queue) |
 | **Branch** | `develop` |
 | **Commit** | `8406f6e` (refresh via API runtime or `git rev-parse`) |
 
@@ -32,8 +32,8 @@ Documentation must be updated whenever implementation changes (end of every engi
 
 | Field | Value |
 |-------|-------|
-| **Next batch** | **20 — Content Review Queue** |
-| **Summary** | Teacher/HOD review queue for ConceptCards and ingested curriculum content |
+| **Next batch** | **21 — Curriculum management UI** |
+| **Summary** | Admin UI for pack lifecycle, concept cards, review queue, document ingest |
 | **Estimated** | ~5 days |
 | **Dependencies blocking** | None |
 | **Dependencies satisfied** | Embeddings · RAG · Curriculum Intelligence · AI Platform |
@@ -45,7 +45,8 @@ Documentation must be updated whenever implementation changes (end of every engi
 
 | Signal | Status | Verified |
 |--------|--------|----------|
-| Tests (`apps/api/tests/`) | 321 passed, 1 skipped | Tests passing |
+| Tests (`apps/api/tests/`) | 326 passed, 1 skipped | Tests passing |
+| Content Review Queue | ✅ Batch 20 | Tests passing |
 | Question → Concept links | ✅ Batch 19 | Tests passing |
 | ConceptCard (tutor grounding) | ✅ Batch 18 | Tests passing |
 | Knowledge Graph (spine) | ✅ Batch 17 | Tests passing |

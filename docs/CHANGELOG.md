@@ -7,7 +7,22 @@ changes under **[Unreleased]** until the first tagged release. Architectural *re
 
 ## [Unreleased]
 
-> Session 2026-07-12 — Batch 19 (Question → Concept graph links). **Uncommitted.**
+> Session 2026-07-12 — Batch 20 (Content Review Queue). **Uncommitted.**
+
+### Added
+- **`content_review_items` table** — pending/approved/rejected HITL queue (migration `b9c0d1e2f3a4`).
+- **`ContentReviewService`** — concept card gaps + document ingest review; approve promotes ConceptCard.
+- **Content Review API** — queue list, enqueue, edit, approve, reject under `/api/v1/curriculum/content-review/`.
+- **Tutor hook** — missing approved card auto-enqueues tutor gap item.
+- **Document ingest hook** — completed ingest enqueues teacher review item.
+- **`tests/test_content_review_queue.py`** (5).
+
+### Changed
+- Engineering dashboard refreshed for Batch 20.
+
+---
+
+> Session 2026-07-12 — Batch 19 (Question → Concept graph links). Committed on `develop`.
 
 ### Added
 - **`KgNodeType.QUESTION_BANK_ITEM` + `KgEdgeType.TESTS`** — question bank items linked to spine concepts (migration `a8b9c0d1e2f3`).

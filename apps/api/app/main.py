@@ -207,11 +207,13 @@ def create_app() -> FastAPI:
     from app.modules.curriculum.endpoints.ingest import router as curriculum_ingest_router
     from app.modules.curriculum.endpoints.graph import router as curriculum_graph_router
     from app.modules.curriculum.endpoints.concept_card import router as concept_card_router
+    from app.modules.curriculum.endpoints.content_review import router as content_review_router
 
     app.include_router(curriculum_pack_router, prefix=f"{prefix}/curriculum", tags=["curriculum"])
     app.include_router(curriculum_ingest_router, prefix=f"{prefix}/curriculum", tags=["curriculum"])
     app.include_router(curriculum_graph_router, prefix=f"{prefix}/curriculum", tags=["curriculum"])
     app.include_router(concept_card_router, prefix=f"{prefix}/curriculum", tags=["curriculum"])
+    app.include_router(content_review_router, prefix=f"{prefix}/curriculum", tags=["curriculum"])
     app.include_router(portal_router, prefix=f"{prefix}/portal", tags=["portal"])
 
     from app.modules.tutor.endpoints.tutor import router as tutor_router

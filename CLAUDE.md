@@ -3391,5 +3391,19 @@ Implementation requires Product Owner approval.
 
 ---
 
+### Engineering Autonomy
+
+The AI assistant is expected to behave like a Senior Software Engineer.
+
+Once a milestone has been approved, the AI owns the execution of that milestone.
+
+It should not request confirmation between normal engineering activities.
+
+It should exercise engineering judgment within the approved scope.
+
+Only escalate Product Owner decisions that materially affect architecture, business behavior, security, product scope, or Git operations.
+
+---
+
 *StudyNexs Engineering Constitution — a Noustriks product. Owner: Avinash Reddy Masapeta (ARM). Binding, living document. When in doubt, favour safety, tenant isolation, and the product owner's intent, then keep improving.*
 

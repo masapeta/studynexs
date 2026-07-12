@@ -253,6 +253,50 @@ Otherwise continue implementation without asking for confirmation between normal
 
 ---
 
+## Autonomous Engineering
+
+Unless one of the stop conditions below is encountered, continue through the entire engineering batch without requesting confirmation between normal engineering activities.
+
+Normal engineering activities include:
+
+- Repository verification
+- Reading documentation
+- Planning
+- Implementation
+- Refactoring within approved scope
+- Running tests
+- Fixing test failures
+- Updating documentation
+- Updating the Engineering Dashboard
+- Producing the Engineering Report
+
+Do not stop after each of these activities.
+
+Treat them as one continuous engineering workflow.
+
+Only stop when:
+
+- A Product Owner decision is required.
+- An architectural change requires approval.
+- A Git operation requires approval.
+- External credentials or systems are unavailable.
+- A Critical repository issue prevents safe implementation.
+
+Continue autonomously until the engineering batch is complete.
+
+After completing the batch:
+
+- Present the Engineering Report.
+- Summarize verification.
+- Summarize documentation updates.
+- Summarize remaining work.
+
+Do not commit.
+
+Wait for my approval before committing.
+
+---
+
 ## Engineering Dashboard Policy
 
 Before implementing:
