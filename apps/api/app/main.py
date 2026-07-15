@@ -219,8 +219,12 @@ def create_app() -> FastAPI:
     app.include_router(portal_router, prefix=f"{prefix}/portal", tags=["portal"])
 
     from app.modules.tutor.endpoints.tutor import router as tutor_router
+    from app.modules.parent_copilot.endpoints.copilot import router as parent_copilot_router
 
     app.include_router(tutor_router, prefix=f"{prefix}/tutor", tags=["tutor"])
+    app.include_router(
+        parent_copilot_router, prefix=f"{prefix}/parent-copilot", tags=["parent-copilot"]
+    )
 
     from app.modules.curriculum.endpoints.lesson_plan import router as lesson_plan_router
     from app.modules.dashboard.endpoints.dashboard import router as dashboard_router
