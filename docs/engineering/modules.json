@@ -84,12 +84,13 @@
     {
       "id": "STUDENT_COPILOT",
       "name": "Student Copilot",
-      "status": "planned",
-      "verified": "not_started",
+      "status": "in_progress",
+      "verified": "tests_passing",
+      "batch": 25,
       "doc": "docs/modules/STUDENT_COPILOT.md",
       "depends_on": {
-        "satisfied": ["MASTERY_ENGINE", "AI_PLATFORM"],
-        "pending": ["RAG"]
+        "satisfied": ["MASTERY_ENGINE", "AI_PLATFORM", "RAG", "KNOWLEDGE_GRAPH"],
+        "pending": []
       }
     },
     {

@@ -19,7 +19,9 @@ from app.modules.ai.gateway.input_guard import (
     sanitize_prompt_text,
     sanitize_tts_voice,
 )
+from app.modules.tutor.schemas.copilot import CopilotAnswerOut, CopilotAskIn, StudyContextOut
 from app.modules.tutor.schemas.tutor import TutorLessonOut, TutorRecommendationOut
+from app.modules.tutor.services.student_copilot_service import StudentCopilotService
 from app.modules.tutor.services.tts_service import (
     default_tts_voice,
     resolve_tts_backend,
@@ -34,6 +36,7 @@ router = APIRouter(route_class=CommitOnSuccessRoute)
 logger = structlog.get_logger()
 
 _TTS_RATE = {"max_requests": 40, "window_seconds": 60}
+_COPILOT_RATE = {"max_requests": 20, "window_seconds": 60}
 _TTS_ROLES = frozenset({"student", "parent", "teacher", "class_incharge", "admin", "super_admin"})
 
 
@@ -68,6 +71,53 @@ class TtsRequest(BaseModel):
             str(v), max_length=80, field_name="step_title", reject_injection=False
         )
         return cleaned or None
+
+
+@router.get(
+    "/students/{student_id}/study-context",
+    response_model=APIResponse[StudyContextOut],
+)
+async def student_study_context(
+    student_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Weak concepts + hybrid RAG context for Student Copilot."""
+    await assert_can_access_student(current_user, db, student_id)
+    try:
+        ctx = await StudentCopilotService(db).get_study_context(
+            school_id=uuid.UUID(current_user.school_id),
+            student_id=student_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return APIResponse(data=ctx)
+
+
+@router.post(
+    "/students/{student_id}/ask",
+    response_model=APIResponse[CopilotAnswerOut],
+    dependencies=[rate_limit("student_copilot", **_COPILOT_RATE)],
+)
+async def student_copilot_ask(
+    student_id: uuid.UUID,
+    body: CopilotAskIn,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Grounded study Q&A — metered, supportive draft (not authoritative grades)."""
+    await assert_can_access_student(current_user, db, student_id)
+    try:
+        answer = await StudentCopilotService(db).ask(
+            school_id=uuid.UUID(current_user.school_id),
+            student_id=student_id,
+            body=body,
+            user_id=uuid.UUID(current_user.user_id),
+            role=current_user.role,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return APIResponse(data=answer)
 
 
 @router.get(

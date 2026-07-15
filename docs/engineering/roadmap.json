@@ -1,18 +1,18 @@
 {
   "schema_version": 2,
   "last_completed_batch": {
-    "number": 24,
-    "title": "RAG hybrid search + re-ranking",
-    "completed_at": "2026-07-12"
+    "number": 25,
+    "title": "Student Copilot MVP",
+    "completed_at": "2026-07-15"
   },
   "current_batch": null,
   "next_milestone": {
-    "batch": 25,
-    "title": "Student Copilot MVP",
-    "summary": "Grounded study assistance using weak-concept graph, ConceptCards, and hybrid RAG retrieval.",
-    "estimated_days": 7,
+    "batch": 26,
+    "title": "Student Copilot UI",
+    "summary": "Student tutor page with focus chips and ask panel wired to Student Copilot API.",
+    "estimated_days": 3,
     "dependencies_blocking": [],
-    "dependencies_satisfied": ["RAG", "KNOWLEDGE_GRAPH", "CURRICULUM_INTELLIGENCE", "MASTERY_ENGINE"],
+    "dependencies_satisfied": ["STUDENT_COPILOT"],
     "dependencies_optional": []
   },
   "upcoming": []

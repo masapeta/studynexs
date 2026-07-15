@@ -7,20 +7,20 @@ changes under **[Unreleased]** until the first tagged release. Architectural *re
 
 ## [Unreleased]
 
-> Sessions 2026-07-12 — Batch 24. **Uncommitted.**
+> Session 2026-07-15 — Batch 25 (Student Copilot MVP). **Uncommitted.**
 
-### Added (Batch 24)
-- **`HybridRetrievalService`** — vector retrieval + graph concept expansion + lightweight re-ranking.
-- **`ground_for_pack`** now uses hybrid retrieval for copilot grounding quality.
-- **API** — `GET /api/v1/curriculum/packs/{pack_id}/rag/search`.
-- **`tests/test_rag_hybrid.py`** (3).
+### Added (Batch 25)
+- **`StudentCopilotService`** — study context + grounded ask using weak-concept graph, ConceptCards, hybrid RAG.
+- **API** — `GET /tutor/students/{id}/study-context`, `POST /tutor/students/{id}/ask`.
+- **Graph-first tutor recommendations** — weak concepts prioritized in `list_recommendations`.
+- **`tests/test_student_copilot.py`** (4).
 
 ### Changed
-- Engineering dashboard refreshed for Batch 24 (architecture v2.4).
+- Engineering dashboard refreshed for Batch 25.
 
 ---
 
-> Session 2026-07-12 — Batch 23 (Graph queries for copilots). Committed on `develop`.
+> Session 2026-07-12 — Batch 24 (RAG hybrid search + re-ranking). Committed on `develop`.
 
 ### Added
 - **`content_review_items` table** — pending/approved/rejected HITL queue (migration `b9c0d1e2f3a4`).

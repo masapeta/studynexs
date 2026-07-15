@@ -10,6 +10,9 @@ from app.db.models.academic import Subject
 from app.db.models.mastery import StudentTopicMastery
 from app.db.models.misconception import MisconceptionEntry
 from app.db.models.student import Student
+from app.modules.knowledge_graph.services.student_weak_concept_service import (
+    StudentWeakConceptService,
+)
 from app.modules.tutor.schemas.tutor import TutorLessonOut, TutorRecommendationOut
 from app.modules.curriculum.services.concept_card_service import ConceptCardService
 from app.modules.tutor.services.concept_card_lesson import build_lesson_from_concept_card
@@ -63,6 +66,26 @@ async def list_recommendations(
 ) -> list[TutorRecommendationOut]:
     recs: list[TutorRecommendationOut] = []
     seen: set[str] = set()
+
+    # Graph weak concepts first (Batch 25 — Student Copilot spine).
+    for concept, meta in await StudentWeakConceptService(db).get_weak_concepts_for_student(
+        school_id=school_id, student_id=student_id
+    ):
+        key = concept.slug
+        if key in seen:
+            continue
+        seen.add(key)
+        pct = float(meta["mastery_pct"]) if meta and meta.get("mastery_pct") is not None else None
+        reason = f"Weak concept — {pct:.0f}% mastery" if pct is not None else "Weak concept from your graph"
+        recs.append(
+            TutorRecommendationOut(
+                lesson_key=key,
+                topic=concept.title,
+                subject_name="Curriculum",
+                mastery_pct=pct,
+                reason=reason,
+            )
+        )
 
     for mc in await _student_misconceptions(db, school_id, student_id):
         key = slugify_lesson_key(mc.topic)
