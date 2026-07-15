@@ -20,11 +20,11 @@ Documentation must be updated whenever implementation changes (end of every engi
 
 | Field | Value |
 |-------|-------|
-| **Architecture version** | **2.5** |
+| **Architecture version** | **2.6** |
 | **Last updated** | 2026-07-15 |
-| **Last engineering batch** | 26 (Student Copilot UI) |
+| **Last engineering batch** | 28 (Parent Copilot UI) |
 | **Branch** | `develop` |
-| **Commit** | `5b9b0cd` + Batch 26 local |
+| **Commit** | `8ed3a5f` + Batches 27–28 local |
 
 ---
 
@@ -32,8 +32,8 @@ Documentation must be updated whenever implementation changes (end of every engi
 
 | Field | Value |
 |-------|-------|
-| **Next batch** | **27 — Parent Copilot MVP** |
-| **Summary** | Grounded parent briefings on child mastery and home support tips |
+| **Next batch** | **29 — Learning Analytics foundation** |
+| **Summary** | School-wide learning signals dashboard; deterministic metrics first |
 | **Estimated** | ~7 days |
 | **Dependencies blocking** | None |
 | **Dependencies satisfied** | RAG · Knowledge Graph · Curriculum Intelligence · Mastery Engine |
@@ -44,7 +44,8 @@ Documentation must be updated whenever implementation changes (end of every engi
 
 | Signal | Status | Verified |
 |--------|--------|----------|
-| Tests (`apps/api/tests/`) | 337 passed, 2 skipped | Tests passing |
+| Tests (`apps/api/tests/`) | 340 passed, 2 skipped, 0 errors | Verified 2026-07-15 (isolated full suite) |
+| Parent Copilot | ✅ Batches 27–28 | Tests + build passing |
 | Student Copilot | ✅ Batches 25–26 | Tests + build passing |
 | RAG hybrid + re-rank | ✅ Batch 24 | Tests passing |
 | Graph queries for copilots | ✅ Batch 23 | Tests passing |
@@ -70,6 +71,8 @@ Documentation must be updated whenever implementation changes (end of every engi
 
 | Capability | Status | Verified | Batch |
 |------------|--------|----------|-------|
+| Student Copilot | ✅ | Tests passing | 25–26 |
+| Parent Copilot | ✅ | Tests passing | 27–28 |
 | RAG hybrid search + re-ranking | ✅ | Tests passing | 24 |
 | Graph queries for copilots | ✅ | Tests passing | 23 |
 | Student → weak Concept links | ✅ | Tests passing | 22 |
@@ -100,6 +103,7 @@ Full matrix: [`engineering/platform.json`](./engineering/platform.json)
 | Teacher Copilot | ✅ | Tests passing | Embeddings, RAG, Curriculum, AI Platform | — |
 | Assessment Intelligence | ✅ | Tests passing | RAG, AI Platform | — |
 | Student Copilot | ✅ | Tests passing | Mastery, RAG, Knowledge Graph, AI Platform | — |
+| Parent Copilot | ✅ | Tests passing | Mastery, RAG, Knowledge Graph, Authorization | — |
 | File Processing | ✅ | Tests passing | AI Platform, OCR Pipeline, RAG | — |
 | Mastery Engine | ✅ | Tests passing | Authorization | — |
 | AI Platform | ✅ | Tests passing | — | — |
@@ -110,13 +114,15 @@ Module detail: [`docs/modules/`](./modules/) · structured deps: [`engineering/m
 
 ## Maintenance (every engineering batch)
 
-Follow [`engineering/DEVELOPMENT_LIFECYCLE.md`](./engineering/DEVELOPMENT_LIFECYCLE.md).
+Follow [`engineering/005-development-lifecycle.md`](./engineering/005-development-lifecycle.md). Validation standard: [`engineering/004-validation-and-testing.md`](./engineering/004-validation-and-testing.md).
 
-1. Implement + validate (tests are the verification source)
+1. Implement + validate per [`004-validation-and-testing.md`](./engineering/004-validation-and-testing.md)
 2. Update `docs/engineering/platform.json`, `modules.json`, `roadmap.json`
 3. Update this file + affected `docs/modules/*.md`
 4. Update `STATUS.md`, `CHANGELOG.md`, `ROADMAP.md`, `AGENT_HANDOVER.md`
 5. Bump `architecture_version` when platform contracts change materially
+
+**Do not** rewrite core engineering standards (`docs/engineering/001`–`005`) unless repeated sessions prove a gap — grow module docs and update this dashboard instead. Policy: [`engineering/ONBOARDING.md`](./engineering/ONBOARDING.md).
 
 Cursor rule: [`.cursor/rules/engineering-dashboard.mdc`](../.cursor/rules/engineering-dashboard.mdc)
 

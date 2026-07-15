@@ -40,4 +40,4 @@ Learning Intelligence · student portal (`/student/tutor`)
 
 ## Next
 
-Parent Copilot MVP (Batch 27)
+Learning Analytics foundation (Batch 29)

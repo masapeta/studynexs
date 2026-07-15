@@ -1,14 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { CalendarCheck, MessageSquare, Target, Wallet } from "lucide-react";
+import { CalendarCheck, MessageSquare, Sparkles, Target, Wallet } from "lucide-react";
 import PortalShell from "@/components/PortalShell";
 import { Card, SectionHeader, StatTile } from "@/components/ui/kit";
 import { PARENT_NAV } from "@/lib/portal-nav";
 import { api, getApiErrorMessage } from "@/lib/api";
 import type { ParentChildProgress } from "@/lib/portal-types";
+
+type ParentBriefing = {
+  summary: string;
+  focus_areas: { topic: string; subject_name: string; mastery_pct?: number }[];
+  home_tips: string[];
+  encouragement: string;
+  grounded: boolean;
+};
+
+type ParentAnswer = {
+  answer: string;
+  home_tips: string[];
+  grounded: boolean;
+};
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "";
@@ -23,7 +37,13 @@ export default function ParentChildPage() {
   const params = useParams();
   const studentId = params.studentId as string;
   const [progress, setProgress] = useState<ParentChildProgress | null>(null);
+  const [briefing, setBriefing] = useState<ParentBriefing | null>(null);
+  const [briefingLoading, setBriefingLoading] = useState(true);
+  const [question, setQuestion] = useState("");
+  const [copilotAnswer, setCopilotAnswer] = useState<ParentAnswer | null>(null);
+  const [asking, setAsking] = useState(false);
   const [error, setError] = useState("");
+  const [copilotError, setCopilotError] = useState("");
 
   useEffect(() => {
     if (!studentId) return;
@@ -31,6 +51,35 @@ export default function ParentChildPage() {
       .then((res) => setProgress(res.data))
       .catch((e) => setError(getApiErrorMessage(e, "Failed to load child")));
   }, [studentId]);
+
+  useEffect(() => {
+    if (!studentId) return;
+    setBriefingLoading(true);
+    setCopilotError("");
+    api<{ data: ParentBriefing }>(`/api/v1/parent-copilot/students/${studentId}/briefing`)
+      .then((res) => setBriefing(res.data))
+      .catch((e) => setCopilotError(getApiErrorMessage(e, "Could not load briefing")))
+      .finally(() => setBriefingLoading(false));
+  }, [studentId]);
+
+  async function askCopilot(e: FormEvent) {
+    e.preventDefault();
+    if (!studentId || !question.trim()) return;
+    setAsking(true);
+    setCopilotError("");
+    setCopilotAnswer(null);
+    try {
+      const res = await api<{ data: ParentAnswer }>(`/api/v1/parent-copilot/students/${studentId}/ask`, {
+        method: "POST",
+        body: JSON.stringify({ question: question.trim() }),
+      });
+      setCopilotAnswer(res.data);
+    } catch (err) {
+      setCopilotError(getApiErrorMessage(err, "Could not get an answer"));
+    } finally {
+      setAsking(false);
+    }
+  }
 
   const att = progress?.attendance_pct;
   const attTone = att == null ? "default" : att >= 75 ? "success" : att >= 50 ? "warning" : "danger";
@@ -71,6 +120,90 @@ export default function ParentChildPage() {
               tone={weakTone}
               value={progress.weak_topic_count ?? progress.weak_topics.length}
             />
+          </div>
+
+          <SectionHeader title="Parent Copilot" />
+          <div style={{ marginBottom: 16 }}>
+          <Card>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <Sparkles size={16} style={{ color: "var(--accent)" }} />
+              <span style={{ fontSize: 13, fontWeight: 700 }}>Learning briefing</span>
+            </div>
+            {copilotError && !briefing && (
+              <p style={{ fontSize: 13, color: "var(--danger)", margin: "0 0 12px" }}>{copilotError}</p>
+            )}
+            {briefingLoading ? (
+              <div className="spinner" style={{ margin: "12px auto" }} />
+            ) : briefing ? (
+              <>
+                <p style={{ margin: "0 0 12px", fontSize: 14, lineHeight: 1.55 }}>{briefing.summary}</p>
+                {briefing.focus_areas.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+                    {briefing.focus_areas.slice(0, 4).map((area) => (
+                      <span
+                        key={`${area.subject_name}-${area.topic}`}
+                        style={{
+                          fontSize: 12,
+                          padding: "4px 10px",
+                          borderRadius: 999,
+                          background: "var(--surface-muted, rgba(0,0,0,0.04))",
+                        }}
+                      >
+                        {area.subject_name}: {area.topic}
+                        {area.mastery_pct != null ? ` · ${Math.round(area.mastery_pct)}%` : ""}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {briefing.home_tips.length > 0 && (
+                  <ul style={{ margin: "0 0 10px", paddingLeft: 18, fontSize: 13, lineHeight: 1.5 }}>
+                    {briefing.home_tips.map((tip) => (
+                      <li key={tip}>{tip}</li>
+                    ))}
+                  </ul>
+                )}
+                {briefing.encouragement ? (
+                  <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)", fontStyle: "italic" }}>
+                    {briefing.encouragement}
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0 }}>
+                Briefing will appear once your child has mastery data from marked exams.
+              </p>
+            )}
+
+            <form onSubmit={askCopilot} style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
+              <label htmlFor="parent-copilot-question" style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)" }}>
+                Ask about your child&apos;s learning
+              </label>
+              <textarea
+                id="parent-copilot-question"
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                placeholder="How can I help at home with algebra this week?"
+                rows={2}
+                maxLength={800}
+                style={{ width: "100%", marginTop: 8, marginBottom: 8, resize: "vertical" }}
+              />
+              <button type="submit" className="btn btn-primary" disabled={asking || !question.trim()}>
+                {asking ? "Thinking…" : "Ask"}
+              </button>
+              {copilotAnswer ? (
+                <div style={{ marginTop: 12, fontSize: 14, lineHeight: 1.5 }}>
+                  <p style={{ margin: 0 }}>{copilotAnswer.answer}</p>
+                  {copilotAnswer.home_tips.length > 0 && (
+                    <ul style={{ marginTop: 8, paddingLeft: 18, fontSize: 13, color: "var(--text-muted)" }}>
+                      {copilotAnswer.home_tips.map((tip) => (
+                        <li key={tip}>{tip}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ) : null}
+            </form>
+          </Card>
           </div>
 
           <SectionHeader title="Weak topics" />

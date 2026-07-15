@@ -4,22 +4,36 @@
 
 ## Status
 
-**🔴 Planned**
+**✅ MVP complete** — Batches 27–28 · Verified: **tests passing** + **build passing**
 
 ## Owner
 
-Parent portal (`/parent`)
+Parent portal (`/parent/child/[studentId]`)
 
-## Current
+## Features
 
-Parent-facing mastery narratives on teacher approve (not conversational copilot)
+| Feature | State |
+|---------|-------|
+| Grounded progress briefing (metered) | ✅ Batch 27 |
+| Home support tips from mastery + graph | ✅ Batch 27 |
+| Parent Q&A on child's learning (minimal PII) | ✅ Batch 27 |
+| Parent UI — briefing card + ask panel | ✅ Batch 28 |
 
-## Planned
+## API
 
-- Grounded Q&A on child's progress (minimal PII in prompts)
-- Fee / attendance summaries (deterministic first, LLM narrative optional)
-- DPDP consent + retention before real PII
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /parent-copilot/students/{id}/briefing` | Grounded learning briefing |
+| `POST /parent-copilot/students/{id}/ask` | Parent Q&A with home tips |
+
+## Files
+
+`apps/api/app/modules/parent_copilot/` · `apps/admin-web/src/app/parent/child/[studentId]/page.tsx`
 
 ## Tests
 
-❌ not started
+`tests/test_parent_copilot.py` (3)
+
+## Next
+
+Fee / attendance narrative summaries (deterministic first); DPDP consent + retention before expanded PII

@@ -1,16 +1,18 @@
 {
   "schema_version": 2,
-  "architecture_version": "2.5",
+  "architecture_version": "2.6",
   "updated_at": "2026-07-15",
-  "last_engineering_batch": 26,
+  "last_engineering_batch": 28,
   "branch": "develop",
-  "last_commit": "e349e43",
+  "last_commit": "8ed3a5f",
   "tests": {
     "suite": "apps/api/tests/",
-    "passed": 337,
-    "skipped": 1,
+    "passed": 340,
+    "skipped": 2,
     "failed": 0,
-    "last_run": "2026-07-12",
+    "errors": 0,
+    "last_run": "2026-07-15",
+    "last_run_evidence": "pytest tests/ -q --tb=no — 340 passed, 2 skipped, 0 failed, 0 errors in ~1077s (isolated run, no concurrent pytest)",
     "verified": true
   },
   "providers": {
@@ -44,7 +46,7 @@
     { "capability": "Student → weak Concept graph links", "status": "complete", "verified": "tests_passing", "batch": "22", "module": "KNOWLEDGE_GRAPH" },
     { "capability": "Graph queries for copilots", "status": "complete", "verified": "tests_passing", "batch": "23", "module": "KNOWLEDGE_GRAPH" },
     { "capability": "Student Copilot", "status": "complete", "verified": "tests_passing", "batch": "25-26", "module": "STUDENT_COPILOT" },
-    { "capability": "Parent Copilot", "status": "planned", "verified": "not_started", "batch": null, "module": "PARENT_COPILOT" },
+    { "capability": "Parent Copilot", "status": "complete", "verified": "tests_passing", "batch": "27-28", "module": "PARENT_COPILOT" },
     { "capability": "Mastery compute + narratives", "status": "complete", "verified": "tests_passing", "batch": "pre-12", "module": "MASTERY_ENGINE" },
     { "capability": "Answer-sheet vision OCR", "status": "complete", "verified": "tests_passing", "batch": "pre-12", "module": "OCR_PIPELINE" },
     { "capability": "Tenant isolation + RBAC", "status": "complete", "verified": "tests_passing", "batch": "1-6", "module": "AUTHORIZATION" },
@@ -59,6 +61,7 @@
     "status": "docs/STATUS.md",
     "decisions": "docs/DECISION_LOG.md",
     "engineering_dir": "docs/engineering/",
-    "development_lifecycle": "docs/engineering/DEVELOPMENT_LIFECYCLE.md"
+    "development_lifecycle": "docs/engineering/005-development-lifecycle.md",
+    "validation_standard": "docs/engineering/004-validation-and-testing.md"
   }
 }

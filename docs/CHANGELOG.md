@@ -7,6 +7,22 @@ changes under **[Unreleased]** until the first tagged release. Architectural *re
 
 ## [Unreleased]
 
+> Session 2026-07-15 — Batches 27–28 (Parent Copilot MVP + UI). **Uncommitted.**
+
+### Added (Batch 27)
+- **Parent Copilot API** — grounded briefing + ask on child mastery, weak concepts, teacher feedback, and hybrid RAG.
+- **`ParentCopilotService`** — metered `parent_briefing` / `parent_ask` credits; minimal PII in prompts.
+- **Endpoints** — `GET/POST /api/v1/parent-copilot/students/{id}/briefing|ask`.
+- **`tests/test_parent_copilot.py`** (3).
+
+### Added (Batch 28)
+- **Parent child profile UI** — learning briefing card, focus chips, home tips, and ask panel on `/parent/child/[studentId]`.
+
+### Changed
+- Engineering dashboard refreshed for Batches 27–28 (architecture v2.6 — Parent Copilot complete).
+
+---
+
 > Session 2026-07-15 — Batch 26 (Student Copilot UI). **Uncommitted.**
 
 ### Added (Batch 26)

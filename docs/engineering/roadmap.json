@@ -1,18 +1,18 @@
 {
   "schema_version": 2,
   "last_completed_batch": {
-    "number": 26,
-    "title": "Student Copilot UI",
+    "number": 28,
+    "title": "Parent Copilot UI",
     "completed_at": "2026-07-15"
   },
   "current_batch": null,
   "next_milestone": {
-    "batch": 27,
-    "title": "Parent Copilot MVP",
-    "summary": "Grounded parent briefings on child mastery, weak concepts, and actionable home support tips.",
-    "estimated_days": 5,
+    "batch": 29,
+    "title": "Learning Analytics foundation",
+    "summary": "School-wide learning signals dashboard; deterministic metrics first, LLM narrative optional.",
+    "estimated_days": 7,
     "dependencies_blocking": [],
-    "dependencies_satisfied": ["STUDENT_COPILOT", "MASTERY_ENGINE", "KNOWLEDGE_GRAPH"],
+    "dependencies_satisfied": ["MASTERY_ENGINE", "PARENT_COPILOT", "STUDENT_COPILOT"],
     "dependencies_optional": []
   },
   "upcoming": []

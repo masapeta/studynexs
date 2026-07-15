@@ -96,12 +96,13 @@
     {
       "id": "PARENT_COPILOT",
       "name": "Parent Copilot",
-      "status": "planned",
-      "verified": "not_started",
+      "status": "complete",
+      "verified": "tests_passing",
+      "batch": 28,
       "doc": "docs/modules/PARENT_COPILOT.md",
       "depends_on": {
-        "satisfied": ["MASTERY_ENGINE", "AUTHORIZATION"],
-        "pending": ["STUDENT_COPILOT"]
+        "satisfied": ["MASTERY_ENGINE", "AUTHORIZATION", "RAG", "KNOWLEDGE_GRAPH", "STUDENT_COPILOT"],
+        "pending": []
       }
     },
     {
