@@ -879,7 +879,7 @@ reusing `RagService`. HITL unchanged.
 
 ## Next batch
 
-**Batch 21 — Curriculum management UI**
+**Batch 25 — Student Copilot MVP**
 
 ---
 
@@ -891,22 +891,62 @@ reusing `RagService`. HITL unchanged.
 ```yaml
 project: StudyNexs
 current_phase: Platform Development
-last_completed_batch: "Batch 20 — Content Review Queue"
-next_batch: Curriculum management UI
-working_tree: uncommitted (Batch 20)
+last_completed_batch: "Batch 24 — RAG hybrid search + re-ranking"
+next_batch: Student Copilot MVP
+working_tree: uncommitted (Batches 21–24)
 tests:
-  full_suite: "326 passed, 1 skipped (2026-07-12)"
-  content_review_tests: "5 passed"
+  full_suite: "333 passed, 2 skipped (2026-07-12)"
+  new_batches: "graph_queries (2), student_weak_concept (3), rag_hybrid (3)"
 ai:
-  concept_cards: live; tutor retrieval by concept slug
-  question_concept_links: live on bank ingest for grounded papers
-  content_review_queue: live; tutor gaps + document ingest
+  hybrid_rag: live; graph expansion + re-rank; ground_for_pack wired
+  graph_queries: live concept context + weak concepts API
+  student_weak_concepts: live on mastery recompute
+  curriculum_ui: /dashboard/teaching/curriculum
 next_priority:
-  - Curriculum management UI (Batch 21)
+  - Student Copilot MVP (Batch 25)
 blockers: []
 owner_decisions_pending:
   - Final production LLM provider
   - When to commit develop working tree
-  - DPDP before real student PII
 last_validated: "2026-07-12"
 ```
+
+---
+
+# Engineering Session 05 — 2026-07-12
+
+- **Date:** 2026-07-12
+- **Engineering batches:** 21–24
+- **Branch:** `develop`
+- **Commit policy:** **Uncommitted** — await ARM approval
+
+## 1. Session summary
+
+| Batch | Focus | Outcome |
+|-------|-------|---------|
+| 21 | Curriculum management UI | `/dashboard/teaching/curriculum` — pack approve, spine, concept cards, review queue |
+| 22 | Student → weak Concept links | `STRUGGLES_WITH` edges synced from mastery recompute |
+| 23 | Graph queries for copilots | Concept context + student weak-concepts APIs |
+| 24 | RAG hybrid + re-rank | `HybridRetrievalService`; `ground_for_pack` wired; search API |
+
+## 2. Validation
+
+- **API tests:** 333 passed, 2 skipped (full `apps/api/tests/` suite)
+- **Admin web:** `npm run build` passing (Batch 21 UI)
+- **Migrations:** through `c0d1e2f3a4b5` (Batch 22)
+
+## 3. Key paths
+
+```
+apps/admin-web/src/app/dashboard/teaching/curriculum/page.tsx
+apps/api/app/modules/knowledge_graph/services/student_weak_concept_service.py
+apps/api/app/modules/knowledge_graph/services/graph_query_service.py
+apps/api/app/modules/ai/rag/hybrid.py
+apps/api/app/modules/curriculum/endpoints/rag.py
+apps/api/tests/test_rag_hybrid.py
+```
+
+## 4. Next batch
+
+**Batch 25 — Student Copilot MVP** — grounded study assistance using weak-concept graph,
+ConceptCards, and hybrid RAG.

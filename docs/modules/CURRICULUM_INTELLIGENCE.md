@@ -43,4 +43,4 @@ RAG · Assessment Intelligence · Teacher Copilot · Document Intelligence
 
 ## Next batch
 
-Student → weak Concept graph links (Batch 22)
+Student Copilot MVP (Batch 25)

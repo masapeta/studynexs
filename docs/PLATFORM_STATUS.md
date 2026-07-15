@@ -20,11 +20,11 @@ Documentation must be updated whenever implementation changes (end of every engi
 
 | Field | Value |
 |-------|-------|
-| **Architecture version** | **2.0** |
+| **Architecture version** | **2.4** |
 | **Last updated** | 2026-07-12 |
-| **Last engineering batch** | 20 (Content Review Queue) |
+| **Last engineering batch** | 24 (RAG hybrid search + re-ranking) |
 | **Branch** | `develop` |
-| **Commit** | `8406f6e` (refresh via API runtime or `git rev-parse`) |
+| **Commit** | uncommitted (Batches 21–24 local) |
 
 ---
 
@@ -32,12 +32,11 @@ Documentation must be updated whenever implementation changes (end of every engi
 
 | Field | Value |
 |-------|-------|
-| **Next batch** | **21 — Curriculum management UI** |
-| **Summary** | Admin UI for pack lifecycle, concept cards, review queue, document ingest |
-| **Estimated** | ~5 days |
+| **Next batch** | **25 — Student Copilot MVP** |
+| **Summary** | Grounded study assistance using weak-concept graph, ConceptCards, and hybrid RAG |
+| **Estimated** | ~7 days |
 | **Dependencies blocking** | None |
-| **Dependencies satisfied** | Embeddings · RAG · Curriculum Intelligence · AI Platform |
-| **Optional** | Knowledge Graph (enhances, not required for MVP) |
+| **Dependencies satisfied** | RAG · Knowledge Graph · Curriculum Intelligence · Mastery Engine |
 
 ---
 
@@ -45,21 +44,22 @@ Documentation must be updated whenever implementation changes (end of every engi
 
 | Signal | Status | Verified |
 |--------|--------|----------|
-| Tests (`apps/api/tests/`) | 326 passed, 1 skipped | Tests passing |
+| Tests (`apps/api/tests/`) | 333 passed, 2 skipped | Tests passing |
+| RAG hybrid + re-rank | ✅ Batch 24 | Tests passing |
+| Graph queries for copilots | ✅ Batch 23 | Tests passing |
+| Student → weak Concept links | ✅ Batch 22 | Tests passing |
+| Curriculum management UI | ✅ Batch 21 | Build passing |
 | Content Review Queue | ✅ Batch 20 | Tests passing |
 | Question → Concept links | ✅ Batch 19 | Tests passing |
 | ConceptCard (tutor grounding) | ✅ Batch 18 | Tests passing |
-| Knowledge Graph (spine) | ✅ Batch 17 | Tests passing |
+| Knowledge Graph (spine + links) | ✅ Batches 17–23 | Tests passing |
 | LLM gateway | ✅ live | Tests passing |
 | Embeddings | ✅ OpenAI + stub | Tests passing |
 | Vector DB | ✅ Qdrant | Tests passing |
 | RAG (core) | ✅ index/retrieve/citations | Tests passing |
-| RAG (advanced) | 🟡 hybrid + re-rank pending | Integration pending |
 | Assessment Intelligence | ✅ Batch 14 | Tests passing |
-| Curriculum Intelligence | ✅ pack + RAG + document ingest | Tests passing |
 | Teacher Copilot | ✅ Batch 15 | Tests passing |
 | Document Intelligence | ✅ Batch 16 | Tests passing |
-| Knowledge Graph | 🔴 planned | Not started |
 
 **Verified legend:** `tests_passing` · `integration_pending` · `partial` · `not_started`
 
@@ -69,19 +69,19 @@ Documentation must be updated whenever implementation changes (end of every engi
 
 | Capability | Status | Verified | Batch |
 |------------|--------|----------|-------|
-| LLM provider abstraction | ✅ | Tests passing | 9 |
-| Embeddings (OpenAI + stub) | ✅ | Tests passing | 9–11 |
-| Vector store | ✅ | Tests passing | 9–11 |
-| RAG index / retrieve / citations | ✅ | Tests passing | 9–12 |
-| RAG hybrid search + re-ranking | 🟡 | Integration pending | 15+ |
-| Grounded QP generation | ✅ | Tests passing | 12 |
-| Rubric-per-criterion evaluation | ✅ | Tests passing | 13 |
-| Pack-grounded evaluation marking | ✅ | Tests passing | 14 |
-| Eval UI rubric breakdown | ✅ | Partial (no UI tests) | 14 |
-| CurriculumPack + approval | ✅ | Tests passing | pre-12 |
-| Teacher Copilot | ✅ | Tests passing | 15 |
+| RAG hybrid search + re-ranking | ✅ | Tests passing | 24 |
+| Graph queries for copilots | ✅ | Tests passing | 23 |
+| Student → weak Concept links | ✅ | Tests passing | 22 |
+| Curriculum management UI | ✅ | Build passing | 21 |
+| Content Review Queue | ✅ | Tests passing | 20 |
+| Question → Concept links | ✅ | Tests passing | 19 |
+| ConceptCard | ✅ | Tests passing | 18 |
+| Knowledge Graph spine | ✅ | Tests passing | 17 |
 | Document Intelligence | ✅ | Tests passing | 16 |
-| Knowledge Graph | ✅ | Tests passing | 17 |
+| Teacher Copilot | ✅ | Tests passing | 15 |
+| Pack-grounded evaluation | ✅ | Tests passing | 14 |
+| Grounded QP generation | ✅ | Tests passing | 12 |
+| RAG index / retrieve / citations | ✅ | Tests passing | 9–12 |
 | Mastery engine | ✅ | Tests passing | pre-12 |
 | Authorization / tenant isolation | ✅ | Tests passing | 1–6 |
 
@@ -93,20 +93,15 @@ Full matrix: [`engineering/platform.json`](./engineering/platform.json)
 
 | Module | Status | Verified | Depends on (satisfied) | Pending |
 |--------|--------|----------|------------------------|---------|
-| AI Platform | ✅ | Tests passing | — | — |
-| Embeddings | ✅ | Tests passing | AI Platform | — |
-| Vector Store | ✅ | Tests passing | AI Platform | — |
-| RAG | 🟡 | Integration pending | Embeddings, Vector Store | — |
-| Assessment Intelligence | ✅ | Tests passing | RAG, AI Platform | — |
+| RAG | ✅ | Tests passing | Embeddings, Vector Store, Knowledge Graph | — |
+| Knowledge Graph | ✅ | Tests passing | Curriculum Intelligence | — |
 | Curriculum Intelligence | ✅ | Tests passing | RAG, Embeddings, File Processing | — |
 | Teacher Copilot | ✅ | Tests passing | Embeddings, RAG, Curriculum, AI Platform | — |
-| Student Copilot | 🔴 | Not started | Mastery, AI Platform | Knowledge Graph, RAG |
-| Parent Copilot | 🔴 | Not started | Mastery, Authorization | Student Copilot |
-| Knowledge Graph | ✅ | Tests passing | Curriculum Intelligence, File Processing | — |
+| Assessment Intelligence | ✅ | Tests passing | RAG, AI Platform | — |
+| Student Copilot | 🔴 | Not started | Mastery, AI Platform, RAG, Knowledge Graph | — |
 | File Processing | ✅ | Tests passing | AI Platform, OCR Pipeline, RAG | — |
-| OCR Pipeline | 🟡 | Partial | AI Platform, File Processing | Vision unification |
 | Mastery Engine | ✅ | Tests passing | Authorization | — |
-| Authorization | ✅ | Tests passing | — | — |
+| AI Platform | ✅ | Tests passing | — | — |
 
 Module detail: [`docs/modules/`](./modules/) · structured deps: [`engineering/modules.json`](./engineering/modules.json)
 

@@ -28,9 +28,9 @@
     {
       "id": "RAG",
       "name": "RAG",
-      "status": "in_progress",
-      "verified": "integration_pending",
-      "batch": null,
+      "status": "complete",
+      "verified": "tests_passing",
+      "batch": 24,
       "doc": "docs/modules/RAG.md",
       "depends_on": { "satisfied": ["EMBEDDINGS", "VECTOR_STORE"], "pending": [] }
     },
@@ -46,7 +46,7 @@
     {
       "id": "CURRICULUM_INTELLIGENCE",
       "name": "Curriculum Intelligence",
-      "status": "in_progress",
+      "status": "complete",
       "verified": "tests_passing",
       "batch": 21,
       "doc": "docs/modules/CURRICULUM_INTELLIGENCE.md",

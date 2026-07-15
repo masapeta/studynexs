@@ -6,5 +6,6 @@ generation, tutor, evaluation) retrieves through this service rather than embedd
 """
 
 from app.modules.ai.rag.service import RagService, RetrievedChunk
+from app.modules.ai.rag.hybrid import HybridRetrievalOptions, HybridRetrievalService
 
-__all__ = ["RagService", "RetrievedChunk"]
+__all__ = ["RagService", "RetrievedChunk", "HybridRetrievalOptions", "HybridRetrievalService"]

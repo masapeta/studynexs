@@ -1,18 +1,18 @@
 {
   "schema_version": 2,
   "last_completed_batch": {
-    "number": 23,
-    "title": "Graph queries for copilots",
+    "number": 24,
+    "title": "RAG hybrid search + re-ranking",
     "completed_at": "2026-07-12"
   },
   "current_batch": null,
   "next_milestone": {
-    "batch": 24,
-    "title": "RAG hybrid search + re-ranking",
-    "summary": "Combine vector retrieval with graph edges and optional re-ranking for copilot grounding quality.",
-    "estimated_days": 5,
+    "batch": 25,
+    "title": "Student Copilot MVP",
+    "summary": "Grounded study assistance using weak-concept graph, ConceptCards, and hybrid RAG retrieval.",
+    "estimated_days": 7,
     "dependencies_blocking": [],
-    "dependencies_satisfied": ["RAG", "KNOWLEDGE_GRAPH", "CURRICULUM_INTELLIGENCE"],
+    "dependencies_satisfied": ["RAG", "KNOWLEDGE_GRAPH", "CURRICULUM_INTELLIGENCE", "MASTERY_ENGINE"],
     "dependencies_optional": []
   },
   "upcoming": []

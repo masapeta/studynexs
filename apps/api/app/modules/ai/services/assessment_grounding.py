@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models.curriculum_pack import CurriculumPack, PackStatus
 from app.modules.ai.embeddings import EmbeddingService
 from app.modules.ai.rag import RagService, RetrievedChunk
+from app.modules.ai.rag.hybrid import HybridRetrievalOptions, HybridRetrievalService
 from app.modules.ai.vectorstore.base import VectorStore
 
 logger = structlog.get_logger()
@@ -84,13 +85,21 @@ async def ground_for_pack(
     must refuse to generate rather than fall back to ungrounded output (CLAUDE.md §109).
     """
     rag = RagService(db, embedder=embedder, store=store)
+    hybrid = HybridRetrievalService(db, rag)
     school_id = pack.school_id
+
+    async def _retrieve(query: str, *, top_k: int) -> list[RetrievedChunk]:
+        return await hybrid.retrieve_hybrid(
+            query,
+            school_id=school_id,
+            pack_id=pack.id,
+            top_k=top_k,
+            options=HybridRetrievalOptions(rerank=True),
+        )
 
     # Ensure the pack is indexed. A cheap probe avoids re-embedding an already-indexed pack;
     # index_pack is idempotent (stable per-topic point ids) so a redundant call is harmless.
-    probe = await rag.retrieve(
-        pack.book_title or "syllabus", school_id=school_id, pack_id=pack.id, top_k=1
-    )
+    probe = await _retrieve(pack.book_title or "syllabus", top_k=1)
     if not probe:
         indexed = await rag.index_pack(pack)
         if indexed == 0:
@@ -100,18 +109,14 @@ async def ground_for_pack(
     if clean_topics:
         # Chapter/topic-aware: retrieve each named topic on its own, then merge.
         chunk_lists = [
-            await rag.retrieve(
-                topic, school_id=school_id, pack_id=pack.id, top_k=_PER_TOPIC_TOP_K
-            )
+            await _retrieve(topic, top_k=_PER_TOPIC_TOP_K)
             for topic in clean_topics
         ]
         chunks = _dedupe_ranked(chunk_lists)
     else:
         # No topics named → ground on the whole pack (broad retrieval, high top_k).
-        chunks = await rag.retrieve(
+        chunks = await _retrieve(
             pack.book_title or "full prescribed syllabus for this subject",
-            school_id=school_id,
-            pack_id=pack.id,
             top_k=max_chunks,
         )
 
