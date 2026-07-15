@@ -185,6 +185,18 @@ async def recompute_class_subject(
         ledger_rows=rows,
     )
 
+    from app.modules.knowledge_graph.services.student_weak_concept_service import (
+        StudentWeakConceptService,
+    )
+
+    await StudentWeakConceptService(db).sync_from_ledger(
+        school_id=school_id,
+        class_id=class_id,
+        subject_id=subject_id,
+        academic_year_id=school_class.academic_year_id,
+        ledger_rows=rows,
+    )
+
     logger.info(
         "mastery_recomputed",
         school_id=str(school_id),

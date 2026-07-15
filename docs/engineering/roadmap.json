@@ -1,16 +1,16 @@
 {
   "schema_version": 2,
   "last_completed_batch": {
-    "number": 21,
-    "title": "Curriculum management UI",
+    "number": 22,
+    "title": "Student → weak Concept graph links",
     "completed_at": "2026-07-12"
   },
   "current_batch": null,
   "next_milestone": {
-    "batch": 22,
-    "title": "Student → weak Concept graph links",
-    "summary": "Sync STRUGGLES_WITH edges from mastery recompute for copilot targeting.",
-    "estimated_days": 5,
+    "batch": 23,
+    "title": "Graph queries for copilots",
+    "summary": "Concept context and student weak-concept read APIs for copilot grounding.",
+    "estimated_days": 4,
     "dependencies_blocking": [],
     "dependencies_satisfied": ["KNOWLEDGE_GRAPH", "MASTERY_ENGINE"],
     "dependencies_optional": []

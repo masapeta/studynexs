@@ -27,12 +27,14 @@ class KgNodeType(str, enum.Enum):
     TOPIC = "topic"
     CONCEPT = "concept"
     QUESTION_BANK_ITEM = "question_bank_item"
+    STUDENT = "student"
 
 
 class KgEdgeType(str, enum.Enum):
     CONTAINS = "contains"
     PART_OF = "part_of"
     TESTS = "tests"
+    STRUGGLES_WITH = "struggles_with"
 
 
 class CurriculumConcept(BaseModel):

@@ -7,17 +7,19 @@ changes under **[Unreleased]** until the first tagged release. Architectural *re
 
 ## [Unreleased]
 
-> Session 2026-07-12 — Batch 21 (Curriculum management UI). **Uncommitted.**
+> Sessions 2026-07-12 — Batches 22–24. **Uncommitted.**
 
-### Added (Batch 21)
-- **Curriculum management UI** — `/dashboard/teaching/curriculum` (pack lifecycle, spine, concept cards, review queue).
+### Added (Batch 22)
+- **`KgNodeType.STUDENT` + `KgEdgeType.STRUGGLES_WITH`** (migration `c0d1e2f3a4b5`).
+- **`StudentWeakConceptService`** — sync weak concepts from mastery recompute.
+- **`tests/test_student_weak_concept_links.py`** (3).
 
 ### Changed
-- Engineering dashboard refreshed for Batch 21 (architecture v2.1).
+- Engineering dashboard refreshed for Batch 22 (architecture v2.2).
 
 ---
 
-> Session 2026-07-12 — Batch 20 (Content Review Queue). Committed on `develop`.
+> Session 2026-07-12 — Batch 21 (Curriculum management UI). Committed on `develop`.
 
 ### Added
 - **`content_review_items` table** — pending/approved/rejected HITL queue (migration `b9c0d1e2f3a4`).

@@ -65,7 +65,7 @@
       "name": "Knowledge Graph",
       "status": "complete",
       "verified": "tests_passing",
-      "batch": 19,
+      "batch": 22,
       "doc": "docs/modules/KNOWLEDGE_GRAPH.md",
       "depends_on": { "satisfied": ["CURRICULUM_INTELLIGENCE", "FILE_PROCESSING"], "pending": [] }
     },

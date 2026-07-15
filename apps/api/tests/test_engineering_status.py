@@ -33,5 +33,5 @@ async def test_engineering_status_admin_ok(client, admin_user):
     assert body["capability_matrix"][0].get("verified")
     assert len(body["capability_matrix"]) >= 10
     assert body["modules"][0].get("depends_on") is not None
-    assert body["next_milestone"]["batch"] == 22
+    assert body["next_milestone"]["batch"] == 23
     assert body["runtime"]["git_commit"]
