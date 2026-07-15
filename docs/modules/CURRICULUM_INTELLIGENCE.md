@@ -4,7 +4,7 @@
 
 ## Status
 
-**🟡 In progress** (~75%)
+**🟡 In progress** (~85%)
 
 ## Owner
 
@@ -23,11 +23,11 @@ Pillar 1 — source of truth for academic AI
 | ConceptCard first-class table | ✅ Batch 18 |
 | Question → Concept links on bank ingest | ✅ Batch 19 |
 | Content Review Queue | ✅ Batch 20 |
-| Curriculum management UI | ⬜ planned |
+| Curriculum management UI | ✅ Batch 21 |
 
 ## Files
 
-`apps/api/app/modules/curriculum/` · `apps/api/app/modules/ai/rag/`
+`apps/api/app/modules/curriculum/` · `apps/api/app/modules/ai/rag/` · `apps/admin-web/src/app/dashboard/teaching/curriculum/`
 
 ## Rule
 
@@ -43,4 +43,4 @@ RAG · Assessment Intelligence · Teacher Copilot · Document Intelligence
 
 ## Next batch
 
-Curriculum management UI (Batch 21)
+Student → weak Concept graph links (Batch 22)

@@ -1,18 +1,18 @@
 {
   "schema_version": 2,
   "last_completed_batch": {
-    "number": 20,
-    "title": "Content Review Queue",
+    "number": 21,
+    "title": "Curriculum management UI",
     "completed_at": "2026-07-12"
   },
   "current_batch": null,
   "next_milestone": {
-    "batch": 21,
-    "title": "Curriculum management UI",
-    "summary": "Admin UI for pack lifecycle, concept cards, content review queue, and document ingest.",
-    "estimated_days": 8,
+    "batch": 22,
+    "title": "Student → weak Concept graph links",
+    "summary": "Sync STRUGGLES_WITH edges from mastery recompute for copilot targeting.",
+    "estimated_days": 5,
     "dependencies_blocking": [],
-    "dependencies_satisfied": ["CURRICULUM_INTELLIGENCE", "KNOWLEDGE_GRAPH", "CONCEPT_CARD", "CONTENT_REVIEW_QUEUE"],
+    "dependencies_satisfied": ["KNOWLEDGE_GRAPH", "MASTERY_ENGINE"],
     "dependencies_optional": []
   },
   "upcoming": []

@@ -24,6 +24,7 @@ export const TEACHING = {
   aiPapers: "/dashboard/teaching/ai-papers",
   lessonPlans: "/dashboard/teaching/lesson-plans",
   documentIngest: "/dashboard/teaching/document-ingest",
+  curriculum: "/dashboard/teaching/curriculum",
   mastery: "/dashboard/teaching/mastery",
   masteryDigest: "/dashboard/teaching/mastery/digest",
   corrections: "/dashboard/teaching/exams/corrections",

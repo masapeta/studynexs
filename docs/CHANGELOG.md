@@ -7,7 +7,17 @@ changes under **[Unreleased]** until the first tagged release. Architectural *re
 
 ## [Unreleased]
 
-> Session 2026-07-12 — Batch 20 (Content Review Queue). **Uncommitted.**
+> Session 2026-07-12 — Batch 21 (Curriculum management UI). **Uncommitted.**
+
+### Added (Batch 21)
+- **Curriculum management UI** — `/dashboard/teaching/curriculum` (pack lifecycle, spine, concept cards, review queue).
+
+### Changed
+- Engineering dashboard refreshed for Batch 21 (architecture v2.1).
+
+---
+
+> Session 2026-07-12 — Batch 20 (Content Review Queue). Committed on `develop`.
 
 ### Added
 - **`content_review_items` table** — pending/approved/rejected HITL queue (migration `b9c0d1e2f3a4`).
