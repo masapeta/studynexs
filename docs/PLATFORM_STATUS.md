@@ -20,11 +20,11 @@ Documentation must be updated whenever implementation changes (end of every engi
 
 | Field | Value |
 |-------|-------|
-| **Architecture version** | **2.4** |
-| **Last updated** | 2026-07-12 |
-| **Last engineering batch** | 24 (RAG hybrid search + re-ranking) |
+| **Architecture version** | **2.5** |
+| **Last updated** | 2026-07-15 |
+| **Last engineering batch** | 26 (Student Copilot UI) |
 | **Branch** | `develop` |
-| **Commit** | uncommitted (Batches 21–24 local) |
+| **Commit** | `5b9b0cd` + Batch 26 local |
 
 ---
 
@@ -32,8 +32,8 @@ Documentation must be updated whenever implementation changes (end of every engi
 
 | Field | Value |
 |-------|-------|
-| **Next batch** | **25 — Student Copilot MVP** |
-| **Summary** | Grounded study assistance using weak-concept graph, ConceptCards, and hybrid RAG |
+| **Next batch** | **27 — Parent Copilot MVP** |
+| **Summary** | Grounded parent briefings on child mastery and home support tips |
 | **Estimated** | ~7 days |
 | **Dependencies blocking** | None |
 | **Dependencies satisfied** | RAG · Knowledge Graph · Curriculum Intelligence · Mastery Engine |
@@ -44,7 +44,8 @@ Documentation must be updated whenever implementation changes (end of every engi
 
 | Signal | Status | Verified |
 |--------|--------|----------|
-| Tests (`apps/api/tests/`) | 333 passed, 2 skipped | Tests passing |
+| Tests (`apps/api/tests/`) | 337 passed, 2 skipped | Tests passing |
+| Student Copilot | ✅ Batches 25–26 | Tests + build passing |
 | RAG hybrid + re-rank | ✅ Batch 24 | Tests passing |
 | Graph queries for copilots | ✅ Batch 23 | Tests passing |
 | Student → weak Concept links | ✅ Batch 22 | Tests passing |
@@ -98,7 +99,7 @@ Full matrix: [`engineering/platform.json`](./engineering/platform.json)
 | Curriculum Intelligence | ✅ | Tests passing | RAG, Embeddings, File Processing | — |
 | Teacher Copilot | ✅ | Tests passing | Embeddings, RAG, Curriculum, AI Platform | — |
 | Assessment Intelligence | ✅ | Tests passing | RAG, AI Platform | — |
-| Student Copilot | 🔴 | Not started | Mastery, AI Platform, RAG, Knowledge Graph | — |
+| Student Copilot | ✅ | Tests passing | Mastery, RAG, Knowledge Graph, AI Platform | — |
 | File Processing | ✅ | Tests passing | AI Platform, OCR Pipeline, RAG | — |
 | Mastery Engine | ✅ | Tests passing | Authorization | — |
 | AI Platform | ✅ | Tests passing | — | — |

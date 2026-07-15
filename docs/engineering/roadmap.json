@@ -1,18 +1,18 @@
 {
   "schema_version": 2,
   "last_completed_batch": {
-    "number": 25,
-    "title": "Student Copilot MVP",
+    "number": 26,
+    "title": "Student Copilot UI",
     "completed_at": "2026-07-15"
   },
   "current_batch": null,
   "next_milestone": {
-    "batch": 26,
-    "title": "Student Copilot UI",
-    "summary": "Student tutor page with focus chips and ask panel wired to Student Copilot API.",
-    "estimated_days": 3,
+    "batch": 27,
+    "title": "Parent Copilot MVP",
+    "summary": "Grounded parent briefings on child mastery, weak concepts, and actionable home support tips.",
+    "estimated_days": 5,
     "dependencies_blocking": [],
-    "dependencies_satisfied": ["STUDENT_COPILOT"],
+    "dependencies_satisfied": ["STUDENT_COPILOT", "MASTERY_ENGINE", "KNOWLEDGE_GRAPH"],
     "dependencies_optional": []
   },
   "upcoming": []

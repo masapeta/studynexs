@@ -2,7 +2,7 @@
   "schema_version": 2,
   "architecture_version": "2.5",
   "updated_at": "2026-07-15",
-  "last_engineering_batch": 25,
+  "last_engineering_batch": 26,
   "branch": "develop",
   "last_commit": "e349e43",
   "tests": {
@@ -43,7 +43,7 @@
     { "capability": "Curriculum management UI", "status": "complete", "verified": "build_passing", "batch": "21", "module": "CURRICULUM_INTELLIGENCE" },
     { "capability": "Student → weak Concept graph links", "status": "complete", "verified": "tests_passing", "batch": "22", "module": "KNOWLEDGE_GRAPH" },
     { "capability": "Graph queries for copilots", "status": "complete", "verified": "tests_passing", "batch": "23", "module": "KNOWLEDGE_GRAPH" },
-    { "capability": "Student Copilot", "status": "in_progress", "verified": "tests_passing", "batch": "25", "module": "STUDENT_COPILOT" },
+    { "capability": "Student Copilot", "status": "complete", "verified": "tests_passing", "batch": "25-26", "module": "STUDENT_COPILOT" },
     { "capability": "Parent Copilot", "status": "planned", "verified": "not_started", "batch": null, "module": "PARENT_COPILOT" },
     { "capability": "Mastery compute + narratives", "status": "complete", "verified": "tests_passing", "batch": "pre-12", "module": "MASTERY_ENGINE" },
     { "capability": "Answer-sheet vision OCR", "status": "complete", "verified": "tests_passing", "batch": "pre-12", "module": "OCR_PIPELINE" },

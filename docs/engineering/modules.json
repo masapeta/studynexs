@@ -84,9 +84,9 @@
     {
       "id": "STUDENT_COPILOT",
       "name": "Student Copilot",
-      "status": "in_progress",
+      "status": "complete",
       "verified": "tests_passing",
-      "batch": 25,
+      "batch": 26,
       "doc": "docs/modules/STUDENT_COPILOT.md",
       "depends_on": {
         "satisfied": ["MASTERY_ENGINE", "AI_PLATFORM", "RAG", "KNOWLEDGE_GRAPH"],

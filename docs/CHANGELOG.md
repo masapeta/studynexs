@@ -7,20 +7,17 @@ changes under **[Unreleased]** until the first tagged release. Architectural *re
 
 ## [Unreleased]
 
-> Session 2026-07-15 — Batch 25 (Student Copilot MVP). **Uncommitted.**
+> Session 2026-07-15 — Batch 26 (Student Copilot UI). **Uncommitted.**
 
-### Added (Batch 25)
-- **`StudentCopilotService`** — study context + grounded ask using weak-concept graph, ConceptCards, hybrid RAG.
-- **API** — `GET /tutor/students/{id}/study-context`, `POST /tutor/students/{id}/ask`.
-- **Graph-first tutor recommendations** — weak concepts prioritized in `list_recommendations`.
-- **`tests/test_student_copilot.py`** (4).
+### Added (Batch 26)
+- **Student tutor UI** — focus-area chips, ask panel wired to Student Copilot API.
 
 ### Changed
-- Engineering dashboard refreshed for Batch 25.
+- Engineering dashboard refreshed for Batch 26 (architecture v2.5 complete for Student Copilot).
 
 ---
 
-> Session 2026-07-12 — Batch 24 (RAG hybrid search + re-ranking). Committed on `develop`.
+> Session 2026-07-15 — Batch 25 (Student Copilot MVP). Committed on `develop`.
 
 ### Added
 - **`content_review_items` table** — pending/approved/rejected HITL queue (migration `b9c0d1e2f3a4`).
