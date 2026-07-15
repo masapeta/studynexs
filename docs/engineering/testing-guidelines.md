@@ -1,40 +1,19 @@
 ---
-description: Testing and Quality Standards
+description: Testing and Quality Standards (pointer)
 ---
 
 # Testing & Quality
 
-Before considering work complete:
+> **Superseded by the Engineering Validation Standard:** [`004-validation-and-testing.md`](./004-validation-and-testing.md)
 
-Run all relevant tests.
+This file is retained as a short pointer. All validation expectations, batch gates, failure classification, and definition of done live in **004**.
 
-Verify:
+For handover content before commit approval, use **Section 14 — Engineering Report** in 004.
 
-- Imports
-- Application startup
-- Existing functionality
-- New functionality
-- API behavior
+## Environmental failures (quick policy)
 
-Do not mark work complete unless verification succeeds.
+Before classifying a batch as failing, verify that the **test environment is stable**.
 
-Check for:
+Environmental failures — concurrent test execution, shared database contention, unavailable external services — must be identified **separately** from application regressions. Do not overstate product problems when the root cause is test infrastructure.
 
-- Duplicate code
-- Dead code
-- Merge markers
-- Debug statements
-- TODOs
-- Broken imports
-- Unused services
-
-After implementation provide:
-
-- Files changed
-- Tests executed
-- Verification results
-- New capabilities
-- Remaining work
-- Recommended next milestone
-
-Wait for approval before committing.
+Full classification: [`004-validation-and-testing.md`](./004-validation-and-testing.md) Section 10.

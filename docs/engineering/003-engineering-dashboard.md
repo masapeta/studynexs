@@ -4,7 +4,8 @@ description: Maintain Engineering Dashboard
 
 # Engineering Dashboard Policy
 
-Follow the full lifecycle: [`DEVELOPMENT_LIFECYCLE.md`](./DEVELOPMENT_LIFECYCLE.md).
+Follow the full lifecycle: [`005-development-lifecycle.md`](./005-development-lifecycle.md).  
+Validation gates: [`004-validation-and-testing.md`](./004-validation-and-testing.md).
 
 Before implementing a feature:
 
@@ -43,4 +44,14 @@ Update when appropriate:
 
 Documentation must reflect verified implementation.
 
-See [`DEVELOPMENT_LIFECYCLE.md`](./DEVELOPMENT_LIFECYCLE.md) for the full read → verify → plan → implement → test → document → review → approve → commit flow.
+## What to grow (every batch or new capability)
+
+- **Dashboard** — `PLATFORM_STATUS.md`, `platform.json`, `modules.json`, `roadmap.json` (required every engineering batch)
+- **Module docs** — add or update `docs/modules/*.md` when a pillar or capability changes
+- **Architecture docs** — update `CLAUDE.md` and related docs when platform contracts or design evolve materially
+
+## What to keep stable
+
+- **Core standards** — numbered engineering docs (`001`–`005`), AI prompts, onboarding — change only when real work proves a gap. See [`ONBOARDING.md`](./ONBOARDING.md) *What grows vs what stays stable*.
+
+See [`005-development-lifecycle.md`](./005-development-lifecycle.md) for the full read → verify → plan → implement → validate → document → review → approve → commit flow.

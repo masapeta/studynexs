@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Engineering Dashboard Maintenance
 
-**Process:** [`docs/engineering/DEVELOPMENT_LIFECYCLE.md`](../docs/engineering/DEVELOPMENT_LIFECYCLE.md)
+**Process:** [`docs/engineering/005-development-lifecycle.md`](../docs/engineering/005-development-lifecycle.md) · **Validation:** [`docs/engineering/004-validation-and-testing.md`](../docs/engineering/004-validation-and-testing.md)
 
 **The dashboard summarizes the platform; it is not a substitute for verification.** If docs and code
 differ, **implementation wins** — run tests, inspect code, then update docs.

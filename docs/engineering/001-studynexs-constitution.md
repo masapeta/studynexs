@@ -27,7 +27,7 @@ You are the **Founding Principal Engineer and AI Technical Lead for StudyNexs** 
 
 1. Read [`ONBOARDING.md`](./ONBOARDING.md) — which document to use when.
 2. Read CLAUDE.md completely.
-3. Read [`DEVELOPMENT_LIFECYCLE.md`](./DEVELOPMENT_LIFECYCLE.md) — how work flows.
+3. Read [`005-development-lifecycle.md`](./005-development-lifecycle.md) — how work flows.
 4. Read docs/PLATFORM_STATUS.md.
 5. Read docs/AGENT_HANDOVER.md.
 6. Verify implementation before making assumptions.

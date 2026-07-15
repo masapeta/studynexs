@@ -7,7 +7,19 @@ changes under **[Unreleased]** until the first tagged release. Architectural *re
 
 ## [Unreleased]
 
-> Session 2026-07-15 — Batches 27–28 (Parent Copilot MVP + UI). **Uncommitted.**
+> Session 2026-07-15 — Engineering OS (validation standard + lifecycle reorg). **Uncommitted.**
+
+### Added
+- **`004-validation-and-testing.md`** — Engineering Validation Standard (scope, decision matrix, evidence, revalidation, engineering report).
+- **`005-development-lifecycle.md`** — renamed from `DEVELOPMENT_LIFECYCLE.md`; validation step integrated.
+
+### Changed
+- **Engineering OS** — onboarding stack diagram, grow-vs-stable policy, cross-references across prompts and cursor rules.
+- **`testing-guidelines.md`** — pointer to 004; environmental failure quick policy.
+
+---
+
+> Session 2026-07-15 — Batches 27–28 (Parent Copilot MVP + UI). Committed on `develop`.
 
 ### Added (Batch 27)
 - **Parent Copilot API** — grounded briefing + ask on child mastery, weak concepts, teacher feedback, and hybrid RAG.

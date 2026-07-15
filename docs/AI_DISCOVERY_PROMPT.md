@@ -89,7 +89,7 @@ Avoid duplicate functionality.
 
 Follow the engineering principles defined in CLAUDE.md.
 
-Follow the [Development Lifecycle](./engineering/DEVELOPMENT_LIFECYCLE.md) throughout the session.
+Follow the [Development Lifecycle](./engineering/005-development-lifecycle.md) and [Engineering Validation Standard](./engineering/004-validation-and-testing.md) throughout the session.
 
 Treat the implementation as authoritative.
 
@@ -163,8 +163,8 @@ Read the following completely:
 - docs/engineering/001-studynexs-constitution.md
 - docs/engineering/002-git-workflow.md
 - docs/engineering/003-engineering-dashboard.md
-- docs/engineering/DEVELOPMENT_LIFECYCLE.md
-- docs/engineering/testing-guidelines.md
+- docs/engineering/004-validation-and-testing.md
+- docs/engineering/005-development-lifecycle.md
 
 ### Engineering Dashboard Data
 

@@ -1,16 +1,17 @@
 # Development Lifecycle
 
-**Version:** 1.1  
-**Last updated:** 2026-07-11  
+**Version:** 1.2  
+**Last updated:** 2026-07-15  
 **Applies to:** Cursor · Claude Code · ChatGPT-assisted reviews
 
 > **Process document** — how engineering work flows through this repository.  
-> **Not** architecture (`CLAUDE.md`, `docs/modules/`) and **not** git mechanics alone ([`002-git-workflow.md`](./002-git-workflow.md)).
+> **Not** architecture (`CLAUDE.md`, `docs/modules/`), **not** verification detail alone ([`004-validation-and-testing.md`](./004-validation-and-testing.md)), **not** git mechanics alone ([`002-git-workflow.md`](./002-git-workflow.md)).
 
 | Doc | Answers |
 |-----|---------|
 | [`/CLAUDE.md`](../../CLAUDE.md) | **What** must be true — standards, architecture, prime directives |
-| **This file** | **How** work is done — health check → read → verify → plan → ship → document → review |
+| **This file** | **How** work is done — health check → read → verify → plan → implement → validate → document → review |
+| [`004-validation-and-testing.md`](./004-validation-and-testing.md) | **What must be verified** — validation levels, batch gates, definition of done |
 | [`003-engineering-dashboard.md`](./003-engineering-dashboard.md) | **What to update** when a batch completes |
 | [`002-git-workflow.md`](./002-git-workflow.md) | **When** git operations are allowed |
 
@@ -20,7 +21,7 @@
 
 Documentation **summarizes** the platform. **Implementation is authoritative.**
 
-If docs and code disagree: inspect code → run tests → update docs. Never ship or mark work complete based on docs alone.
+If docs and code disagree: inspect code → run validation → update docs. Never ship or mark work complete based on docs alone.
 
 ---
 
@@ -37,7 +38,7 @@ Plan
     ↓
 Implement
     ↓
-Run tests
+Validate (focused → batch scope)
     ↓
 Update documentation
     ↓
@@ -90,12 +91,12 @@ Confirm reality in the repo **before** planning new work.
 
 - Does the feature already exist (fully or partially)?
 - Can an existing module or service be extended?
-- Run focused tests or `import app.main` for the area you will touch
+- Run focused validation or smoke-check the area you will touch
 - Check `git log` / working tree if resuming after a break
 
 **Stop and update docs first** if you find drift between documentation and code.
 
-See also: [`testing-guidelines.md`](./testing-guidelines.md).
+See: [`004-validation-and-testing.md`](./004-validation-and-testing.md) — validation philosophy and levels.
 
 ---
 
@@ -103,7 +104,7 @@ See also: [`testing-guidelines.md`](./testing-guidelines.md).
 
 Prefer the **smallest safe change** (`CLAUDE.md` — incremental over rewrite).
 
-- Define scope: which batch, which files, which tests prove done
+- Define scope: which batch, which files, which validation proves done
 - Note product-owner decisions needed **before** coding (authz, money, breaking API)
 - If scope is large, split into reviewable commits (logical units, not one monolith)
 
@@ -144,25 +145,24 @@ Keep refactors separate from features when possible.
 
 ---
 
-## 5. Run tests
+## 5. Validate
 
-Validation is not optional for significant changes.
+Validation is not optional for significant changes. Full standard: [`004-validation-and-testing.md`](./004-validation-and-testing.md).
 
 ```text
-Build → Lint → Test → fix → repeat until clean
+Build → focused tests → fix → repeat during development
+Batch close → broader regression + documentation validation
 ```
 
-Run **only the relevant tests** during development. Reserve the **full test suite** for closing a batch or before significant integration.
-
-| Scope | Minimum |
+| Phase | Minimum |
 |-------|---------|
-| API logic (during development) | Focused `pytest` for touched modules |
-| Cross-cutting / batch close | `pytest tests/` (full suite) |
-| Admin UI | `npm run build` / lint on touched app |
+| During development | Focused tests for touched modules; startup smoke where relevant |
+| Batch close | Batch validation gates (Section 8 of validation standard); full suite when scope requires |
+| Admin UI | Production build when frontend changed |
 
 Record results in `docs/engineering/platform.json` (`tests.passed`, `last_run`) when closing a batch.
 
-Never claim verification you did not run.
+Never claim verification you did not run. Distinguish product regressions from environmental failures.
 
 ---
 
@@ -187,6 +187,8 @@ After **verified** implementation, update docs so the next session starts inform
 
 Set `verified` honestly: `tests_passing` only when tests exist and pass.
 
+**Operating system policy:** grow module and architecture docs as the platform evolves; update the dashboard every batch; avoid changing core standards (`001`–`005`) unless real engineering work proves a gap. See [`ONBOARDING.md`](./ONBOARDING.md).
+
 ---
 
 ## 7. Review
@@ -196,10 +198,10 @@ Before asking for commit approval, self-review:
 - Tenant isolation on every new query path
 - No merge conflict markers, debug prints, or accidental secrets
 - Diff is focused — no unrelated drive-by changes
-- Docs and JSON agree with code and test results
+- Docs and JSON agree with code and validation results
 - HITL and metering preserved for AI features
 
-Use [`testing-guidelines.md`](./testing-guidelines.md) closing checklist for the handover summary.
+Prepare the engineering report per [`004-validation-and-testing.md`](./004-validation-and-testing.md) Section 14.
 
 ---
 
@@ -209,12 +211,7 @@ Use [`testing-guidelines.md`](./testing-guidelines.md) closing checklist for the
 
 The workflow **pauses here** until approval is received. Git operations (commit, push, merge, branch switch) require owner approval. See [`002-git-workflow.md`](./002-git-workflow.md).
 
-Provide in the handover:
-
-- Files changed
-- Tests executed and results
-- New capabilities vs remaining work
-- Recommended next milestone
+Provide the engineering report (scope, validation executed, results, capabilities, remaining work, next milestone).
 
 ---
 
@@ -246,21 +243,13 @@ State what is done, what is blocked, why, and a recommended default.
 
 ## Definition of Done
 
-A batch is considered complete only when:
-
-- Implementation matches the approved scope
-- Relevant tests pass
-- No regressions are introduced
-- Documentation is updated
-- Dashboard reflects the verified implementation
-- Product Owner approval has been requested
-
-This is the closing checklist — it complements the lifecycle above without repeating each step.
+A batch is complete when the criteria in [`004-validation-and-testing.md`](./004-validation-and-testing.md) Section 13 are satisfied — including verified implementation, evidence recorded, honest dashboard state, and product owner approval requested.
 
 ---
 
 ## Related
 
+- Validation standard: [`004-validation-and-testing.md`](./004-validation-and-testing.md)
 - Constitution pointer: [`001-studynexs-constitution.md`](./001-studynexs-constitution.md)
 - Cursor rule (dashboard updates): [`.cursor/rules/engineering-dashboard.mdc`](../../.cursor/rules/engineering-dashboard.mdc)
 - In-app view: Dashboard → Platform → Engineering
