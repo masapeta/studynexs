@@ -1,18 +1,18 @@
 {
   "schema_version": 2,
   "last_completed_batch": {
-    "number": 22,
-    "title": "Student → weak Concept graph links",
+    "number": 23,
+    "title": "Graph queries for copilots",
     "completed_at": "2026-07-12"
   },
   "current_batch": null,
   "next_milestone": {
-    "batch": 23,
-    "title": "Graph queries for copilots",
-    "summary": "Concept context and student weak-concept read APIs for copilot grounding.",
-    "estimated_days": 4,
+    "batch": 24,
+    "title": "RAG hybrid search + re-ranking",
+    "summary": "Combine vector retrieval with graph edges and optional re-ranking for copilot grounding quality.",
+    "estimated_days": 5,
     "dependencies_blocking": [],
-    "dependencies_satisfied": ["KNOWLEDGE_GRAPH", "MASTERY_ENGINE"],
+    "dependencies_satisfied": ["RAG", "KNOWLEDGE_GRAPH", "CURRICULUM_INTELLIGENCE"],
     "dependencies_optional": []
   },
   "upcoming": []

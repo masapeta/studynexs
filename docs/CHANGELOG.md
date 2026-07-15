@@ -7,19 +7,19 @@ changes under **[Unreleased]** until the first tagged release. Architectural *re
 
 ## [Unreleased]
 
-> Sessions 2026-07-12 — Batches 22–24. **Uncommitted.**
+> Sessions 2026-07-12 — Batches 23–24. **Uncommitted.**
 
-### Added (Batch 22)
-- **`KgNodeType.STUDENT` + `KgEdgeType.STRUGGLES_WITH`** (migration `c0d1e2f3a4b5`).
-- **`StudentWeakConceptService`** — sync weak concepts from mastery recompute.
-- **`tests/test_student_weak_concept_links.py`** (3).
+### Added (Batch 23)
+- **`GraphQueryService`** — concept context + student weak-concept queries.
+- **API** — `GET .../concepts/{id}/context`, `GET .../students/{id}/weak-concepts`.
+- **`tests/test_graph_queries.py`** (2).
 
 ### Changed
-- Engineering dashboard refreshed for Batch 22 (architecture v2.2).
+- Engineering dashboard refreshed for Batch 23 (architecture v2.3).
 
 ---
 
-> Session 2026-07-12 — Batch 21 (Curriculum management UI). Committed on `develop`.
+> Session 2026-07-12 — Batch 22 (Student weak-concept links). Committed on `develop`.
 
 ### Added
 - **`content_review_items` table** — pending/approved/rejected HITL queue (migration `b9c0d1e2f3a4`).

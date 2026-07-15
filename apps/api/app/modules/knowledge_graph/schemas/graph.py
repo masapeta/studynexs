@@ -57,3 +57,16 @@ class EdgeOut(BaseModel):
     to_id: uuid.UUID
 
     model_config = {"from_attributes": True}
+
+
+class ConceptContextOut(BaseModel):
+    concept: ConceptOut
+    has_approved_card: bool
+    concept_card_status: str | None = None
+    linked_question_count: int = 0
+    weak_student_count: int = 0
+
+
+class StudentWeakConceptsOut(BaseModel):
+    student_id: uuid.UUID
+    concepts: list[ConceptOut] = Field(default_factory=list)
