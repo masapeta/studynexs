@@ -53,7 +53,7 @@ See [`customer-journey/README.md`](../customer-journey/README.md) — Showcase i
 
 1. [`SHOWCASE_ENVIRONMENT_VALIDATION.md`](./SHOWCASE_ENVIRONMENT_VALIDATION.md)
 2. `python scripts/smoke_pilot_readiness.py` → 12/12
-3. Admin web with showcase tenant slug on `localhost:8000`
+3. Admin web pointed at the Reference School environment (`localhost:8000`; internal slug until Phase B)
 
 ---
 

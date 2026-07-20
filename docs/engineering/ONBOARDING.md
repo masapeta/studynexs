@@ -45,6 +45,18 @@ The operating system is valuable because it is **stable** — every new AI agent
 
 Core standards change only when repeated sessions expose a genuine gap — not preemptively, not for stylistic preference, and not because a new agent "would do it differently."
 
+### StudyNexs Reference School (first task for new engineers)
+
+The **StudyNexs Reference School** is the canonical demonstration of how the platform should behave.
+
+> Open the Reference School and see how the platform is supposed to work.
+
+| Document | Purpose |
+|----------|---------|
+| [`../showcase/README.md`](../showcase/README.md) | Product asset model, ops index |
+| [`../showcase/SHOWCASE_ROADMAP.md`](../showcase/SHOWCASE_ROADMAP.md) | What must be demonstrated |
+| [`../engineering/ENGINEERING_GOVERNANCE.md`](./ENGINEERING_GOVERNANCE.md#reference-school-acceptance-rule) | Acceptance rule — feature not complete until demonstrated there |
+
 ---
 
 ## Documentation governance (ARM 2026-07-16)

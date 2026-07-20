@@ -62,8 +62,43 @@ Do not reorganize the repository without architectural justification.
 | **Tests** | Meaningful tests for logic changes; API tests for routes |
 | **Tenant isolation** | Every new query scoped by `school_id` |
 | **Review** | Per [`../reviews/REVIEW_STANDARDS.md`](../reviews/REVIEW_STANDARDS.md) |
+| **Reference School** | Per [Reference School Acceptance Rule](#reference-school-acceptance-rule) below |
 
 Detailed playbooks: [`004-validation-and-testing.md`](./004-validation-and-testing.md), [`005-development-lifecycle.md`](./005-development-lifecycle.md)
+
+---
+
+## Reference School Acceptance Rule
+
+A feature is **not considered complete** until it:
+
+1. **Passes automated validation** — build, lint, tests; tenant-scoped where applicable.
+2. **Is documented** — API/UI docs or batch acceptance notes as required by scope.
+3. **Is successfully demonstrated in the StudyNexs Reference School** — smoke and/or demo script step updated.
+
+```
+Feature
+    ↓
+Reference School
+    ↓
+Smoke / validation
+    ↓
+Demo script
+    ↓
+Acceptance
+```
+
+If it is not demonstrated in the Reference School, it is **not finished** for release-quality purposes.
+
+| Role | Document |
+|------|----------|
+| Capability target | [`../showcase/SHOWCASE_ROADMAP.md`](../showcase/SHOWCASE_ROADMAP.md) |
+| Demo walkthrough | [`../showcase/SHOWCASE_DEMO_SCRIPT.md`](../showcase/SHOWCASE_DEMO_SCRIPT.md) |
+| Ops decisions | [`../showcase/SHOWCASE_DECISION_LOG.md`](../showcase/SHOWCASE_DECISION_LOG.md) |
+
+**Terminology (frozen):** **StudyNexs Reference School** (official) · **Reference School** (general) · **Showcase** (engineering shorthand only). Do not use "Demo School" or "Showcase School" in governance or user-facing docs.
+
+**Product asset model:** The Reference School sits **alongside the platform**, not alongside customer schools — see [`../showcase/README.md`](../showcase/README.md#product-asset-model).
 
 ---
 

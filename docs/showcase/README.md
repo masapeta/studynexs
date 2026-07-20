@@ -1,8 +1,9 @@
 # Showcase — StudyNexs Reference School
 
-> **Formal name:** StudyNexs Reference School  
+> **Official name:** StudyNexs Reference School  
+> **General usage:** Reference School  
 > **Engineering shorthand:** Showcase  
-> **Purpose:** Permanent internal demonstration environment — **not** a customer tenant
+> **Purpose:** Permanent product asset — canonical demonstration of the platform
 
 ---
 
@@ -21,7 +22,32 @@ It is **not** a customer tenant, **not** a throwaway demo database, and **not** 
 | **Tenant slug (current)** | `naagarjuna` — Phase B target: `showcase` |
 | **Roadmap** | [`SHOWCASE_ROADMAP.md`](./SHOWCASE_ROADMAP.md) — what the Reference School should eventually demonstrate |
 
-See [`customer-journey/README.md`](../customer-journey/README.md) for how Showcase fits in the adoption lifecycle.
+See [`customer-journey/README.md`](../customer-journey/README.md) for how the Reference School fits in the adoption lifecycle.
+
+---
+
+## Product asset model
+
+The Reference School is a **StudyNexs product asset** — maintained by StudyNexs, not owned by a customer.
+
+```
+StudyNexs
+    ├── Platform ..................... software, Intelligence Layer, portals
+    ├── Reference School ............. canonical demonstration environment
+    ├── Documentation ................ governance, architecture, runbooks
+    └── Customer Tenants ............. one per signed school (onboarding + pilot + go-live)
+```
+
+Internally the Reference School is backed by a tenant (isolation, `school_id`). In product and governance documentation, treat it as a **product asset**, not as a customer school.
+
+### Terminology (frozen — do not introduce synonyms)
+
+| Context | Use |
+|---------|-----|
+| Official name | **StudyNexs Reference School** |
+| General usage | **Reference School** |
+| Engineering shorthand | **Showcase** |
+| **Avoid** | Demo School · Showcase School · Pilot School (ambiguous) |
 
 ---
 

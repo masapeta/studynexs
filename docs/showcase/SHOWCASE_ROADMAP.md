@@ -117,20 +117,44 @@ Track **Demonstrated** · **Partial** · **Planned** · **N/A** during showcase 
 
 ## Quality standards (golden tenant)
 
-Before marking a capability **Demonstrated** in the Reference School:
+Before marking a capability **Demonstrated** in the Reference School — and before considering a feature **complete** per [Reference School Acceptance Rule](../engineering/ENGINEERING_GOVERNANCE.md#reference-school-acceptance-rule):
 
 | Standard | Requirement |
 |----------|-------------|
-| **Smoke** | Relevant check passes or dedicated showcase smoke added |
+| **Automated validation** | Build, lint, tests pass; smoke updated if applicable |
+| **Documentation** | Capability documented per batch scope |
+| **Reference School demo** | Successfully demonstrated; demo script step added or updated |
 | **Data** | Representative, Board-aligned sample — no customer PII |
-| **Demo script** | Step documented in [`SHOWCASE_DEMO_SCRIPT.md`](./SHOWCASE_DEMO_SCRIPT.md) or addendum |
 | **Provenance** | AI outputs show grounding / HITL where applicable |
-| **Tenant isolation** | No hardcoded school names in logic — slug-driven only |
-| **Decision log** | Material gaps logged in [`SHOWCASE_DECISION_LOG.md`](./SHOWCASE_DECISION_LOG.md) |
+| **Isolation** | No hardcoded school names in logic — tenant-driven only |
+| **Decision log** | Material gaps in [`SHOWCASE_DECISION_LOG.md`](./SHOWCASE_DECISION_LOG.md) |
+
+### QA acceptance path
+
+```
+Feature → Reference School → Smoke → Demo Script → Acceptance
+```
+
+Sales, marketing, QA, product, and engineering all use this **one** environment.
 
 ---
 
-## Phase B — tenant identity (pending PO approval)
+## Future reference assets (vision)
+
+As StudyNexs expands beyond K–12, the platform may host additional **reference environments** — same platform, different domain content:
+
+```
+Reference Assets (future)
+├── Reference School .............. K–12 (current — StudyNexs Reference School)
+├── Reference College ............. TBD
+├── Reference University .......... TBD
+├── Reference Coaching Institute .. TBD
+└── Reference Training Center ..... TBD
+```
+
+Each is a maintained product asset, not a customer tenant. Customer tenants remain separate under onboarding and go-live.
+
+---
 
 | Field | Current | Proposed |
 |-------|---------|----------|

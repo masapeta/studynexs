@@ -70,9 +70,12 @@ No business logic depends on a school name. All environments are **tenant-driven
 
 | Context | Term |
 |---------|------|
-| Formal documentation | **Reference School** |
-| Engineering / ops shorthand | **Showcase** |
-| Avoid in formal docs | "Demo School", "Pilot School" (ambiguous) |
+| Official | **StudyNexs Reference School** |
+| General | **Reference School** |
+| Engineering shorthand | **Showcase** |
+| **Avoid** | Demo School · Showcase School · Pilot School |
+
+The Reference School is a **product asset** maintained by StudyNexs — not a customer school. See [product asset model](../showcase/README.md#product-asset-model).
 
 ---
 
