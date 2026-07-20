@@ -243,7 +243,7 @@ Development → Architecture Review → Implementation → Operational Validatio
 | # | Question | Recommendation |
 |---|----------|----------------|
 | D1 | Canonical name: **Showcase School** vs **Reference School** vs **Demo School**? | **Reference School** in formal docs; **Showcase** in ops/engineering shorthand |
-| D2 | Target tenant slug for Phase B? | `showcase` (short, neutral) |
+| D2 | Target tenant slug for Phase B? | `showcase`; display name **StudyNexs Reference School**; maintain as **golden tenant** ([`SHOWCASE_ROADMAP.md`](./showcase/SHOWCASE_ROADMAP.md)) |
 | D3 | Keep `gate2/` folder name as deprecated alias? | Yes — 30-day redirect stubs, then remove |
 | D4 | Is Gate 1 (`test` tenant) merged into unified showcase tenant? | Decide in Phase C; document both until merged |
 | D5 | Naagarjuna as a future **customer** prospect — retain in `discovery/schools/`? | Yes — if real prospect; separate from showcase |

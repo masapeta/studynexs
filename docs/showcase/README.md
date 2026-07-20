@@ -8,15 +8,18 @@
 
 ## What this is
 
-The Showcase is our **permanent sales and training environment** containing representative educational data. It demonstrates the complete StudyNexs platform to prospective schools.
+The Showcase is our **permanent product asset** — the **StudyNexs Reference School** — a continuously maintained **golden tenant** for sales, training, and pre-customer validation.
+
+It is **not** a customer tenant, **not** a throwaway demo database, and **not** any single prospect's production environment.
 
 | Property | Value |
 |----------|-------|
-| **Not** | A customer tenant · Naagarjuna's production environment · A live school pilot |
-| **Is** | Internal demo · Sample data · Reusable across all sales demonstrations |
-| **Software baseline** | `v0.1.0-batch1` (tag on `studynexs-dev`) |
-| **Tenant slug (current)** | `naagarjuna` — **Phase B target:** `showcase` |
-| **Display name (Phase B)** | StudyNexs Reference School |
+| **Formal name** | StudyNexs Reference School |
+| **Engineering shorthand** | Showcase |
+| **Golden tenant rule** | New capabilities are demonstrated here **before** customer rollout |
+| **Software baseline** | `v0.1.0-batch1` |
+| **Tenant slug (current)** | `naagarjuna` — Phase B target: `showcase` |
+| **Roadmap** | [`SHOWCASE_ROADMAP.md`](./SHOWCASE_ROADMAP.md) — what the Reference School should eventually demonstrate |
 
 See [`customer-journey/README.md`](../customer-journey/README.md) for how Showcase fits in the adoption lifecycle.
 
@@ -31,9 +34,8 @@ See [`customer-journey/README.md`](../customer-journey/README.md) for how Showca
 | [SHOWCASE_DEMO_SCRIPT.md](./SHOWCASE_DEMO_SCRIPT.md) | Sales walkthrough (HOD + teacher) |
 | [SHOWCASE_ENVIRONMENT_VALIDATION.md](./SHOWCASE_ENVIRONMENT_VALIDATION.md) | Pre-demo stack checks |
 | [SHOWCASE_READINESS_AUDIT.md](./SHOWCASE_READINESS_AUDIT.md) | Readiness audit (historical T-0) |
-| [reference-school/](./reference-school/) | Seed scripts, validation evidence |
-
----
+| [SHOWCASE_ROADMAP.md](./SHOWCASE_ROADMAP.md) | Golden tenant capability target & quality standards |
+| [reference-school/](./reference-school/) | Seed scripts, Batch 1 validation evidence |
 
 ## Quick start (operator)
 

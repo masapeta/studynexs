@@ -38,7 +38,7 @@ Expansion
 | Phase | Purpose | Documentation |
 |-------|---------|---------------|
 | **Discovery** | Qualify prospect; capture requirements and meeting outcomes | [`discovery/`](../discovery/) |
-| **Showcase** | Permanent internal **Reference School** — sales demonstrations with representative sample data | [`showcase/`](../showcase/) |
+| **Showcase** | Permanent **Reference School** golden tenant — sales demonstrations with representative sample data; maintained as a product asset ([`showcase/SHOWCASE_ROADMAP.md`](../showcase/SHOWCASE_ROADMAP.md)) | [`showcase/`](../showcase/) |
 | **Customer Decision** | Contract / commitment to proceed | CRM / commercial (outside repo) |
 | **Customer Onboarding** | Dedicated tenant, real curriculum & ops data import, staff setup | [`onboarding/`](../onboarding/) |
 | **Customer Pilot** | Bounded real-world validation on **customer's own data** | [`customer-pilot/`](../customer-pilot/) |
