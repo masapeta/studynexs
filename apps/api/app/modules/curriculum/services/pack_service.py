@@ -516,12 +516,13 @@ class PackService:
             actor_id=actor_id,
             event_type=PackAuditEventType.KG_SPINE_STARTED,
         )
-        try:
-            from app.modules.knowledge_graph.services.graph_service import KnowledgeGraphService
+        from app.modules.knowledge_graph.services.graph_service import KnowledgeGraphService
 
-            stats = await KnowledgeGraphService(self.db).build_spine_from_pack(
-                school_id=school_id, pack_id=pack_id
-            )
+        try:
+            async with self.db.begin_nested():
+                stats = await KnowledgeGraphService(self.db).build_spine_from_pack(
+                    school_id=school_id, pack_id=pack_id
+                )
             await record_pack_audit_event(
                 self.db,
                 school_id=school_id,

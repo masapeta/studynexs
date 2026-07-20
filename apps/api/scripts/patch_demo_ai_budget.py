@@ -5,14 +5,21 @@
 from __future__ import annotations
 
 import asyncio
+import sys
+from pathlib import Path
+
+_scripts_dir = Path(__file__).resolve().parent
+if str(_scripts_dir) not in sys.path:
+    sys.path.insert(0, str(_scripts_dir))
 
 from sqlalchemy import select
 
 from app.core.database import async_session_factory
 from app.db.models.school import School
 from app.modules.ai.services.ai_credits import DEFAULT_AI_BUDGET
+from reference_school_config import TENANT_SLUG
 
-TENANT = "test"
+TENANT = TENANT_SLUG
 
 
 async def main() -> None:

@@ -1,13 +1,18 @@
-"""Patch existing demo school (tenant_slug='test') with RBAC assignments.
+"""Patch Reference School tenant with RBAC assignments and timetable slots.
 
-Run after pulling RBAC changes without recreating the DB:
+Run after seed_demo_ssc.py:
   cd apps/api && python scripts/patch_demo_ssc_rbac.py
 """
 from __future__ import annotations
 
 import asyncio
-
+import sys
 from datetime import time
+from pathlib import Path
+
+_scripts_dir = Path(__file__).resolve().parent
+if str(_scripts_dir) not in sys.path:
+    sys.path.insert(0, str(_scripts_dir))
 
 from sqlalchemy import delete, select
 
@@ -17,6 +22,7 @@ from app.db.models.academic import Class, Subject, TeacherSubjectMapping
 from app.db.models.timetable import DayOfWeek, TimetableSlot
 from app.db.models.school import School
 from app.db.models.user import User, UserRole
+from reference_school_config import TENANT_SLUG
 
 TEACHER_SPECS = [
     ("teacher1", "Lakshmi Devi", UserRole.CLASS_INCHARGE),
@@ -53,10 +59,10 @@ INCHARGE_BY_GRADE = {
 async def main() -> None:
     async with async_session_factory() as db:
         school = (
-            await db.execute(select(School).where(School.tenant_slug == "test"))
+            await db.execute(select(School).where(School.tenant_slug == TENANT_SLUG))
         ).scalar_one_or_none()
         if not school:
-            print("Demo school (tenant_slug='test') not found. Run seed_demo_ssc.py first.")
+            print(f"Reference School (tenant_slug='{TENANT_SLUG}') not found. Run seed_demo_ssc.py first.")
             return
 
         teachers: dict[str, User] = {}
@@ -178,7 +184,7 @@ async def main() -> None:
                         )
 
         await db.commit()
-        print("Patched demo RBAC for tenant 'test'.")
+        print(f"Patched demo RBAC for tenant '{TENANT_SLUG}'.")
         print("  Each class has a unique homeroom teacher (teacher1–teacher12).")
 
 

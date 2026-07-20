@@ -31,7 +31,9 @@ from seed_working_session import (
     seed_admissions,
 )
 
-TENANT = "test"
+from reference_school_config import TENANT_SLUG
+
+TENANT = TENANT_SLUG
 
 
 def _print_pipeline(counts: dict[str, int], label: str) -> None:

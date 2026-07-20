@@ -97,6 +97,12 @@ export default function EvaluateExamPage() {
       .finally(() => setLoading(false));
   }, [examId]);
 
+  useEffect(() => {
+    if (loading || evaluations.length === 0 || activeEval) return;
+    const pending = evaluations.find((e: { status?: string }) => e.status === "suggested");
+    if (pending) loadEval(pending);
+  }, [loading, evaluations, activeEval]);
+
   async function runEvaluation() {
     if (!selectedStudent) {
       setError("Select a student.");
@@ -212,6 +218,20 @@ export default function EvaluateExamPage() {
       </PageHeaderCard>
 
       {error && <div className="card sn-inline-alert sn-inline-alert--error">{error}</div>}
+
+      {evaluations.some((e) => e.status === "suggested") && (
+        <div
+          className="card"
+          style={{
+            marginBottom: 16,
+            padding: "12px 16px",
+            borderLeft: "3px solid var(--accent)",
+            fontSize: 14,
+          }}
+        >
+          AI has suggested marks waiting for your review. Select a student on the left, adjust if needed, then approve to publish.
+        </div>
+      )}
 
       <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 20 }}>
         <div className="card" style={{ padding: 16 }}>

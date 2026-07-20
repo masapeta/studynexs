@@ -6,7 +6,13 @@ Run after seed_demo_ssc, patch_demo_ssc_rbac, seed_exam_marks:
 from __future__ import annotations
 
 import asyncio
+import sys
 from datetime import date, timedelta
+from pathlib import Path
+
+_scripts_dir = Path(__file__).resolve().parent
+if str(_scripts_dir) not in sys.path:
+    sys.path.insert(0, str(_scripts_dir))
 
 from sqlalchemy import select
 
@@ -20,7 +26,9 @@ from app.db.models.user import User, UserRole
 from app.modules.curriculum.services.lesson_plan_service import LessonPlanService
 from app.modules.mastery.services.mastery_service import recompute_class_subject
 
-TENANT = "test"
+from reference_school_config import TENANT_SLUG
+
+TENANT = TENANT_SLUG
 MATHS_TOPICS = ["Algebra", "Geometry", "Trigonometry", "Statistics"]
 
 

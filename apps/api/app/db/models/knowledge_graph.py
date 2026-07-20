@@ -14,6 +14,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.models.base import BaseModel
 
+_ENUM_VALUES = lambda x: [e.value for e in x]  # noqa: E731 — PG stores enum values, not names
+
 
 class ConceptSource(str, enum.Enum):
     PACK_JSONB = "pack_jsonb"
@@ -55,7 +57,9 @@ class CurriculumConcept(BaseModel):
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     order_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     source: Mapped[ConceptSource] = mapped_column(
-        Enum(ConceptSource), nullable=False, default=ConceptSource.PACK_JSONB
+        Enum(ConceptSource, values_callable=_ENUM_VALUES),
+        nullable=False,
+        default=ConceptSource.PACK_JSONB,
     )
 
     __table_args__ = (
@@ -76,10 +80,16 @@ class KgEdge(BaseModel):
     pack_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("curriculum_packs.id", ondelete="CASCADE"), nullable=True
     )
-    edge_type: Mapped[KgEdgeType] = mapped_column(Enum(KgEdgeType), nullable=False)
-    from_node_type: Mapped[KgNodeType] = mapped_column(Enum(KgNodeType), nullable=False)
+    edge_type: Mapped[KgEdgeType] = mapped_column(
+        Enum(KgEdgeType, values_callable=_ENUM_VALUES), nullable=False
+    )
+    from_node_type: Mapped[KgNodeType] = mapped_column(
+        Enum(KgNodeType, values_callable=_ENUM_VALUES), nullable=False
+    )
     from_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
-    to_node_type: Mapped[KgNodeType] = mapped_column(Enum(KgNodeType), nullable=False)
+    to_node_type: Mapped[KgNodeType] = mapped_column(
+        Enum(KgNodeType, values_callable=_ENUM_VALUES), nullable=False
+    )
     to_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB, nullable=True)
 

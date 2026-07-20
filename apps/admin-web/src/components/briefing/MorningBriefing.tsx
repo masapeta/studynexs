@@ -87,10 +87,10 @@ function ExecutiveKpiBar({ items }: { items: KpiItem[] }) {
 }
 
 const QUICK_LINKS = [
+  { label: "Curriculum", href: TEACHING.curriculum },
+  { label: "AI papers", href: TEACHING.aiPapers },
+  { label: "Exam review", href: TEACHING.corrections },
   { label: "Mastery", href: TEACHING.mastery },
-  { label: "Exam loop", href: TEACHING.corrections },
-  { label: "Attendance", href: "/dashboard/attendance" },
-  { label: "Timetable", href: "/dashboard/timetable" },
 ] as const;
 
 export function MorningBriefing({

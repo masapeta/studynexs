@@ -1,24 +1,39 @@
 # Reference School — Demonstration Tenant
 
 > **Formal name:** StudyNexs Reference School  
-> **Purpose:** Permanent Showcase tenant — representative sample data for sales demonstrations  
+> **Display name:** **ARM International School**  
+> **Purpose:** Permanent full working model — prospects log in and experience the platform  
 > **Not a customer production environment**
 
 ---
 
-## Tenant (Phase B rename pending)
+## Tenant
 
-| Field | Current | Target (Phase B) |
-|-------|---------|------------------|
-| Slug | `naagarjuna` | `showcase` |
-| Display name | (seed-defined) | StudyNexs Reference School |
+| Field | Value |
+|-------|-------|
+| **Slug** | `reference` |
+| **Display name** | ARM International School |
+| **Config** | `apps/api/scripts/reference_school_config.py` |
 
-Seed scripts (Phase B rename):
+**Seed (one command):**
 
-- `apps/api/scripts/seed_pilot_naagarjuna.py`
-- `apps/api/scripts/seed_pilot_naagarjuna_curriculum.py`
+```powershell
+cd apps\api
+python scripts/seed_reference_school.py
+python scripts/smoke_reference_school.py
+```
 
-Smoke: `apps/api/scripts/smoke_pilot_readiness.py`
+**Login card:** [`../REFERENCE_SCHOOL_LOGIN_CARD.md`](../REFERENCE_SCHOOL_LOGIN_CARD.md)
+
+---
+
+## Legacy (not Reference School)
+
+| Item | Notes |
+|------|-------|
+| `seed_pilot_naagarjuna*.py` | Prospect tooling only |
+| `smoke_pilot_readiness.py` | Batch 1 wedge validation — superseded for showcase |
+| Tenant `test` | Old dev slug — replaced by `reference` |
 
 ---
 
@@ -26,13 +41,13 @@ Smoke: `apps/api/scripts/smoke_pilot_readiness.py`
 
 | Artifact | Location |
 |----------|----------|
-| Smoke results | [`t0-evidence/smoke-results.json`](./t0-evidence/smoke-results.json) |
-| Playwright results | [`t0-evidence/workflow-results.json`](./t0-evidence/workflow-results.json) |
+| Smoke results (historical) | [`t0-evidence/smoke-results.json`](./t0-evidence/smoke-results.json) |
 | T-0 checklist | [`t0-evidence/t0-checklist.md`](./t0-evidence/t0-checklist.md) |
-| Screenshots | [`product/batch1-ui-demo/`](../../product/batch1-ui-demo/) |
+
+Re-run showcase validation with `smoke_reference_school.py` after seeding `reference`.
 
 ---
 
 ## Prospect note
 
-If **Naagarjuna Talent School** is tracked as a commercial prospect, that record lives in [`discovery/schools/naagarjuna/`](../../discovery/schools/naagarjuna/) — not here.
+**Naagarjuna Talent School** is a commercial prospect record: [`discovery/schools/naagarjuna/`](../../discovery/schools/naagarjuna/) — not the Reference School.

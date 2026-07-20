@@ -1,19 +1,25 @@
-"""Seed a believable SSC demo school (grades 1-10) for the pilot demo.
+"""Seed ARM International School — StudyNexs Reference School (grades 1-10).
 
-One Telangana-style SSC school with classes, subjects, ~24 students/class (real-sounding
-names), recent attendance, and fees — so the dashboard feels inhabited and there's a real
-Class 10 + Mathematics to drive the AI question-paper generator.
+One Telangana-style SSC school with classes, subjects, ~24 students/class,
+recent attendance, and fees — so the dashboard feels inhabited.
 
 Run:  python scripts/seed_demo_ssc.py
-Idempotent: skips if the demo school (tenant_slug='test') already exists.
+       (prefer: python scripts/seed_reference_school.py for full chain)
+Idempotent: skips if tenant_slug='reference' already exists.
 """
 from __future__ import annotations
 
 import asyncio
 import random
+import sys
 import uuid
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
+from pathlib import Path
+
+_scripts_dir = Path(__file__).resolve().parent
+if str(_scripts_dir) not in sys.path:
+    sys.path.insert(0, str(_scripts_dir))
 
 from sqlalchemy import select
 
@@ -34,10 +40,11 @@ from app.db.models.fee import (
 from app.db.models.school import School
 from app.db.models.student import Gender, Student
 from app.db.models.user import User, UserRole
+from reference_school_config import DEMO_PASSWORD, SCHOOL_BOARD, SCHOOL_CODE, SCHOOL_NAME, TENANT_SLUG
 
 random.seed(2026)
 
-TENANT = "test"  # matches the admin-web default NEXT_PUBLIC_TENANT_SLUG, so it works out of the box
+TENANT = TENANT_SLUG
 
 MALE = ["Aarav", "Vivaan", "Aditya", "Arjun", "Sai", "Rohan", "Karthik", "Teja", "Nikhil",
         "Charan", "Bhargav", "Manish", "Ranbir", "Yashwanth", "Akhil", "Praneeth", "Surya", "Vamsi"]
@@ -54,16 +61,24 @@ async def main() -> None:
             await db.execute(select(School).where(School.tenant_slug == TENANT))
         ).scalar_one_or_none()
         if existing:
-            print(f"Demo school already exists (tenant_slug='{TENANT}'). "
-                  "Recreate the DB to reseed (docker compose down -v && up).")
+            updated = False
+            if existing.name != SCHOOL_NAME:
+                existing.name = SCHOOL_NAME
+                existing.code = SCHOOL_CODE
+                updated = True
+            if updated:
+                await db.commit()
+                print(f"Updated school display name to '{SCHOOL_NAME}' (tenant={TENANT}).")
+            else:
+                print(f"Reference School already exists (tenant_slug='{TENANT}').")
             return
 
         school = School(
-            name="Sri Saraswathi High School",
-            code="SSHS01",
+            name=SCHOOL_NAME,
+            code=SCHOOL_CODE,
             tenant_slug=TENANT,
-            board="SSC",
-            contact_email="office@srisaraswathi.edu.in",
+            board=SCHOOL_BOARD,
+            contact_email="hello@studynexs.com",
             contact_phone="+914023456789",
             address={"city": "Hyderabad", "state": "Telangana"},
             is_active=True,
@@ -82,8 +97,8 @@ async def main() -> None:
         principal = User(
             school_id=school.id, username="principal", mobile="+919800000001",
             full_name="Padmaja Rao", role=UserRole.SUPER_ADMIN,
-            email="principal@srisaraswathi.edu.in",
-            password_hash=hash_password("Demo@1234"), is_active=True,
+            email="hello@studynexs.com",
+            password_hash=hash_password(DEMO_PASSWORD), is_active=True,
         )
         db.add(principal)
         # Named teachers for believable demo logins (password: Demo@1234)
@@ -105,7 +120,7 @@ async def main() -> None:
         for i, (uname, name, role) in enumerate(teacher_specs):
             t = User(
                 school_id=school.id, username=uname, mobile=f"+9198100000{i + 10}",
-                full_name=name, role=role, password_hash=hash_password("Demo@1234"), is_active=True,
+                full_name=name, role=role, password_hash=hash_password(DEMO_PASSWORD), is_active=True,
             )
             teachers.append(t)
         db.add_all(teachers)
@@ -181,7 +196,7 @@ async def main() -> None:
             academic_year_id=ay.id, due_day=10,
         )
         db.add(fee_structure)
-        counter = ReceiptCounter(school_id=school.id, prefix="SSHS", last_sequence=0)
+        counter = ReceiptCounter(school_id=school.id, prefix="ARM", last_sequence=0)
         db.add(counter)
         await db.flush()
 
@@ -208,7 +223,7 @@ async def main() -> None:
                 await db.flush()
                 stu = Student(
                     school_id=school.id, user_id=u.id, class_id=c.id,
-                    admission_no=f"SSHS{admission_seq:04d}", roll_no=str(roll),
+                    admission_no=f"ARM{admission_seq:04d}", roll_no=str(roll),
                     date_of_birth=date(2026 - age, random.randint(1, 12), random.randint(1, 28)),
                     gender=gender,
                 )
@@ -241,7 +256,7 @@ async def main() -> None:
                     seq = counter.last_sequence
                     now = datetime.now(timezone.utc) - timedelta(days=random.randint(0, 20))
                     receipt = FeeReceipt(
-                        school_id=school.id, receipt_number=f"SSHS-2026-{seq:05d}",
+                        school_id=school.id, receipt_number=f"ARM-2026-{seq:05d}",
                         student_id=stu.id, student_name=name, class_name=f"{c.grade}-{c.section}",
                         amount_paid=Decimal("2500.00"), payment_mode=PaymentMode.UPI,
                         fee_type="Tuition", fee_period="June 2026", paid_at=now,
@@ -256,10 +271,10 @@ async def main() -> None:
                 db.add(rec)
 
         await db.commit()
-        print("Seeded demo school 'Sri Saraswathi High School' (SSC)")
+        print(f"Seeded Reference School '{SCHOOL_NAME}' ({SCHOOL_BOARD})")
         print(f"  classes={len(classes)}  students={total_students}  "
               f"attendance_rows={total_attendance}  receipts={receipts}")
-        print("  LOGIN  ->  tenant: test   username: principal   password: Demo@1234")
+        print(f"  LOGIN  ->  tenant: {TENANT}   username: principal   password: {DEMO_PASSWORD}")
         print("  Class incharge (10-A): teacher1 / Demo@1234  — attendance, notices, approve QPs")
         print("  Subject teacher (Maths): teacher6 / Demo@1234  — generate QP only (teacher1 approves)")
         print("  Demo the AI generator on: Class 10 · Mathematics (login as teacher6)")

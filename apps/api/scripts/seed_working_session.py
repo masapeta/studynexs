@@ -21,8 +21,14 @@ from __future__ import annotations
 
 import asyncio
 import random
+import sys
 import uuid
 from datetime import date, datetime, time, timedelta, timezone
+from pathlib import Path
+
+_scripts_dir = Path(__file__).resolve().parent
+if str(_scripts_dir) not in sys.path:
+    sys.path.insert(0, str(_scripts_dir))
 
 from sqlalchemy import func, select
 
@@ -47,7 +53,9 @@ from app.db.models.school_ops import (
 from app.db.models.student import Parent, Relationship, Student, StudentParentMap
 from app.db.models.user import User, UserRole
 
-TENANT = "test"
+from reference_school_config import DEMO_PASSWORD, TENANT_SLUG
+
+TENANT = TENANT_SLUG
 random.seed(42)
 
 BOOKS = [
@@ -688,7 +696,7 @@ async def main() -> None:
 
         await db.commit()
 
-        print("Working session seed complete for tenant 'test'")
+        print(f"Working session seed complete for tenant '{TENANT}'")
         print(f"  modules enabled (library, transport, finance, …)")
         print(f"  staff roles added: {staff_added}")
         print(f"  library: {books} books, {issues} active issues")
@@ -700,7 +708,7 @@ async def main() -> None:
         print(f"  parents: {parents} users, {parent_links} links")
         print(f"  transport: {routes} routes, {transport_assign} assignments")
         print(f"  parent notices: {parent_notices}")
-        print("  Login: tenant=test  username=principal  password=Demo@1234")
+        print(f"  Login: tenant={TENANT}  username=principal  password={DEMO_PASSWORD}")
 
 
 if __name__ == "__main__":

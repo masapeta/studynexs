@@ -5,6 +5,7 @@ import { TEACHING } from "@/lib/dashboard-routes";
 
 const TABS = [
   { href: TEACHING.exams, label: "Exams" },
+  { href: TEACHING.corrections, label: "Review" },
   { href: TEACHING.gradebook, label: "Gradebook" },
   { href: TEACHING.reportCards, label: "Report cards" },
   { href: TEACHING.aiPapers, label: "AI papers" },

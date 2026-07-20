@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, Bell, CalendarCheck, ChevronRight, RefreshCw, Target, Users, Wallet } from "lucide-react";
+import { AlertCircle, Bell, CalendarCheck, ChevronRight, MessageSquare, RefreshCw, Target, Users, Wallet } from "lucide-react";
 import PortalShell from "@/components/PortalShell";
 import { Card, EmptyState, ListRow, SectionHeader, SkeletonCard, StatTile } from "@/components/ui/kit";
 import { PARENT_NAV } from "@/lib/portal-nav";
@@ -168,6 +168,32 @@ export default function ParentHomePage() {
                   <StatTile icon={Wallet} label="Fees due" tone={feeTone} value={child.fee_pending > 0 ? `₹${child.fee_pending.toLocaleString("en-IN")}` : "Paid"} />
                   <StatTile icon={Target} label="Weak topics" tone={weakTone} value={child.weak_topic_count} />
                 </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(`/parent/child/${child.student_id}`);
+                  }}
+                  style={{
+                    marginTop: 12,
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    padding: "10px 14px",
+                    borderRadius: "var(--radius-full)",
+                    border: "1px solid color-mix(in srgb, var(--accent) 35%, transparent)",
+                    background: "color-mix(in srgb, var(--accent) 12%, transparent)",
+                    color: "var(--accent)",
+                    fontWeight: 600,
+                    fontSize: 13,
+                    cursor: "pointer",
+                  }}
+                >
+                  <MessageSquare size={15} />
+                  Parent Copilot — weekly summary
+                </button>
               </Card>
             );
           })}

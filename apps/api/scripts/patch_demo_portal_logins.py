@@ -8,6 +8,12 @@ Idempotent — safe to re-run.
 from __future__ import annotations
 
 import asyncio
+import sys
+from pathlib import Path
+
+_scripts_dir = Path(__file__).resolve().parent
+if str(_scripts_dir) not in sys.path:
+    sys.path.insert(0, str(_scripts_dir))
 
 from sqlalchemy import select
 
@@ -17,9 +23,9 @@ from app.db.models.academic import Class
 from app.db.models.school import School
 from app.db.models.student import Parent, Relationship, Student, StudentParentMap
 from app.db.models.user import User, UserRole
+from reference_school_config import DEMO_PASSWORD, TENANT_SLUG
 
-DEMO_PASSWORD = "Demo@1234"
-TENANT = "test"
+TENANT = TENANT_SLUG
 
 
 async def main() -> None:
@@ -122,7 +128,7 @@ async def main() -> None:
             )
 
         await db.commit()
-        print("Demo portal logins ready (tenant: test, password: Demo@1234)")
+        print(f"Demo portal logins ready (tenant: {TENANT}, password: {DEMO_PASSWORD})")
         print(f"  parent_demo  -> child: {stu_user.full_name} (Class 10-A, roll {stu.roll_no})")
         print(f"  student_demo -> {stu_user.full_name}")
         print("  teacher6     -> Maths teacher (existing seed)")

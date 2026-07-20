@@ -10,6 +10,12 @@ from __future__ import annotations
 
 import asyncio
 import random
+import sys
+from pathlib import Path
+
+_scripts_dir = Path(__file__).resolve().parent
+if str(_scripts_dir) not in sys.path:
+    sys.path.insert(0, str(_scripts_dir))
 
 from sqlalchemy import func, select
 
@@ -17,6 +23,8 @@ from app.core.database import async_session_factory
 from app.db.models.school import School
 from app.db.models.student import Parent, Relationship, Student, StudentParentMap
 from app.db.models.user import User, UserRole
+
+from reference_school_config import TENANT_SLUG
 
 random.seed(7)
 MALE = ["Ramesh", "Suresh", "Venkat", "Prakash", "Srinivas",
@@ -28,7 +36,7 @@ FEMALE = ["Lakshmi", "Padma", "Sunitha", "Radha", "Geetha",
 async def main() -> None:
     async with async_session_factory() as db:
         school = (
-            await db.execute(select(School).where(School.tenant_slug == "test"))
+            await db.execute(select(School).where(School.tenant_slug == TENANT_SLUG))
         ).scalar_one_or_none()
         if school is None:
             print("Demo school not found. Run seed_demo_ssc.py first.")

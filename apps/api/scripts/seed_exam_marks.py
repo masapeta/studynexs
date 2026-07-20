@@ -12,8 +12,14 @@ from __future__ import annotations
 
 import asyncio
 import random
+import sys
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
+
+_scripts_dir = Path(__file__).resolve().parent
+if str(_scripts_dir) not in sys.path:
+    sys.path.insert(0, str(_scripts_dir))
 
 from sqlalchemy import func, select
 
@@ -24,9 +30,12 @@ from app.db.models.school import School
 from app.db.models.student import Student
 from app.db.models.user import User, UserRole
 
+from reference_school_config import SCHOOL_NAME, TENANT_SLUG
+
 random.seed(2026)
 
-TENANT = "test"
+TENANT = TENANT_SLUG
+
 # (exam_type, title, total_marks, date)
 EXAM_PLAN = [
     (ExamType.MID_TERM, "Mid-Term Examination", 50, date(2026, 9, 15)),
@@ -118,7 +127,7 @@ async def main() -> None:
                         n_marks += 1
 
         await db.commit()
-        print("Seeded exams + marks for 'Sri Saraswathi High School'")
+        print(f"Seeded exams + marks for '{SCHOOL_NAME}'")
         print(f"  exams={n_exams}  marks={n_marks}  classes={len(classes)}")
         print("  Demo Report Cards on: Class 10 · any student")
 
