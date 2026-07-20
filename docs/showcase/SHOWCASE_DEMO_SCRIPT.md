@@ -1,6 +1,7 @@
-# Gate 2 Demo Script — HOD + Teacher Workflows
+# Gate 2 Demo Script — Reference School Showcase Workflows
 
-> **Baseline:** `v0.1.0-batch1` · tenant `naagarjuna`  
+> **Baseline:** `v0.1.0-batch1` · Showcase tenant (slug `naagarjuna` until Phase B → `showcase`)  
+> **Formal name:** StudyNexs Reference School    
 > **Duration:** ~90 minutes total (45 min HOD + 45 min Teacher) or combined 60 min compressed  
 > **Environment:** http://localhost:3003/login · API http://localhost:8000  
 > **Automated reference:** [BATCH_1_UI_WORKFLOW_DEMO.md](../../product/BATCH_1_UI_WORKFLOW_DEMO.md) (11/11 validated)

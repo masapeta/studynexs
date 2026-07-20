@@ -1,9 +1,9 @@
-# Gate 2 Pilot Execution Plan
+# Customer Pilot Execution Plan
 
 > **Baseline:** `v0.1.0-batch1`  
-> **School:** Naagarjuna Talent School (design partner)  
+> **Prerequisites:** Contract signed · dedicated tenant · customer data imported · teachers trained  
 > **Duration:** 8 weeks (adjustable); **intensive phase:** Weeks 1–2  
-> **Wedge:** Class 10 Mathematics — curriculum pack → grounded QP → exam eval → weak topics → tutor
+> **Wedge:** Typically one class × subject (example: Class 10 Mathematics)
 
 ---
 

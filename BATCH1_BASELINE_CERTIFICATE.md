@@ -1,8 +1,9 @@
 # Batch 1 Baseline Certificate
 
+> **Historical note (2026-07-20):** Terminology predates Showcase / Customer Pilot documentation split. Software baseline remains valid for Reference School and customer deployments.  
 > **Issued:** 2026-07-20  
 > **Program:** Batch 1 Reconciliation (P3–P6)  
-> **Status:** ✅ **Certified and released** — Gate 2 GO declared 2026-07-20
+> **Status:** ✅ **Certified and released**
 
 ---
 

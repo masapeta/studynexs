@@ -123,7 +123,7 @@ New engineers read in order:
 
 ## Release lifecycle (permanent model)
 
-Batch 1 reconciliation (P3–P6) established the standard release path for all future batches:
+Batch 1 reconciliation (P3–P6) established the standard **engineering release** path:
 
 ```
 Development
@@ -140,7 +140,7 @@ Release Candidate
     ↓
 Tag
     ↓
-Pilot / Production
+Production Baseline
 ```
 
 | Stage | Purpose | Approval |
@@ -148,13 +148,13 @@ Pilot / Production
 | Development | Build against active batch scope | Engineering |
 | Architecture Review | Freeze entry points and boundaries | PO + Engineering |
 | Implementation | Deliver scoped changes with tests | Engineering |
-| Operational Validation | Smoke, E2E, pilot readiness | PO |
+| Operational Validation | Smoke, E2E, readiness evidence | PO |
 | Release Governance | Repo verification, docs, tag prep | PO |
 | Release Candidate | Single commit; clean tree | PO |
 | Tag | Annotated semver/batch tag on RC SHA | PO |
-| Pilot / Production | Gate GO, learn-first mode, feedback triage | PO |
+| Production Baseline | Tagged release available for deployment | PO |
 
-During **Pilot / Production**, the primary objective is **learning**, not feature development. Triage feedback via [`docs/pilot/PILOT_DECISION_LOG.md`](../pilot/PILOT_DECISION_LOG.md).
+**Customer adoption** (Discovery → Showcase → Onboarding → Customer Pilot → Go Live) is a **separate model** — see [`customer-journey/README.md`](../customer-journey/README.md). Do not conflate with this release lifecycle.
 
 **Batch 1 reference:** P3–P6 reports, `BATCH1_BASELINE_CERTIFICATE.md`, tag `v0.1.0-batch1`.
 
@@ -167,4 +167,5 @@ During **Pilot / Production**, the primary objective is **learning**, not featur
 | [`/CLAUDE.md`](../../CLAUDE.md) | Full engineering constitution (operational superset) |
 | [`../architecture/ARCHITECTURE_CONSTITUTION.md`](../architecture/ARCHITECTURE_CONSTITUTION.md) | What we build |
 | [`../product/PRODUCT_EXECUTION_CONSTITUTION.md`](../product/PRODUCT_EXECUTION_CONSTITUTION.md) | Prioritization |
+| [`../customer-journey/README.md`](../customer-journey/README.md) | Customer adoption lifecycle (separate from release) |
 | [`../reviews/REVIEW_STANDARDS.md`](../reviews/REVIEW_STANDARDS.md) | Quality evaluation |
