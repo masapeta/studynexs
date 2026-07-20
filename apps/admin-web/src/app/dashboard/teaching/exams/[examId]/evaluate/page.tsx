@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { api, API_URL, getAccessToken, getApiErrorMessage, TENANT_SLUG } from "@/lib/api";
+import { api, API_URL, getAccessToken, getApiErrorMessage, getTenantSlug } from "@/lib/api";
 import { AppSelect } from "@/components/ui/AppSelect";
 import { PageHeaderCard } from "@/components/layout/PageHeaderCard";
 import { AppFileInput } from "@/components/ui/AppFileInput";
@@ -17,7 +17,7 @@ async function uploadAnswerSheet(file: File): Promise<string> {
   const res = await fetch(`${API_URL}/api/v1/files/upload?category=answer_sheet`, {
     method: "POST",
     headers: {
-      "X-Tenant-Slug": TENANT_SLUG,
+      "X-Tenant-Slug": getTenantSlug(),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: form,

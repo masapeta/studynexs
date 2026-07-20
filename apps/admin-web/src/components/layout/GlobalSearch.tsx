@@ -130,6 +130,7 @@ export function TopBarSearch({ open, onOpenChange }: Props) {
       <button
         type="button"
         className="topbar-search-trigger"
+        aria-label="Open search"
         onClick={() => onOpenChange(true)}
       >
         <Search size={16} aria-hidden />

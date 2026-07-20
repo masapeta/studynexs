@@ -4,15 +4,20 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.api_route import CommitOnSuccessRoute
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, require_roles
+from app.modules.curriculum.schemas.grounding import CurriculumGroundingOut
 from app.modules.curriculum.schemas.pack import (
     ChapterIn,
     ChapterOut,
+    LearningOutcomeIn,
+    LearningOutcomeOut,
+    LearningOutcomeUpdate,
+    PackAuditEventOut,
     PackCreate,
     PackDetailOut,
     PackOut,
@@ -20,6 +25,7 @@ from app.modules.curriculum.schemas.pack import (
     TopicIn,
     TopicOut,
 )
+from app.modules.curriculum.services.curriculum_grounding import ground_approved_pack
 from app.modules.curriculum.services.pack_service import PackError, PackService
 from app.shared.schemas.common import APIResponse
 
@@ -43,7 +49,11 @@ def _err(e: PackError) -> HTTPException:
 
 async def _detail(svc: PackService, pack) -> PackDetailOut:
     chapters = await svc.get_chapters(pack.id)
-    topics_by_ch = await svc.get_topics_for_chapters([c.id for c in chapters])
+    chapter_ids = [c.id for c in chapters]
+    topics_by_ch = await svc.get_topics_for_chapters(chapter_ids)
+    topic_ids = [t.id for topics in topics_by_ch.values() for t in topics]
+    outcomes_by_topic = await svc.get_outcomes_for_topics(topic_ids)
+    outcomes_by_chapter = await svc.get_outcomes_for_chapters(chapter_ids)
     out = PackDetailOut.model_validate(pack)
     out.chapters = [
         ChapterOut(
@@ -51,7 +61,23 @@ async def _detail(svc: PackService, pack) -> PackDetailOut:
             number=c.number,
             title=c.title,
             order_index=c.order_index,
-            topics=[TopicOut.model_validate(t) for t in topics_by_ch.get(c.id, [])],
+            learning_outcomes=[
+                LearningOutcomeOut.model_validate(lo)
+                for lo in outcomes_by_chapter.get(c.id, [])
+            ],
+            topics=[
+                TopicOut(
+                    id=t.id,
+                    title=t.title,
+                    order_index=t.order_index,
+                    concepts=t.concepts,
+                    learning_outcomes=[
+                        LearningOutcomeOut.model_validate(lo)
+                        for lo in outcomes_by_topic.get(t.id, [])
+                    ],
+                )
+                for t in topics_by_ch.get(c.id, [])
+            ],
         )
         for c in chapters
     ]
@@ -111,7 +137,12 @@ async def update_pack(
 ):
     svc = PackService(db)
     try:
-        pack = await svc.update_pack(uuid.UUID(current_user.school_id), pack_id, body)
+        pack = await svc.update_pack(
+            uuid.UUID(current_user.school_id),
+            pack_id,
+            body,
+            actor_id=uuid.UUID(current_user.id),
+        )
     except PackError as e:
         raise _err(e)
     return APIResponse(data=PackOut.model_validate(pack), message="Pack updated")
@@ -126,17 +157,41 @@ async def add_chapter(
 ):
     svc = PackService(db)
     try:
-        chapter = await svc.add_chapter(uuid.UUID(current_user.school_id), pack_id, body)
+        chapter = await svc.add_chapter(
+            uuid.UUID(current_user.school_id),
+            pack_id,
+            body,
+            actor_id=uuid.UUID(current_user.id),
+        )
     except PackError as e:
         raise _err(e)
     topics = (await svc.get_topics_for_chapters([chapter.id])).get(chapter.id, [])
+    topic_ids = [t.id for t in topics]
+    outcomes_by_topic = await svc.get_outcomes_for_topics(topic_ids)
+    outcomes_by_chapter = await svc.get_outcomes_for_chapters([chapter.id])
     return APIResponse(
         data=ChapterOut(
             id=chapter.id,
             number=chapter.number,
             title=chapter.title,
             order_index=chapter.order_index,
-            topics=[TopicOut.model_validate(t) for t in topics],
+            learning_outcomes=[
+                LearningOutcomeOut.model_validate(lo)
+                for lo in outcomes_by_chapter.get(chapter.id, [])
+            ],
+            topics=[
+                TopicOut(
+                    id=t.id,
+                    title=t.title,
+                    order_index=t.order_index,
+                    concepts=t.concepts,
+                    learning_outcomes=[
+                        LearningOutcomeOut.model_validate(lo)
+                        for lo in outcomes_by_topic.get(t.id, [])
+                    ],
+                )
+                for t in topics
+            ],
         ),
         message="Chapter added",
     )
@@ -151,10 +206,152 @@ async def add_topic(
 ):
     svc = PackService(db)
     try:
-        topic = await svc.add_topic(uuid.UUID(current_user.school_id), chapter_id, body)
+        topic = await svc.add_topic(
+            uuid.UUID(current_user.school_id),
+            chapter_id,
+            body,
+            actor_id=uuid.UUID(current_user.id),
+        )
     except PackError as e:
         raise _err(e)
-    return APIResponse(data=TopicOut.model_validate(topic), message="Topic added")
+    outcomes = await svc.get_outcomes_for_topics([topic.id])
+    return APIResponse(
+        data=TopicOut(
+            id=topic.id,
+            title=topic.title,
+            order_index=topic.order_index,
+            concepts=topic.concepts,
+            learning_outcomes=[
+                LearningOutcomeOut.model_validate(lo) for lo in outcomes.get(topic.id, [])
+            ],
+        ),
+        message="Topic added",
+    )
+
+
+@router.post(
+    "/topics/{topic_id}/learning-outcomes",
+    response_model=APIResponse[LearningOutcomeOut],
+    status_code=201,
+)
+async def add_topic_learning_outcome(
+    topic_id: uuid.UUID,
+    body: LearningOutcomeIn,
+    current_user: CurrentUser = Depends(require_roles(*_BUILD)),
+    db: AsyncSession = Depends(get_db),
+):
+    svc = PackService(db)
+    try:
+        outcome = await svc.add_learning_outcome_to_topic(
+            uuid.UUID(current_user.school_id),
+            topic_id,
+            body,
+            actor_id=uuid.UUID(current_user.id),
+        )
+    except PackError as e:
+        raise _err(e)
+    return APIResponse(
+        data=LearningOutcomeOut.model_validate(outcome),
+        message="Learning outcome added to topic",
+    )
+
+
+@router.post(
+    "/chapters/{chapter_id}/learning-outcomes",
+    response_model=APIResponse[LearningOutcomeOut],
+    status_code=201,
+)
+async def add_chapter_learning_outcome(
+    chapter_id: uuid.UUID,
+    body: LearningOutcomeIn,
+    current_user: CurrentUser = Depends(require_roles(*_BUILD)),
+    db: AsyncSession = Depends(get_db),
+):
+    svc = PackService(db)
+    try:
+        outcome = await svc.add_learning_outcome_to_chapter(
+            uuid.UUID(current_user.school_id),
+            chapter_id,
+            body,
+            actor_id=uuid.UUID(current_user.id),
+        )
+    except PackError as e:
+        raise _err(e)
+    return APIResponse(
+        data=LearningOutcomeOut.model_validate(outcome),
+        message="Learning outcome added to chapter",
+    )
+
+
+@router.put(
+    "/learning-outcomes/{outcome_id}",
+    response_model=APIResponse[LearningOutcomeOut],
+)
+async def update_learning_outcome(
+    outcome_id: uuid.UUID,
+    body: LearningOutcomeUpdate,
+    current_user: CurrentUser = Depends(require_roles(*_BUILD)),
+    db: AsyncSession = Depends(get_db),
+):
+    svc = PackService(db)
+    try:
+        outcome = await svc.update_learning_outcome(
+            uuid.UUID(current_user.school_id),
+            outcome_id,
+            body,
+            actor_id=uuid.UUID(current_user.id),
+        )
+    except PackError as e:
+        raise _err(e)
+    return APIResponse(
+        data=LearningOutcomeOut.model_validate(outcome),
+        message="Learning outcome updated",
+    )
+
+
+@router.get("/packs/{pack_id}/grounding", response_model=APIResponse[CurriculumGroundingOut])
+async def preview_pack_grounding(
+    pack_id: uuid.UUID,
+    topics: list[str] | None = Query(default=None),
+    current_user: CurrentUser = Depends(require_roles(*_READ)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Preview RAG retrieval from an approved pack (shared Curriculum Intelligence facade)."""
+    try:
+        grounding = await ground_approved_pack(
+            db,
+            school_id=uuid.UUID(current_user.school_id),
+            pack_id=pack_id,
+            topics=topics,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return APIResponse(
+        data=CurriculumGroundingOut(
+            pack_id=grounding.pack_id,
+            pack_status=grounding.pack_status,
+            pack_version=grounding.pack_version,
+            source_count=grounding.chunk_count,
+            sources=grounding.sources,
+            context_preview=grounding.context_text[:500],
+        )
+    )
+
+
+@router.get("/packs/{pack_id}/audit", response_model=APIResponse[list[PackAuditEventOut]])
+async def list_pack_audit(
+    pack_id: uuid.UUID,
+    current_user: CurrentUser = Depends(require_roles(*_READ)),
+    db: AsyncSession = Depends(get_db),
+):
+    svc = PackService(db)
+    try:
+        events = await svc.list_pack_audit(uuid.UUID(current_user.school_id), pack_id)
+    except PackError as e:
+        raise _err(e)
+    return APIResponse(
+        data=[PackAuditEventOut.model_validate(e) for e in events],
+    )
 
 
 @router.post("/packs/{pack_id}/approve", response_model=APIResponse[PackOut])

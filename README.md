@@ -1,5 +1,7 @@
 # 🎓 StudyNexs Platform
 
+> **Canonical repository:** `studynexs-dev` — see [`CANONICAL_REPOSITORY.md`](CANONICAL_REPOSITORY.md) · Batch 1 baseline: [`BATCH1_BASELINE_CERTIFICATE.md`](BATCH1_BASELINE_CERTIFICATE.md)
+
 > AI-powered School Management System — Production-grade SaaS for K-8 schools.
 
 ![StudyNexs](assets/Logo.png)

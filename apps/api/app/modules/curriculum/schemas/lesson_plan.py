@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -24,9 +25,12 @@ class LessonPlanOut(BaseModel):
     status: str
     notes: str | None = None
     pack_id: uuid.UUID | None = None
+    pack_status: str | None = None
+    pack_version: int | None = None
     grounded: bool = False
     grounding_sources: list[dict] | None = None
     ai_model: str | None = None
+    grounded_at: date | None = None
     can_edit: bool = True
     can_approve: bool = False
 
@@ -38,6 +42,7 @@ class GenerateLessonPlanRequest(BaseModel):
     chapter: str | None = None
     scheduled_for: date | None = None
     pack_id: uuid.UUID | None = None
+    generation_mode: Literal["template", "copilot"] = "template"
 
 
 class UpdateLessonPlanRequest(BaseModel):

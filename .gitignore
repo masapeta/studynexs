@@ -57,3 +57,10 @@ apps/api/scripts/seed_credentials.json
 
 # Owner planning archive (kept out of the repo; recoverable from git history)
 avinash-data/
+
+# ── Local / parallel workstreams (excluded from Batch 1 RC) ──
+infra/inventory/
+docs/ui-audit/
+REPOSITORY_STATE_AUDIT.md
+docs/product/batch1-ui-demo/99-error.png
+

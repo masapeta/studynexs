@@ -9,18 +9,44 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.db.models.curriculum_pack import PackStatus
 
 
+class LearningOutcomeIn(BaseModel):
+    code: Optional[str] = Field(None, max_length=50)
+    description: str = Field(..., min_length=1, max_length=1000)
+    order_index: int = 0
+
+
+class LearningOutcomeUpdate(BaseModel):
+    code: Optional[str] = Field(None, max_length=50)
+    description: Optional[str] = Field(None, min_length=1, max_length=1000)
+    order_index: Optional[int] = None
+
+
+class LearningOutcomeOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    code: Optional[str] = None
+    description: str
+    order_index: int
+    topic_id: Optional[uuid.UUID] = None
+    chapter_id: Optional[uuid.UUID] = None
+
+
 class TopicIn(BaseModel):
     title: str = Field(..., max_length=200)
     order_index: int = 0
     concepts: Optional[list[str]] = None
+    learning_outcomes: list[LearningOutcomeIn] = []
 
 
 class TopicOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
+
     id: uuid.UUID
     title: str
     order_index: int
     concepts: Optional[list[str]] = None
+    learning_outcomes: list[LearningOutcomeOut] = []
 
 
 class ChapterIn(BaseModel):
@@ -28,15 +54,18 @@ class ChapterIn(BaseModel):
     title: str = Field(..., max_length=200)
     order_index: int = 0
     topics: list[TopicIn] = []
+    learning_outcomes: list[LearningOutcomeIn] = []
 
 
 class ChapterOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
+
     id: uuid.UUID
     number: Optional[str] = None
     title: str
     order_index: int
     topics: list[TopicOut] = []
+    learning_outcomes: list[LearningOutcomeOut] = []
 
 
 class PackCreate(BaseModel):
@@ -60,6 +89,7 @@ class PackUpdate(BaseModel):
 
 class PackOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
+
     id: uuid.UUID
     class_id: uuid.UUID
     subject_id: uuid.UUID
@@ -73,7 +103,22 @@ class PackOut(BaseModel):
     blueprint: Optional[list] = None
     created_at: Optional[datetime] = None
     approved_at: Optional[datetime] = None
+    rag_indexed_at: Optional[datetime] = None
+    rag_index_topic_count: Optional[int] = None
+    rag_index_error: Optional[str] = None
 
 
 class PackDetailOut(PackOut):
     chapters: list[ChapterOut] = []
+
+
+class PackAuditEventOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    pack_id: uuid.UUID
+    actor_id: uuid.UUID
+    actor_name: Optional[str] = None
+    event_type: str
+    metadata: dict = Field(default_factory=dict)
+    created_at: Optional[datetime] = None

@@ -357,6 +357,7 @@ Before requesting commit approval, provide a structured handover. Summarize **ev
 | **Known limitations** | What was not tested, environment constraints, flaky or skipped checks |
 | **Deferred work** | Explicitly out of scope for this batch; backlog items |
 | **Risk assessment** | Residual risk for release (e.g. cross-cutting change without full suite, external provider not exercised) |
+| **Documentation Impact** | Architecture changed? (approval required) · Execution changed? (living docs) · Infrastructure changed? (inventory) — [`ONBOARDING.md`](./ONBOARDING.md) |
 | **Documentation updated** | `CHANGELOG.md`, `STATUS.md`, `ROADMAP.md`, `AGENT_HANDOVER.md`, `PLATFORM_STATUS.md`, `platform.json`, `modules.json`, `roadmap.json`, affected `docs/modules/*.md` |
 | **Recommended next milestone** | From roadmap or reasoned proposal |
 | **Commit recommendation** | Suggested split (e.g. API batch vs UI batch) if multiple logical units |

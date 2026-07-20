@@ -1,0 +1,65 @@
+/* Platform typography utilities — shared product chrome type styles */
+
+.platform-text-product {
+  font-family: var(--platform-font-sans);
+  font-size: var(--platform-text-product-size);
+  font-weight: var(--platform-text-product-weight);
+  letter-spacing: var(--platform-text-product-tracking);
+  color: var(--platform-navy);
+}
+
+.platform-text-school {
+  font-family: var(--platform-font-sans);
+  font-size: var(--platform-text-school-size);
+  font-weight: var(--platform-text-school-weight);
+  color: var(--platform-gray-400);
+  line-height: var(--platform-leading-tight);
+}
+
+.platform-text-entry-product {
+  font-family: var(--platform-font-sans);
+  font-size: var(--platform-text-entry-product-size);
+  font-weight: var(--platform-text-product-weight);
+  letter-spacing: var(--platform-tracking-tighter);
+  color: var(--platform-navy);
+}
+
+.platform-text-entry-message {
+  font-family: var(--platform-font-sans);
+  font-size: var(--platform-text-entry-message-size);
+  color: var(--platform-gray-400);
+}
+
+.platform-mark {
+  background: var(--platform-mark-gradient);
+  color: #fff;
+  font-weight: var(--platform-weight-extrabold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: var(--platform-mark-shadow);
+  font-family: var(--platform-font-sans);
+  letter-spacing: var(--platform-tracking-tighter);
+}
+
+.platform-mark--sm {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--platform-radius-sm);
+  font-size: var(--platform-text-xs);
+}
+
+.platform-mark--md {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--platform-radius-base);
+  font-size: var(--platform-text-base);
+}
+
+.platform-mark--lg {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--platform-radius-md);
+  font-size: var(--platform-text-lg);
+}

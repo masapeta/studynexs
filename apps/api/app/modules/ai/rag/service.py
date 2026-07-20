@@ -119,6 +119,21 @@ class RagService:
         await self.store.ensure_collection(collection, dimensions=result.dimensions)
         return await self.store.upsert(collection, points)
 
+    async def count_topic_vectors(
+        self,
+        *,
+        school_id: uuid.UUID | str,
+        pack_id: uuid.UUID | str,
+    ) -> int:
+        """Count indexed curriculum topic vectors for a pack (store-dependent)."""
+        if hasattr(self.store, "count"):
+            return await self.store.count(  # type: ignore[attr-defined]
+                self._collection(),
+                school_id=str(school_id),
+                filters={"pack_id": str(pack_id), "kind": "topic"},
+            )
+        return 0
+
     async def index_document_chunks(
         self,
         pack: CurriculumPack,

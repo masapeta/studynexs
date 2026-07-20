@@ -1,5 +1,12 @@
 /* App shell styles — import only in authenticated route layouts (not root). */
+@import "./platform-tokens.css";
+@import "./platform-aliases.css";
+@import "./platform-states.css";
+@import "./platform-components.css";
+@import "./platform-motion.css";
+@import "./platform-typography.css";
 @import "./sn-app-premium.css";
+@import "./sn-app-entry.css";
 @import "./sn-app-vision.css";
 @import "./app-responsive.css";
 @import "./sn-topbar.css";

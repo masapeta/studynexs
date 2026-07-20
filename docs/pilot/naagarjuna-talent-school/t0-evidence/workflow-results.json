@@ -1,0 +1,24 @@
+{
+  "base_url": "http://localhost:3006",
+  "tenant": "naagarjuna",
+  "generated_at": "2026-07-20T09:10:00.000000+00:00",
+  "passed": 11,
+  "total": 11,
+  "results": [
+    { "step": 1, "ok": true, "note": "Logged in as principal", "screenshot": "01-login.png" },
+    { "step": 2, "ok": true, "note": "Created draft pack Batch1 Demo 1784538518052", "screenshot": "02-pack-created.png" },
+    { "step": 3, "ok": true, "note": "Added chapter Algebra 1784538518052", "screenshot": "03-chapter-added.png" },
+    { "step": 4, "ok": true, "note": "Added topic Linear Equations", "screenshot": "04-topic-added.png" },
+    { "step": 5, "ok": true, "note": "Added learning outcome", "screenshot": "05-learning-outcome-added.png" },
+    { "step": 6, "ok": true, "note": "Saved draft metadata", "screenshot": "06-draft-saved.png" },
+    { "step": 7, "ok": true, "note": "Edited topic title on blur", "screenshot": "07-draft-edited.png" },
+    { "step": 8, "ok": true, "note": "Approved pack", "screenshot": "08-pack-approved.png" },
+    { "step": 9, "ok": true, "note": "Audit trail visible", "screenshot": "09-audit-trail.png" },
+    { "step": 10, "ok": true, "note": "Lesson plan shows grounding badge", "screenshot": "10-lesson-plan-grounded.png" },
+    { "step": 11, "ok": true, "note": "Question paper shows grounding badge", "screenshot": "11-question-paper-grounded.png" }
+  ],
+  "screenshot_dir": "../../product/batch1-ui-demo/",
+  "warnings": [
+    "Login page hydration mismatch logged (non-blocking; workflow completed)"
+  ]
+}

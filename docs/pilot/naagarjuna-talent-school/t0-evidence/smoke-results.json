@@ -1,0 +1,93 @@
+{
+  "base_url": "http://localhost:8000",
+  "tenant": "naagarjuna",
+  "generated_at": "2026-07-20T09:26:34.405207+00:00",
+  "checks": [
+    {
+      "ok": true,
+      "code": 200,
+      "label": "stack: health + ready",
+      "info": "ready=200",
+      "ts": "2026-07-20T09:26:30.736621+00:00"
+    },
+    {
+      "ok": true,
+      "code": 200,
+      "label": "auth: principal login",
+      "info": "tenant=naagarjuna",
+      "ts": "2026-07-20T09:26:31.925899+00:00"
+    },
+    {
+      "ok": true,
+      "code": 200,
+      "label": "learning outcomes",
+      "info": "count=1",
+      "ts": "2026-07-20T09:26:32.614596+00:00"
+    },
+    {
+      "ok": true,
+      "code": 200,
+      "label": "audit trail",
+      "info": "events=8",
+      "ts": "2026-07-20T09:26:32.689557+00:00"
+    },
+    {
+      "ok": true,
+      "code": 200,
+      "label": "knowledge graph",
+      "info": "concepts=0 edges=0",
+      "ts": "2026-07-20T09:26:32.848948+00:00"
+    },
+    {
+      "ok": true,
+      "code": 200,
+      "label": "hybrid RAG retrieval",
+      "info": "sources=1",
+      "ts": "2026-07-20T09:26:33.284397+00:00"
+    },
+    {
+      "ok": true,
+      "code": 200,
+      "label": "grounding facade",
+      "info": "status=approved v=2",
+      "ts": "2026-07-20T09:26:33.284422+00:00"
+    },
+    {
+      "ok": true,
+      "code": 200,
+      "label": "approval pipeline",
+      "info": "events=chapter_added,learning_outcome_added,pack_approved,pack_created,pack_updated,rag_index_succeeded",
+      "ts": "2026-07-20T09:26:33.284453+00:00"
+    },
+    {
+      "ok": true,
+      "code": 200,
+      "label": "question papers",
+      "info": "list OK",
+      "ts": "2026-07-20T09:26:33.436023+00:00"
+    },
+    {
+      "ok": true,
+      "code": 201,
+      "label": "lesson plans (template + grounding)",
+      "info": "grounded=True",
+      "ts": "2026-07-20T09:26:33.866805+00:00"
+    },
+    {
+      "ok": true,
+      "code": 403,
+      "label": "cross-tenant isolation",
+      "info": "denied",
+      "ts": "2026-07-20T09:26:33.893919+00:00"
+    },
+    {
+      "ok": true,
+      "code": 201,
+      "label": "copilot routing",
+      "info": "routed",
+      "ts": "2026-07-20T09:26:34.404090+00:00"
+    }
+  ],
+  "passed": 12,
+  "total": 12
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { PlatformMark } from "@/components/brand/PlatformMark";
 import {
   Brain,
   FileText,
@@ -184,9 +185,7 @@ export function MarketingFooter() {
         <div className="mkt-footer-grid mkt-footer-grid--premium">
           <div className="mkt-footer-brand">
             <Link href="/products" className="mkt-nav-logo mkt-nav-logo--noustriks" style={{ padding: 0, marginBottom: "1rem" }}>
-              <span className="mkt-nav-logo-mark mkt-nav-logo-mark--noustriks" aria-hidden>
-                N
-              </span>
+              <PlatformMark variant="noustriks" size="sm" />
               {NOUSTRIKS.name}
             </Link>
             <p className="mkt-footer-tagline">{NOUSTRIKS.tagline}</p>

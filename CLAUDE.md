@@ -49,7 +49,9 @@ It intentionally does **not** contain:
 - Temporary engineering decisions
 - Sprint tasks
 
-Those belong in `docs/STATUS.md`, `docs/ROADMAP.md`, `docs/DECISION_LOG.md`, and `docs/AGENT_HANDOVER.md`.
+Those belong in `docs/product/PRODUCT_EXECUTION_PLAN.md`, `docs/STATUS.md`, `docs/decisions/DECISION_LOG.md`, and `docs/AGENT_HANDOVER.md`.
+
+**Governance hierarchy (Product Execution Phase):** see [`docs/README.md`](docs/README.md). Constitutional documents are frozen; only the Product Execution Plan changes frequently.
 
 This keeps the constitution from slowly turning into a project notebook.
 
@@ -60,7 +62,7 @@ Before writing code in a new session, Claude must:
 1. **Read this file** (or confirm it is already in context).
 2. **Orient** — identify which app/module the task touches (`apps/api`, `apps/admin-web`, `infra`, `docs`).
 3. **Discover before building.** Search the repository for existing code, components, services, hooks, utilities, APIs, and patterns to reuse or extend (reuse-first, §4.1) *before* proposing changes — then read the relevant code and match its patterns.
-4. **Check `docs/DECISION_LOG.md`, `docs/PRODUCT.md`, `docs/STATUS.md`** when the task touches product scope or a previously-decided tradeoff — do not re-litigate settled decisions.
+4. **Check `docs/decisions/DECISION_LOG.md`, `docs/product/PRODUCT_EXECUTION_PLAN.md`, `docs/PRODUCT.md`, `docs/STATUS.md`** when the task touches product scope or a previously-decided tradeoff — do not re-litigate settled decisions.
 5. **Form a plan**, then execute in the engineering cycles defined in Part I.
 
 ### 0.5 Maintenance

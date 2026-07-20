@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { Menu, X } from "lucide-react";
+import { PlatformMark } from "@/components/brand/PlatformMark";
 import { NAV_LINKS, NOUSTRIKS } from "@/lib/noustriks-content";
 import { NeuralCanvas } from "./NeuralCanvas";
 
@@ -68,9 +69,7 @@ export function MarketingNav() {
         >
           <div className="mkt-nav-chip mkt-nav-chip--ghost mkt-nav-chip--brand">
             <Link href="/" className="mkt-nav-logo mkt-nav-logo--noustriks">
-              <span className="mkt-nav-logo-mark mkt-nav-logo-mark--noustriks" aria-hidden>
-                N
-              </span>
+              <PlatformMark variant="noustriks" size="sm" />
               {NOUSTRIKS.name}
             </Link>
           </div>

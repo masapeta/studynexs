@@ -23,8 +23,10 @@ Documentation must be updated whenever implementation changes (end of every engi
 | **Architecture version** | **2.6** |
 | **Last updated** | 2026-07-15 |
 | **Last engineering batch** | 28 (Parent Copilot UI) |
+| **Business milestone** | **Gate 1A — Demo Online** (after Batch 29) |
+| **Current batch** | **29 — Infrastructure Readiness** (in progress) |
 | **Branch** | `develop` |
-| **Commit** | `8ed3a5f` + Batches 27–28 local |
+| **Commit** | `45ed42a` (pushed) |
 
 ---
 
@@ -32,11 +34,12 @@ Documentation must be updated whenever implementation changes (end of every engi
 
 | Field | Value |
 |-------|-------|
-| **Next batch** | **29 — Learning Analytics foundation** |
-| **Summary** | School-wide learning signals dashboard; deterministic metrics first |
-| **Estimated** | ~7 days |
-| **Dependencies blocking** | None |
-| **Dependencies satisfied** | RAG · Knowledge Graph · Curriculum Intelligence · Mastery Engine |
+| **Focus** | **Batch 29 — Infrastructure Readiness**, then **Gate 1A** |
+| **1A success** | HTTPS · login · demo data · AI works · smokes 100% |
+| **1B next** | Demo Reliable — targets in `GATE1_EXECUTION.md` |
+| **Exit** | Principal demo + no critical issues → stop polishing |
+| **Blocked** | HTTPS deploy — cloud credentials |
+| **Detail** | [`pilot/GATE1_EXECUTION.md`](./pilot/GATE1_EXECUTION.md) |
 
 ---
 

@@ -168,7 +168,13 @@ Never claim verification you did not run. Distinguish product regressions from e
 
 ## 6. Update documentation
 
-After **verified** implementation, update docs so the next session starts informed.
+After **verified** implementation, run the **Documentation Impact** check ([`ONBOARDING.md`](./ONBOARDING.md) § Documentation governance):
+
+1. **Architecture changed?** → requires ARM approval before frozen doc edits.
+2. **Execution process changed?** → update living docs (below).
+3. **Infrastructure changed?** → update `infra/inventory/` only.
+
+Then update docs so the next session starts informed.
 
 **Always (batch or significant feature):**
 

@@ -195,20 +195,26 @@ export function SkeletonCard() {
   );
 }
 
+export type EmptyTone = "default" | "success" | "warning" | "error";
+
 export function EmptyState({
   icon: Icon,
   title,
   message,
   action,
+  tone = "default",
 }: {
   icon: LucideIcon;
   title: string;
   message?: string;
   action?: ReactNode;
+  tone?: EmptyTone;
 }) {
+  const iconClass =
+    tone === "default" ? "ui-empty-icon" : `ui-empty-icon platform-state-icon--${tone}`;
   return (
     <div className="ui-empty">
-      <span className="ui-empty-icon">
+      <span className={iconClass}>
         <Icon size={26} strokeWidth={2} />
       </span>
       <div className="ui-empty-title">{title}</div>

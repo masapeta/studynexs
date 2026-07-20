@@ -88,6 +88,7 @@ from app.modules.ai.services.telemetry_summary import db_telemetry_summary, scho
 from app.modules.ai.services.usage_caps import enforce_monthly_ai_cap
 from app.modules.ai.services.usage_log import list_question_paper_usage_log
 from app.modules.ai.telemetry import ai_metrics, bind_ai_context
+from app.modules.curriculum.schemas.provenance import provenance_from_sources
 from app.shared.schemas.common import APIResponse
 
 settings = get_settings()
@@ -339,6 +340,13 @@ def _to_out(
     can_approve = scope.can_approve_question_paper(p) if scope else True
     can_submit = scope.can_submit_question_paper(p) if scope else False
     can_reject = scope.can_reject_question_paper(p) if scope else False
+    prov = provenance_from_sources(
+        p.grounding_sources,
+        pack_id=str(p.pack_id) if p.pack_id else None,
+        grounded=bool(p.grounded),
+        created_at=p.created_at,
+    )
+    grounded_at = p.created_at.date() if p.grounded and p.created_at else None
     return QuestionPaperOut(
         id=p.id,
         title=p.title,
@@ -355,8 +363,11 @@ def _to_out(
         ai_model=p.ai_model,
         created_by=p.created_by,
         pack_id=p.pack_id,
+        pack_status=prov.get("pack_status"),
+        pack_version=prov.get("pack_version"),
         grounded=p.grounded,
         grounding_sources=p.grounding_sources,
+        grounded_at=grounded_at,
         can_approve=can_approve,
         can_edit=can_edit,
         can_submit=can_submit,

@@ -1,0 +1,161 @@
+/* ── Phase 2C: component polish via platform tokens + interaction vocabulary ──
+   Buttons, inputs, tables, cards, dialogs — no layout or workflow changes. */
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.btn {
+  transition:
+    background var(--platform-transition-ui),
+    color var(--platform-transition-ui),
+    border-color var(--platform-transition-ui),
+    box-shadow var(--platform-transition-ui),
+    transform var(--platform-transition-ui);
+}
+
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  opacity: var(--platform-state-disabled-opacity);
+  cursor: var(--platform-state-disabled-cursor);
+  pointer-events: none;
+  transform: none;
+}
+
+.btn-action:hover {
+  background: var(--accent-50);
+  border-color: var(--accent-100);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-outline:hover {
+  background: var(--state-hover-bg);
+  border-color: var(--state-hover-border);
+}
+
+.btn-ghost:hover {
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
+}
+
+.btn-green:hover {
+  background: var(--platform-state-success);
+}
+
+.btn-orange:hover {
+  background: var(--platform-state-warning);
+}
+
+.sn-app .btn-primary:hover {
+  box-shadow: 0 6px 20px rgb(var(--accent-rgb) / 0.28);
+}
+
+.sn-app .btn-ghost:hover {
+  background: var(--state-surface-hover-bg);
+}
+
+/* ── Form controls ───────────────────────────────────────────────────────── */
+.form-input,
+select.form-input,
+textarea.form-input {
+  transition:
+    border-color var(--platform-transition-ui),
+    box-shadow var(--platform-transition-ui),
+    background var(--platform-transition-ui);
+}
+
+.form-input::placeholder {
+  color: var(--text-muted);
+}
+
+.form-input:focus-visible,
+select.form-input:focus-visible,
+textarea.form-input:focus-visible {
+  border-color: color-mix(in srgb, var(--platform-state-focus-ring-color) 55%, var(--border));
+  box-shadow: var(--platform-state-focus-shadow);
+}
+
+.form-input:disabled {
+  opacity: var(--platform-state-disabled-opacity);
+  cursor: var(--platform-state-disabled-cursor);
+}
+
+.sn-app .form-input,
+.sn-app select.form-input,
+.sn-app textarea.form-input {
+  background: var(--platform-component-input-bg);
+  border-color: var(--sn-glass-border-soft);
+  border-radius: var(--platform-component-input-radius);
+}
+
+.sn-app .form-input:focus-visible,
+.sn-app select:focus-visible,
+.sn-app textarea:focus-visible,
+.sn-app input.form-input:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: var(--platform-state-focus-shadow);
+}
+
+/* ── Cards ───────────────────────────────────────────────────────────────── */
+.card,
+.gw-card,
+.data-table-card {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  transition:
+    box-shadow var(--platform-transition-ui),
+    border-color var(--platform-transition-ui);
+}
+
+.card:hover,
+.gw-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--state-hover-border);
+}
+
+.sn-app .card:hover,
+.sn-app .gw-card:hover {
+  border-color: rgb(var(--accent-rgb) / 0.18);
+}
+
+.ui-card,
+.ui-stat {
+  box-shadow: var(--shadow-card);
+  border-radius: var(--radius-lg);
+}
+
+/* ── Tables ──────────────────────────────────────────────────────────────── */
+.data-table th {
+  color: var(--text-secondary);
+  font-weight: var(--platform-weight-semibold);
+}
+
+.data-table tr:hover td {
+  background: var(--state-table-row-hover);
+}
+
+.card-menu:focus-visible {
+  background: var(--state-hover-bg);
+}
+
+/* ── Dialogs ─────────────────────────────────────────────────────────────── */
+.gw-modal-backdrop {
+  background: var(--platform-component-backdrop);
+}
+
+.gw-modal {
+  border-radius: var(--platform-component-modal-radius);
+  box-shadow: var(--platform-component-modal-shadow);
+}
+
+.gw-modal-close:focus-visible {
+  box-shadow: var(--platform-state-focus-shadow);
+}
+
+.sn-app .gw-modal {
+  border-radius: var(--radius-xl);
+  box-shadow: var(--platform-elev-mark-lg);
+}
+
+.sn-app .gw-modal-backdrop {
+  background: rgba(15, 23, 42, 0.52);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}

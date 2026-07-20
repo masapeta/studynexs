@@ -1,8 +1,9 @@
-"""Lesson plan generation — template-first MVP; LLM/CurriculumPack later."""
+"""Lesson plan generation — template-first with optional CurriculumPack grounding."""
 from __future__ import annotations
 
 import uuid
 from datetime import date, timedelta
+from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +12,11 @@ from app.core.staff_permissions import StaffScope, assert_qp_generate
 from app.db.models.academic import Class, Subject
 from app.db.models.lesson_plan import LessonPlan, LessonPlanStatus
 from app.db.models.mastery import StudentTopicMastery
+from app.modules.curriculum.services.curriculum_grounding import CurriculumGrounding, ground_approved_pack
+
+if TYPE_CHECKING:
+    from app.modules.ai.embeddings import EmbeddingService
+    from app.modules.ai.vectorstore.base import VectorStore
 
 
 class LessonPlanService:
@@ -45,6 +51,9 @@ class LessonPlanService:
         topic: str | None = None,
         chapter: str | None = None,
         scheduled_for: date | None = None,
+        pack_id: uuid.UUID | None = None,
+        embedder: "EmbeddingService | None" = None,
+        store: "VectorStore | None" = None,
     ) -> LessonPlan:
         assert_qp_generate(scope, class_id, subject_id)
         cls = (
@@ -60,9 +69,42 @@ class LessonPlanService:
         if not cls or not subj:
             raise ValueError("Class or subject not found")
 
-        focus_topic = topic or await self._weakest_topic(school_id, class_id, subject_id) or "Next topic"
-        chapter_name = chapter or subj.name
+        grounding: CurriculumGrounding | None = None
+        topic_list = [topic] if topic else None
+        if pack_id is not None:
+            grounding = await ground_approved_pack(
+                self.db,
+                school_id=school_id,
+                pack_id=pack_id,
+                class_id=class_id,
+                subject_id=subject_id,
+                topics=topic_list,
+                embedder=embedder,
+                store=store,
+            )
+            if grounding.is_empty:
+                raise ValueError(
+                    "This curriculum pack has no chapters/topics to ground on yet."
+                )
+
+        focus_topic = topic or await self._weakest_topic(school_id, class_id, subject_id)
+        if not focus_topic and grounding and grounding.sources:
+            focus_topic = grounding.sources[0].get("topic") or "Next topic"
+        focus_topic = focus_topic or "Next topic"
+
+        chapter_name = chapter
+        if not chapter_name and grounding and grounding.sources:
+            chapter_name = grounding.sources[0].get("chapter")
+        chapter_name = chapter_name or subj.name
+
         sched = scheduled_for or (date.today() + timedelta(days=1))
+
+        segments = self._segments_for_topic(focus_topic)
+        if grounding and grounding.context_text:
+            segments[1]["activity"] = (
+                f"Teach {focus_topic} using approved curriculum "
+                f"(pack v{grounding.pack_version}): grounded from {grounding.chunk_count} sources"
+            )
 
         plan = LessonPlan(
             school_id=school_id,
@@ -73,9 +115,12 @@ class LessonPlanService:
             chapter=chapter_name,
             topic=focus_topic,
             scheduled_for=sched,
-            segments=self._segments_for_topic(focus_topic),
+            segments=segments,
             status=LessonPlanStatus.DRAFT,
-            ai_model="template-v1",
+            ai_model="template-v1-grounded" if grounding else "template-v1",
+            pack_id=grounding.pack_id if grounding else None,
+            grounded=bool(grounding),
+            grounding_sources=grounding.sources if grounding else None,
         )
         self.db.add(plan)
         await self.db.flush()
@@ -116,8 +161,6 @@ class LessonPlanService:
             return True
         if plan.status != LessonPlanStatus.DRAFT or plan.created_by != scope.user_id:
             return False
-        # Re-check current assignment — a teacher pulled off this class/subject
-        # loses edit rights even on their own old drafts (no stale authorization).
         return (
             scope.teaches(plan.class_id, plan.subject_id)
             or scope.is_class_incharge(plan.class_id)
@@ -126,7 +169,4 @@ class LessonPlanService:
     def can_approve(self, scope: StaffScope, plan: LessonPlan) -> bool:
         if plan.status == LessonPlanStatus.APPROVED:
             return False
-        # Segregation of duties: approval needs the class incharge (or admin), not the
-        # author — mirrors question-paper and report-card approval. A subject teacher
-        # cannot rubber-stamp their own plan.
         return scope.is_class_incharge(plan.class_id)

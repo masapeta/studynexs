@@ -2,50 +2,98 @@
 
 > Milestones and sequencing. **Canonical policy:** [`/CLAUDE.md`](../CLAUDE.md) §87–§88. **Live
 > state:** [`STATUS.md`](./STATUS.md) and [`AGENT_HANDOVER.md`](./AGENT_HANDOVER.md). **Product
-> detail:** [`PRODUCT.md`](./PRODUCT.md). This file is the engineering-facing milestone view; it
-> never overrides the constitution.
+> detail:** [`PRODUCT.md`](./PRODUCT.md). **Pilot execution:** [`BACKLOG.md`](./BACKLOG.md) Gate 1–3,
+> [`TRACK_AB_EXECUTION.md`](./TRACK_AB_EXECUTION.md), [`pilot/GATE1_EXECUTION.md`](./pilot/GATE1_EXECUTION.md).
 >
-> Rule: **one thin, real, production-grade slice at a time** (`DECISION_LOG` D3). Build platform
-> capabilities before isolated features; don't front-run later layers with speculative complexity.
+> Rule: **one thin, real, production-grade slice at a time** (`DECISION_LOG` D3).
 
-## The four intelligence pillars (progress — engineering estimate)
+---
+
+## Business milestones (primary sequence)
+
+Engineering batches build capability. **Business milestones** decide when customers can experience it.
+
+```
+Engineering Complete     ← Batches 1–28 shipped (architecture v2.6)
+        ↓
+Gate 1A — Demo Online    ← HTTPS, login, demo data, AI, smokes (IN PROGRESS)
+        ↓
+Gate 1B — Demo Reliable  ← fallbacks, UX, teacher/parent flows, reliability targets
+        ↓
+Gate 1 EXIT              ← principal demo + no critical issues → STOP polishing
+        ↓
+Pilot Ready              ← Gate 2
+        ↓
+Pilot Running → Pilot Validated → Production Ready (Gate 3)
+```
+
+**Current focus:** **Batch 29 — Infrastructure Readiness**, then **Gate 1A — Demo Online** (HTTPS deploy blocked on credentials). **Batch 30 (Learning Analytics) deferred** until Gate 1 exit.
+
+Principal's sequence: **See → Trust → Pilot → Buy → Use → Analytics** — not Build → Build → Analytics.
+
+---
+
+## Intelligence pillars (progress — 2026-07-15)
 
 | Pillar | Progress | State |
 |---|---|---|
-| Curriculum Intelligence | ~55% | CurriculumPack + RAG + document ingest ✅; Knowledge Graph pending → [`CURRICULUM_INTELLIGENCE.md`](./CURRICULUM_INTELLIGENCE.md) |
-| Assessment Intelligence | ~60% | Grounded+cited QP ✅; rubric-per-criterion eval ✅; pack-grounded marking + eval UI rubric display ✅ → [`ASSESSMENT_INTELLIGENCE.md`](./ASSESSMENT_INTELLIGENCE.md) |
-| Learning Intelligence | ~15% | mastery compute + template tutor; adaptive + analytics pending |
-| School Operations Intelligence | ~60% | students/staff/fees/attendance/exams/finance built |
-| Shared AI Platform | ~75% | gateway + metering + credits + embeddings + vector store + RAG + grounding seam live → [`AI_ARCHITECTURE.md`](./AI_ARCHITECTURE.md) |
-| Knowledge Graph | ~10% | modeled; no tables yet → [`KNOWLEDGE_GRAPH.md`](./KNOWLEDGE_GRAPH.md) |
-| Flutter mobile | 0% | not started → [`MOBILE_ARCHITECTURE.md`](./MOBILE_ARCHITECTURE.md) |
+| Curriculum Intelligence | ~75% | Pack lifecycle, RAG, document ingest, ConceptCard, content review, curriculum UI, KG spine ✅ |
+| Assessment Intelligence | ~70% | Grounded QP, rubric eval, pack-grounded marking, eval UI ✅ |
+| Learning Intelligence | ~45% | Mastery engine, Student + Parent Copilot, template tutor + grounded ask ✅; analytics deferred |
+| School Operations Intelligence | ~60% | Students, staff, fees, attendance, exams, finance built |
+| Shared AI Platform | ~80% | Gateway, metering, credits, embeddings, vector store, RAG hybrid + re-rank ✅ |
+| Knowledge Graph | ~60% | Spine, concept cards, question links, weak-concept edges, graph queries ✅ |
+| Flutter mobile | 0% | PWA for pilot; native deferred → [`MOBILE_ARCHITECTURE.md`](./MOBILE_ARCHITECTURE.md) |
 
-## Horizons (from `CLAUDE.md` §87)
+---
+
+## Engineering batches completed (reference)
+
+| Batches | Focus |
+|---------|-------|
+| 1–11 | Foundation, tenant isolation, AI platform |
+| 12–14 | Grounded QP, rubric eval, pack-grounded marking |
+| 15 | Teacher Copilot |
+| 16 | Document Intelligence |
+| 17–23 | Knowledge Graph, ConceptCard, content review, curriculum UI, weak concepts, graph queries |
+| 24 | RAG hybrid + re-rank |
+| 25–26 | Student Copilot API + UI |
+| 27–28 | Parent Copilot API + UI |
+| — | Engineering OS validation standard (docs commit `45ed42a`) |
+
+**Deferred:** Batch 30 Learning Analytics — until Demo Ready exit.
+
+**In progress:** Batch 29 Infrastructure Readiness — reserved API hosts, runtime tenant, Dockerfile `[rag]`, deployment docs (`URL_ARCHITECTURE.md`, `DEPLOYMENT_ARCHITECTURE.md`).
+
+---
+
+## Gate 1 — Demo Ready (active)
+
+Split into **1A Demo Online** and **1B Demo Reliable**. Detail: [`pilot/GATE1_EXECUTION.md`](./pilot/GATE1_EXECUTION.md).
+
+| Sub-gate | Success |
+|----------|---------|
+| **1A** | HTTPS URL sendable — login, demo data, AI works, smokes 100% |
+| **1B** | Demo Reliability Targets met — fallbacks, polish, teacher/parent flows |
+| **Exit** | Principal demo done, no critical issues → **stop**, move to Gate 2 |
+
+**Reliability targets:** AI ≥95%, FCP <2s, QP <20s, fallback coverage 100%, critical errors 0, smokes 100%.
+
+---
+
+## Horizons (product — updated)
 
 | Horizon | Focus | Status |
 |---|---|---|
-| **Now** | Pilot-ready SMS core + Teacher-AI question papers (HITL) + grounded eval assist | 🟡 in progress |
-| **Next** | Knowledge Graph schema · Concept Cards | 🟡 Batch 16 document ingest shipped |
-| **Then** | AI Tutor (mistake-recovery) → voice; Concept Cards + Content Review Queue | 🔧 template tutor shipped |
-| **Later** | Parent/Student copilots, adaptive learning, learning + behaviour analytics | ⬜ |
-| **Platform** | Integrations, workflow automation, tool-using agents on the gateway | ⬜ |
-| **Future** | Marketplace · plugins · MCP · agent-to-agent (strict tenant/RBAC/metering/audit) | 🔭 |
+| **Now** | Gate 1A Demo Online — HTTPS deploy | 🟡 blocked on credentials |
+| **Next** | Gate 1B Demo Reliable → Gate 1 exit (principal demo) | ⬜ |
+| **Then** | Gate 2 controlled pilot | ⬜ after Gate 1 exit |
+| **Later** | Batch 30 analytics (from pilot feedback) | ⬜ deferred |
+| **Platform** | Integrations, workflow automation, tool-using agents | ⬜ |
+| **Future** | Marketplace · plugins · MCP | 🔭 |
 
-## Immediate engineering sequence (updated 2026-07-11)
-
-1. ~~**Wire `RagService` into question-paper generation**~~ — ✅ Batch 12 (`assessment_grounding.ground_for_pack`).
-2. ~~**Rubric-per-criterion + LLM subjective evaluation**~~ — ✅ Batch 13 (`evaluation_engine` + `answer_sheet_eval_service` wiring).
-3. ~~**Pack-grounded evaluation marking**~~ — ✅ Batch 14 (`ground_for_evaluation` + eval UI rubric display).
-4. **AI Teacher Copilot enhancements** — ✅ Batch 15 (`teacher_copilot_service`, grounded lesson plans, QP review, feedback draft).
-5. ~~**Document Intelligence ingestion**~~ — ✅ Batch 16 (`document_intelligence_service`, pack document ingest API, RAG document chunks).
-6. **`ConceptCard` first-class table** — tutor grounding + Content Review Queue.
-7. **Knowledge Graph schema** — curriculum spine first (`Curriculum→Subject→Chapter→Topic→Concept`).
-8. **Curriculum management UI.**
-9. **Flutter mobile foundation** — once shared API/RBAC/design contracts are stable.
-10. **Incremental** — lint → zero (then flip CI blocking); Azure Blob; real notification delivery; backups/DR; CD.
+---
 
 ## Scalability roadmap (introduce when metrics justify — `CLAUDE.md` §88)
 
-Shared-DB multi-tenant (`school_id` everywhere) → read replicas → partition/shard hot tables → service
-extraction at a measured need → more Arq workers → semantic caching + smaller-model routing → multi-region
-for residency. Never preemptively.
+Shared-DB multi-tenant → read replicas → partition hot tables → service extraction → more Arq workers → semantic caching → multi-region. Never preemptively.

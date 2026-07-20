@@ -1,0 +1,228 @@
+/* ── Phase 2A: platform interaction state utilities ─────────────────────────
+   Phase 2B: skip link + enhanced focus outline for WCAG focus contrast.
+   Extend platform-tokens.css — do not duplicate raw values here. */
+
+/* ── Skip link (WCAG 2.4.1) ──────────────────────────────────────────────── */
+.platform-skip-link {
+  position: fixed;
+  top: var(--platform-space-3);
+  left: var(--platform-space-3);
+  z-index: 10000;
+  padding: var(--platform-space-2) var(--platform-space-4);
+  background: var(--platform-navy);
+  color: #fff;
+  font-family: var(--platform-font-sans);
+  font-size: var(--platform-text-sm);
+  font-weight: var(--platform-weight-semibold);
+  border-radius: var(--platform-radius-xs);
+  text-decoration: none;
+  transform: translateY(calc(-100% - var(--platform-space-4)));
+  transition: transform var(--platform-transition-ui);
+}
+
+.platform-skip-link:focus,
+.platform-skip-link:focus-visible {
+  transform: translateY(0);
+  outline: var(--platform-a11y-focus-outline-width) solid #fff;
+  outline-offset: var(--platform-a11y-focus-outline-offset);
+  box-shadow: var(--platform-state-focus-shadow);
+}
+
+/* ── Enhanced focus (≥3:1 ring contrast) ─────────────────────────────────── */
+.platform-focus-ring:focus-visible,
+.mkt-btn:focus-visible,
+.mkt-nav-link:focus-visible,
+.mkt-nav-chip--link:focus-visible,
+.sn-app .topbar-icon-btn:focus-visible,
+.sn-app .topbar-search-trigger:focus-visible,
+.sn-app .btn-primary:focus-visible,
+.sn-app .btn-outline:focus-visible,
+.sn-app .btn-ghost:focus-visible,
+.sn-app .gw-table-icon-btn:focus-visible,
+.sn-app .nav-item:focus-visible,
+.btn-primary:focus-visible,
+.btn-action:focus-visible,
+.ui-card-tap:focus-visible,
+.ui-row-tap:focus-visible {
+  outline: var(--platform-a11y-focus-outline-width) solid var(--platform-state-focus-ring-color);
+  outline-offset: var(--platform-a11y-focus-outline-offset);
+}
+/* ── Semantic feedback surfaces ──────────────────────────────────────────── */
+.platform-state--success {
+  background: var(--platform-state-success-bg);
+  border: 1px solid var(--platform-state-success-border);
+  color: var(--platform-state-success-text);
+}
+
+.platform-state--warning {
+  background: var(--platform-state-warning-bg);
+  border: 1px solid var(--platform-state-warning-border);
+  color: var(--platform-state-warning-text);
+}
+
+.platform-state--error {
+  background: var(--platform-state-error-bg);
+  border: 1px solid var(--platform-state-error-border);
+  color: var(--platform-state-error-text);
+}
+
+.platform-state-icon--success {
+  background: var(--platform-state-success-bg);
+  color: var(--platform-state-success);
+}
+
+.platform-state-icon--warning {
+  background: var(--platform-state-warning-bg);
+  color: var(--platform-state-warning);
+}
+
+.platform-state-icon--error {
+  background: var(--platform-state-error-bg);
+  color: var(--platform-state-error);
+}
+
+/* ── Shared focus ring ───────────────────────────────────────────────────── */
+.platform-focus-ring:focus-visible {
+  box-shadow:
+    inset 0 0 0 1px var(--platform-state-focus-inset),
+    var(--platform-state-focus-shadow);
+}
+
+/* ── Interactive transition baseline ─────────────────────────────────────── */
+.platform-interactive {
+  transition:
+    background var(--platform-transition-ui),
+    color var(--platform-transition-ui),
+    box-shadow var(--platform-transition-ui),
+    border-color var(--platform-transition-ui),
+    transform var(--platform-transition-ui);
+}
+
+/* ── Disabled ──────────────────────────────────────────────────────────────── */
+.platform-state-disabled,
+.platform-state-disabled:disabled,
+:disabled.platform-state-disabled {
+  opacity: var(--platform-state-disabled-opacity);
+  cursor: var(--platform-state-disabled-cursor);
+  pointer-events: none;
+}
+
+/* ── Loading / busy ────────────────────────────────────────────────────────── */
+.platform-state-loading,
+.platform-state-loading[aria-busy="true"] {
+  cursor: var(--platform-state-loading-cursor);
+}
+
+.platform-skeleton {
+  background: var(--platform-state-skeleton-gradient);
+  background-size: 936px 100%;
+  animation: platform-skeleton-shimmer var(--platform-transition-skeleton);
+}
+
+@keyframes platform-skeleton-shimmer {
+  0% { background-position: -468px 0; }
+  100% { background-position: 468px 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .platform-skeleton {
+    animation: none;
+    background: var(--platform-state-skeleton-base);
+  }
+}
+
+/* ── Empty state shared tokens ─────────────────────────────────────────────── */
+.ui-empty,
+.gw-empty-state {
+  color: var(--platform-gray-500);
+  text-align: center;
+}
+
+.ui-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--platform-state-empty-padding-y) var(--platform-state-empty-padding-x);
+}
+
+.ui-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--platform-state-empty-icon-size);
+  height: var(--platform-state-empty-icon-size);
+  border-radius: var(--platform-state-empty-icon-radius);
+  background: var(--platform-state-empty-icon-bg);
+  color: var(--platform-state-empty-icon-color);
+  margin-bottom: var(--platform-state-empty-gap);
+}
+
+.ui-empty-title {
+  font-size: var(--platform-state-empty-title-size);
+  font-weight: var(--platform-weight-bold);
+  color: var(--text-primary);
+}
+
+.ui-empty-message {
+  font-size: var(--platform-state-empty-message-size);
+  color: var(--text-muted);
+  margin-top: var(--platform-space-2);
+  max-width: 280px;
+  line-height: var(--platform-leading-normal);
+}
+
+.ui-empty-action {
+  margin-top: var(--platform-space-4);
+}
+
+.gw-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--platform-state-empty-gap);
+  padding: var(--platform-state-empty-padding-y) 0;
+}
+
+.sn-app .gw-empty-state {
+  padding: var(--platform-state-empty-padding-y) var(--platform-state-empty-padding-x);
+}
+
+/* ── Marketing focus parity ────────────────────────────────────────────────── */
+.mkt-btn:focus-visible,
+.mkt-nav-link:focus-visible,
+.mkt-nav-chip--link:focus-visible {
+  box-shadow: var(--platform-state-focus-shadow);
+}
+
+.mkt-btn:disabled,
+.mkt-btn[aria-disabled="true"] {
+  opacity: var(--platform-state-disabled-opacity);
+  cursor: var(--platform-state-disabled-cursor);
+  pointer-events: none;
+}
+
+/* ── App shell focus extensions ────────────────────────────────────────────── */
+.sn-app .topbar-icon-btn:focus-visible,
+.sn-app .topbar-search-trigger:focus-visible,
+.sn-app .btn-primary:focus-visible,
+.sn-app .btn-outline:focus-visible,
+.sn-app .btn-ghost:focus-visible,
+.sn-app .gw-table-icon-btn:focus-visible {
+  box-shadow:
+    inset 0 0 0 1px var(--platform-state-focus-inset),
+    var(--platform-state-focus-shadow);
+}
+
+.btn-primary:focus-visible,
+.btn-action:focus-visible {
+  box-shadow: var(--platform-state-focus-shadow);
+}
+
+#main-content:focus {
+  outline: none;
+}
+
+.mkt-shell {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}

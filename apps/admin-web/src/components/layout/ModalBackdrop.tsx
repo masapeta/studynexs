@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { PLATFORM_MOTION_MS } from "@/lib/platform-motion";
 
 let lockCount = 0;
 let savedBodyOverflow = "";
@@ -54,17 +55,56 @@ type Props = {
 
 export function ModalBackdrop({ open, onClose, disableClose, labelledBy, children }: Props) {
   const [mounted, setMounted] = useState(false);
-  useBodyScrollLock(open);
+  const [visible, setVisible] = useState(open);
+  const [motionClass, setMotionClass] = useState<"enter" | "exit" | "">("");
+  useBodyScrollLock(visible);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !disableClose) onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose, disableClose]);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!open || !mounted) return null;
+  useEffect(() => {
+    if (open) {
+      setVisible(true);
+      setMotionClass("");
+      const frame = requestAnimationFrame(() => {
+        requestAnimationFrame(() => setMotionClass("enter"));
+      });
+      return () => cancelAnimationFrame(frame);
+    }
+
+    if (!visible) return;
+
+    setMotionClass("exit");
+    const timer = window.setTimeout(() => {
+      setVisible(false);
+      setMotionClass("");
+    }, PLATFORM_MOTION_MS.fast);
+
+    return () => window.clearTimeout(timer);
+  }, [open, visible]);
+
+  if (!visible || !mounted) return null;
+
+  const motionModifier =
+    motionClass === "enter"
+      ? "gw-modal-backdrop--enter"
+      : motionClass === "exit"
+        ? "gw-modal-backdrop--exit"
+        : "";
 
   return createPortal(
     <div
-      className="gw-modal-backdrop"
+      className={`gw-modal-backdrop ${motionModifier}`.trim()}
       role="dialog"
       aria-modal="true"
       aria-labelledby={labelledBy}

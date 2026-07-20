@@ -7,11 +7,14 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { applyThemeColor, DEFAULT_ACCENT, getStoredThemeColor, normalizeThemeColor } from "@/lib/theme";
 import { navAllowed, PORTAL_ROLES, portalHomeForRole } from "@/lib/permissions";
+import { SkipLink } from "@/components/a11y/SkipLink";
 import { RouteGuard } from "@/components/RouteGuard";
 import { AppBackground } from "@/components/AppBackground";
 import { NAV_GROUPS, DEFAULT_OFF_MODULES, type NavItem } from "@/lib/nav-groups";
 import { TopBar } from "@/components/layout/TopBar";
 import { DemoDataBanner } from "@/components/DemoDataBanner";
+import { StudyNexsBrandMark } from "@/components/brand/StudyNexsBrandMark";
+import { PortalEntryLoading } from "@/components/brand";
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const { user, permissions, loading, logout } = useAuth();
@@ -84,13 +87,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     href === "/dashboard" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
 
   if (loading || isPortalUser) {
-    return (
-      <div className="sn-app loading-screen">
-        <AppBackground />
-        <div className="spinner" />
-        <p style={{ color: "var(--text-muted)" }}>Loading...</p>
-      </div>
-    );
+    return <PortalEntryLoading portal="admin" />;
   }
 
   if (!user) return null;
@@ -98,22 +95,18 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const nameParts = schoolName.split(" ");
   const line1 = nameParts.slice(0, 1).join(" ") || "Greenwood";
   const line2 = nameParts.slice(1).join(" ") || "Public School";
+  const schoolDisplayName = schoolName.trim() || `${line1} ${line2}`.trim();
 
   return (
     <div className="sn-app">
+      <SkipLink />
       <AppBackground />
       <DemoDataBanner />
-      <div className="app-layout">
+      <div className="app-layout sn-app-enter">
         <aside className="sidebar">
-          <div className="sidebar-brand">
-            <div className="sidebar-brand-mark">G</div>
-            <div className="sidebar-brand-text">
-              <span className="sidebar-brand-line">{line1}</span>
-              <span className="sidebar-brand-line muted">{line2}</span>
-            </div>
-          </div>
+          <StudyNexsBrandMark schoolName={schoolDisplayName} compact />
 
-          <nav className="sidebar-nav">
+          <nav className="sidebar-nav" aria-label="Main navigation">
             {NAV_GROUPS.map((group) => {
               const items = group.items.filter(
                 (item) => moduleVisible(item.module) && itemVisible(item)
@@ -141,7 +134,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </nav>
         </aside>
 
-        <main className="main-content">
+        <main id="main-content" className="main-content" tabIndex={-1}>
           <TopBar
             userName={user.full_name}
             userRole={user.role}

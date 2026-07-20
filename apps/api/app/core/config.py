@@ -109,10 +109,12 @@ class Settings(BaseSettings):
         "http://localhost:3001",
         "http://localhost:3002",
         "http://localhost:3003",
+        "http://localhost:3006",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:3001",
         "http://127.0.0.1:3002",
         "http://127.0.0.1:3003",
+        "http://127.0.0.1:3006",
     ]
 
     # ── Cookie Config ────────────────────────────────────────────
@@ -125,6 +127,16 @@ class Settings(BaseSettings):
     # ── Tenant ───────────────────────────────────────────────────
     TENANT_BASE_DOMAIN: str = "localhost"  # e.g., "studynexs.com" in production
     DEFAULT_TENANT_SLUG: str = "dev"  # fallback for local development
+    # Platform hosts (api, app, demo, …) — not school tenants; see docs/URL_ARCHITECTURE.md
+    TENANT_RESERVED_SUBDOMAINS: list[str] = [
+        "api",
+        "app",
+        "demo",
+        "dev",
+        "test",
+        "admin",
+        "www",
+    ]
 
     # ── External Services (placeholders for Phase 2+) ────────────
     MSG91_AUTH_KEY: str = ""

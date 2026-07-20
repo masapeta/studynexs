@@ -1,55 +1,30 @@
-/* Noustriks marketing design tokens — single source for visual system */
+@import "./platform-tokens.css";
+@import "./platform-aliases.css";
+@import "./platform-states.css";
+@import "./platform-typography.css";
+
+/* Noustriks marketing design tokens — color aliases to platform primitives */
 
 .mkt {
-  /* Color */
-  --mkt-token-frost: #f8fafc;
-  --mkt-token-navy: #0f172a;
-  --mkt-token-navy-soft: #1e293b;
-  --mkt-token-blue-400: #60a5fa;
-  --mkt-token-blue-500: #3b82f6;
-  --mkt-token-gray-400: #94a3b8;
-  --mkt-token-gray-500: #64748b;
-  --mkt-token-gray-600: #475569;
+  /* Color — from platform-tokens.css */
+  --mkt-token-frost: var(--platform-frost);
+  --mkt-token-navy: var(--platform-navy);
+  --mkt-token-navy-soft: var(--platform-navy-soft);
+  --mkt-token-blue-400: var(--platform-blue-soft);
+  --mkt-token-blue-500: var(--platform-blue);
+  --mkt-token-gray-400: var(--platform-gray-400);
+  --mkt-token-gray-500: var(--platform-gray-500);
+  --mkt-token-gray-600: var(--platform-gray-600);
 
   /* Glass materials */
-  --mkt-token-glass-bg: rgba(255, 255, 255, 0.55);
-  --mkt-token-glass-strong: rgba(255, 255, 255, 0.72);
-  --mkt-token-glass-border: rgba(255, 255, 255, 0.65);
-  --mkt-token-glass-border-soft: rgba(148, 163, 184, 0.22);
-  --mkt-token-blur: 20px;
-  --mkt-token-blur-heavy: 40px;
+  --mkt-token-glass-bg: var(--platform-glass-bg);
+  --mkt-token-glass-strong: var(--platform-glass-strong);
+  --mkt-token-glass-border: var(--platform-glass-border);
+  --mkt-token-glass-border-soft: var(--platform-glass-border-soft);
+  --mkt-token-blur: var(--platform-blur);
+  --mkt-token-blur-heavy: var(--platform-blur-heavy);
 
-  /* Spacing scale (rem) */
-  --mkt-space-1: 0.25rem;
-  --mkt-space-2: 0.5rem;
-  --mkt-space-3: 0.75rem;
-  --mkt-space-4: 1rem;
-  --mkt-space-6: 1.5rem;
-  --mkt-space-8: 2rem;
-  --mkt-space-12: 3rem;
-  --mkt-space-16: 4rem;
-  --mkt-space-section: clamp(5rem, 12vw, 9rem);
-
-  /* Radius */
-  --mkt-token-radius-sm: 14px;
-  --mkt-token-radius-md: 20px;
-  --mkt-token-radius-lg: 24px;
-  --mkt-token-radius-xl: 32px;
-  --mkt-token-radius-pill: 9999px;
-
-  /* Motion */
-  --mkt-token-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --mkt-token-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --mkt-token-duration-fast: 0.35s;
-  --mkt-token-duration-base: 0.65s;
-  --mkt-token-duration-slow: 0.85s;
-
-  /* Layout */
-  --mkt-token-max: 1280px;
-  --mkt-token-nav-max: 1080px;
-
-  /* Elevation */
-  --mkt-token-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.03);
-  --mkt-token-shadow-md: 0 12px 40px rgba(15, 23, 42, 0.06);
-  --mkt-token-shadow-lg: 0 24px 64px rgba(59, 130, 246, 0.12);
+  /* Motion — alias to platform (Phase 3C) */
+  --mkt-ease: var(--mkt-token-ease);
+  --mkt-spring: var(--mkt-token-spring);
 }

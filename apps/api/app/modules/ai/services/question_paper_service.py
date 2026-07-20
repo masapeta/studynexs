@@ -15,16 +15,20 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.tenant_scope import TenantScope
 from app.db.models.academic import Class, Subject
 from app.db.models.ai_usage import AIUsage
-from app.db.models.curriculum_pack import PackStatus
 from app.db.models.question_paper import PaperStatus, QuestionPaper
 from app.modules.ai.embeddings import EmbeddingService
 from app.modules.ai.gateway import LLMMessage, LLMResult, generate_llm, record_usage
 from app.modules.ai.gateway.output_guard import sanitize_paper_sections
 from app.modules.ai.services.ai_credits import credits_for_purpose, reserve_ai_credits
-from app.modules.ai.services.assessment_grounding import GroundingContext, ground_for_pack
+from app.modules.ai.services.assessment_grounding import ground_for_evaluation
+from app.modules.curriculum.services.curriculum_grounding import (
+    CurriculumGrounding,
+    ground_approved_pack,
+)
 from app.modules.ai.services.question_bank_service import (
     compose_sections_from_plan,
     fetch_compose_candidates,
@@ -33,9 +37,80 @@ from app.modules.ai.services.question_bank_service import (
     renumber_sections,
 )
 from app.modules.ai.vectorstore.base import VectorStore
-from app.modules.curriculum.services.pack_service import PackError, PackService
 
 logger = structlog.get_logger()
+
+
+def _stub_qp_json(*, title: str, plan: list[dict]) -> str:
+    """Minimal valid paper JSON when LLM is unavailable (dev/test demo resilience — G1-03)."""
+    sections = []
+    for section in plan[:3]:
+        count = min(2, int(section.get("answer_any") or section.get("count") or 1))
+        questions = []
+        for i in range(count):
+            q_type = section.get("type") or "short"
+            questions.append({
+                "number": str(i + 1),
+                "text": (
+                    f"[Demo draft] Sample {q_type} question — replace before use in exams."
+                ),
+                "marks": section.get("marks_per_q", 1),
+                "type": q_type,
+                "answer_key": "Teacher to verify against syllabus.",
+                **({"options": ["A", "B", "C", "D"]} if q_type == "mcq" else {}),
+            })
+        sections.append({
+            "title": section.get("title", "Section"),
+            "instructions": section.get("instructions", ""),
+            "questions": questions,
+        })
+    return json.dumps({
+        "title": title,
+        "general_instructions": [
+            "Demo draft paper — generated without live AI. Approve only after teacher review.",
+        ],
+        "sections": sections,
+    })
+
+
+async def _generate_qp_llm(
+    messages: list[LLMMessage],
+    *,
+    json_mode: bool,
+    max_tokens: int,
+    temperature: float,
+    caller: str,
+    stub_title: str,
+    stub_plan: list[dict],
+) -> LLMResult:
+    """Call LLM gateway; in dev/test without fallback provider, return a demo-safe stub paper."""
+    try:
+        return await generate_llm(
+            messages,
+            json_mode=json_mode,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            feature="question_paper",
+            caller=caller,
+        )
+    except Exception as exc:
+        settings = get_settings()
+        allow_stub = (
+            (settings.is_development or settings.ENVIRONMENT == "testing")
+            and not (settings.AI_FALLBACK_PROVIDER or "").strip()
+        )
+        if not allow_stub:
+            raise
+        logger.warning("question_paper_llm_failed_using_stub", caller=caller, error=str(exc))
+        return LLMResult(
+            text=_stub_qp_json(title=stub_title, plan=stub_plan),
+            provider="stub",
+            model="dev-stub",
+            tokens_in=0,
+            tokens_out=0,
+            latency_ms=0,
+        )
+
 
 _DIFFICULTY_MIX = {
     "easy": {"easy": 60, "medium": 30, "hard": 10},
@@ -263,22 +338,18 @@ async def generate_paper(
     # credits so a bad/empty pack fails fast without charging the teacher. All retrieval goes
     # through the shared RAG platform — the service never touches a provider/embedder directly.
     grounded = False
-    grounding: GroundingContext | None = None
+    grounding: CurriculumGrounding | None = None
     grounding_pack_id: uuid.UUID | None = None
     if pack_id is not None:
-        try:
-            pack = await PackService(db).get_pack(school_id, pack_id)
-        except PackError as exc:
-            raise ValueError(str(exc)) from exc
-        if pack.class_id != class_id or pack.subject_id != subject_id:
-            raise ValueError("Curriculum pack does not match this class and subject.")
-        if pack.status != PackStatus.APPROVED:
-            raise ValueError(
-                "Approve the curriculum pack before generating grounded papers from it."
-            )
-        board = pack.board or board
-        grounding = await ground_for_pack(
-            db, pack=pack, topics=topics, embedder=embedder, store=store
+        grounding = await ground_approved_pack(
+            db,
+            school_id=school_id,
+            pack_id=pack_id,
+            class_id=class_id,
+            subject_id=subject_id,
+            topics=topics,
+            embedder=embedder,
+            store=store,
         )
         if grounding.is_empty:
             raise ValueError(
@@ -286,7 +357,8 @@ async def generate_paper(
                 "Add curriculum content, then generate."
             )
         grounded = True
-        grounding_pack_id = pack.id
+        grounding_pack_id = grounding.pack_id
+        board = grounding.board or board
         messages = _build_grounded_messages(
             board=board, grade=grade, subject=subject.name, topics=topics,
             total_marks=total_marks, duration=duration_minutes, difficulty=difficulty,
@@ -312,9 +384,14 @@ async def generate_paper(
             ref_type="question_paper",
         )
 
-    result = await generate_llm(
-        messages, json_mode=True, max_tokens=8000, temperature=0.4,
-        feature="question_paper", caller="generate_paper",
+    result = await _generate_qp_llm(
+        messages,
+        json_mode=True,
+        max_tokens=8000,
+        temperature=0.4,
+        caller="generate_paper",
+        stub_title=title or f"{subject.name} — {grade}",
+        stub_plan=plan,
     )
     usage_row = await _record_qp_llm_usage(
         db,
@@ -456,9 +533,14 @@ async def generate_paper_from_bank(
             topics=topics,
             gaps=gaps,
         )
-        llm_result = await generate_llm(
-            messages, json_mode=True, max_tokens=4000, temperature=0.4,
-            feature="question_paper", caller="generate_paper_from_bank",
+        llm_result = await _generate_qp_llm(
+            messages,
+            json_mode=True,
+            max_tokens=4000,
+            temperature=0.4,
+            caller="generate_paper_from_bank",
+            stub_title=title or f"{subject.name} — {grade} (from bank)",
+            stub_plan=plan,
         )
         if reserved:
             await _record_qp_llm_usage(db, result=llm_result, reserved_row=reserved)

@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Clock, NotebookPen, RefreshCw, Sparkles } from "lucide-react";
+import { Check, Clock, RefreshCw, Sparkles } from "lucide-react";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { AppSelect } from "@/components/ui/AppSelect";
 import { PageHeaderCard } from "@/components/layout/PageHeaderCard";
+import { CurriculumGroundingBadge } from "@/components/curriculum/CurriculumGroundingBadge";
 import { formatClassLabel, sortClasses } from "@/lib/format";
 
 type Segment = { duration_min: number; activity: string; citations?: number[]; citation_sources?: { chapter?: string; topic?: string }[] };
@@ -18,14 +19,23 @@ type Plan = {
   status: string;
   notes?: string | null;
   pack_id?: string | null;
+  pack_status?: string | null;
+  pack_version?: number | null;
   grounded?: boolean;
-  grounding_sources?: { chapter?: string; topic?: string; index?: number }[] | null;
+  grounded_at?: string | null;
+  grounding_sources?: Array<Record<string, unknown>> | null;
   ai_model?: string | null;
   can_edit?: boolean;
   can_approve?: boolean;
 };
 
-type CurriculumPack = { id: string; status: string; board: string; book_title?: string | null };
+type ApprovedPack = {
+  id: string;
+  status: string;
+  version: number;
+  board: string;
+  book_title?: string | null;
+};
 
 const btn: React.CSSProperties = { width: "auto", padding: "8px 18px", borderRadius: "var(--radius-full)", fontSize: 13 };
 
@@ -36,7 +46,7 @@ export default function LessonPlansPage() {
   const [subjectId, setSubjectId] = useState("");
   const [topic, setTopic] = useState("");
   const [packId, setPackId] = useState("");
-  const [packs, setPacks] = useState<CurriculumPack[]>([]);
+  const [approvedPacks, setApprovedPacks] = useState<ApprovedPack[]>([]);
   const [useCopilot, setUseCopilot] = useState(false);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [busy, setBusy] = useState(false);
@@ -68,25 +78,29 @@ export default function LessonPlansPage() {
 
   useEffect(() => {
     if (!classId || !subjectId) {
-      setPacks([]);
+      setApprovedPacks([]);
       setPackId("");
       return;
     }
     api(`/api/v1/curriculum/packs?class_id=${classId}&subject_id=${subjectId}`)
       .then((r) => {
-        const items: CurriculumPack[] = (r.data || []).filter(
-          (p: CurriculumPack) => p.status === "approved"
-        );
-        setPacks(items);
-        setPackId(items[0]?.id || "");
+        const approved = (r.data || []).filter((p: ApprovedPack) => p.status === "approved");
+        setApprovedPacks(approved);
+        setPackId(approved[0]?.id || "");
       })
-      .catch(() => setPacks([]));
+      .catch(() => {
+        setApprovedPacks([]);
+        setPackId("");
+      });
   }, [classId, subjectId]);
 
   async function generate() {
-    if (!classId || !subjectId) { setError("Pick a class and subject first."); return; }
+    if (!classId || !subjectId) {
+      setError("Pick a class and subject first.");
+      return;
+    }
     if (useCopilot && !packId) {
-      setError("Select an approved curriculum pack for grounded generation.");
+      setError("Select an approved curriculum pack for Teacher Copilot generation.");
       return;
     }
     setBusy(true);
@@ -96,8 +110,9 @@ export default function LessonPlansPage() {
         class_id: classId,
         subject_id: subjectId,
         topic: topic.trim() || null,
+        generation_mode: useCopilot ? "copilot" : "template",
       };
-      if (useCopilot && packId) body.pack_id = packId;
+      if (packId) body.pack_id = packId;
       const res = await api<Plan>("/api/v1/lesson-plans/generate", {
         method: "POST",
         body: JSON.stringify(body),
@@ -125,12 +140,16 @@ export default function LessonPlansPage() {
   }
 
   const approved = plan?.status === "approved";
+  const packOptions = approvedPacks.map((p) => ({
+    value: p.id,
+    label: `v${p.version} · ${p.book_title || "Approved pack"}`,
+  }));
 
   return (
     <>
       <PageHeaderCard
         title="Lesson Plans"
-        subtitle="Generate a period plan from a topic (template or curriculum-grounded Teacher Copilot), edit, and approve."
+        subtitle="Default: template + curriculum grounding. Optional: Teacher Copilot (feature toggle)."
       />
 
       {error && <div className="card sn-inline-alert sn-inline-alert--error">{error}</div>}
@@ -160,8 +179,19 @@ export default function LessonPlansPage() {
           />
         </div>
         <div>
-          <label className="stat-label">Topic (optional — defaults to weakest)</label>
-          <input className="form-input sn-inline-field" value={topic} placeholder="e.g. Quadratic Equations" onChange={(e) => setTopic(e.target.value)} />
+          <label className="stat-label">Approved curriculum pack</label>
+          <AppSelect
+            variant="field"
+            value={packId}
+            onChange={setPackId}
+            aria-label="Curriculum pack"
+            placeholder={packOptions.length ? "Select pack…" : "No approved pack — ungrounded"}
+            options={packOptions.length ? packOptions : [{ value: "", label: "No approved pack" }]}
+          />
+        </div>
+        <div>
+          <label className="stat-label">Topic (optional)</label>
+          <input className="form-input sn-inline-field" value={topic} placeholder="e.g. Linear Equations" onChange={(e) => setTopic(e.target.value)} />
         </div>
         <div>
           <label className="stat-label">Generation mode</label>
@@ -171,30 +201,11 @@ export default function LessonPlansPage() {
             onChange={(v) => setUseCopilot(v === "copilot")}
             aria-label="Generation mode"
             options={[
-              { value: "template", label: "Template (no AI credits)" },
-              { value: "copilot", label: "Teacher Copilot (grounded, uses credits)" },
+              { value: "template", label: "Template + curriculum grounding" },
+              { value: "copilot", label: "Teacher Copilot (AI credits)" },
             ]}
           />
         </div>
-        {useCopilot && (
-          <div>
-            <label className="stat-label">Approved curriculum pack</label>
-            <AppSelect
-              variant="field"
-              value={packId}
-              onChange={setPackId}
-              aria-label="Curriculum pack"
-              options={
-                packs.length
-                  ? packs.map((p) => ({
-                      value: p.id,
-                      label: p.book_title ? `${p.board} — ${p.book_title}` : `${p.board} pack`,
-                    }))
-                  : [{ value: "", label: "No approved packs" }]
-              }
-            />
-          </div>
-        )}
         <button className="btn btn-primary" style={btn} onClick={generate} disabled={busy}>
           <Sparkles size={15} style={{ marginRight: 6 }} />{busy ? "Working…" : "Generate"}
         </button>
@@ -208,13 +219,19 @@ export default function LessonPlansPage() {
               <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>
                 {plan.chapter ? `${plan.chapter} · ` : ""}{plan.topic}
                 {plan.scheduled_for ? ` · ${new Date(plan.scheduled_for).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}` : ""}
+                {plan.ai_model ? ` · ${plan.ai_model}` : ""}
               </div>
             </div>
             <span className={`badge ${approved ? "badge-success" : "badge-warning"}`} style={{ textTransform: "capitalize" }}>{plan.status}</span>
-            {plan.grounded && (
-              <span className="badge badge-info" style={{ marginLeft: 8 }}>Grounded · Copilot</span>
-            )}
           </div>
+
+          <CurriculumGroundingBadge
+            packId={plan.pack_id}
+            packStatus={plan.pack_status}
+            packVersion={plan.pack_version}
+            grounded={plan.grounded}
+            groundedAt={plan.grounded_at}
+          />
 
           {plan.notes && (
             <div style={{ marginTop: 12, fontSize: 13, color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>{plan.notes}</div>

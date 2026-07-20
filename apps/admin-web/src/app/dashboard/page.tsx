@@ -20,13 +20,19 @@ type FeeStats = { total_collected?: number; pending_amount?: number };
 
 function DashboardSkeleton() {
   return (
-    <div className="briefing-page briefing-page--executive" aria-busy="true" aria-label="Loading dashboard">
+    <div
+      className="briefing-page briefing-page--executive"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      aria-label="Loading dashboard"
+    >
       <div className="briefing-exec-row briefing-exec-row--kpis">
         {[0, 1, 2, 3].map((i) => (
           <div
             key={i}
-            className="briefing-glass-chip briefing-exec-kpi"
-            style={{ minHeight: 68, opacity: 0.45 }}
+            className="briefing-glass-chip briefing-exec-kpi platform-skeleton"
+            style={{ minHeight: 68 }}
           />
         ))}
       </div>
@@ -34,13 +40,17 @@ function DashboardSkeleton() {
         {[0, 1, 2].map((i) => (
           <div
             key={i}
-            className="briefing-glass-chip briefing-panel"
-            style={{ minHeight: 200, opacity: 0.4 }}
+            className="briefing-glass-chip briefing-panel platform-skeleton"
+            style={{ minHeight: 200 }}
           />
         ))}
       </div>
     </div>
   );
+}
+
+function DashboardContent({ children }: { children: React.ReactNode }) {
+  return <div className="platform-motion-briefing-enter">{children}</div>;
 }
 
 export default function DashboardPage() {
@@ -93,9 +103,9 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <div className="card" style={{ padding: 24, marginTop: 24 }}>
+      <div className="card platform-state--error" style={{ padding: 24, marginTop: 24 }} role="alert" aria-live="assertive">
         <h2 style={{ fontSize: 18, marginBottom: 8 }}>Dashboard unavailable</h2>
-        <p style={{ color: "var(--danger)", marginBottom: 16 }}>{error}</p>
+        <p style={{ marginBottom: 16 }}>{error}</p>
         <button className="btn btn-primary" type="button" onClick={load} style={{ width: "auto" }}>
           Retry
         </button>
@@ -107,27 +117,35 @@ export default function DashboardPage() {
   const persona = s?.persona ?? "teacher";
 
   if (persona === "teacher" && s?.teacher_home) {
-    return <TeacherCommandCenter data={s.teacher_home} onRefresh={load} />;
+    return (
+      <DashboardContent>
+        <TeacherCommandCenter data={s.teacher_home} onRefresh={load} />
+      </DashboardContent>
+    );
   }
 
   if ((persona === "admin" || persona === "class_incharge") && s) {
     return (
-      <MorningBriefing
-        userName={user.full_name}
-        userId={user.id}
-        summary={s}
-        feeStats={feeStats}
-        eventsCount={eventsCount}
-      />
+      <DashboardContent>
+        <MorningBriefing
+          userName={user.full_name}
+          userId={user.id}
+          summary={s}
+          feeStats={feeStats}
+          eventsCount={eventsCount}
+        />
+      </DashboardContent>
     );
   }
 
   return (
-    <MorningBriefing
-      userName={user.full_name}
-      userId={user.id}
-      summary={s || { persona: "teacher", subtitle: "Your workspace for today." }}
-      eventsCount={eventsCount}
-    />
+    <DashboardContent>
+      <MorningBriefing
+        userName={user.full_name}
+        userId={user.id}
+        summary={s || { persona: "teacher", subtitle: "Your workspace for today." }}
+        eventsCount={eventsCount}
+      />
+    </DashboardContent>
   );
 }

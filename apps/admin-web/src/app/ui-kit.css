@@ -19,8 +19,22 @@
   box-shadow: var(--shadow-card);
 }
 .ui-card-flush { padding: 0; overflow: hidden; }
-.ui-card-tap { cursor: pointer; transition: transform var(--transition), box-shadow var(--transition); }
-.ui-card-tap:active { transform: scale(0.985); box-shadow: var(--shadow-sm); }
+.ui-card-tap {
+  cursor: pointer;
+  transition: transform var(--platform-transition-ui), box-shadow var(--platform-transition-ui),
+    background var(--platform-transition-ui);
+}
+.ui-card-tap:hover {
+  box-shadow: var(--shadow-md);
+}
+.ui-card-tap:focus-visible {
+  outline: none;
+  box-shadow: var(--platform-state-focus-shadow);
+}
+.ui-card-tap:active {
+  transform: scale(var(--platform-state-active-scale));
+  box-shadow: var(--shadow-sm);
+}
 
 /* Section header */
 .ui-section-header {
@@ -53,8 +67,21 @@
   border-bottom: 1px solid var(--border-light);
 }
 .ui-row:last-child { border-bottom: none; }
-.ui-row-tap { cursor: pointer; border-radius: var(--radius-md); transition: background var(--transition); }
-.ui-row-tap:active { background: var(--primary-50); }
+.ui-row-tap {
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: background var(--platform-transition-ui);
+}
+.ui-row-tap:hover {
+  background: var(--state-hover-bg);
+}
+.ui-row-tap:focus-visible {
+  outline: none;
+  box-shadow: var(--platform-state-focus-shadow);
+}
+.ui-row-tap:active {
+  background: var(--state-active-bg);
+}
 .ui-row-icon {
   display: inline-flex; align-items: center; justify-content: center;
   width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0;
@@ -76,25 +103,22 @@
 .ui-ring-fill { stroke: var(--tone); transition: stroke-dashoffset var(--transition); }
 .ui-ring-label { position: absolute; font-size: 14px; font-weight: 800; color: var(--text-primary); }
 
-/* Skeleton */
-@keyframes ui-shimmer { 0% { background-position: -468px 0; } 100% { background-position: 468px 0; } }
+/* Skeleton — uses platform shimmer tokens (platform-states.css) */
 .ui-skel {
   display: block;
-  background: linear-gradient(90deg, var(--border-light) 25%, var(--primary-50) 50%, var(--border-light) 75%);
+  background: var(--platform-state-skeleton-gradient);
   background-size: 936px 100%;
-  animation: ui-shimmer 1.4s ease-in-out infinite;
+  animation: platform-skeleton-shimmer 1.4s ease-in-out infinite;
 }
 
-/* Empty state */
-.ui-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 44px 24px; }
-.ui-empty-icon {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 56px; height: 56px; border-radius: 18px;
-  background: var(--accent-50); color: var(--accent); margin-bottom: 14px;
+@media (prefers-reduced-motion: reduce) {
+  .ui-skel {
+    animation: none;
+    background: var(--platform-state-skeleton-base);
+  }
 }
-.ui-empty-title { font-size: 16px; font-weight: 700; color: var(--text-primary); }
-.ui-empty-message { font-size: 14px; color: var(--text-muted); margin-top: 6px; max-width: 280px; line-height: 1.5; }
-.ui-empty-action { margin-top: 16px; }
+
+/* Empty state — defined in platform-states.css */
 
 /* Greeting band on portal home */
 .ui-greeting { padding: 4px 2px 2px; }

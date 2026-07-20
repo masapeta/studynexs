@@ -1,0 +1,87 @@
+/* ── Phase 0: emotional entry loading (layout only — tokens in platform-*.css) */
+
+.sn-entry-loading {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  padding: 24px;
+}
+
+.sn-entry-loading-inner {
+  position: relative;
+  z-index: 1;
+  width: min(720px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.sn-entry-loading-brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.sn-entry-loading-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sn-entry-loading-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border-radius: var(--platform-radius-2xl);
+  background: var(--platform-glass-strong);
+  border: 1px solid var(--platform-glass-border-soft);
+  backdrop-filter: blur(var(--platform-blur));
+  -webkit-backdrop-filter: blur(var(--platform-blur));
+  box-shadow: var(--platform-elev-entry-preview);
+}
+
+.sn-entry-loading-preview-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.sn-entry-loading-preview-row--panels {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.sn-entry-shimmer {
+  border-radius: var(--platform-radius-md);
+  background: var(--platform-state-skeleton-gradient);
+  background-size: 936px 100%;
+  animation: platform-skeleton-shimmer var(--platform-transition-skeleton);
+}
+
+.sn-entry-shimmer--kpi {
+  height: 56px;
+}
+
+.sn-entry-shimmer--panel {
+  height: 120px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sn-entry-shimmer {
+    animation: none;
+    background: var(--platform-state-skeleton-base);
+  }
+}
+
+/* Sidebar brand layout (uses PlatformMark + platform-text-* utilities) */
+.sn-app .sidebar-brand-line--school {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Shell reveal — keyframes in platform-motion.css (.sn-app-enter) */

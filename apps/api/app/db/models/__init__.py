@@ -46,7 +46,9 @@ from app.db.models.mastery import (  # noqa: F401
 )
 from app.db.models.curriculum_pack import (  # noqa: F401
     CurriculumChapter,
+    CurriculumLearningOutcome,
     CurriculumPack,
+    CurriculumPackAuditEvent,
     CurriculumTopic,
     PackStatus,
 )

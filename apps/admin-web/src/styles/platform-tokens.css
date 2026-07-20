@@ -1,0 +1,224 @@
+/* ── StudyNexs / Noustriks platform primitives ─────────────────────────────
+   Phase 1: single source for spacing, type scale, elevation, radius, color.
+   Import via platform-aliases.css — do not duplicate values in feature CSS. */
+
+:root {
+  /* ── Color (Phase 0.5) ─────────────────────────────────────────────────── */
+  --platform-frost: #f8fafc;
+  --platform-navy: #0f172a;
+  --platform-navy-soft: #1e293b;
+  --platform-blue: #3b82f6;
+  --platform-blue-deep: #1d4ed8;
+  --platform-blue-soft: #60a5fa;
+  --platform-gray-400: #94a3b8;
+  --platform-gray-500: #64748b;
+  --platform-gray-600: #475569;
+
+  --platform-mark-gradient: linear-gradient(
+    145deg,
+    var(--platform-navy) 0%,
+    var(--platform-blue) 100%
+  );
+  --platform-mark-shadow: 0 4px 14px rgba(15, 23, 42, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+
+  --platform-glass-bg: rgba(255, 255, 255, 0.55);
+  --platform-glass-strong: rgba(255, 255, 255, 0.72);
+  --platform-glass-border: rgba(255, 255, 255, 0.65);
+  --platform-glass-border-soft: rgba(148, 163, 184, 0.22);
+  --platform-blur: 20px;
+  --platform-blur-heavy: 40px;
+
+  /* ── Spacing scale (4px grid) ──────────────────────────────────────────── */
+  --platform-space-0: 0;
+  --platform-space-1: 0.25rem; /* 4px */
+  --platform-space-2: 0.5rem; /* 8px */
+  --platform-space-3: 0.75rem; /* 12px */
+  --platform-space-4: 1rem; /* 16px */
+  --platform-space-5: 1.25rem; /* 20px */
+  --platform-space-6: 1.5rem; /* 24px */
+  --platform-space-7: 1.75rem; /* 28px */
+  --platform-space-8: 2rem; /* 32px */
+  --platform-space-10: 2.5rem; /* 40px */
+  --platform-space-12: 3rem; /* 48px */
+  --platform-space-16: 4rem; /* 64px */
+  --platform-space-section: clamp(5rem, 12vw, 9rem);
+
+  /* App density aliases (px for legacy parity) */
+  --platform-space-app-page: 16px;
+  --platform-space-app-page-bottom: 28px;
+  --platform-space-app-card: 16px;
+  --platform-space-app-table-y: 6px;
+  --platform-space-app-table-x: 14px;
+  --platform-space-app-table-head-y: 7px;
+  --platform-space-app-section: 12px;
+  --platform-space-app-grid: 10px;
+  --platform-space-app-table-edge: 20px;
+
+  /* Legacy root density (non-.sn-app pages) */
+  --platform-space-legacy-page: 20px;
+  --platform-space-legacy-card: 18px;
+  --platform-space-legacy-table-y: 7px;
+  --platform-space-legacy-table-x: 14px;
+  --platform-space-legacy-table-head-y: 8px;
+  --platform-space-legacy-section: 16px;
+  --platform-space-legacy-grid: 14px;
+
+  /* ── Radius scale ──────────────────────────────────────────────────────── */
+  --platform-radius-xs: 8px;
+  --platform-radius-sm: 9px;
+  --platform-radius-base: 11px;
+  --platform-radius-md: 14px;
+  --platform-radius-lg: 16px;
+  --platform-radius-xl: 18px;
+  --platform-radius-2xl: 20px;
+  --platform-radius-3xl: 24px;
+  --platform-radius-4xl: 32px;
+  --platform-radius-pill: 9999px;
+
+  /* ── Elevation (shadow) scale ──────────────────────────────────────────── */
+  --platform-elev-xs: 0 1px 2px rgba(15, 23, 42, 0.03);
+  --platform-elev-sm: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --platform-elev-sm-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.03);
+  --platform-elev-md: 0 2px 4px rgba(16, 24, 40, 0.04), 0 4px 14px rgba(16, 24, 40, 0.05);
+  --platform-elev-lg: 0 10px 30px rgba(16, 24, 40, 0.08), 0 3px 8px rgba(16, 24, 40, 0.04);
+  --platform-elev-mark-md: 0 12px 40px rgba(15, 23, 42, 0.06);
+  --platform-elev-mark-lg: 0 24px 64px rgba(59, 130, 246, 0.12);
+  --platform-elev-glass-card: 0 1px 2px rgba(15, 23, 42, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  --platform-elev-entry-preview: 0 12px 40px rgba(15, 23, 42, 0.06);
+
+  /* ── Typography scale ────────────────────────────────────────────────────── */
+  --platform-font-sans: var(--font-marketing, "Inter", -apple-system, BlinkMacSystemFont, sans-serif);
+  --platform-font-serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+
+  --platform-text-2xs: 0.6875rem; /* 11px */
+  --platform-text-xs: 0.75rem;
+  --platform-text-sm: 0.8125rem;
+  --platform-text-base: 1rem;
+  --platform-text-md: 1.125rem;
+  --platform-text-lg: 1.25rem;
+  --platform-text-xl: 1.5rem;
+  --platform-text-2xl: 1.875rem;
+  --platform-text-3xl: 2.25rem;
+
+  --platform-weight-normal: 400;
+  --platform-weight-medium: 500;
+  --platform-weight-semibold: 600;
+  --platform-weight-bold: 700;
+  --platform-weight-extrabold: 800;
+
+  --platform-leading-tight: 1.25;
+  --platform-leading-snug: 1.375;
+  --platform-leading-normal: 1.5;
+  --platform-leading-relaxed: 1.625;
+
+  --platform-tracking-tighter: -0.04em;
+  --platform-tracking-tight: -0.02em;
+  --platform-tracking-normal: 0;
+
+  /* Chrome-specific (sidebar / entry loading) */
+  --platform-text-product-size: var(--platform-text-sm);
+  --platform-text-product-weight: var(--platform-weight-extrabold);
+  --platform-text-product-tracking: var(--platform-tracking-tight);
+  --platform-text-school-size: var(--platform-text-2xs);
+  --platform-text-school-weight: var(--platform-weight-medium);
+  --platform-text-entry-product-size: var(--platform-text-lg);
+  --platform-text-entry-message-size: 0.9rem;
+
+  /* ── Motion ──────────────────────────────────────────────────────────────── */
+  --platform-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --platform-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --platform-duration-fast: 0.35s;
+  --platform-duration-medium: 0.25s;
+  --platform-duration-base: 0.65s;
+  --platform-duration-slow: 0.85s;
+  --platform-duration-enter: 0.55s;
+  --platform-duration-skeleton: 1.4s;
+  --platform-duration-short: 0.2s;
+  --platform-duration-micro: 0.15s;
+  --platform-duration-spin: 0.7s;
+  --platform-transition-ui: 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  --platform-transition-medium: var(--platform-duration-medium) var(--platform-ease);
+  --platform-transition-enter: var(--platform-duration-enter) var(--platform-ease);
+  --platform-transition-skeleton: var(--platform-duration-skeleton) ease-in-out infinite;
+  --platform-transition-short: var(--platform-duration-short) var(--platform-ease);
+  --platform-transition-micro: var(--platform-duration-micro) var(--platform-ease);
+
+  /* ── Layout ─────────────────────────────────────────────────────────────── */
+  --platform-layout-max: 1280px;
+  --platform-layout-nav-max: 1080px;
+  --platform-sidebar-width: 236px;
+  --platform-sidebar-collapsed: 72px;
+  --platform-header-height: 56px;
+  --platform-header-height-app: 52px;
+
+  /* ── Interaction states (Phase 2A) ───────────────────────────────────────── */
+  /* Semantic feedback */
+  --platform-state-success: #0f9d6e;
+  --platform-state-success-bg: rgba(15, 157, 110, 0.1);
+  --platform-state-success-border: rgba(15, 157, 110, 0.25);
+  --platform-state-success-text: #0a7553;
+
+  --platform-state-warning: #e08c33;
+  --platform-state-warning-bg: rgba(224, 140, 51, 0.1);
+  --platform-state-warning-border: rgba(224, 140, 51, 0.28);
+  --platform-state-warning-text: #9a6018;
+
+  --platform-state-error: #e5484d;
+  --platform-state-error-bg: rgba(229, 72, 77, 0.08);
+  --platform-state-error-border: rgba(229, 72, 77, 0.22);
+  --platform-state-error-text: #c93439;
+
+  /* Neutral interaction (platform chrome default) */
+  --platform-state-neutral-hover-bg: rgba(15, 23, 42, 0.04);
+  --platform-state-neutral-active-bg: rgba(15, 23, 42, 0.06);
+  --platform-state-surface-hover-bg: rgba(255, 255, 255, 0.6);
+
+  /* Focus ring */
+  --platform-state-focus-ring-width: 3px;
+  --platform-state-focus-ring-color: var(--platform-blue);
+  --platform-state-focus-shadow: 0 0 0 var(--platform-state-focus-ring-width)
+    color-mix(in srgb, var(--platform-state-focus-ring-color) 35%, transparent);
+  --platform-state-focus-inset: color-mix(in srgb, var(--platform-state-focus-ring-color) 12%, transparent);
+
+  /* Disabled / loading */
+  --platform-state-disabled-opacity: 0.6;
+  --platform-state-disabled-cursor: not-allowed;
+  --platform-state-loading-cursor: wait;
+  --platform-state-active-scale: 0.985;
+
+  /* Empty */
+  --platform-state-empty-padding-y: 2.75rem;
+  --platform-state-empty-padding-x: 1.5rem;
+  --platform-state-empty-gap: 0.875rem;
+  --platform-state-empty-icon-size: 3.5rem;
+  --platform-state-empty-icon-radius: var(--platform-radius-xl);
+  --platform-state-empty-title-size: var(--platform-text-md);
+  --platform-state-empty-message-size: var(--platform-text-sm);
+  --platform-state-empty-icon-bg: var(--platform-state-neutral-hover-bg);
+  --platform-state-empty-icon-color: var(--platform-gray-500);
+
+  /* Skeleton / loading shimmer */
+  --platform-state-skeleton-base: #eef1f5;
+  --platform-state-skeleton-shine: #f1f5f9;
+  --platform-state-skeleton-gradient: linear-gradient(
+    90deg,
+    var(--platform-state-skeleton-base) 25%,
+    var(--platform-state-skeleton-shine) 50%,
+    var(--platform-state-skeleton-base) 75%
+  );
+
+  /* ── Accessibility (Phase 2B) ───────────────────────────────────────────── */
+  --platform-text-on-glass: #0f172a;
+  --platform-text-muted-on-glass: #64748b;
+  --platform-a11y-focus-outline-width: 2px;
+  --platform-a11y-focus-outline-offset: 2px;
+
+  /* ── Components (Phase 2C) ─────────────────────────────────────────────── */
+  --platform-component-input-radius: var(--platform-radius-base);
+  --platform-component-modal-radius: var(--platform-radius-xl);
+  --platform-component-modal-shadow: 0 24px 48px rgba(15, 23, 42, 0.18);
+  --platform-component-backdrop: rgba(15, 23, 42, 0.55);
+  --platform-component-input-bg: rgba(255, 255, 255, 0.72);
+}

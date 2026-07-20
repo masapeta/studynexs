@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { homePathForRole, portalFromRole } from "@/lib/portal";
-import { AppBackground } from "@/components/AppBackground";
+import { PortalEntryLoading } from "@/components/brand";
 
 export function StudentPortalShell({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -23,12 +23,7 @@ export function StudentPortalShell({ children }: { children: React.ReactNode }) 
   }, [user, loading, router]);
 
   if (loading || !user) {
-    return (
-      <div className="sn-app loading-screen">
-        <AppBackground />
-        <div className="spinner" style={{ margin: "0 auto" }} />
-      </div>
-    );
+    return <PortalEntryLoading portal="student" />;
   }
 
   return <>{children}</>;

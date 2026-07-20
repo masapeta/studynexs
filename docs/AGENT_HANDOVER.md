@@ -28,36 +28,39 @@
 ```json
 {
   "project": "StudyNexs",
-  "phase": "Platform Development — Teacher Copilot shipped",
-  "latest_session": 4,
-  "engineering_batch": "Batch 15 — AI Teacher Copilot (grounded lesson plans, QP review, feedback draft)",
+  "phase": "Demo Ready (Gate 1) — business milestone pivot",
+  "latest_session": 10,
+  "engineering_batch": "Batches 27–28 complete; Engineering OS docs committed",
+  "business_milestone": "Gate 1A — Demo Online (in progress)",
   "branch": "develop",
   "active_repo": "D:/Projects/studynexs-platform/studynexs-dev",
-  "base_commit": "1a7adbc (HEAD; Batch 15 uncommitted)",
-  "working_tree": "uncommitted (Batch 15 implementation + docs)",
-  "build": { "api_import": "passing", "web_next_build": "not re-run this session", "docker_api": "not re-run" },
+  "base_commit": "45ed42a (HEAD; pushed 2026-07-15)",
+  "working_tree": "clean after push; Gate 1 work in progress (uncommitted)",
+  "build": { "api_import": "passing", "web_next_build": "passing (2026-07-15)", "docker_api": "not re-run this session" },
   "tests": {
-    "backend_functions": 299,
-    "state": "green — full tests/ suite 299 passed, 1 skipped (2026-07-12)",
-    "new_this_session_validated": ["test_teacher_copilot (5)", "focused batch (25 passed)"]
+    "backend_functions": 340,
+    "state": "green — full tests/ suite 340 passed, 2 skipped, 0 errors (2026-07-15 isolated run)",
+    "evidence": "pytest tests/ -q --tb=no ~1077s; prior failures classified as test DB contention"
   },
-  "lint": { "backend_ruff": "not run this session", "frontend_eslint": "not run this session" },
+  "lint": { "backend_ruff": "not run this session", "frontend_eslint": "pre-existing TutorLessonPlayer warnings" },
   "ai": {
     "default_llm_provider_config": "gemini",
-    "embedding_provider": "openai",
-    "embedding_model": "text-embedding-3-small (1536-dim)",
-    "vector_store": "qdrant",
-    "rag": "live — index_pack / retrieve / build_context",
-    "assessment_intelligence": "grounded QP ✅; rubric eval ✅; pack-grounded marking ✅",
-    "teacher_copilot": "grounded lesson plans ✅; QP review ✅; feedback draft ✅",
-    "knowledge_graph": "planned (spine-first)"
+    "teacher_copilot": "✅ Batch 15",
+    "student_copilot": "✅ Batches 25–26",
+    "parent_copilot": "✅ Batches 27–28",
+    "knowledge_graph": "✅ Batches 17–23",
+    "rag_hybrid": "✅ Batch 24"
   },
-  "infra": { "db": "postgresql-16", "cache": "redis-7", "vector_db": "qdrant", "queue": "arq", "object_storage": "azure-blob (config only)", "web_host": "cloudflare-opennext", "api_host": "azure-container-apps", "ci": "github-actions" },
-  "mobile": "planned (0%)",
-  "next_batch": ["Document Intelligence ingestion", "Knowledge Graph schema"],
+  "infra": { "demo_url_https": "not deployed — Gate 1 step 2", "api_host": "azure-container-apps (planned)", "web_host": "cloudflare-opennext (wrangler ready)" },
+  "next_priority": [
+    "Gate 1A: HTTPS demo deployment (blocked on credentials)",
+    "Gate 1B: Demo Reliable — AI key, reliability targets, CurriculumPack, demo polish",
+    "Gate 1 EXIT: first principal demo — then stop polishing"
+  ],
+  "deferred": "Batch 29 Learning Analytics until first principal demo",
   "blockers": [],
-  "pending_owner_decisions": ["final production LLM provider (post-benchmark)", "when to commit develop working tree", "hand over textbook/QP folder for ingestion", "DPDP consent/retention before real student PII"],
-  "last_validated": "2026-07-12"
+  "pending_owner_decisions": ["Cloudflare/Azure demo env credentials", "own GEMINI_API_KEY for demo", "pilot meeting date"],
+  "last_validated": "2026-07-15"
 }
 ```
 
@@ -890,25 +893,29 @@ reusing `RagService`. HITL unchanged.
 
 ```yaml
 project: StudyNexs
-current_phase: Platform Development
-last_completed_batch: "Batch 24 — RAG hybrid search + re-ranking"
-next_batch: Student Copilot MVP
-working_tree: uncommitted (Batches 21–24)
+current_phase: "Gate 1A — Demo Online"
+business_milestone: "Gate 1 (1A in progress, 1B pending)"
+last_completed_batch: "Batch 28 — Parent Copilot UI"
+last_commit: "45ed42a (pushed)"
+deferred_batch: "29 — Learning Analytics (until first principal demo)"
+working_tree: "Gate 1 housekeeping + execution docs (uncommitted)"
 tests:
-  full_suite: "333 passed, 2 skipped (2026-07-12)"
-  new_batches: "graph_queries (2), student_weak_concept (3), rag_hybrid (3)"
-ai:
-  hybrid_rag: live; graph expansion + re-rank; ground_for_pack wired
-  graph_queries: live concept context + weak concepts API
-  student_weak_concepts: live on mastery recompute
-  curriculum_ui: /dashboard/teaching/curriculum
-next_priority:
-  - Student Copilot MVP (Batch 25)
-blockers: []
+  full_suite: "340 passed, 2 skipped, 0 errors (2026-07-15 isolated)"
+  evidence: "pytest tests/ -q --tb=no ~1077s"
+gate_1_next:
+  - "1A: HTTPS demo deployment (credentials)"
+  - "1B: Demo Reliable targets + polish"
+  - "EXIT: principal demo then stop"
+docs:
+  gate1_execution: docs/pilot/GATE1_EXECUTION.md
+  validation_standard: docs/engineering/004-validation-and-testing.md
+blockers:
+  - "Demo HTTPS deploy needs cloud credentials"
+  - "ARM-owned Gemini key for reliable live AI"
 owner_decisions_pending:
-  - Final production LLM provider
-  - When to commit develop working tree
-last_validated: "2026-07-12"
+  - "Pilot meeting timing"
+  - "When to commit Gate 1 work"
+last_validated: "2026-07-15"
 ```
 
 ---
@@ -950,3 +957,81 @@ apps/api/tests/test_rag_hybrid.py
 
 **Batch 25 — Student Copilot MVP** — grounded study assistance using weak-concept graph,
 ConceptCards, and hybrid RAG.
+
+---
+
+# Engineering Session 10 — 2026-07-15
+
+- **Date:** 2026-07-15
+- **Engineering batches:** 25–28 + Engineering OS docs
+- **Branch:** `develop`
+- **HEAD:** `45ed42a` (pushed)
+- **Business pivot:** Gate 1A/1B Demo Ready — defer Batch 29 until Gate 1 exit (principal demo)
+
+## 1. Session summary
+
+| Commit | Focus |
+|--------|-------|
+| `9860c56` | Batch 27 — Parent Copilot API (`/parent-copilot/students/{id}/briefing\|ask`) |
+| `c1fa99c` | Batch 28 — Parent UI on `/parent/child/[studentId]` + dashboard v2.6 |
+| `45ed42a` | Engineering OS — `004-validation-and-testing.md`, `005-development-lifecycle.md` |
+
+Pilot readiness assessment (read-only): Gate 1 localhost ~6.5/10; HTTPS ~4/10. Bottleneck shifted from engineering to **customer experience**.
+
+## 2. Validation evidence
+
+- `pytest tests/ -q --tb=no` — **340 passed, 2 skipped, 0 errors** (~1077s, isolated run)
+- `npm run build` — exit 0
+- Prior multi-pytest failures: **environmental** (shared test DB contention), not product regressions
+
+## 3. Engineering context
+
+- **Architecture:** v2.6 — Teacher + Student + Parent Copilot complete
+- **Engineering OS:** frozen (`001`–`005`); grow module docs + dashboard per batch
+- **Next (ARM-approved):** Gate 1 execution — see [`pilot/GATE1_EXECUTION.md`](./pilot/GATE1_EXECUTION.md)
+
+## 4. Gate 1 priority (1A → 1B → EXIT)
+
+1. **1A Demo Online** — HTTPS deploy (blocked on credentials)
+2. **1B Demo Reliable** — reliability targets, CurriculumPack, demo polish
+3. **EXIT** — principal demo, no critical issues, **stop** — then Gate 2 or reprioritize from feedback
+
+See [`pilot/GATE1_EXECUTION.md`](./pilot/GATE1_EXECUTION.md).
+
+## 5. Key paths (Batches 27–28)
+
+```
+apps/api/app/modules/parent_copilot/
+apps/admin-web/src/app/parent/child/[studentId]/page.tsx
+docs/engineering/004-validation-and-testing.md
+docs/pilot/GATE1_EXECUTION.md
+```
+
+## 6. Blockers / owner decisions
+
+- Demo deploy: Cloudflare + API host env (credentials)
+- G1-09: ARM-owned Gemini key for demo
+- Pilot meeting date drives urgency
+
+## 7. Do not
+
+- Commit without ARM approval (**Batch 29 commits after Gate 1A validate + freeze**)
+- Start Batch 30 before Gate 1 exit
+- Create new foundational architecture docs (framework is sufficient; `SECURITY_ARCHITECTURE.md` later)
+- Rewrite Engineering OS core standards without proven gap
+
+## 8. Batch 29 + freeze sequence (ARM 2026-07-15)
+
+| Step | Status |
+|------|--------|
+| Batch 29 code (reserved hosts, runtime tenant, Dockerfile `[rag]`) | ✅ local |
+| Architecture docs draft (`URL`, `DEPLOYMENT`, `PLATFORM`) | ✅ local |
+| Gate 1A HTTPS live | ⬜ blocked on OCI + Cloudflare credentials |
+| Validate tenant routing, login, AI, smokes on HTTPS | ⬜ |
+| Freeze `DEPLOYMENT_ARCHITECTURE.md` v1.0 | ⬜ after 1A |
+| Commit 1: `feat(platform): implement infrastructure readiness (Batch 29)` | ⬜ after freeze |
+| Commit 2: `docs(platform): add deployment, platform and URL architecture` | ⬜ after freeze |
+
+---
+
+## Machine-readable snapshot (read this first)

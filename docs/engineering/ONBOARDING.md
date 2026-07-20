@@ -47,6 +47,52 @@ Core standards change only when repeated sessions expose a genuine gap — not p
 
 ---
 
+## Documentation governance (ARM 2026-07-16)
+
+### Standing instruction for every coding agent
+
+**Before changing documentation, classify the work and update only the appropriate layer.**
+
+1. Determine whether the change affects **Architecture**, **Execution**, or **Inventory**.
+2. Update **only** the matching document(s).
+3. **Do not duplicate** information across layers.
+4. **Do not modify frozen architecture** without explicit ARM approval.
+
+### Three documentation lifecycles
+
+| Lifecycle | Documents | When it changes |
+|-----------|-----------|-----------------|
+| **Frozen (architecture)** | `URL_ARCHITECTURE.md`, `PLATFORM_ARCHITECTURE.md`, `DEPLOYMENT_ARCHITECTURE.md`, `DEPLOYMENT_CONVENTIONS.md` | Rarely — after Gate 1A freeze; Level 4 changes only with approval |
+| **Living (execution)** | `GATE1_EXECUTION.md`, `ROADMAP.md`, `STATUS.md`, `AGENT_HANDOVER.md`, `PLATFORM_STATUS.md`, engineering dashboard JSON | Every sprint / batch |
+| **Continuous (inventory)** | `infra/inventory/*` (SSH, VM, DNS, certs, backups) | Whenever infrastructure changes |
+
+Architecture describes **design**. Execution tracks **current work**. Inventory records **what exists on which host**.
+
+### Four change levels
+
+| Level | Type | Examples | Action |
+|-------|------|----------|--------|
+| **1** | Bug | Wrong Docker command, incorrect env var, broken diagram | Fix immediately in the correct layer |
+| **2** | Clarification | Better wording, missing example | Update the relevant doc only |
+| **3** | Operational learning | OCI/Cloudflare/Docker discovery during Gate 1A | Update **Conventions** or **Inventory** — do not redesign architecture |
+| **4** | Architecture | New tenant model, routing strategy, platform boundaries | **Explicit ARM approval** before any edit to frozen architecture docs |
+
+Detail: [`DEPLOYMENT_CONVENTIONS.md`](../DEPLOYMENT_CONVENTIONS.md) §13 · inventory index: [`infra/inventory/README.md`](../../infra/inventory/README.md).
+
+### Documentation Impact (every batch / PR)
+
+Before closing work, run this three-question check:
+
+| Question | If yes |
+|----------|--------|
+| **Architecture changed?** | Requires **explicit ARM approval** before editing frozen architecture docs (`URL`, `Platform`, `Deployment`, `Conventions`). |
+| **Execution process changed?** | Update the relevant **living** doc (`GATE1_EXECUTION`, `ROADMAP`, `STATUS`, `HANDOVER`, `PLATFORM_STATUS`, dashboard JSON). |
+| **Infrastructure changed?** | Update **`infra/inventory/`** (SSH, VM, DNS, backups, certs) — do not duplicate into architecture docs. |
+
+If all three are **no**, update only module docs / changelog / handover as required by the batch — no architecture or inventory edits.
+
+---
+
 ## When to use each document
 
 | Document | Purpose |
@@ -57,6 +103,8 @@ Core standards change only when repeated sessions expose a genuine gap — not p
 | [`005-development-lifecycle.md`](./005-development-lifecycle.md) | End-to-end engineering workflow |
 | [`004-validation-and-testing.md`](./004-validation-and-testing.md) | Engineering Validation Standard — what must be verified |
 | [`PLATFORM_STATUS.md`](../PLATFORM_STATUS.md) | Current verified engineering status |
+| [`DEPLOYMENT_CONVENTIONS.md`](../DEPLOYMENT_CONVENTIONS.md) | VM layout, change levels, doc freeze protocol |
+| [`infra/inventory/README.md`](../../infra/inventory/README.md) | Operational inventory (SSH, DNS, VM — not architecture) |
 
 ### Numbered engineering standards
 

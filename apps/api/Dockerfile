@@ -23,7 +23,7 @@ COPY alembic ./alembic
 # Editable install so the package always resolves to /app source
 # (prod: the COPYed source; dev: the compose bind-mount masking it).
 # Prod deps only — [ai] ships the lazily-imported LLM SDKs, no [dev] tools.
-RUN pip install --no-cache-dir -e ".[ai,observability]"
+RUN pip install --no-cache-dir -e ".[ai,observability,rag]"
 
 # Local-disk upload storage must be writable by the runtime user
 RUN mkdir -p /app/uploads && chown -R appuser:appuser /app

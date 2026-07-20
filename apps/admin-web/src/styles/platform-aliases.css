@@ -1,0 +1,112 @@
+/* ── Phase 1: legacy token aliases → platform ladder ───────────────────────
+   Maps existing variable names to platform-tokens.css without changing visuals. */
+
+:root {
+  /* Radius */
+  --radius-sm: var(--platform-radius-xs);
+  --radius-md: var(--platform-radius-base);
+  --radius-lg: var(--platform-radius-md);
+  --radius-xl: var(--platform-radius-xl);
+  --radius-full: var(--platform-radius-pill);
+
+  /* Elevation */
+  --shadow-sm: var(--platform-elev-sm);
+  --shadow-md: var(--platform-elev-md);
+  --shadow-lg: var(--platform-elev-lg);
+  --shadow-card: var(--platform-elev-sm-card);
+
+  /* Spacing (legacy non-app pages) */
+  --space-page: var(--platform-space-legacy-page);
+  --space-card: var(--platform-space-legacy-card);
+  --space-table-y: var(--platform-space-legacy-table-y);
+  --space-table-x: var(--platform-space-legacy-table-x);
+  --space-table-head-y: var(--platform-space-legacy-table-head-y);
+  --space-section: var(--platform-space-legacy-section);
+  --space-grid: var(--platform-space-legacy-grid);
+
+  /* Layout */
+  --sidebar-width: var(--platform-sidebar-width);
+  --sidebar-collapsed: var(--platform-sidebar-collapsed);
+  --header-height: var(--platform-header-height);
+  --transition: var(--platform-transition-ui);
+
+  /* Interaction state aliases (Phase 2A) */
+  --state-hover-bg: var(--platform-state-neutral-hover-bg);
+  --state-hover-border: rgba(15, 23, 42, 0.06);
+  --state-active-bg: var(--platform-state-neutral-active-bg);
+  --state-active-border: rgba(15, 23, 42, 0.08);
+  --state-table-row-hover: var(--platform-state-neutral-hover-bg);
+  --state-surface-hover-bg: var(--platform-state-surface-hover-bg);
+}
+
+/* Authenticated app shell — compact density preserved */
+.sn-app {
+  --shadow-card: var(--platform-elev-glass-card);
+  --shadow-md: 0 8px 32px rgb(var(--accent-rgb) / 0.06), 0 2px 8px rgba(15, 23, 42, 0.04);
+  --radius-lg: var(--platform-radius-lg);
+  --radius-xl: var(--platform-radius-2xl);
+
+  --space-page: var(--platform-space-app-page);
+  --space-page-bottom: var(--platform-space-app-page-bottom);
+  --space-card: var(--platform-space-app-card);
+  --space-table-y: var(--platform-space-app-table-y);
+  --space-table-x: var(--platform-space-app-table-x);
+  --space-table-head-y: var(--platform-space-app-table-head-y);
+  --space-section: var(--platform-space-app-section);
+  --space-grid: var(--platform-space-app-grid);
+  --header-height: var(--platform-header-height-app);
+  --table-edge-inset: var(--platform-space-app-table-edge);
+
+  /* Accent-aware interaction states */
+  --state-hover-bg: rgb(var(--accent-rgb) / 0.035);
+  --state-hover-border: rgb(var(--accent-rgb) / 0.06);
+  --state-active-bg: rgb(var(--accent-rgb) / 0.07);
+  --state-active-border: rgb(var(--accent-rgb) / 0.1);
+  --state-table-row-hover: rgb(var(--accent-rgb) / 0.05);
+  --state-hover-border-emphasis: rgb(var(--accent-rgb) / 0.25);
+  --state-hover-glow: 0 0 0 var(--platform-state-focus-ring-width) rgb(var(--accent-rgb) / 0.08);
+  --state-hover-border-strong: rgb(var(--accent-rgb) / 0.35);
+  --platform-state-focus-ring-color: var(--accent);
+  --platform-state-focus-shadow: 0 0 0 var(--platform-state-focus-ring-width)
+    rgb(var(--accent-rgb) / 0.06);
+  --platform-state-focus-inset: rgb(var(--accent-rgb) / 0.08);
+  --platform-state-empty-icon-bg: color-mix(in srgb, var(--accent) 9%, white);
+  --platform-state-empty-icon-color: var(--accent);
+
+  /* Phase 2B — contrast on glass surfaces */
+  --text-muted: var(--platform-text-muted-on-glass);
+  --text-secondary: #475569;
+}
+
+/* Marketing shell */
+.mkt {
+  --mkt-space-1: var(--platform-space-1);
+  --mkt-space-2: var(--platform-space-2);
+  --mkt-space-3: var(--platform-space-3);
+  --mkt-space-4: var(--platform-space-4);
+  --mkt-space-6: var(--platform-space-6);
+  --mkt-space-8: var(--platform-space-8);
+  --mkt-space-12: var(--platform-space-12);
+  --mkt-space-16: var(--platform-space-16);
+  --mkt-space-section: var(--platform-space-section);
+
+  --mkt-token-radius-sm: var(--platform-radius-md);
+  --mkt-token-radius-md: var(--platform-radius-2xl);
+  --mkt-token-radius-lg: var(--platform-radius-3xl);
+  --mkt-token-radius-xl: var(--platform-radius-4xl);
+  --mkt-token-radius-pill: var(--platform-radius-pill);
+
+  --mkt-token-shadow-sm: var(--platform-elev-xs);
+  --mkt-token-shadow-md: var(--platform-elev-mark-md);
+  --mkt-token-shadow-lg: var(--platform-elev-mark-lg);
+
+  --mkt-token-ease: var(--platform-ease);
+  --mkt-token-spring: var(--platform-ease-spring);
+  --mkt-token-duration-fast: var(--platform-duration-fast);
+  --mkt-token-duration-base: var(--platform-duration-base);
+  --mkt-token-duration-slow: var(--platform-duration-slow);
+
+  --mkt-token-max: var(--platform-layout-max);
+  --mkt-token-nav-max: var(--platform-layout-nav-max);
+  --mkt-token-blur-heavy: var(--platform-blur-heavy);
+}

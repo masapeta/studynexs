@@ -33,11 +33,17 @@
 
 Focus: **confidence and clarity**. No production infra, no real PII.
 
+**Execution order (ARM-approved 2026-07-15):** [`pilot/GATE1_EXECUTION.md`](./pilot/GATE1_EXECUTION.md)
+
+- **Gate 1A — Demo Online:** HTTPS, login, demo data, AI, smokes
+- **Gate 1B — Demo Reliable:** fallbacks, UX, teacher/parent flows, reliability targets
+- **Exit:** principal demo + no critical issues → stop polishing
+
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
 | G1-01 | Visible **“Demo data”** banner in UI (not live parent/student data) | ✅ | `DemoDataBanner`; tenant `test` / `demo`, `development`, or `NEXT_PUBLIC_DEMO_MODE=true` |
 | G1-02 | Pre-seed **one clean E2E journey**: principal → teacher → QP → marks/eval → report card → parent view | ✅ | `scripts/seed_demo_e2e_journey.py` + tutor misconception |
-| G1-03 | **AI fallback** on heavy screens (timeout → show pre-approved draft or stub message) | ⬜ | Partial: report card has stub fallback; QP needs backup paper |
+| G1-03 | **AI fallback** on heavy screens (timeout → show pre-approved draft or stub message) | 🟡 | Report card stub ✅; QP dev/test stub fallback in progress |
 | G1-04 | **Hide or label** incomplete modules (payments, full notifications, parent rollout at scale) | ⬜ | Roadmap page or “Preview” badges |
 | G1-05 | **“Not live yet”** talking points: privacy, consent, storage, parent onboarding | ⬜ | Verbal + optional 1-pager; see G1-06 |
 | G1-06 | Hands-on **cheat sheet** + optional `docs/pilot/HANDS_ON_RUNBOOK.md` | ✅ | [HANDS_ON_RUNBOOK.md](./pilot/HANDS_ON_RUNBOOK.md) |

@@ -20,6 +20,7 @@ from app.modules.curriculum.schemas.lesson_plan import (
     LessonSegmentOut,
     UpdateLessonPlanRequest,
 )
+from app.modules.curriculum.schemas.provenance import provenance_from_sources
 from app.modules.curriculum.services.lesson_plan_service import LessonPlanService
 from app.modules.ai.services.teacher_copilot_service import TeacherCopilotService
 from app.modules.ai.services.usage_caps import enforce_monthly_ai_cap
@@ -33,6 +34,13 @@ _LP_RATE = {"max_requests": 20, "window_seconds": 60}
 
 
 def _out(plan: LessonPlan, scope, svc: LessonPlanService) -> LessonPlanOut:
+    prov = provenance_from_sources(
+        plan.grounding_sources,
+        pack_id=str(plan.pack_id) if plan.pack_id else None,
+        grounded=bool(plan.grounded),
+        created_at=plan.created_at,
+    )
+    grounded_at = plan.created_at.date() if plan.grounded and plan.created_at else None
     return LessonPlanOut(
         id=plan.id,
         class_id=plan.class_id,
@@ -45,9 +53,12 @@ def _out(plan: LessonPlan, scope, svc: LessonPlanService) -> LessonPlanOut:
         status=plan.status.value,
         notes=plan.notes,
         pack_id=plan.pack_id,
+        pack_status=prov.get("pack_status"),
+        pack_version=prov.get("pack_version"),
         grounded=bool(plan.grounded),
         grounding_sources=plan.grounding_sources,
         ai_model=plan.ai_model,
+        grounded_at=grounded_at,
         can_edit=svc.can_edit(scope, plan),
         can_approve=svc.can_approve(scope, plan),
     )
@@ -81,7 +92,11 @@ async def generate_lesson_plan(
     scope = await get_staff_scope(db, current_user)
     school_id = uuid.UUID(current_user.school_id)
     try:
-        if body.pack_id is not None:
+        if body.generation_mode == "copilot":
+            if body.pack_id is None:
+                raise ValueError(
+                    "Select an approved curriculum pack for Teacher Copilot generation."
+                )
             bind_ai_context(
                 school_id=current_user.school_id,
                 user_id=current_user.id,
@@ -125,6 +140,7 @@ async def generate_lesson_plan(
                 topic=body.topic,
                 chapter=body.chapter,
                 scheduled_for=body.scheduled_for,
+                pack_id=body.pack_id,
             )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))

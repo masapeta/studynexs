@@ -1,9 +1,10 @@
 // API client — handles auth tokens and base URL
 // Use 127.0.0.1 (not localhost): on Windows, localhost often resolves to ::1 and can
 // hit Docker/WSL on :8000 instead of the local uvicorn with edge-tts.
+import { getTenantSlug } from "@/lib/tenant";
+
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-export const TENANT_SLUG =
-  process.env.NEXT_PUBLIC_TENANT_SLUG || "test";
+export { getTenantSlug, TENANT_SLUG } from "@/lib/tenant";
 
 const PUBLIC_API_PATHS = ["/api/v1/tutor/tts/status", "/health", "/ready"];
 
@@ -62,7 +63,7 @@ export async function api<T = any>(
 ): Promise<T> {
   const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
   const headers: Record<string, string> = {
-    "X-Tenant-Slug": TENANT_SLUG,
+    "X-Tenant-Slug": getTenantSlug(),
     ...(options.headers as Record<string, string>),
   };
   if (!isFormData) {
@@ -147,7 +148,7 @@ async function doRefreshToken(): Promise<boolean> {
     const res = await fetch(`${API_URL}/api/v1/auth/refresh`, {
       method: "POST",
       credentials: "include",
-      headers: { "X-Tenant-Slug": TENANT_SLUG },
+      headers: { "X-Tenant-Slug": getTenantSlug() },
     });
     if (res.ok) {
       const data = await res.json();
@@ -185,7 +186,7 @@ export async function fetchProtectedDocumentUrl(path: string): Promise<string> {
     const res = await fetch(`${API_URL}${path}`, {
       headers: {
         Authorization: `Bearer ${getAccessToken()}`,
-        "X-Tenant-Slug": TENANT_SLUG,
+        "X-Tenant-Slug": getTenantSlug(),
       },
       credentials: "include",
     });
@@ -228,7 +229,7 @@ export type TutorTtsStatus = {
 
 export async function fetchTtsStatus(): Promise<TutorTtsStatus> {
   const res = await fetch(`${API_URL}/api/v1/tutor/tts/status`, {
-    headers: { "X-Tenant-Slug": TENANT_SLUG },
+    headers: { "X-Tenant-Slug": getTenantSlug() },
     credentials: "include",
   });
   if (!res.ok) {
@@ -263,7 +264,7 @@ export async function fetchTutorSpeechBlob(
   const headers = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${getAccessToken()}`,
-    "X-Tenant-Slug": TENANT_SLUG,
+    "X-Tenant-Slug": getTenantSlug(),
   };
 
   let res = await fetch(`${API_URL}/api/v1/tutor/tts`, {

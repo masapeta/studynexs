@@ -1,6 +1,7 @@
 """
 StudyNexs Platform — Tenant Resolution Middleware
 Resolves subdomain slugs (e.g., sia.studynexs.com → school_id) to tenant context.
+Platform hosts (api, app, demo, …) never derive a tenant from the hostname — see URL_ARCHITECTURE.md.
 """
 from __future__ import annotations
 
@@ -12,40 +13,52 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Environment, get_settings
 
-settings = get_settings()
+
+def _reserved_subdomains() -> frozenset[str]:
+    return frozenset(s.lower() for s in get_settings().TENANT_RESERVED_SUBDOMAINS)
+
+
+def subdomain_slug_from_host(hostname: str, base_domain: str) -> str | None:
+    """
+    Extract a school tenant slug from hostname, or None if the host is not a tenant host.
+
+    Returns None for apex hosts, platform reserved subdomains (api, app, …), and non-matching domains.
+    """
+    host = hostname.split(":")[0].lower()
+    base = base_domain.lower()
+    if not host.endswith(f".{base}"):
+        return None
+    slug = host.removesuffix(f".{base}")
+    if not slug or slug in _reserved_subdomains():
+        return None
+    return slug
 
 
 def extract_tenant_slug(request: Request) -> str:
     """
     Extract tenant slug from:
-    1. Subdomain: sia.studynexs.com → "sia"
-    2. Header: X-Tenant-Slug (fallback for local dev / API clients)
+    1. School subdomain: dps.studynexs.com → "dps" (skipped for platform hosts)
+    2. Header: X-Tenant-Slug (required on api.studynexs.com and other platform API hosts)
     3. Default: settings.DEFAULT_TENANT_SLUG (development only)
     """
-    host = request.headers.get("host", "")
-
-    # Strip port if present (e.g., "sia.localhost:3000" → "sia.localhost")
-    hostname = host.split(":")[0]
-
-    # Check for subdomain pattern: slug.studynexs.com
+    hostname = request.headers.get("host", "").split(":")[0]
+    settings = get_settings()
     base_domain = settings.TENANT_BASE_DOMAIN
-    if hostname.endswith(f".{base_domain}"):
-        slug = hostname.removesuffix(f".{base_domain}")
-        if slug and slug != "www":
-            return slug
 
-    # Fallback: explicit header
-    header_slug = request.headers.get("x-tenant-slug", "")
+    slug_from_host = subdomain_slug_from_host(hostname, base_domain)
+    if slug_from_host:
+        return slug_from_host
+
+    header_slug = request.headers.get("x-tenant-slug", "").strip()
     if header_slug:
         return header_slug
 
-    # Development fallback
     if settings.is_development:
         return settings.DEFAULT_TENANT_SLUG
 
     raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
-        detail="Unable to determine school tenant. Use subdomain or X-Tenant-Slug header.",
+        detail="Unable to determine school tenant. Use a school subdomain or X-Tenant-Slug header.",
     )
 
 
@@ -76,6 +89,7 @@ async def resolve_auth_school_id(request: Request, db: AsyncSession) -> uuid.UUI
     Resolve school for unauthenticated auth routes (login / OTP).
     Uses X-Tenant-Slug in tests and dev; subdomain in production.
     """
+    settings = get_settings()
     if settings.ENVIRONMENT == Environment.TESTING:
         slug = request.headers.get("x-tenant-slug") or settings.DEFAULT_TENANT_SLUG
     else:
@@ -88,6 +102,7 @@ async def validate_tenant_school_match(
     request: Request, db: AsyncSession, school_id: str
 ) -> None:
     """Ensure the user's school matches the request tenant (subdomain or header)."""
+    settings = get_settings()
     if settings.ENVIRONMENT == Environment.TESTING:
         return
     if settings.is_development and not request.headers.get("x-tenant-slug"):

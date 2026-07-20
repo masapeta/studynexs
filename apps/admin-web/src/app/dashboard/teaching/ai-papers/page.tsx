@@ -9,6 +9,7 @@ import { AppSelect } from "@/components/ui/AppSelect";
 import { PageHeaderCard } from "@/components/layout/PageHeaderCard";
 import { formatClassLabel, sortClasses } from "@/lib/format";
 import { DocumentPreviewModal } from "@/components/DocumentPreviewModal";
+import { CurriculumGroundingBadge } from "@/components/curriculum/CurriculumGroundingBadge";
 import { useAuth } from "@/lib/auth-context";
 
 type Question = {
@@ -33,8 +34,11 @@ type Paper = {
   status: string;
   ai_model?: string | null;
   pack_id?: string | null;
+  pack_status?: string | null;
+  pack_version?: number | null;
   grounded?: boolean;
-  grounding_sources?: { chapter?: string; topic?: string; index?: number }[] | null;
+  grounded_at?: string | null;
+  grounding_sources?: { chapter?: string; topic?: string; index?: number; pack_status?: string; pack_version?: number }[] | null;
   can_approve?: boolean;
   can_edit?: boolean;
   can_submit?: boolean;
@@ -707,8 +711,15 @@ function AiPapersPageInner() {
           <div style={{ color: "var(--text-muted)", fontSize: 13, margin: "8px 0 16px" }}>
             {paper.board} · {paper.grade} · {paper.subject_name} · {paper.total_marks} marks ·{" "}
             {paper.duration_minutes} min{paper.ai_model ? ` · ${paper.ai_model}` : ""}
-            {paper.grounded && " · Grounded"}
           </div>
+
+          <CurriculumGroundingBadge
+            packId={paper.pack_id}
+            packStatus={paper.pack_status ?? (paper.grounding_sources?.[0]?.pack_status as string | undefined)}
+            packVersion={paper.pack_version ?? (paper.grounding_sources?.[0]?.pack_version as number | undefined)}
+            grounded={paper.grounded}
+            groundedAt={paper.grounded_at}
+          />
 
           {paper.grounded && paper.grounding_sources && paper.grounding_sources.length > 0 && (
             <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>

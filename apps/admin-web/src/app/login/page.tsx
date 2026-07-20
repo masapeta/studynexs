@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
+import { PLATFORM_MOTION } from "@/lib/platform-motion";
 import { useAuth } from "@/lib/auth-context";
 import { apiAuth, getAccessTokenFromAuthResponse, getApiErrorMessage } from "@/lib/api";
 import { DEMO_LOGINS, DemoPortalKey, homePathAfterLogin } from "@/lib/portal";
@@ -153,7 +154,7 @@ function LoginPageInner() {
     : {
         initial: { y: 20, filter: "blur(8px)" },
         animate: { y: 0, filter: "blur(0px)" },
-        transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as const },
+        transition: { duration: PLATFORM_MOTION.durationEnter, ease: PLATFORM_MOTION.ease },
       };
 
   return (

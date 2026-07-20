@@ -29,6 +29,10 @@ You are the **Founding Principal Engineer and AI Technical Lead for StudyNexs** 
 13. **Accessibility & responsiveness are requirements**, not enhancements.
 14. **Incremental over rewrite** — smallest safe change; separate refactors from features.
 
+## Documentation governance (deployment & docs)
+
+Before changing documentation: classify the change (Level 1–4 in [`docs/engineering/ONBOARDING.md`](../../docs/engineering/ONBOARDING.md)). Run **Documentation Impact** on every batch/PR (Architecture? Execution? Infrastructure?). Update only the matching layer — never duplicate across layers. Level 4 / frozen architecture edits require **explicit ARM approval**.
+
 ## Repository startup checklist before writing any code:
 
 1. Read CLAUDE.md completely.

@@ -1,0 +1,95 @@
+/* ── Phase 3A: platform motion utilities ────────────────────────────────────
+   Token-backed enter/exit animations. Extend platform-tokens.css only. */
+
+/* ── Shared enter (shell, briefing content) ──────────────────────────────── */
+@keyframes platform-motion-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.platform-motion-enter,
+.sn-app-enter {
+  animation: platform-motion-enter var(--platform-transition-enter) both;
+}
+
+/* Briefing skeleton → content handoff */
+@keyframes platform-motion-briefing-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.platform-motion-briefing-enter {
+  animation: platform-motion-briefing-enter var(--platform-duration-fast) var(--platform-ease) both;
+}
+
+/* ── Modal enter / exit ────────────────────────────────────────────────────── */
+@keyframes platform-modal-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes platform-modal-backdrop-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes platform-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes platform-modal-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+.gw-modal-backdrop--enter {
+  animation: platform-modal-backdrop-in var(--platform-duration-fast) var(--platform-ease) both;
+}
+
+.gw-modal-backdrop--exit {
+  animation: platform-modal-backdrop-out var(--platform-duration-fast) var(--platform-ease) both;
+}
+
+.gw-modal-backdrop--enter > .gw-modal {
+  animation: platform-modal-in var(--platform-duration-fast) var(--platform-ease) both;
+}
+
+.gw-modal-backdrop--exit > .gw-modal {
+  animation: platform-modal-out var(--platform-duration-fast) var(--platform-ease) both;
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .platform-motion-enter,
+  .sn-app-enter,
+  .platform-motion-briefing-enter,
+  .gw-modal-backdrop--enter,
+  .gw-modal-backdrop--exit,
+  .gw-modal-backdrop--enter > .gw-modal,
+  .gw-modal-backdrop--exit > .gw-modal {
+    animation: none;
+  }
+}

@@ -22,8 +22,6 @@
   --mkt-radius-pill: 9999px;
   --mkt-radius-lg: 24px;
   --mkt-radius-xl: 32px;
-  --mkt-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --mkt-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --mkt-max: 1280px;
   --mkt-section: clamp(5rem, 12vw, 9rem);
 
@@ -416,18 +414,6 @@ a.mkt-nav-chip--link.mkt-nav-link:hover {
 
 .mkt-nav-chip:has(.mkt-nav-logo:hover) {
   border-color: rgba(59, 130, 246, 0.2);
-}
-
-.mkt-nav-logo-mark {
-  width: 28px;
-  height: 28px;
-  border-radius: 9px;
-  background: linear-gradient(145deg, #3b82f6, #1d4ed8);
-  display: grid;
-  place-items: center;
-  color: white;
-  font-size: 0.7rem;
-  font-weight: 800;
 }
 
 .mkt-nav-links {
@@ -2904,10 +2890,6 @@ body.mkt-nav-menu-open {
 
 .mkt-footer-studynexs-note a:hover {
   text-decoration: underline;
-}
-
-.mkt-nav-logo-mark--noustriks {
-  background: linear-gradient(145deg, #1e293b, #334155);
 }
 
 .mkt-built-by-sep {

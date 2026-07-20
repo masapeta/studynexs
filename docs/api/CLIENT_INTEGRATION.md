@@ -6,9 +6,10 @@
 |-------------|---------|
 | Local API | `http://localhost:8000` |
 | Local via Nginx | `http://localhost` |
-| Production | `https://{tenant}.studynexs.com` |
+| Production API | `https://api.studynexs.com` |
+| School web | `https://{school}.studynexs.com` |
 
-Set admin web: `NEXT_PUBLIC_API_URL`.
+Set admin web: `NEXT_PUBLIC_API_URL`. Tenant routing: [`URL_ARCHITECTURE.md`](../URL_ARCHITECTURE.md).
 
 ## Authentication
 
@@ -24,7 +25,7 @@ Set admin web: `NEXT_PUBLIC_API_URL`.
 X-Tenant-Slug: your-school-slug
 ```
 
-Required in production when not using subdomain routing.
+Required in production on platform API hosts (`api.studynexs.com`) and for API clients without a school subdomain.
 
 ## Pagination
 

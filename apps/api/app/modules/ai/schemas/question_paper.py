@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -117,8 +118,11 @@ class QuestionPaperOut(BaseModel):
     created_by: uuid.UUID | None = None
     # Curriculum grounding provenance (Assessment Intelligence).
     pack_id: uuid.UUID | None = None
+    pack_status: str | None = None
+    pack_version: int | None = None
     grounded: bool = False
     grounding_sources: list[dict] | None = None
+    grounded_at: date | None = None
     can_approve: bool = False
     can_edit: bool = False
     can_submit: bool = False
