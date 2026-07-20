@@ -49,6 +49,7 @@ class DashboardSummaryOut(BaseModel):
     admissions_pipeline: int | None = None
     expenses_this_month: float | None = None
     class_performance: list[dict] = Field(default_factory=list)
+    pending_qp_approvals: int | None = None
     # Class incharge
     incharge_classes: list[InchargeClassSummaryOut] = Field(default_factory=list)
     # Subject teacher

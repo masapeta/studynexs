@@ -58,12 +58,7 @@ function loadTodos(userId: string): TodoItem[] {
   } catch {
     /* ignore */
   }
-  return [
-    { text: "Review pending tuition payments", done: false, priority: "high" },
-    { text: "Reply to parent messages", done: false, priority: "high" },
-    { text: "Confirm upcoming event venues", done: false, priority: "medium" },
-    { text: "Review exam schedule", done: false, priority: "medium" },
-  ];
+  return [];
 }
 
 function saveTodos(userId: string, items: TodoItem[]) {

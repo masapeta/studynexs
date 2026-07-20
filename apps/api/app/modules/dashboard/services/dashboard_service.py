@@ -38,6 +38,8 @@ class DashboardService:
     ) -> DashboardSummaryOut:
         if scope.is_admin:
             return await self._admin_summary(school_id, scope)
+        if scope.incharge_class_ids:
+            return await self._incharge_summary(school_id, scope)
         if scope.teaching_pairs:
             teacher_home = await TeacherHomeService(self.db).build(
                 school_id, scope, teacher_name
@@ -47,8 +49,6 @@ class DashboardService:
                 subtitle=teacher_home.tagline,
                 teacher_home=teacher_home,
             )
-        if scope.incharge_class_ids:
-            return await self._incharge_summary(school_id, scope)
         return DashboardSummaryOut(
             persona="teacher",
             subtitle="Your teaching workspace",
@@ -136,6 +136,15 @@ class DashboardService:
             for g, s, p in perf_rows
         ]
 
+        pending_qp = await self.db.scalar(
+            select(func.count())
+            .select_from(QuestionPaper)
+            .where(
+                QuestionPaper.school_id == school_id,
+                QuestionPaper.status.in_(_INCHARGE_REVIEW_STATUSES),
+            )
+        )
+
         return DashboardSummaryOut(
             persona="admin",
             subtitle="School-wide overview for today.",
@@ -147,6 +156,7 @@ class DashboardService:
             admissions_pipeline=pipeline_count or 0,
             expenses_this_month=expenses_month,
             class_performance=class_perf,
+            pending_qp_approvals=pending_qp or 0,
             quick_actions=[
                 QuickActionOut(label="Add Student", href="/dashboard/students"),
                 QuickActionOut(label="Mark Attendance", href="/dashboard/attendance"),

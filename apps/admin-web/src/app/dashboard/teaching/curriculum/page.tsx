@@ -213,7 +213,9 @@ export default function CurriculumManagementPage() {
       .then((r) => {
         const items = sortClasses<any>(r.items || r.data || []);
         setClasses(items);
-        if (items[0]) setClassId(items[0].id);
+        const preferred =
+          items.find((c) => /10/.test(String(c.grade))) ?? items[items.length - 1] ?? items[0];
+        if (preferred) setClassId(preferred.id);
       })
       .catch(() => {});
     api("/api/v1/school/academic-years")

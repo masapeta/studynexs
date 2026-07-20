@@ -168,6 +168,89 @@ class ParentCopilotService:
 
         return "\n".join(weak_lines), focus[:6], feedback_lines
 
+    def _deterministic_briefing(
+        self,
+        *,
+        student_id: uuid.UUID,
+        grade: str,
+        focus_areas: list[ParentFocusAreaOut],
+        weak_lines: str,
+        attendance_pct: float | None,
+    ) -> ParentBriefingOut:
+        """Progress-based summary when the LLM is unavailable or returns empty (demo-safe)."""
+        if focus_areas:
+            topics = ", ".join(f"{f.subject_name} ({f.topic})" for f in focus_areas[:3])
+            summary = (
+                f"Your Class {grade} child is strengthening {topics}. "
+                "These topics came from recent assessments — short, regular practice at home helps most."
+            )
+            home_tips = [
+                "Ask your child to walk through one solved example aloud each evening.",
+                "Keep revision to 20 minutes — consistency matters more than long sessions.",
+            ]
+        else:
+            summary = (
+                f"Your Class {grade} child is progressing this term. "
+                "Watch attendance and class-work notices for what to revise at home."
+            )
+            home_tips = [
+                "Check school notices for this week's class work and due dates.",
+                "Encourage your child to note one doubt after each Maths period.",
+            ]
+        if attendance_pct is not None and attendance_pct < 85:
+            summary += f" Attendance is {attendance_pct:.0f}% — being present supports steady progress."
+
+        return ParentBriefingOut(
+            student_id=student_id,
+            summary=summary,
+            focus_areas=focus_areas,
+            home_tips=home_tips,
+            encouragement="Steady support at home — even a few minutes daily — makes a visible difference.",
+            grounded=bool(focus_areas or weak_lines),
+            model="deterministic",
+        )
+
+    def _deterministic_ask(
+        self,
+        *,
+        question: str,
+        focus_areas: list[ParentFocusAreaOut],
+        weak_lines: str,
+        grade: str,
+    ) -> ParentAnswerOut:
+        q = question.casefold()
+        if focus_areas and ("math" in q or "maths" in q or "week" in q or "summar" in q):
+            primary = focus_areas[0]
+            answer = (
+                f"This week in {primary.subject_name}, focus on {primary.topic}. "
+                f"Your Class {grade} child's teachers flagged this from recent work — "
+                "review the class-work notice and ask them to explain one practice problem."
+            )
+            home_tips = [
+                f"Spend 15 minutes on {primary.topic} — use the textbook examples, not new material.",
+                "Celebrate effort on attempted problems, not only correct answers.",
+            ]
+        elif focus_areas:
+            primary = focus_areas[0]
+            answer = (
+                f"Recent assessments suggest attention on {primary.subject_name}: {primary.topic}. "
+                "Ask your child's teacher if a short remedial worksheet is available."
+            )
+            home_tips = ["Check notices for assigned class work this week."]
+        else:
+            answer = (
+                "Your child's class work and notices are the best guide for this week. "
+                "Open the notices section and review any Maths assignments together."
+            )
+            home_tips = ["Maintain regular study time even when there are no upcoming tests."]
+
+        return ParentAnswerOut(
+            answer=answer,
+            home_tips=home_tips,
+            grounded=bool(focus_areas or weak_lines),
+            model="deterministic",
+        )
+
     async def _curriculum_context(
         self,
         *,
@@ -223,6 +306,13 @@ class ParentCopilotService:
         ).scalar_one()
         grade = cls.grade if cls else "10"
         board = school.board or "SSC"
+
+        progress = await parent_child_progress(
+            self.db,
+            school_id=school_id,
+            parent_user_id=user_id,
+            student_id=student_id,
+        )
 
         weak_lines, focus_areas, feedback_lines = await self._progress_snapshot(
             school_id=school_id,
@@ -280,12 +370,24 @@ class ParentCopilotService:
 
         try:
             payload = json.loads(result.text)
-        except json.JSONDecodeError as exc:
-            raise ValueError("Copilot returned invalid JSON") from exc
+        except json.JSONDecodeError:
+            return self._deterministic_briefing(
+                student_id=student_id,
+                grade=grade,
+                focus_areas=focus_areas,
+                weak_lines=weak_lines,
+                attendance_pct=progress.attendance_pct if progress else None,
+            )
 
         summary = sanitize_llm_plain_text(str(payload.get("summary", "")), max_length=600)
         if not summary:
-            raise ValueError("Copilot returned an empty briefing")
+            return self._deterministic_briefing(
+                student_id=student_id,
+                grade=grade,
+                focus_areas=focus_areas,
+                weak_lines=weak_lines,
+                attendance_pct=progress.attendance_pct if progress else None,
+            )
 
         tips_raw = payload.get("home_tips") or []
         home_tips = [
@@ -356,7 +458,7 @@ class ParentCopilotService:
         grade = cls.grade if cls else "10"
         board = school.board or "SSC"
 
-        weak_lines, _, _ = await self._progress_snapshot(
+        weak_lines, focus_areas, _ = await self._progress_snapshot(
             school_id=school_id,
             parent_user_id=user_id,
             student_id=student_id,
@@ -411,12 +513,22 @@ class ParentCopilotService:
 
         try:
             payload = json.loads(result.text)
-        except json.JSONDecodeError as exc:
-            raise ValueError("Copilot returned invalid JSON") from exc
+        except json.JSONDecodeError:
+            return self._deterministic_ask(
+                question=question,
+                focus_areas=focus_areas,
+                weak_lines=weak_lines,
+                grade=grade,
+            )
 
         answer = sanitize_llm_plain_text(str(payload.get("answer", "")), max_length=1000)
         if not answer:
-            raise ValueError("Copilot returned an empty answer")
+            return self._deterministic_ask(
+                question=question,
+                focus_areas=focus_areas,
+                weak_lines=weak_lines,
+                grade=grade,
+            )
 
         tips_raw = payload.get("home_tips") or []
         home_tips = [

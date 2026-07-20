@@ -209,7 +209,7 @@ export default function EvaluateExamPage() {
     <>
       <PageHeaderCard
         title="Evaluate answer sheets"
-        subtitle={`${exam?.title || "Exam"} · Vision OCR + async grading`}
+        subtitle={`${exam?.title || "Exam"} · Review AI-suggested marks before publishing`}
       >
         <div style={{ display: "flex", gap: 8 }}>
           <Link href={TEACHING.corrections} className="btn btn-ghost gw-btn-sm">Past corrections</Link>

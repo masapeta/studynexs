@@ -18,6 +18,7 @@ export type BriefingSummary = {
   total_teachers?: number | null;
   total_classes?: number | null;
   pending_fees?: number | null;
+  pending_qp_approvals?: number | null;
   school_attendance_percent?: number | null;
   incharge_classes?: {
     class_id: string;
@@ -89,7 +90,7 @@ function ExecutiveKpiBar({ items }: { items: KpiItem[] }) {
 const QUICK_LINKS = [
   { label: "Curriculum", href: TEACHING.curriculum },
   { label: "AI papers", href: TEACHING.aiPapers },
-  { label: "Exam review", href: TEACHING.corrections },
+  { label: "AI marking", href: TEACHING.corrections },
   { label: "Mastery", href: TEACHING.mastery },
 ] as const;
 
@@ -110,10 +111,12 @@ export function MorningBriefing({
   const collectionRate =
     collected + pendingFees > 0 ? Math.round((collected / (collected + pendingFees)) * 100) : 0;
 
-  const qpPending = (summary.incharge_classes ?? []).reduce(
-    (n, c) => n + (c.pending_qp_approvals || 0),
-    0
-  );
+  const qpPending =
+    summary.pending_qp_approvals ??
+    (summary.incharge_classes ?? []).reduce(
+      (n, c) => n + (c.pending_qp_approvals || 0),
+      0
+    );
   const lowAttClasses = (summary.incharge_classes ?? []).filter(
     (c) => (c.attendance_percent ?? 100) < 85
   );
