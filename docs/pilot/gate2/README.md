@@ -42,17 +42,16 @@
 
 ## P5 validation status (2026-07-20)
 
-Engineering completed operational validation on `develop`. **Product Owner approval pending** — no tagging or release activities authorized.
+**Gate 2 GO** — pilot authorized. Tag `v0.1.0-batch1` @ `649967a`.
 
 | Criterion | Result |
 |-----------|--------|
 | Smoke 12/12 | ✅ |
 | Playwright 11/11 | ✅ |
-| Admin build | ✅ |
-| API tests (37) | ✅ |
-| Evidence bundle | ✅ |
+| Tag applied | ✅ `v0.1.0-batch1` |
+| Gate 2 GO | ✅ [`GATE2_GO.md`](../GATE2_GO.md) |
 
-See [`P5_IMPLEMENTATION_REPORT.md`](../../P5_IMPLEMENTATION_REPORT.md) and [`naagarjuna-talent-school/t0-evidence/`](../naagarjuna-talent-school/t0-evidence/).
+See [`BATCH1_BASELINE_CERTIFICATE.md`](../../BATCH1_BASELINE_CERTIFICATE.md).
 
 ---
 
@@ -93,4 +92,4 @@ node scripts/batch1-ui-workflow-demo.cjs
 
 - **No Batch 2 implementation** during active pilot unless explicitly authorized.
 - Fixes allowed: defects, deploy/env, docs, CI, tests, pilot UX bugs — **evidence before code**.
-- P5 validation complete; **await PO approval** before Gate 2 GO declaration or release tagging.
+- P6 validation complete; **Gate 2 GO declared** — see [`GATE2_GO.md`](../GATE2_GO.md).

@@ -2,7 +2,7 @@
 
 > **Issued:** 2026-07-20  
 > **Program:** Batch 1 Reconciliation (P3–P6)  
-> **Status:** Engineering certification complete — **tag and Gate 2 GO await Product Owner approval**
+> **Status:** ✅ **Certified and released** — Gate 2 GO declared 2026-07-20
 
 ---
 
@@ -22,27 +22,20 @@
 | Field | Value |
 |-------|-------|
 | **Prepared tag** | `v0.1.0-batch1` |
-| **Tag applied** | ❌ No — await PO approval |
-| **Current git HEAD** | `45ed42a63bb57a3568646d57390adc9f340afab9` |
-| **RC commit** | ⏳ Pending — Batch 1 artifacts (107 files) uncommitted at certification time |
+| **Tag applied** | ✅ Yes — 2026-07-20 |
+| **Release commit (RC SHA)** | `649967a83cc5aceacaf7dee02c4d37d73fc71f27` |
+| **Branch** | `develop` |
+| **Validation date** | 2026-07-20 |
 | **Alembic head** | `f4a5b6c7d8e9` |
 | **DB revision (runtime)** | `f4a5b6c7d8e9 (head)` — verified in `studynexs-api` container |
 
-### Prepared annotated tag (do not apply until PO approves)
+### Applied tag
 
 ```
-git tag -a v0.1.0-batch1 -m "Batch 1 Curriculum Intelligence — reconciled baseline
-
-- approve_pack() orchestration with KG spine + eager RAG + audit
-- ground_approved_pack() sole governance entry for QP/LP
-- Learning outcomes, audit trail, curriculum UI extensions
-- Smoke 12/12, Playwright 11/11 validated on studynexs-dev
-- Canonical repository; academix-platform archived
-
-Pilot: Naagarjuna Talent School · Class 10 Maths · Gate 2 ready pending PO GO."
+v0.1.0-batch1 → 649967a83cc5aceacaf7dee02c4d37d73fc71f27
 ```
 
-**Apply only after:** (1) Batch 1 RC commit on `develop`, (2) PO approval.
+Tag object SHA: `96c3fbc90a9293537b3ee47a2976f3349305b5d8`
 
 ---
 
@@ -113,7 +106,7 @@ Certified validated capabilities:
 | Docker bind mounts point to `studynexs-dev` only | ✅ |
 | Single Alembic head | ✅ `f4a5b6c7d8e9` |
 | No pending migrations | ✅ |
-| Working tree clean | ⚠️ **107 uncommitted files** — RC commit required before tag |
+| Working tree clean | ✅ At release commit |
 
 **Legacy npm package name:** `academix-platform` in `apps/admin-web/package.json` — cosmetic only; no runtime path impact.
 
@@ -127,13 +120,13 @@ Certified validated capabilities:
 | P4 implementation | ✅ Approved |
 | P5 operational validation | ✅ Approved |
 | P6 release governance | ✅ Complete |
-| Git tag `v0.1.0-batch1` | ⏳ Prepared — **not created** |
-| Gate 2 GO announcement | ⏳ Await PO |
-| Pilot rollout | ⏳ Await PO |
+| Git tag `v0.1.0-batch1` | ✅ Applied on RC commit |
+| Gate 2 GO announcement | ✅ [`docs/pilot/GATE2_GO.md`](docs/pilot/GATE2_GO.md) |
+| Pilot rollout | ✅ **Authorized** — Naagarjuna Talent School |
 
 ### Engineering recommendation
 
-**Release candidate is operationally ready.** Apply tag on a clean RC commit after PO approves commit + tag. Proceed to Gate 2 pilot execution upon PO GO.
+**Batch 1 is feature complete.** Gate 2 pilot is **GO**. Apply tag `v0.1.0-batch1` on commit `649967a`.
 
 ---
 

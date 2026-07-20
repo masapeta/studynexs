@@ -1,8 +1,8 @@
 # Release Checklist — v0.1.0-batch1
 
 > **Repository:** `studynexs-dev` · **Branch:** `develop` (frozen)  
-> **Tag:** `v0.1.0-batch1` — **prepared, not applied** (await PO approval)  
-> **Validated:** 2026-07-20 (P6)
+> **Tag:** `v0.1.0-batch1` — **applied** @ `649967a` (2026-07-20)  
+> **Gate 2:** **GO** — pilot authorized
 
 ---
 
@@ -15,7 +15,8 @@
 | G-3 | No feature/schema/architecture changes in P6 | ✅ | Verification + docs only |
 | G-4 | `develop` frozen for Batch 1 RC | ✅ | Policy in `CANONICAL_REPOSITORY.md` |
 | G-5 | `academix-platform` marked Reference Archive | ✅ | `REFERENCE_ARCHIVE.md` |
-| G-6 | Git tag **not** created (await PO) | ✅ | STOP gate honored |
+| G-6 | Git tag `v0.1.0-batch1` applied | ✅ | `649967a` |
+| G-7 | Gate 2 GO declared | ✅ | `docs/pilot/GATE2_GO.md` |
 
 ---
 
@@ -28,7 +29,7 @@
 | R-3 | Single Alembic head | ✅ | `f4a5b6c7d8e9` |
 | R-4 | DB migrations at head | ✅ | Container: `f4a5b6c7d8e9 (head)` |
 | R-5 | No pending migrations | ✅ | `alembic heads` shows one head |
-| R-6 | Working tree clean | ⚠️ | **107 uncommitted files** — Batch 1 RC commit required before tag |
+| R-6 | Working tree clean | ✅ | At release + governance docs commit |
 
 ---
 
@@ -73,11 +74,11 @@
 
 | Step | Action | Status |
 |------|--------|--------|
-| T-1 | Commit Batch 1 RC artifacts (107 pending files) | ⏳ PO / eng decision |
-| T-2 | PO approves tag creation | ⏳ Pending |
-| T-3 | `git tag -a v0.1.0-batch1 -m "..."` on RC commit | ⏳ **Do not execute** |
-| T-4 | Announce Gate 2 GO | ⏳ Pending |
-| T-5 | Begin pilot rollout | ⏳ Pending |
+| T-1 | Batch 1 RC commit | ✅ | `649967a` |
+| T-2 | PO approves tag creation | ✅ | Final Release Authorization |
+| T-3 | `git tag -a v0.1.0-batch1` | ✅ | Tag object `96c3fbc` |
+| T-4 | Gate 2 GO | ✅ | `GATE2_GO.md` |
+| T-5 | Pilot rollout | ✅ | Naagarjuna Talent School authorized |
 
 ---
 
@@ -85,5 +86,5 @@
 
 | Role | Decision | Date |
 |------|----------|------|
-| Engineering (P6) | Release candidate **prepared** — tag blocked on clean RC commit + PO approval | 2026-07-20 |
-| Product Owner | | Pending |
+| Engineering (P6) | Release **published** | 2026-07-20 |
+| Product Owner | Final Release Authorization | 2026-07-20 |

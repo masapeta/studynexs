@@ -121,6 +121,43 @@ New engineers read in order:
 
 ---
 
+## Release lifecycle (permanent model)
+
+Batch 1 reconciliation (P3–P6) established the standard release path for all future batches:
+
+```
+Development
+    ↓
+Architecture Review
+    ↓
+Implementation
+    ↓
+Operational Validation
+    ↓
+Release Governance
+    ↓
+Release Candidate
+    ↓
+Tag
+    ↓
+Pilot / Production
+```
+
+| Stage | Purpose | Approval |
+|-------|---------|----------|
+| Development | Build against active batch scope | Engineering |
+| Architecture Review | Freeze entry points and boundaries | PO + Engineering |
+| Implementation | Deliver scoped changes with tests | Engineering |
+| Operational Validation | Smoke, E2E, pilot readiness | PO |
+| Release Governance | Repo verification, docs, tag prep | PO |
+| Release Candidate | Single commit; clean tree | PO |
+| Tag | Annotated semver/batch tag on RC SHA | PO |
+| Pilot / Production | Gate GO and rollout | PO |
+
+**Batch 1 reference:** P3–P6 reports, `BATCH1_BASELINE_CERTIFICATE.md`, tag `v0.1.0-batch1`.
+
+---
+
 ## Governing references
 
 | Document | Role |
