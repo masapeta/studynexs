@@ -140,6 +140,29 @@ Every completed batch shall document:
 
 ---
 
+## Reference-First Product Principle
+
+Every user-facing capability must have a **complete, demonstrable journey** in the **StudyNexs Reference School** before it is considered **production-ready for customer onboarding**.
+
+This complements the engineering [Reference School Acceptance Rule](../engineering/ENGINEERING_GOVERNANCE.md#reference-school-acceptance-rule):
+
+| Rule | Ensures |
+|------|---------|
+| **Engineering acceptance** | The feature **works** technically — validation, docs, smoke/demo |
+| **Reference-First (this principle)** | The feature tells a **complete customer story** — end-to-end in the Reference School |
+
+A capability may pass engineering gates but still fail product readiness if it cannot be walked through as a coherent journey (e.g. principal → teacher → student → analytics).
+
+| Document | Role |
+|----------|------|
+| [`../showcase/SHOWCASE_ROADMAP.md`](../showcase/SHOWCASE_ROADMAP.md) | What the Reference School must demonstrate |
+| [`../showcase/SHOWCASE_DEMO_SCRIPT.md`](../showcase/SHOWCASE_DEMO_SCRIPT.md) | Scripted journeys |
+| [`../customer-journey/README.md`](../customer-journey/README.md) | When customer onboarding may begin |
+
+**Focus after Batch 1:** Enrich the Reference School — not further governance documentation.
+
+---
+
 ## Scope discipline
 
 The current execution batch defines the **highest engineering priority**. Features outside the active batch may be documented but shall not be implemented unless explicitly approved.
