@@ -35,7 +35,12 @@
 
 ## Operating constraints
 
+- **Primary objective:** Learn from the pilot — not build new features.
 - **No new features** until pilot completes — critical production defects only (PO-approved).
+- **Triage all feedback** into three buckets — log in [`PILOT_DECISION_LOG.md`](./PILOT_DECISION_LOG.md) with **Priority** (P0–P3), **Owner**, and **Status**:
+  - **Critical defect** → Batch 1 patch (code allowed)
+  - **Operational improvement** → docs / runbooks / config (no architecture change)
+  - **Product opportunity** → Batch 2 backlog (do not implement now)
 - **Architecture frozen** — see [`BATCH1_BASELINE_CERTIFICATE.md`](../../BATCH1_BASELINE_CERTIFICATE.md).
 - **Execution:** [`gate2/GATE2_PILOT_EXECUTION_PLAN.md`](./gate2/GATE2_PILOT_EXECUTION_PLAN.md)
 

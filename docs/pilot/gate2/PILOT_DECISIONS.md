@@ -1,8 +1,9 @@
 # Gate 2 Pilot Decisions Log
 
 > **Purpose:** Record **decisions** made during the pilot — not raw feedback.  
+> **Structured log:** [`../PILOT_DECISION_LOG.md`](../PILOT_DECISION_LOG.md) (Date · Source · Observation · Evidence · Decision · Batch)  
 > **Baseline:** `v0.1.0-batch1` · tenant `naagarjuna`  
-> **Feedback (raw):** use [GATE2_FEEDBACK_COLLECTION_TEMPLATE.md](./GATE2_FEEDBACK_COLLECTION_TEMPLATE.md) and [PILOT_FEEDBACK_LOG.md](../../product/PILOT_FEEDBACK_LOG.md)  
+> **Feedback (raw):** use [GATE2_FEEDBACK_COLLECTION_TEMPLATE.md](./GATE2_FEEDBACK_COLLECTION_TEMPLATE.md)  
 > **Why separate:** Feedback informs; decisions commit the team to a direction and shape the roadmap.
 
 ---

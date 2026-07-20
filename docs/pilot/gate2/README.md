@@ -25,7 +25,8 @@
 | — | [PILOT_DECISIONS.md](./PILOT_DECISIONS.md) | Decision log (roadmap-shaping; not raw feedback) |
 | — | [RELEASE_ENGINEERING_REVIEW.md](./RELEASE_ENGINEERING_REVIEW.md) | Release engineer review (recommendations only) |
 | — | [GATE2_READINESS_AUDIT.md](./GATE2_READINESS_AUDIT.md) | Pre-pilot readiness audit |
-| — | [GATE2_PILOT_SESSION_REPORT_TEMPLATE.md](./GATE2_PILOT_SESSION_REPORT_TEMPLATE.md) | After each live session |
+| — | [PILOT_DECISION_LOG.md](../PILOT_DECISION_LOG.md) | Structured feedback → decision → batch audit trail |
+| — | [GATE2_GO.md](../GATE2_GO.md) | Gate 2 GO declaration and pilot operating constraints |
 | — | [GATE2_FINAL_REPORT.md](./GATE2_FINAL_REPORT.md) | Fill at pilot exit only |
 
 ---

@@ -152,7 +152,9 @@ Pilot / Production
 | Release Governance | Repo verification, docs, tag prep | PO |
 | Release Candidate | Single commit; clean tree | PO |
 | Tag | Annotated semver/batch tag on RC SHA | PO |
-| Pilot / Production | Gate GO and rollout | PO |
+| Pilot / Production | Gate GO, learn-first mode, feedback triage | PO |
+
+During **Pilot / Production**, the primary objective is **learning**, not feature development. Triage feedback via [`docs/pilot/PILOT_DECISION_LOG.md`](../pilot/PILOT_DECISION_LOG.md).
 
 **Batch 1 reference:** P3–P6 reports, `BATCH1_BASELINE_CERTIFICATE.md`, tag `v0.1.0-batch1`.
 
