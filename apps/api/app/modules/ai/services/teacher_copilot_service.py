@@ -58,9 +58,11 @@ def _build_lesson_plan_messages(
         f"Focus topic: {topic}.\n\n"
         "Return JSON:\n"
         '{"title": str, "segments": ['
-        '{"duration_min": int, "activity": str, "citations": [int]}], '
-        '"learning_objectives": [str], "notes": str}\n'
-        "Provide 4–6 segments totalling about 40 minutes. "
+        '{"duration_min": int, "activity": str, "description": str, "notes": str, "citations": [int]}], '
+        '"learning_objectives": [str], "materials": [str], "notes": str}\n'
+        "Provide 5–6 procedure steps totalling about 40–50 minutes. "
+        "Use standard step names where appropriate (Introduction, Instructions, Guided Practice, "
+        "Independent Practice, Closure, Assessment). "
         "Every segment MUST include at least one valid citation."
     )
     return [LLMMessage("system", system), LLMMessage("user", user)]
@@ -144,13 +146,23 @@ def _normalize_lesson_segments(raw: list, sources: list[dict]) -> list[dict]:
                     citations.append(idx)
             except (TypeError, ValueError):
                 continue
-        row: dict = {"duration_min": max(1, min(duration, 60)), "activity": activity}
+        row: dict = {
+            "duration_min": max(1, min(duration, 60)),
+            "activity": activity,
+            "description": str(seg.get("description") or "").strip() or None,
+            "notes": str(seg.get("notes") or "").strip() or None,
+        }
         if citations:
             row["citations"] = citations
             row["citation_sources"] = resolve_citations(sources, citations)
         out.append(row)
     return out or [
-        {"duration_min": 10, "activity": "Review curriculum context and objectives"},
+        {
+            "duration_min": 10,
+            "activity": "Introduction",
+            "description": "Review curriculum context and objectives.",
+            "notes": "Use approved pack sources.",
+        },
     ]
 
 
@@ -307,13 +319,9 @@ class TeacherCopilotService:
         segments = _normalize_lesson_segments(
             data.get("segments") or [], grounding.sources
         )
-        objectives = data.get("learning_objectives") or []
-        notes_parts = [str(data.get("notes") or "").strip()]
-        if objectives:
-            notes_parts.append(
-                "Learning objectives:\n" + "\n".join(f"• {o}" for o in objectives[:8])
-            )
-        notes = "\n\n".join(p for p in notes_parts if p) or None
+        objectives = [str(o).strip() for o in (data.get("learning_objectives") or []) if str(o).strip()]
+        materials = [str(m).strip() for m in (data.get("materials") or []) if str(m).strip()]
+        notes = str(data.get("notes") or "").strip() or None
 
         sched = scheduled_for or (date.today() + timedelta(days=1))
         title = str(data.get("title") or "").strip() or (
@@ -330,6 +338,8 @@ class TeacherCopilotService:
             topic=focus_topic,
             scheduled_for=sched,
             segments=segments,
+            learning_objectives=objectives[:8],
+            materials=materials[:12],
             status=LessonPlanStatus.DRAFT,
             ai_model=result.model,
             notes=notes,

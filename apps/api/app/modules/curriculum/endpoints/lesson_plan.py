@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,7 +14,9 @@ from app.core.database import get_db
 from app.core.dependencies import CurrentUser, require_roles
 from app.core.rate_limit import rate_limit
 from app.core.staff_permissions import get_staff_scope
+from app.db.models.academic import Class, Subject
 from app.db.models.lesson_plan import LessonPlan, LessonPlanStatus
+from app.db.models.user import User
 from app.modules.curriculum.schemas.lesson_plan import (
     GenerateLessonPlanRequest,
     LessonPlanOut,
@@ -22,6 +25,7 @@ from app.modules.curriculum.schemas.lesson_plan import (
 )
 from app.modules.curriculum.schemas.provenance import provenance_from_sources
 from app.modules.curriculum.services.lesson_plan_service import LessonPlanService
+from app.modules.curriculum.services.lesson_plan_pdf import generate_lesson_plan_pdf
 from app.modules.ai.services.teacher_copilot_service import TeacherCopilotService
 from app.modules.ai.services.usage_caps import enforce_monthly_ai_cap
 from app.modules.ai.telemetry import bind_ai_context
@@ -33,7 +37,74 @@ _TEACH = ("teacher", "class_incharge", "admin", "super_admin")
 _LP_RATE = {"max_requests": 20, "window_seconds": 60}
 
 
-def _out(plan: LessonPlan, scope, svc: LessonPlanService) -> LessonPlanOut:
+def _segment_out(raw: dict) -> LessonSegmentOut:
+    return LessonSegmentOut(
+        duration_min=int(raw.get("duration_min") or 0),
+        activity=str(raw.get("activity") or ""),
+        description=raw.get("description"),
+        notes=raw.get("notes"),
+        citations=raw.get("citations"),
+        citation_sources=raw.get("citation_sources"),
+    )
+
+
+async def _plan_context(
+    db: AsyncSession, school_id: uuid.UUID, plan: LessonPlan
+) -> dict[str, str | int | None]:
+    teacher_name: str | None = None
+    class_label: str | None = None
+    subject_name: str | None = None
+
+    user = (
+        await db.execute(
+            select(User.full_name).where(
+                User.id == plan.created_by,
+                User.school_id == school_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if user:
+        teacher_name = user
+
+    cls = (
+        await db.execute(
+            select(Class.grade, Class.section).where(
+                Class.id == plan.class_id,
+                Class.school_id == school_id,
+            )
+        )
+    ).one_or_none()
+    if cls:
+        class_label = f"{cls.grade} {cls.section}".strip()
+
+    subj = (
+        await db.execute(
+            select(Subject.name).where(
+                Subject.id == plan.subject_id,
+                Subject.school_id == school_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if subj:
+        subject_name = subj
+
+    duration_minutes = sum(int(s.get("duration_min") or 0) for s in (plan.segments or []))
+
+    return {
+        "teacher_name": teacher_name,
+        "class_label": class_label,
+        "subject_name": subject_name,
+        "duration_minutes": duration_minutes,
+    }
+
+
+async def _out(
+    db: AsyncSession,
+    plan: LessonPlan,
+    scope,
+    svc: LessonPlanService,
+    school_id: uuid.UUID,
+) -> LessonPlanOut:
     prov = provenance_from_sources(
         plan.grounding_sources,
         pack_id=str(plan.pack_id) if plan.pack_id else None,
@@ -41,6 +112,9 @@ def _out(plan: LessonPlan, scope, svc: LessonPlanService) -> LessonPlanOut:
         created_at=plan.created_at,
     )
     grounded_at = plan.created_at.date() if plan.grounded and plan.created_at else None
+    ctx = await _plan_context(db, school_id, plan)
+    objectives = list(plan.learning_objectives or [])
+    materials = list(plan.materials or [])
     return LessonPlanOut(
         id=plan.id,
         class_id=plan.class_id,
@@ -49,7 +123,13 @@ def _out(plan: LessonPlan, scope, svc: LessonPlanService) -> LessonPlanOut:
         chapter=plan.chapter,
         topic=plan.topic,
         scheduled_for=plan.scheduled_for,
-        segments=[LessonSegmentOut(**s) for s in (plan.segments or [])],
+        segments=[_segment_out(s) for s in (plan.segments or [])],
+        learning_objectives=objectives,
+        materials=materials,
+        duration_minutes=int(ctx["duration_minutes"] or 0),
+        teacher_name=ctx["teacher_name"],
+        class_label=ctx["class_label"],
+        subject_name=ctx["subject_name"],
         status=plan.status.value,
         notes=plan.notes,
         pack_id=plan.pack_id,
@@ -146,7 +226,7 @@ async def generate_lesson_plan(
         raise HTTPException(status_code=400, detail=str(exc))
     await db.commit()
     svc = LessonPlanService(db)
-    return _out(plan, scope, svc)
+    return await _out(db, plan, scope, svc, school_id)
 
 
 @router.get("/next", response_model=APIResponse[LessonPlanOut | None])
@@ -157,7 +237,11 @@ async def get_next_lesson_plan(
     scope = await get_staff_scope(db, current_user)
     svc = LessonPlanService(db)
     plan = await svc.next_draft(uuid.UUID(current_user.school_id), scope)
-    return APIResponse(data=_out(plan, scope, svc) if plan else None)
+    return APIResponse(
+        data=await _out(db, plan, scope, svc, uuid.UUID(current_user.school_id))
+        if plan
+        else None
+    )
 
 
 @router.put("/{plan_id}", response_model=LessonPlanOut)
@@ -178,12 +262,55 @@ async def update_lesson_plan(
         plan.chapter = body.chapter
     if body.topic is not None:
         plan.topic = body.topic
+    if body.scheduled_for is not None:
+        plan.scheduled_for = body.scheduled_for
     if body.notes is not None:
         plan.notes = body.notes
+    if body.learning_objectives is not None:
+        plan.learning_objectives = body.learning_objectives
+    if body.materials is not None:
+        plan.materials = body.materials
     if body.segments is not None:
-        plan.segments = [s.model_dump() for s in body.segments]
+        plan.segments = [s.model_dump(exclude_none=True) for s in body.segments]
     await db.commit()
-    return _out(plan, scope, svc)
+    return await _out(db, plan, scope, svc, uuid.UUID(current_user.school_id))
+
+
+@router.get("/{plan_id}/pdf")
+async def download_lesson_plan_pdf(
+    plan_id: uuid.UUID,
+    current_user: CurrentUser = Depends(require_roles(*_TEACH)),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """Render the lesson plan for printing (PDF if WeasyPrint present, else print-ready HTML)."""
+    scope = await get_staff_scope(db, current_user)
+    svc = LessonPlanService(db)
+    plan = await _get_plan(db, current_user.school_id, plan_id)
+    if not svc.can_view(scope, plan):
+        raise HTTPException(status_code=403, detail="Cannot access this lesson plan")
+    school_id = uuid.UUID(current_user.school_id)
+    ctx = await _plan_context(db, school_id, plan)
+    topic = plan.topic or plan.title
+    content, media_type = generate_lesson_plan_pdf(
+        teacher_name=str(ctx["teacher_name"] or "—"),
+        subject_name=str(ctx["subject_name"] or "—"),
+        class_label=str(ctx["class_label"] or "—"),
+        scheduled_for=plan.scheduled_for,
+        topic=topic,
+        duration_minutes=int(ctx["duration_minutes"] or 0),
+        learning_objectives=list(plan.learning_objectives or []),
+        materials=list(plan.materials or []),
+        segments=list(plan.segments or []),
+        notes=plan.notes,
+    )
+    ext = "pdf" if media_type == "application/pdf" else "html"
+    safe_topic = (topic or "lesson_plan").replace(" ", "_")[:40]
+    filename = f"lesson_plan_{safe_topic}.{ext}"
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={"Content-Disposition": f"inline; filename={filename}"},
+    )
 
 
 @router.post("/{plan_id}/approve", response_model=LessonPlanOut)
@@ -199,7 +326,7 @@ async def approve_lesson_plan(
         raise HTTPException(status_code=403, detail="Cannot approve this lesson plan")
     plan.status = LessonPlanStatus.APPROVED
     await db.commit()
-    return _out(plan, scope, svc)
+    return await _out(db, plan, scope, svc, uuid.UUID(current_user.school_id))
 
 
 @router.post(
@@ -226,4 +353,4 @@ async def regenerate_lesson_plan(
         scheduled_for=source.scheduled_for,
     )
     await db.commit()
-    return _out(plan, scope, svc)
+    return await _out(db, plan, scope, svc, uuid.UUID(current_user.school_id))

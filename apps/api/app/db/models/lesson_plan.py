@@ -40,8 +40,10 @@ class LessonPlan(BaseModel):
     chapter: Mapped[str | None] = mapped_column(String(150))
     topic: Mapped[str | None] = mapped_column(String(150))
     scheduled_for: Mapped[date | None] = mapped_column(Date)
-    # [{duration_min, activity}]
+    # [{duration_min, activity, description?, notes?, citations?, citation_sources?}]
     segments: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    learning_objectives: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    materials: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     status: Mapped[LessonPlanStatus] = mapped_column(
         Enum(LessonPlanStatus, values_callable=lambda x: [e.value for e in x]),
         default=LessonPlanStatus.DRAFT,

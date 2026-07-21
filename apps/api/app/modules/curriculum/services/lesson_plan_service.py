@@ -101,9 +101,12 @@ class LessonPlanService:
 
         segments = self._segments_for_topic(focus_topic)
         if grounding and grounding.context_text:
-            segments[1]["activity"] = (
-                f"Teach {focus_topic} using approved curriculum "
-                f"(pack v{grounding.pack_version}): grounded from {grounding.chunk_count} sources"
+            segments[2]["description"] = (
+                f"Explain {focus_topic} using approved curriculum "
+                f"(pack v{grounding.pack_version}) with worked examples."
+            )
+            segments[2]["notes"] = (
+                f"Grounded from {grounding.chunk_count} approved curriculum sources."
             )
 
         plan = LessonPlan(
@@ -116,6 +119,8 @@ class LessonPlanService:
             topic=focus_topic,
             scheduled_for=sched,
             segments=segments,
+            learning_objectives=self._objectives_for_topic(focus_topic),
+            materials=self._materials_for_topic(subj.name, focus_topic),
             status=LessonPlanStatus.DRAFT,
             ai_model="template-v1-grounded" if grounding else "template-v1",
             pack_id=grounding.pack_id if grounding else None,
@@ -128,12 +133,60 @@ class LessonPlanService:
 
     @staticmethod
     def _segments_for_topic(topic: str) -> list[dict]:
+        """Standard school lesson-plan procedure table (single period, ~50 min)."""
         return [
-            {"duration_min": 5, "activity": f"Quick recap — prerequisites for {topic}"},
-            {"duration_min": 12, "activity": f"Teach {topic} with worked examples"},
-            {"duration_min": 8, "activity": f"Hands-on activity: {topic}"},
-            {"duration_min": 10, "activity": f"Practice set — {topic}"},
-            {"duration_min": 5, "activity": "Exit ticket (3 questions)"},
+            {
+                "duration_min": 5,
+                "activity": "Introduction",
+                "description": f"Introduce {topic} and state the lesson objectives.",
+                "notes": "Use visuals or props as needed.",
+            },
+            {
+                "duration_min": 10,
+                "activity": "Instructions",
+                "description": f"Explain key concepts and skills for {topic}.",
+                "notes": "Include any multimedia presentations.",
+            },
+            {
+                "duration_min": 15,
+                "activity": "Guided Practice",
+                "description": "Students practice with teacher support.",
+                "notes": "Group work or hands-on activities.",
+            },
+            {
+                "duration_min": 10,
+                "activity": "Independent Practice",
+                "description": "Students work individually to apply learning.",
+                "notes": "Worksheets or online activities.",
+            },
+            {
+                "duration_min": 5,
+                "activity": "Closure",
+                "description": "Summarize the lesson and review key points.",
+                "notes": "Ask questions to assess understanding.",
+            },
+            {
+                "duration_min": 5,
+                "activity": "Assessment",
+                "description": "Evaluate student understanding.",
+                "notes": "Quick quiz, exit ticket, or reflection.",
+            },
+        ]
+
+    @staticmethod
+    def _objectives_for_topic(topic: str) -> list[str]:
+        return [
+            f"Understand the core concepts of {topic}.",
+            f"Apply {topic} to solve problems with teacher guidance.",
+            f"Demonstrate understanding of {topic} through practice and assessment.",
+        ]
+
+    @staticmethod
+    def _materials_for_topic(subject_name: str, topic: str) -> list[str]:
+        return [
+            f"{subject_name} textbook / approved curriculum pack",
+            "Whiteboard or projector",
+            f"Worksheets or practice handouts for {topic}",
         ]
 
     async def next_draft(
@@ -170,3 +223,12 @@ class LessonPlanService:
         if plan.status == LessonPlanStatus.APPROVED:
             return False
         return scope.is_class_incharge(plan.class_id)
+
+    def can_view(self, scope: StaffScope, plan: LessonPlan) -> bool:
+        if scope.is_admin:
+            return True
+        if plan.created_by == scope.user_id:
+            return True
+        if scope.is_class_incharge(plan.class_id):
+            return True
+        return scope.teaches(plan.class_id, plan.subject_id)

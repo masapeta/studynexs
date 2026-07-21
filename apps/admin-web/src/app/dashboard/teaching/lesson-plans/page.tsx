@@ -1,30 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Clock, RefreshCw, Sparkles } from "lucide-react";
-import { api, getApiErrorMessage } from "@/lib/api";
+import { Check, RefreshCw, Sparkles } from "lucide-react";
+import { api, fetchProtectedDocumentUrl, getApiErrorMessage } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 import { AppSelect } from "@/components/ui/AppSelect";
 import { PageHeaderCard } from "@/components/layout/PageHeaderCard";
-import { CurriculumGroundingBadge } from "@/components/curriculum/CurriculumGroundingBadge";
+import {
+  LessonPlanDocument,
+  type LessonPlanDocumentData,
+  type LessonPlanSegment,
+} from "@/components/briefing/LessonPlanDocument";
+import { LessonPlanEditor } from "@/components/teaching/LessonPlanEditor";
 import { formatClassLabel, sortClasses } from "@/lib/format";
 
-type Segment = { duration_min: number; activity: string; citations?: number[]; citation_sources?: { chapter?: string; topic?: string }[] };
-type Plan = {
-  id: string;
-  title: string;
-  chapter?: string | null;
-  topic?: string | null;
-  scheduled_for?: string | null;
-  segments: Segment[];
-  status: string;
-  notes?: string | null;
-  pack_id?: string | null;
-  pack_status?: string | null;
-  pack_version?: number | null;
-  grounded?: boolean;
-  grounded_at?: string | null;
-  grounding_sources?: Array<Record<string, unknown>> | null;
-  ai_model?: string | null;
+type Plan = LessonPlanDocumentData & {
   can_edit?: boolean;
   can_approve?: boolean;
 };
@@ -40,6 +30,7 @@ type ApprovedPack = {
 const btn: React.CSSProperties = { width: "auto", padding: "8px 18px", borderRadius: "var(--radius-full)", fontSize: 13 };
 
 export default function LessonPlansPage() {
+  const { user } = useAuth();
   const [classes, setClasses] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [classId, setClassId] = useState("");
@@ -49,7 +40,9 @@ export default function LessonPlansPage() {
   const [approvedPacks, setApprovedPacks] = useState<ApprovedPack[]>([]);
   const [useCopilot, setUseCopilot] = useState(false);
   const [plan, setPlan] = useState<Plan | null>(null);
+  const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -105,6 +98,7 @@ export default function LessonPlansPage() {
     }
     setBusy(true);
     setError("");
+    setEditing(false);
     try {
       const body: Record<string, unknown> = {
         class_id: classId,
@@ -129,6 +123,7 @@ export default function LessonPlansPage() {
     if (!plan) return;
     setBusy(true);
     setError("");
+    setEditing(false);
     try {
       const res = await api<Plan>(`/api/v1/lesson-plans/${plan.id}/${path}`, { method: "POST" });
       setPlan(res);
@@ -139,17 +134,71 @@ export default function LessonPlansPage() {
     }
   }
 
+  async function savePlan(payload: {
+    topic: string | null;
+    scheduled_for: string | null;
+    learning_objectives: string[];
+    materials: string[];
+    segments: LessonPlanSegment[];
+    notes: string | null;
+  }) {
+    if (!plan) return;
+    setBusy(true);
+    setError("");
+    try {
+      const res = await api<Plan>(`/api/v1/lesson-plans/${plan.id}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      });
+      setPlan(res);
+      setEditing(false);
+    } catch (e) {
+      setError(getApiErrorMessage(e, "Failed to save lesson plan"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function downloadPdf() {
+    if (!plan) return;
+    setDownloadingPdf(true);
+    setError("");
+    try {
+      const url = await fetchProtectedDocumentUrl(`/api/v1/lesson-plans/${plan.id}/pdf`);
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (e) {
+      setError(getApiErrorMessage(e, "Failed to download lesson plan PDF"));
+    } finally {
+      setDownloadingPdf(false);
+    }
+  }
+
   const approved = plan?.status === "approved";
   const packOptions = approvedPacks.map((p) => ({
     value: p.id,
     label: `v${p.version} · ${p.book_title || "Approved pack"}`,
   }));
 
+  const selectedClass = classes.find((c) => c.id === classId);
+  const selectedSubject = subjects.find((s) => s.id === subjectId);
+  const planWithLabels = plan
+    ? {
+        ...plan,
+        teacher_name: plan.teacher_name || user?.full_name || null,
+        class_label:
+          plan.class_label ||
+          (selectedClass ? formatClassLabel(selectedClass.grade, selectedClass.section) : null),
+        subject_name: plan.subject_name || selectedSubject?.name || null,
+      }
+    : null;
+
+  const canEditDraft = Boolean(planWithLabels?.can_edit && planWithLabels.status === "draft");
+
   return (
     <>
       <PageHeaderCard
         title="Lesson Plans"
-        subtitle="Default: template + curriculum grounding. Optional: Teacher Copilot (feature toggle)."
+        subtitle="Generate a standard school lesson plan, edit inline, then print or export to PDF."
       />
 
       {error && <div className="card sn-inline-alert sn-inline-alert--error">{error}</div>}
@@ -211,65 +260,39 @@ export default function LessonPlansPage() {
         </button>
       </div>
 
-      {plan && (
+      {planWithLabels && (
         <div className="card" style={{ padding: 24 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 17 }}>{plan.title}</div>
-              <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>
-                {plan.chapter ? `${plan.chapter} · ` : ""}{plan.topic}
-                {plan.scheduled_for ? ` · ${new Date(plan.scheduled_for).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}` : ""}
-                {plan.ai_model ? ` · ${plan.ai_model}` : ""}
-              </div>
-            </div>
-            <span className={`badge ${approved ? "badge-success" : "badge-warning"}`} style={{ textTransform: "capitalize" }}>{plan.status}</span>
-          </div>
-
-          <CurriculumGroundingBadge
-            packId={plan.pack_id}
-            packStatus={plan.pack_status}
-            packVersion={plan.pack_version}
-            grounded={plan.grounded}
-            groundedAt={plan.grounded_at}
-          />
-
-          {plan.notes && (
-            <div style={{ marginTop: 12, fontSize: 13, color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>{plan.notes}</div>
+          {editing && canEditDraft ? (
+            <LessonPlanEditor
+              plan={planWithLabels}
+              busy={busy}
+              onSave={savePlan}
+              onCancel={() => setEditing(false)}
+            />
+          ) : (
+            <LessonPlanDocument
+              plan={planWithLabels}
+              teacherFallback={user?.full_name}
+              canEdit={canEditDraft}
+              onEdit={() => setEditing(true)}
+              onDownloadPdf={downloadPdf}
+              downloadingPdf={downloadingPdf}
+            />
           )}
 
-          <div style={{ marginTop: 16 }}>
-            {(plan.segments || []).map((s, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "10px 0", borderTop: i ? "1px solid var(--border-light)" : "none" }}>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 700, color: "var(--info)", minWidth: 54 }}>
-                  <Clock size={13} /> {s.duration_min}m
-                </span>
-                <div style={{ flex: 1 }}>
-                  <span style={{ fontSize: 14 }}>{s.activity}</span>
-                  {s.citation_sources && s.citation_sources.length > 0 && (
-                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
-                      Sources: {s.citation_sources.map((c, j) => (
-                        <span key={j}>{j ? " · " : ""}{c.chapter}{c.topic ? ` › ${c.topic}` : ""}</span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {!approved && (
+          {!approved && !editing && (
             <div style={{ display: "flex", gap: 10, marginTop: 18, justifyContent: "flex-end" }}>
               <button className="btn btn-ghost" style={btn} onClick={() => act("regenerate")} disabled={busy}>
                 <RefreshCw size={15} style={{ marginRight: 6 }} /> Regenerate
               </button>
-              {plan.can_approve && (
+              {planWithLabels.can_approve && (
                 <button className="btn btn-primary" style={btn} onClick={() => act("approve")} disabled={busy}>
                   <Check size={15} style={{ marginRight: 6 }} /> Approve
                 </button>
               )}
             </div>
           )}
-          {!approved && plan.can_approve === false && (
+          {!approved && !editing && planWithLabels.can_approve === false && (
             <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-muted)" }}>
               Your class incharge approves lesson plans.
             </div>
