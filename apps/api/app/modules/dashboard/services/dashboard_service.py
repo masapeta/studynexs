@@ -1,8 +1,9 @@
 """Role-aware dashboard summary — only data the caller is allowed to see."""
 from __future__ import annotations
 
+import re
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,12 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.staff_permissions import StaffScope
 from app.db.models.academic import Class
 from app.db.models.attendance import Attendance, AttendanceStatus
-from app.db.models.examination import Exam, ExamMark
-from app.db.models.question_paper import (
-    PaperStatus,
-    QuestionPaper,
-    _INCHARGE_REVIEW_STATUSES,
-)
+from app.db.models.question_paper import _INCHARGE_REVIEW_STATUSES, QuestionPaper
 from app.db.models.student import Student
 from app.db.models.user import User, UserRole
 from app.modules.communications.services.notice_service import NoticeService
@@ -27,6 +23,11 @@ from app.modules.dashboard.schemas.dashboard import (
 )
 from app.modules.dashboard.services.teacher_home_service import TeacherHomeService
 from app.modules.fees.services.fee_service import FeeService
+
+
+def _grade_sort_num(grade: str) -> int:
+    match = re.search(r"\d+", grade or "")
+    return int(match.group()) if match else 0
 
 
 class DashboardService:
@@ -119,22 +120,7 @@ class DashboardService:
         present, total = att.one()
         att_pct = round((present / total) * 100, 1) if total else 0.0
 
-        avg_pct = func.avg(ExamMark.marks_obtained / Exam.total_marks * 100)
-        perf_rows = (
-            await self.db.execute(
-                select(Class.grade, Class.section, avg_pct.label("pct"))
-                .join(Exam, Exam.class_id == Class.id)
-                .join(ExamMark, ExamMark.exam_id == Exam.id)
-                .where(Class.school_id == school_id)
-                .group_by(Class.id, Class.grade, Class.section)
-                .order_by(avg_pct.desc())
-                .limit(3)
-            )
-        ).all()
-        class_perf = [
-            {"label": f"{g} - {s}", "percentage": round(float(p or 0), 1)}
-            for g, s, p in perf_rows
-        ]
+        class_perf = await self._class_attendance_bars(school_id, limit=6)
 
         pending_qp = await self.db.scalar(
             select(func.count())
@@ -164,6 +150,75 @@ class DashboardService:
             ],
             notices=await self._notices_brief(school_id, scope),
         )
+
+    async def _resolve_attendance_chart_date(self, school_id: uuid.UUID) -> date:
+        """Prefer today; fall back to the latest day with attendance (demo-safe)."""
+        today = date.today()
+        today_rows = await self.db.scalar(
+            select(func.count())
+            .select_from(Attendance)
+            .where(Attendance.school_id == school_id, Attendance.date == today)
+        )
+        if today_rows:
+            return today
+        latest = await self.db.scalar(
+            select(func.max(Attendance.date)).where(
+                Attendance.school_id == school_id,
+                Attendance.date >= today - timedelta(days=14),
+            )
+        )
+        return latest or today
+
+    async def _class_attendance_bars(
+        self, school_id: uuid.UUID, *, limit: int = 6
+    ) -> list[dict]:
+        """Per-class attendance for the principal insights chart."""
+        chart_date = await self._resolve_attendance_chart_date(school_id)
+        rows = (
+            await self.db.execute(
+                select(
+                    Class.grade,
+                    Class.section,
+                    func.count(Student.id).label("strength"),
+                    func.count(Attendance.id)
+                    .filter(Attendance.status == AttendanceStatus.PRESENT)
+                    .label("present"),
+                )
+                .select_from(Class)
+                .join(Student, Student.class_id == Class.id)
+                .outerjoin(
+                    Attendance,
+                    (Attendance.student_id == Student.id)
+                    & (Attendance.school_id == school_id)
+                    & (Attendance.date == chart_date),
+                )
+                .where(Class.school_id == school_id)
+                .group_by(Class.id, Class.grade, Class.section)
+                .having(func.count(Student.id) > 0)
+            )
+        ).all()
+
+        bars: list[dict] = []
+        for grade, section, strength, present in rows:
+            strength_i = int(strength or 0)
+            present_i = int(present or 0)
+            pct = round((present_i / strength_i) * 100, 1) if strength_i else 0.0
+            bars.append(
+                (
+                    _grade_sort_num(grade),
+                    str(section),
+                    {
+                        "label": f"{grade} - {section}",
+                        "present": present_i,
+                        "strength": strength_i,
+                        "percentage": pct,
+                        "date": chart_date.isoformat(),
+                    },
+                )
+            )
+
+        bars.sort(key=lambda row: (row[0], row[1]), reverse=True)
+        return [row[2] for row in bars[:limit]]
 
     async def _incharge_summary(
         self, school_id: uuid.UUID, scope: StaffScope

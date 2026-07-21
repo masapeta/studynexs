@@ -5,16 +5,16 @@
 .sn-app .main-content {
   flex: 1;
   min-width: 0;
-  width: calc(100vw - var(--sidebar-width));
-  max-width: calc(100vw - var(--sidebar-width));
+  width: auto;
+  max-width: none;
 }
 
+/* Match topbar inset (12px margin + 16px padding) so dashboard tiles align with the header */
 .sn-app .page-content {
   width: 100%;
   max-width: none;
   box-sizing: border-box;
-  padding-left: clamp(12px, 1.25vw, 28px);
-  padding-right: clamp(12px, 1.25vw, 28px);
+  padding-inline: 28px;
 }
 
 /* Page shells — use full content width (was capped at 72–80rem) */
@@ -164,6 +164,10 @@
     width: 100%;
     max-width: 100%;
     margin-left: 0;
+  }
+
+  .sn-app .page-content {
+    padding-inline: 16px;
   }
 
   .sn-app .header.topbar .topbar-search-trigger {

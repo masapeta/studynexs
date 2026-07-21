@@ -14,6 +14,13 @@ class QuickActionOut(BaseModel):
     href: str
 
 
+class ClassAttendanceBarOut(BaseModel):
+    label: str
+    present: int
+    strength: int
+    percentage: float
+
+
 class NoticeBriefOut(BaseModel):
     id: uuid.UUID
     title: str

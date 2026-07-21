@@ -28,7 +28,13 @@ export type BriefingSummary = {
   }[];
   admissions_pipeline?: number | null;
   expenses_this_month?: number | null;
-  class_performance?: { label: string; percentage: number }[];
+  class_performance?: {
+    label: string;
+    present?: number;
+    strength?: number;
+    percentage: number;
+    date?: string;
+  }[];
   notices?: {
     id: string;
     title: string;
@@ -273,8 +279,10 @@ export function MorningBriefing({
             </div>
           </div>
         )}
+      </div>
 
-        {!isAdmin && (summary.incharge_classes?.length ?? 0) > 0 && (
+      {!isAdmin && (summary.incharge_classes?.length ?? 0) > 0 && (
+        <div className="briefing-exec-row briefing-exec-row--classes">
           <div className="briefing-glass-chip briefing-card briefing-panel briefing-exec-classes">
             <div className="briefing-panel-head">
               <h3>Your classes today</h3>
@@ -293,8 +301,8 @@ export function MorningBriefing({
               ))}
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {isAdmin && (
         <DashboardAnalytics

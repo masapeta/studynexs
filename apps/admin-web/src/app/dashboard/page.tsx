@@ -11,7 +11,13 @@ import {
 
 type Summary = BriefingSummary & {
   teacher_home?: TeacherHome | null;
-  class_performance?: { label: string; percentage: number }[];
+  class_performance?: {
+    label: string;
+    present?: number;
+    strength?: number;
+    percentage: number;
+    date?: string;
+  }[];
   quick_actions?: { label: string; href: string }[];
 };
 
