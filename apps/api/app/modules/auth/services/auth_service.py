@@ -7,6 +7,7 @@ from __future__ import annotations
 import secrets
 import string
 import uuid
+from datetime import datetime, timezone
 
 import redis.asyncio as redis
 import structlog
@@ -133,7 +134,14 @@ class AuthService:
 
     # ── Token Operations ─────────────────────────────────────────
 
-    async def issue_tokens(self, user: User, sid: str | None = None) -> tuple[str, str]:
+    async def issue_tokens(
+        self,
+        user: User,
+        sid: str | None = None,
+        *,
+        refresh_expires_at: datetime | None = None,
+        extra_access_claims: dict | None = None,
+    ) -> tuple[str, str]:
         """
         Issue access + refresh tokens for a user.
 
@@ -149,30 +157,38 @@ class AuthService:
         tenant_slug = slug_result.scalar_one_or_none() or ""
 
         sid = sid or str(uuid.uuid4())
-        # Stamp the session id into the access token so single-device logout can revoke the
-        # exact session using the (always-present) access token — the refresh cookie is
-        # path-scoped to /auth/refresh and is never sent to /auth/logout.
+        claims = {"sid": sid, **(extra_access_claims or {})}
         access_token = create_access_token(
             user_id=str(user.id),
             school_id=str(user.school_id),
             role=user.role.value,
             tenant_slug=tenant_slug,
-            extra_claims={"sid": sid},
+            extra_claims=claims,
         )
         refresh_token, jti = create_refresh_token(
             user_id=str(user.id),
             school_id=str(user.school_id),
             sid=sid,
+            expires_at=refresh_expires_at,
         )
-        await self._store_refresh_jti(str(user.id), sid, jti)
+        ttl_seconds = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600
+        if refresh_expires_at is not None:
+            ttl_seconds = max(
+                60,
+                int((refresh_expires_at - datetime.now(timezone.utc)).total_seconds()),
+            )
+        await self._store_refresh_jti(str(user.id), sid, jti, ttl_seconds=ttl_seconds)
         return access_token, refresh_token
 
     def _refresh_key(self, user_id: str, sid: str) -> str:
         return f"{settings.REDIS_REFRESH_JTI_PREFIX}{user_id}:{sid}"
 
-    async def _store_refresh_jti(self, user_id: str, sid: str, jti: str) -> None:
+    async def _store_refresh_jti(
+        self, user_id: str, sid: str, jti: str, *, ttl_seconds: int | None = None
+    ) -> None:
         # Value is "<current_jti>|<prev_jti>"; a fresh login has no predecessor.
-        ttl = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600
+        default_ttl = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600
+        ttl = ttl_seconds if ttl_seconds is not None else default_ttl
         await self.redis.setex(self._refresh_key(user_id, sid), ttl, f"{jti}|")
 
     # Atomic compare-and-swap with a one-rotation grace. The session value is
@@ -214,25 +230,44 @@ class AuthService:
         already gone, so there is nothing to revoke.
         """
         key = self._refresh_key(str(user.id), sid)
-        ttl = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600
 
         # Mint the next token up front so the CAS can install its jti atomically.
         from app.db.models.school import School
 
         slug_result = await self.db.execute(
-            select(School.tenant_slug).where(School.id == user.school_id)
+            select(School.tenant_slug, School.tenant_kind, School.expires_at).where(
+                School.id == user.school_id
+            )
         )
-        tenant_slug = slug_result.scalar_one_or_none() or ""
+        row = slug_result.one_or_none()
+        tenant_slug = row.tenant_slug if row else ""
+        refresh_expires_at = None
+        extra_access: dict = {"sid": sid}
+        if row and row.tenant_kind == "prospect_demo":
+            extra_access["demo"] = True
+            refresh_expires_at = row.expires_at
+            if refresh_expires_at is not None and refresh_expires_at.tzinfo is None:
+                refresh_expires_at = refresh_expires_at.replace(tzinfo=timezone.utc)
+
         access_token = create_access_token(
             user_id=str(user.id),
             school_id=str(user.school_id),
             role=user.role.value,
             tenant_slug=tenant_slug,
-            extra_claims={"sid": sid},
+            extra_claims=extra_access,
         )
         new_refresh, new_jti = create_refresh_token(
-            user_id=str(user.id), school_id=str(user.school_id), sid=sid
+            user_id=str(user.id),
+            school_id=str(user.school_id),
+            sid=sid,
+            expires_at=refresh_expires_at,
         )
+        ttl = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600
+        if refresh_expires_at is not None:
+            ttl = max(
+                60,
+                int((refresh_expires_at - datetime.now(timezone.utc)).total_seconds()),
+            )
 
         result = int(await self.redis.eval(self._ROTATE_LUA, 1, key, presented_jti, new_jti, ttl))
         if result == 1:

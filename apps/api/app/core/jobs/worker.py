@@ -67,7 +67,9 @@ async def run_job(ctx, job_id: str):
         await session.commit()
 
         try:
-            output = await handler(job.params, session)
+            params = dict(job.params or {})
+            params["_job_id"] = str(job.id)
+            output = await handler(params, session)
             job.status = JobStatus.DONE
             job.result = output or {}
         except Exception as exc:  # noqa: BLE001 — record any failure on the row
@@ -88,15 +90,36 @@ async def register_job_handlers(ctx: dict | None = None) -> None:
     without this hook JOB_HANDLERS would be empty and every job would dead-end as
     "No handler registered". New job modules must be imported here.
     """
+    import app.modules.demo.jobs.tenant_cleanup_job  # noqa: F401
     import app.modules.examinations.jobs.answer_sheet_eval_job  # noqa: F401
 
     logger.info("job_handlers_registered", handlers=sorted(JOB_HANDLERS))
 
 
+async def sweep_expired_prospect_tenants(ctx: dict) -> dict:
+    from app.modules.demo.jobs.demo_sweep_cron import sweep_expired_prospect_tenants as _sweep
+
+    return await _sweep(ctx)
+
+
+def _demo_sweep_cron():
+    from arq.cron import cron
+
+    from app.core.config import get_settings
+
+    cfg = get_settings()
+    return cron(
+        sweep_expired_prospect_tenants,
+        minute=set(cfg.DEMO_SWEEP_CRON_MINUTES),
+        run_at_startup=True,
+    )
+
+
 class WorkerSettings:
     """Arq worker settings — all jobs flow through the single `run_job` entrypoint."""
 
-    functions = [run_job]
+    functions = [run_job, sweep_expired_prospect_tenants]
+    cron_jobs = [_demo_sweep_cron()]
     redis_settings = get_redis_settings()
     on_startup = register_job_handlers
     max_tries = 5  # bounds the job-not-found-yet Retry loop (see run_job)

@@ -2,14 +2,27 @@
 // Use 127.0.0.1 (not localhost): on Windows, localhost often resolves to ::1 and can
 // hit Docker/WSL on :8000 instead of the local uvicorn with edge-tts.
 import { getTenantSlug } from "@/lib/tenant";
+import {
+  CUSTOMER_NETWORK_ERROR,
+  CUSTOMER_SERVER_ERROR,
+  sanitizeCustomerErrorMessage,
+} from "@/lib/customer-errors";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 export { getTenantSlug, TENANT_SLUG } from "@/lib/tenant";
 
-const PUBLIC_API_PATHS = ["/api/v1/tutor/tts/status", "/health", "/ready"];
+const PUBLIC_API_PATHS = [
+  "/api/v1/tutor/tts/status",
+  "/api/v1/demo/sessions",
+  "/health",
+  "/ready",
+];
 
 function isPublicApiPath(path: string): boolean {
-  return PUBLIC_API_PATHS.some((p) => path === p || path.startsWith(`${p}?`));
+  const bare = path.split("?")[0];
+  if (PUBLIC_API_PATHS.some((p) => bare === p || bare.startsWith(p))) return true;
+  if (bare.startsWith("/api/v1/demo/sessions/")) return true;
+  return false;
 }
 
 /** Auth endpoints return flat JSON; domain endpoints use { data: ... }. */
@@ -82,10 +95,7 @@ export async function api<T = any>(
       credentials: "include", // For HttpOnly cookies
     });
   } catch {
-    throw new ApiError(
-      0,
-      `Cannot reach the API at ${API_URL}. Is the API server running on port 8000?`
-    );
+    throw new ApiError(0, CUSTOMER_NETWORK_ERROR);
   }
 
   if (res.status === 401) {
@@ -126,7 +136,12 @@ export async function api<T = any>(
       const json = JSON.parse(text);
       if (json.detail) text = json.detail;
     } catch {}
-    throw new ApiError(res.status, text);
+    const safe = sanitizeCustomerErrorMessage(
+      typeof text === "string" ? text : String(text),
+      res.status,
+      CUSTOMER_SERVER_ERROR
+    );
+    throw new ApiError(res.status, safe);
   }
 
   return res.json();
@@ -170,8 +185,12 @@ export class ApiError extends Error {
 }
 
 export function getApiErrorMessage(error: unknown, defaultMessage: string): string {
-  if (error instanceof ApiError) return error.message;
-  if (error instanceof Error) return error.message;
+  if (error instanceof ApiError) {
+    return sanitizeCustomerErrorMessage(error.message, error.status, defaultMessage);
+  }
+  if (error instanceof Error) {
+    return sanitizeCustomerErrorMessage(error.message, 0, defaultMessage);
+  }
   return defaultMessage;
 }
 
@@ -192,13 +211,17 @@ export async function fetchProtectedDocumentUrl(path: string): Promise<string> {
     });
 
     if (!res.ok) {
-      let message = "Could not open document.";
+      let message = "Could not open this document. Please try again.";
       try {
         const body = await res.json();
-        if (typeof body.detail === "string") message = body.detail;
+        if (typeof body.detail === "string") {
+          message = sanitizeCustomerErrorMessage(body.detail, res.status, message);
+        }
       } catch {
         const text = await res.text().catch(() => "");
-        if (text) message = text.slice(0, 200);
+        if (text) {
+          message = sanitizeCustomerErrorMessage(text.slice(0, 200), res.status, message);
+        }
       }
       throw new ApiError(res.status, message);
     }

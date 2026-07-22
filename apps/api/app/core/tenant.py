@@ -6,6 +6,7 @@ Platform hosts (api, app, demo, …) never derive a tenant from the hostname —
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import HTTPException, Request, status
 from sqlalchemy import select
@@ -71,14 +72,23 @@ async def resolve_tenant(slug: str, db: AsyncSession) -> str:
     from app.db.models.school import School
 
     result = await db.execute(
-        select(School.id).where(School.tenant_slug == slug, School.is_active == True)
+        select(School.id, School.expires_at).where(
+            School.tenant_slug == slug, School.is_active.is_(True)
+        )
     )
-    school_id = result.scalar_one_or_none()
+    row = result.one_or_none()
 
-    if not school_id:
+    if not row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"School not found for tenant: {slug}",
+        )
+
+    school_id, expires_at = row
+    if expires_at is not None and expires_at <= datetime.now(timezone.utc):
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail="Demo session expired. Start a new demo to continue.",
         )
 
     return str(school_id)

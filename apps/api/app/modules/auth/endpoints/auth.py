@@ -270,6 +270,9 @@ async def refresh_token(
 
     service = AuthService(db, r)
     await validate_tenant_school_match(request, db, str(user.school_id))
+    from app.modules.demo.services.demo_session_service import assert_demo_school_active
+
+    await assert_demo_school_active(db, user.school_id)
     try:
         access_token, new_refresh_token = await service.rotate_refresh_session(user, sid, jti)
     except ValueError as e:

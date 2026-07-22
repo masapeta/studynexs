@@ -96,6 +96,19 @@ class Settings(BaseSettings):
     API_RATE_LIMIT_UPLOAD_PER_MIN: int = 20
     API_RATE_LIMIT_WINDOW_SECONDS: int = 60
 
+    # ── Prospect demo provisioning (Stage 2B) ─────────────────────
+    DEMO_PROVISIONING_ENABLED: bool = False
+    DEMO_SESSION_TTL_HOURS: int = 72
+    DEMO_PROVISION_RATE_LIMIT_MAX: int = 5
+    DEMO_PROVISION_RATE_LIMIT_WINDOW_SECONDS: int = 3600
+    DEMO_MAX_ACTIVE_PROSPECTS: int = 200
+    DEMO_PROTECTED_TENANT_SLUGS: list[str] = ["reference", "naagarjuna", "test"]
+    DEMO_SWEEP_CRON_MINUTES: list[int] = [0, 15, 30, 45]
+
+    # Cloudflare Turnstile — required in production when demo provisioning is enabled.
+    TURNSTILE_SITE_KEY: str = ""
+    TURNSTILE_SECRET_KEY: str = ""
+
     # ── Outbox worker ────────────────────────────────────────────
     OUTBOX_WORKER_ENABLED: bool = True
     OUTBOX_POLL_INTERVAL_SECONDS: float = 2.0
@@ -218,6 +231,22 @@ class Settings(BaseSettings):
         return self.ENVIRONMENT == Environment.DEVELOPMENT
 
     @property
+    def demo_provisioning_allowed(self) -> bool:
+        """Prospect tenant creation — explicit flag or non-production default."""
+        if self.DEMO_PROVISIONING_ENABLED:
+            return True
+        return self.ENVIRONMENT in (Environment.DEVELOPMENT, Environment.TESTING)
+
+    @property
+    def demo_turnstile_required(self) -> bool:
+        """Bot challenge on public provisioning — always in production when demo is on."""
+        if not self.demo_provisioning_allowed:
+            return False
+        if self.ENVIRONMENT == Environment.PRODUCTION:
+            return True
+        return bool(self.TURNSTILE_SECRET_KEY.strip())
+
+    @property
     def is_production(self) -> bool:
         return self.ENVIRONMENT == Environment.PRODUCTION
 
@@ -266,6 +295,11 @@ class Settings(BaseSettings):
             errors.append(
                 "AADHAAR_ENCRYPTION_KEYS must be set in production (regulated PII is "
                 "encrypted at rest; generate with Fernet.generate_key())"
+            )
+
+        if self.DEMO_PROVISIONING_ENABLED and not self.TURNSTILE_SECRET_KEY.strip():
+            errors.append(
+                "TURNSTILE_SECRET_KEY is required when DEMO_PROVISIONING_ENABLED in production"
             )
 
         if errors:

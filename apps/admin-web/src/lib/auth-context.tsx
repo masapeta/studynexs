@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { api, getAccessToken, getAccessTokenFromAuthResponse, setAccessToken } from "@/lib/api";
 import { EMPTY_PERMISSIONS, UserPermissions } from "@/lib/permissions";
+import { clearProspectTenantSlug, setDemoSessionToken } from "@/lib/tenant";
 
 interface User {
   id: string;
@@ -101,6 +102,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await api("/api/v1/auth/logout", { method: "POST" });
     } catch {}
     setAccessToken(null);
+    clearProspectTenantSlug();
+    setDemoSessionToken(null);
     setUser(null);
     setPermissions(null);
   };

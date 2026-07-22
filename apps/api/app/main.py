@@ -231,9 +231,11 @@ def create_app() -> FastAPI:
     from app.modules.curriculum.endpoints.lesson_plan import router as lesson_plan_router
     from app.modules.dashboard.endpoints.dashboard import router as dashboard_router
     from app.modules.platform.endpoints.engineering import router as platform_router
+    from app.modules.demo.endpoints.demo import router as demo_router
 
     app.include_router(dashboard_router, prefix=f"{prefix}/dashboard", tags=["dashboard"])
     app.include_router(platform_router, prefix=f"{prefix}/platform", tags=["platform"])
+    app.include_router(demo_router, prefix=f"{prefix}/demo", tags=["demo"])
     app.include_router(lesson_plan_router, prefix=f"{prefix}/lesson-plans", tags=["curriculum"])
 
     return app
