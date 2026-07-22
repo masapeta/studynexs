@@ -49,6 +49,8 @@ services:
       context: ../../apps/api
       dockerfile: Dockerfile
     container_name: studynexs-api
+    env_file:
+      - ../../apps/api/.env
     environment:
       - ENVIRONMENT=development
       - DEBUG=true
