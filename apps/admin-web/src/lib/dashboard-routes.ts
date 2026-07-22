@@ -25,6 +25,7 @@ export const TEACHING = {
   lessonPlans: "/dashboard/teaching/lesson-plans",
   documentIngest: "/dashboard/teaching/document-ingest",
   curriculum: "/dashboard/teaching/curriculum",
+  curriculumOnboarding: "/dashboard/teaching/curriculum/onboarding",
   mastery: "/dashboard/teaching/mastery",
   masteryDigest: "/dashboard/teaching/mastery/digest",
   corrections: "/dashboard/teaching/exams/corrections",

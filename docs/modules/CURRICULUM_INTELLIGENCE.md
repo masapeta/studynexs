@@ -24,10 +24,11 @@ Pillar 1 — source of truth for academic AI
 | Question → Concept links on bank ingest | ✅ Batch 19 |
 | Content Review Queue | ✅ Batch 20 |
 | Curriculum management UI | ✅ Batch 21 |
+| Academic Onboarding (AI draft + intelligence-ready gate) | ✅ Stage 2A |
 
 ## Files
 
-`apps/api/app/modules/curriculum/` · `apps/api/app/modules/ai/rag/` · `apps/admin-web/src/app/dashboard/teaching/curriculum/`
+`apps/api/app/modules/curriculum/` · `apps/api/app/modules/ai/rag/` · `apps/admin-web/src/app/dashboard/teaching/curriculum/` · `…/curriculum/onboarding/` · `AcademicIntelligenceBanner.tsx`
 
 ## Rule
 
@@ -39,7 +40,7 @@ RAG · Assessment Intelligence · Teacher Copilot · Document Intelligence
 
 ## Tests
 
-`tests/test_curriculum_pack.py` · `tests/test_document_intelligence.py` · `tests/test_concept_card.py` · `tests/test_content_review_queue.py`
+`tests/test_curriculum_pack.py` · `tests/test_academic_onboarding.py` · `tests/test_document_intelligence.py` · `tests/test_concept_card.py` · `tests/test_content_review_queue.py`
 
 ## Next batch
 

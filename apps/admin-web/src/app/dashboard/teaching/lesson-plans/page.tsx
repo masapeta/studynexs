@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Check, RefreshCw, Sparkles } from "lucide-react";
 import { api, fetchProtectedDocumentUrl, getApiErrorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { AppSelect } from "@/components/ui/AppSelect";
 import { PageHeaderCard } from "@/components/layout/PageHeaderCard";
+import { AcademicIntelligenceBanner } from "@/components/curriculum/AcademicIntelligenceBanner";
 import {
   LessonPlanDocument,
   type LessonPlanDocumentData,
@@ -13,6 +15,7 @@ import {
 } from "@/components/briefing/LessonPlanDocument";
 import { LessonPlanEditor } from "@/components/teaching/LessonPlanEditor";
 import { formatClassLabel, sortClasses } from "@/lib/format";
+import { TEACHING } from "@/lib/dashboard-routes";
 
 type Plan = LessonPlanDocumentData & {
   can_edit?: boolean;
@@ -30,7 +33,7 @@ type ApprovedPack = {
 const btn: React.CSSProperties = { width: "auto", padding: "8px 18px", borderRadius: "var(--radius-full)", fontSize: 13 };
 
 export default function LessonPlansPage() {
-  const { user } = useAuth();
+  const { user, permissions } = useAuth();
   const [classes, setClasses] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [classId, setClassId] = useState("");
@@ -259,6 +262,27 @@ export default function LessonPlansPage() {
           <Sparkles size={15} style={{ marginRight: 6 }} />{busy ? "Working…" : "Generate"}
         </button>
       </div>
+
+      {packId ? (
+        <div style={{ marginBottom: 16 }}>
+          <AcademicIntelligenceBanner
+            packId={packId}
+            canRetry={Boolean(permissions?.can_manage_curriculum)}
+          />
+        </div>
+      ) : approvedPacks.length === 0 && classId && subjectId ? (
+        <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
+          No approved curriculum pack yet.
+          {permissions?.can_manage_curriculum ? (
+            <>
+              {" "}
+              <Link href={TEACHING.curriculumOnboarding}>Run academic onboarding</Link> to ground lesson plans.
+            </>
+          ) : (
+            " Ask your class incharge or admin to approve a curriculum pack."
+          )}
+        </p>
+      ) : null}
 
       {planWithLabels && (
         <div className="card" style={{ padding: 24 }}>

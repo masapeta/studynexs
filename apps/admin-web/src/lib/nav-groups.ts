@@ -96,7 +96,7 @@ export const NAV_GROUPS: NavGroup[] = [
         label: "Engineering",
         href: PLATFORM.engineering,
         icon: Cpu,
-        roles: ["super_admin", "admin"],
+        roles: ["platform_operator"],
       },
     ],
   },

@@ -51,6 +51,8 @@ Every workflow quietly feeds a growing intelligence layer. Insights become **mor
 
 Curriculum Packs → Knowledge Graph → Assessment Intelligence → Learning Intelligence → Institutional Memory
 
+**Paid-school onboarding (Stage 2A):** Academic coordinator enters board/class/subject + chapter list or syllabus outline → AI proposes structured pack → HOD approves → system prepares KG + retrieval → **Academic Intelligence Ready** unlocks grounded lesson plans and question papers. No full textbook storage; human review required.
+
 Order matters: **experience first, architecture second.**
 
 ---

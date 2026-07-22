@@ -3,7 +3,7 @@
 > **Living document** — update this file as batch progress changes.  
 > **Constitutional priority:** [`PRODUCT_EXECUTION_CONSTITUTION.md`](./PRODUCT_EXECUTION_CONSTITUTION.md)
 
-**Last updated:** 2026-07-17 (Slice 1 — admin draft pack builder shipped)
+**Last updated:** 2026-07-22 (Stage 2A — Academic Onboarding Core shipped, uncommitted)
 
 ---
 
@@ -12,9 +12,15 @@
 | Slice | Scope | Status |
 |-------|--------|--------|
 | **1** | Admin draft pack builder — create pack, add chapters/topics, view structure, approve | ✅ Shipped |
-| **2** | RAG index on pack approve | ⬜ Next |
-| **3** | Learning outcomes per topic (schema + API) | ⬜ Planned |
-| **4** | Audit trail display + formal log on approve | ⬜ Planned |
+| **2A** | **Academic Onboarding** — AI draft from syllabus/TOC, HOD review, approve → KG+RAG, intelligence-ready banner | ✅ Shipped (ARM review) |
+| **2B** | Public self-guided + sales-demo tenants (clone, TTL) | ⬜ Deferred |
+| **3** | Learning outcomes per topic (schema + API) | 🟡 Partial (onboarding populates LOs) |
+| **4** | Audit trail display + formal log on approve | 🟡 Partial (audit events + UI labels) |
+
+**Stage 2A entry points:**
+- API: `POST /api/v1/curriculum/onboarding/propose`, `GET …/intelligence-status`, `POST …/retry-rag-index`, `PUT …/topics/{id}`
+- UI: `/dashboard/teaching/curriculum/onboarding`, `AcademicIntelligenceBanner` on curriculum / lesson-plans / ai-papers
+- Tests: `apps/api/tests/test_academic_onboarding.py` (15); `e2e-onboarding-review.cjs`
 
 **Slice 1 files:** `apps/admin-web/src/app/dashboard/teaching/curriculum/page.tsx` (wires existing pack APIs; no backend changes)
 

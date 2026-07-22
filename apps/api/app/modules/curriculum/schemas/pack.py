@@ -39,6 +39,12 @@ class TopicIn(BaseModel):
     learning_outcomes: list[LearningOutcomeIn] = []
 
 
+class TopicUpdate(BaseModel):
+    title: Optional[str] = Field(None, max_length=200)
+    order_index: Optional[int] = None
+    concepts: Optional[list[str]] = None
+
+
 class TopicOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -55,6 +61,12 @@ class ChapterIn(BaseModel):
     order_index: int = 0
     topics: list[TopicIn] = []
     learning_outcomes: list[LearningOutcomeIn] = []
+
+
+class ChapterUpdate(BaseModel):
+    number: Optional[str] = Field(None, max_length=20)
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
+    order_index: Optional[int] = None
 
 
 class ChapterOut(BaseModel):

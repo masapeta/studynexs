@@ -7,6 +7,24 @@ changes under **[Unreleased]** until the first tagged release. Architectural *re
 
 ## [Unreleased]
 
+> Session 2026-07-22 — **Stage 2A: Production Academic Onboarding Core** (ARM accepted).
+
+### Added (Stage 2A)
+- **`CurriculumExtractionService`** — AI draft pack from syllabus/TOC/chapter list via LLM gateway + credits (`curriculum_extraction`, 3 credits); line-based fallback; transient file OCR (no textbook warehousing).
+- **Onboarding API** — `POST /api/v1/curriculum/onboarding/propose`, `GET /packs/{id}/intelligence-status`, `POST /packs/{id}/retry-rag-index`; pack mutations `PUT/DELETE /chapters/{id}`, `DELETE /learning-outcomes/{id}`.
+- **`curriculum_authz`** — resource-derived class scope on every draft mutation route.
+- **`AcademicIntelligenceBanner`** — readiness gate; **Academic Intelligence Ready** only after KG + RAG audit success with retrievable topics.
+- **Onboarding wizard UI** — `/dashboard/teaching/curriculum/onboarding` (metadata → curriculum input → review/edit → approve); deep-link `?pack_id=&step=3`.
+- **`OnboardingReviewPanel`** — chapter/topic/learning-outcome correction and chapter removal before approval.
+- **`tests/test_academic_onboarding.py`** (15); **`e2e-onboarding-review.cjs`** (exactly-one pack-detail fetch regression).
+
+### Changed (Stage 2A)
+- **Curriculum / lesson-plans / ai-papers** — intelligence banner + role-aware onboarding CTAs when no approved pack.
+- **`can_manage_curriculum`** permission for admins and class incharges; incharge class selector restricted to assigned classes.
+- **Decision log + execution plan + blueprint + module docs** — Stage 2A authorization and capability matrix recorded.
+
+---
+
 > Session 2026-07-15 — Engineering OS (validation standard + lifecycle reorg). **Uncommitted.**
 
 ### Added

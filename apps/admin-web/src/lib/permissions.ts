@@ -26,6 +26,7 @@ export interface UserPermissions {
   can_publish_internal_notices: boolean;
   can_use_settings: boolean;
   can_approve_question_papers: boolean;
+  can_manage_curriculum: boolean;
 }
 
 export const EMPTY_PERMISSIONS: UserPermissions = {
@@ -53,6 +54,7 @@ export const EMPTY_PERMISSIONS: UserPermissions = {
   can_publish_internal_notices: false,
   can_use_settings: false,
   can_approve_question_papers: false,
+  can_manage_curriculum: false,
 };
 
 type NavGate = keyof UserPermissions;
@@ -64,6 +66,8 @@ const TEACHING_SUBROUTES: { prefix: string; gate: NavGate }[] = [
   { prefix: TEACHING.exams, gate: "can_use_exams" },
   { prefix: TEACHING.gradebook, gate: "can_use_exams" },
   { prefix: TEACHING.lessonPlans, gate: "can_use_exams" },
+  { prefix: TEACHING.curriculumOnboarding, gate: "can_manage_curriculum" },
+  { prefix: TEACHING.curriculum, gate: "can_use_exams" },
 ];
 
 /** Nav item → permission flag. Core items without a gate are always shown when logged in. */

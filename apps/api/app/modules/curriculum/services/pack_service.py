@@ -19,13 +19,19 @@ from app.db.models.curriculum_pack import (
 )
 from app.modules.curriculum.schemas.pack import (
     ChapterIn,
+    ChapterUpdate,
     LearningOutcomeIn,
     LearningOutcomeUpdate,
     PackCreate,
     PackUpdate,
     TopicIn,
+    TopicUpdate,
 )
 from app.modules.curriculum.services.pack_audit import PackAuditEventType, record_pack_audit_event
+from app.modules.curriculum.services.pack_readiness import (
+    approval_blockers,
+    snapshot_pack_readiness,
+)
 
 if TYPE_CHECKING:
     from app.modules.ai.rag.service import RagService
@@ -301,6 +307,76 @@ class PackService:
         )
         return chapter
 
+    async def update_chapter(
+        self,
+        school_id: uuid.UUID,
+        chapter_id: uuid.UUID,
+        data: ChapterUpdate,
+        *,
+        actor_id: uuid.UUID,
+    ) -> CurriculumChapter:
+        chapter = (
+            await self.db.execute(
+                select(CurriculumChapter).where(
+                    CurriculumChapter.id == chapter_id,
+                    CurriculumChapter.school_id == school_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not chapter:
+            raise PackError("Chapter not found")
+        pack = await self.get_pack(school_id, chapter.pack_id)
+        await self._require_draft(pack)
+        changed = list(data.model_dump(exclude_unset=True).keys())
+        for field, value in data.model_dump(exclude_unset=True).items():
+            setattr(chapter, field, value)
+        await self.db.flush()
+        if changed:
+            await record_pack_audit_event(
+                self.db,
+                school_id=school_id,
+                pack_id=pack.id,
+                actor_id=actor_id,
+                event_type=PackAuditEventType.PACK_UPDATED,
+                metadata={
+                    "chapter_id": str(chapter.id),
+                    "fields": changed,
+                },
+            )
+        return chapter
+
+    async def delete_chapter(
+        self,
+        school_id: uuid.UUID,
+        chapter_id: uuid.UUID,
+        *,
+        actor_id: uuid.UUID,
+    ) -> None:
+        chapter = (
+            await self.db.execute(
+                select(CurriculumChapter).where(
+                    CurriculumChapter.id == chapter_id,
+                    CurriculumChapter.school_id == school_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not chapter:
+            raise PackError("Chapter not found")
+        pack = await self.get_pack(school_id, chapter.pack_id)
+        await self._require_draft(pack)
+        title = chapter.title
+        pack_id = pack.id
+        await self.db.delete(chapter)
+        await self.db.flush()
+        await record_pack_audit_event(
+            self.db,
+            school_id=school_id,
+            pack_id=pack_id,
+            actor_id=actor_id,
+            event_type=PackAuditEventType.PACK_UPDATED,
+            metadata={"chapter_id": str(chapter_id), "action": "chapter_removed", "title": title},
+        )
+
     async def add_topic(
         self,
         school_id: uuid.UUID,
@@ -346,6 +422,66 @@ class PackService:
                 "title": topic.title,
             },
         )
+        return topic
+
+    async def populate_draft_structure(
+        self,
+        school_id: uuid.UUID,
+        pack_id: uuid.UUID,
+        chapters: list[ChapterIn],
+        *,
+        actor_id: uuid.UUID,
+    ) -> CurriculumPack:
+        """Bulk-add chapters/topics to a draft pack (onboarding extraction)."""
+        pack = await self.get_pack(school_id, pack_id)
+        await self._require_draft(pack)
+        for ch in chapters:
+            await self.add_chapter(school_id, pack_id, ch, actor_id=actor_id)
+        return pack
+
+    async def update_topic(
+        self,
+        school_id: uuid.UUID,
+        topic_id: uuid.UUID,
+        data: TopicUpdate,
+        *,
+        actor_id: uuid.UUID,
+    ) -> CurriculumTopic:
+        topic = (
+            await self.db.execute(
+                select(CurriculumTopic).where(
+                    CurriculumTopic.id == topic_id,
+                    CurriculumTopic.school_id == school_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not topic:
+            raise PackError("Topic not found")
+        chapter = (
+            await self.db.execute(
+                select(CurriculumChapter).where(
+                    CurriculumChapter.id == topic.chapter_id,
+                    CurriculumChapter.school_id == school_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not chapter:
+            raise PackError("Chapter not found")
+        pack = await self.get_pack(school_id, chapter.pack_id)
+        await self._require_draft(pack)
+        changed = list(data.model_dump(exclude_unset=True).keys())
+        for field, value in data.model_dump(exclude_unset=True).items():
+            setattr(topic, field, value)
+        await self.db.flush()
+        if changed:
+            await record_pack_audit_event(
+                self.db,
+                school_id=school_id,
+                pack_id=pack.id,
+                actor_id=actor_id,
+                event_type=PackAuditEventType.PACK_UPDATED,
+                metadata={"topic_id": str(topic.id), "fields": changed},
+            )
         return topic
 
     async def add_learning_outcome_to_topic(
@@ -481,6 +617,42 @@ class PackService:
         )
         return outcome
 
+    async def delete_learning_outcome(
+        self,
+        school_id: uuid.UUID,
+        outcome_id: uuid.UUID,
+        *,
+        actor_id: uuid.UUID,
+    ) -> None:
+        outcome = (
+            await self.db.execute(
+                select(CurriculumLearningOutcome).where(
+                    CurriculumLearningOutcome.id == outcome_id,
+                    CurriculumLearningOutcome.school_id == school_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not outcome:
+            raise PackError("Learning outcome not found")
+        pack_id = await self._pack_id_for_outcome(outcome)
+        pack = await self.get_pack(school_id, pack_id)
+        await self._require_draft(pack)
+        description = outcome.description
+        await self.db.delete(outcome)
+        await self.db.flush()
+        await record_pack_audit_event(
+            self.db,
+            school_id=school_id,
+            pack_id=pack_id,
+            actor_id=actor_id,
+            event_type=PackAuditEventType.LEARNING_OUTCOME_UPDATED,
+            metadata={
+                "outcome_id": str(outcome_id),
+                "action": "learning_outcome_removed",
+                "description": description,
+            },
+        )
+
     async def _pack_id_for_outcome(self, outcome: CurriculumLearningOutcome) -> uuid.UUID:
         if outcome.topic_id:
             chapter_id = await self.db.scalar(
@@ -569,6 +741,18 @@ class PackService:
         rag = self._rag or RagService(self.db)
         try:
             count = await rag.index_pack(pack)
+            if count <= 0:
+                pack.rag_index_error = "No retrievable topics to index"
+                await record_pack_audit_event(
+                    self.db,
+                    school_id=pack.school_id,
+                    pack_id=pack.id,
+                    actor_id=actor_id,
+                    event_type=PackAuditEventType.RAG_INDEX_FAILED,
+                    metadata={"error": pack.rag_index_error},
+                )
+                await self.db.flush()
+                return
             pack.rag_indexed_at = datetime.now(timezone.utc)
             pack.rag_index_topic_count = count
             pack.rag_index_error = None
@@ -624,11 +808,12 @@ class PackService:
         pack = await self.get_pack(school_id, pack_id)
         if pack.status == PackStatus.APPROVED:
             raise PackError("Pack is already approved")
-        has_chapter = await self.db.scalar(
-            select(func.count()).select_from(CurriculumChapter).where(CurriculumChapter.pack_id == pack_id)
+        readiness = await snapshot_pack_readiness(
+            self.db, school_id=school_id, pack_id=pack_id
         )
-        if not has_chapter:
-            raise PackError("Add at least one chapter before approving")
+        blockers = approval_blockers(readiness)
+        if blockers:
+            raise PackError(blockers[0])
         pack.status = PackStatus.APPROVED
         pack.approved_by = approved_by
         pack.approved_at = datetime.now(timezone.utc)

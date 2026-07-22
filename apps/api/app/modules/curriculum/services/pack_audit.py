@@ -29,6 +29,9 @@ class PackAuditEventType(str, enum.Enum):
     RAG_INDEX_STARTED = "rag_index_started"
     RAG_INDEX_SUCCEEDED = "rag_index_succeeded"
     RAG_INDEX_FAILED = "rag_index_failed"
+    EXTRACTION_STARTED = "extraction_started"
+    EXTRACTION_SUCCEEDED = "extraction_succeeded"
+    EXTRACTION_FAILED = "extraction_failed"
 
 
 async def record_pack_audit_event(

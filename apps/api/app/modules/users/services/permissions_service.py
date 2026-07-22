@@ -53,4 +53,5 @@ def permissions_from_scope(scope: StaffScope) -> UserPermissionsOut:
         can_publish_internal_notices=scope.is_admin,
         can_use_settings=scope.is_admin,
         can_approve_question_papers=scope.is_admin or has_incharge,
+        can_manage_curriculum=scope.is_admin or has_incharge,
     )

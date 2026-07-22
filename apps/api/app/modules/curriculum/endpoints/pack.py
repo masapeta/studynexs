@@ -10,10 +10,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.api_route import CommitOnSuccessRoute
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, require_roles
+from app.core.staff_permissions import get_staff_scope
 from app.modules.curriculum.schemas.grounding import CurriculumGroundingOut
 from app.modules.curriculum.schemas.pack import (
     ChapterIn,
     ChapterOut,
+    ChapterUpdate,
     LearningOutcomeIn,
     LearningOutcomeOut,
     LearningOutcomeUpdate,
@@ -24,8 +26,17 @@ from app.modules.curriculum.schemas.pack import (
     PackUpdate,
     TopicIn,
     TopicOut,
+    TopicUpdate,
+)
+from app.modules.curriculum.services.curriculum_authz import (
+    assert_curriculum_manage,
+    assert_curriculum_manage_chapter,
+    assert_curriculum_manage_outcome,
+    assert_curriculum_manage_pack,
+    assert_curriculum_manage_topic,
 )
 from app.modules.curriculum.services.curriculum_grounding import ground_approved_pack
+from app.modules.curriculum.services.pack_detail import build_pack_detail
 from app.modules.curriculum.services.pack_service import PackError, PackService
 from app.shared.schemas.common import APIResponse
 
@@ -47,41 +58,13 @@ def _err(e: PackError) -> HTTPException:
     return HTTPException(status_code=code, detail=msg)
 
 
+async def _assert_manage(db: AsyncSession, current_user: CurrentUser, class_id: uuid.UUID) -> None:
+    scope = await get_staff_scope(db, current_user)
+    assert_curriculum_manage(scope, class_id)
+
+
 async def _detail(svc: PackService, pack) -> PackDetailOut:
-    chapters = await svc.get_chapters(pack.id)
-    chapter_ids = [c.id for c in chapters]
-    topics_by_ch = await svc.get_topics_for_chapters(chapter_ids)
-    topic_ids = [t.id for topics in topics_by_ch.values() for t in topics]
-    outcomes_by_topic = await svc.get_outcomes_for_topics(topic_ids)
-    outcomes_by_chapter = await svc.get_outcomes_for_chapters(chapter_ids)
-    out = PackDetailOut.model_validate(pack)
-    out.chapters = [
-        ChapterOut(
-            id=c.id,
-            number=c.number,
-            title=c.title,
-            order_index=c.order_index,
-            learning_outcomes=[
-                LearningOutcomeOut.model_validate(lo)
-                for lo in outcomes_by_chapter.get(c.id, [])
-            ],
-            topics=[
-                TopicOut(
-                    id=t.id,
-                    title=t.title,
-                    order_index=t.order_index,
-                    concepts=t.concepts,
-                    learning_outcomes=[
-                        LearningOutcomeOut.model_validate(lo)
-                        for lo in outcomes_by_topic.get(t.id, [])
-                    ],
-                )
-                for t in topics_by_ch.get(c.id, [])
-            ],
-        )
-        for c in chapters
-    ]
-    return out
+    return await build_pack_detail(svc, pack)
 
 
 @router.post("/packs", response_model=APIResponse[PackOut], status_code=201)
@@ -90,6 +73,7 @@ async def create_pack(
     current_user: CurrentUser = Depends(require_roles(*_BUILD)),
     db: AsyncSession = Depends(get_db),
 ):
+    await _assert_manage(db, current_user, body.class_id)
     svc = PackService(db)
     try:
         pack = await svc.create_pack(
@@ -135,6 +119,7 @@ async def update_pack(
     current_user: CurrentUser = Depends(require_roles(*_BUILD)),
     db: AsyncSession = Depends(get_db),
 ):
+    await assert_curriculum_manage_pack(db, current_user, pack_id)
     svc = PackService(db)
     try:
         pack = await svc.update_pack(
@@ -155,6 +140,7 @@ async def add_chapter(
     current_user: CurrentUser = Depends(require_roles(*_BUILD)),
     db: AsyncSession = Depends(get_db),
 ):
+    await assert_curriculum_manage_pack(db, current_user, pack_id)
     svc = PackService(db)
     try:
         chapter = await svc.add_chapter(
@@ -197,6 +183,75 @@ async def add_chapter(
     )
 
 
+@router.put("/chapters/{chapter_id}", response_model=APIResponse[ChapterOut])
+async def update_chapter(
+    chapter_id: uuid.UUID,
+    body: ChapterUpdate,
+    current_user: CurrentUser = Depends(require_roles(*_BUILD)),
+    db: AsyncSession = Depends(get_db),
+):
+    await assert_curriculum_manage_chapter(db, current_user, chapter_id)
+    svc = PackService(db)
+    try:
+        chapter = await svc.update_chapter(
+            uuid.UUID(current_user.school_id),
+            chapter_id,
+            body,
+            actor_id=uuid.UUID(current_user.id),
+        )
+    except PackError as e:
+        raise _err(e)
+    topics = (await svc.get_topics_for_chapters([chapter.id])).get(chapter.id, [])
+    topic_ids = [t.id for t in topics]
+    outcomes_by_topic = await svc.get_outcomes_for_topics(topic_ids)
+    outcomes_by_chapter = await svc.get_outcomes_for_chapters([chapter.id])
+    return APIResponse(
+        data=ChapterOut(
+            id=chapter.id,
+            number=chapter.number,
+            title=chapter.title,
+            order_index=chapter.order_index,
+            learning_outcomes=[
+                LearningOutcomeOut.model_validate(lo)
+                for lo in outcomes_by_chapter.get(chapter.id, [])
+            ],
+            topics=[
+                TopicOut(
+                    id=t.id,
+                    title=t.title,
+                    order_index=t.order_index,
+                    concepts=t.concepts,
+                    learning_outcomes=[
+                        LearningOutcomeOut.model_validate(lo)
+                        for lo in outcomes_by_topic.get(t.id, [])
+                    ],
+                )
+                for t in topics
+            ],
+        ),
+        message="Chapter updated",
+    )
+
+
+@router.delete("/chapters/{chapter_id}", response_model=APIResponse[None])
+async def delete_chapter(
+    chapter_id: uuid.UUID,
+    current_user: CurrentUser = Depends(require_roles(*_BUILD)),
+    db: AsyncSession = Depends(get_db),
+):
+    await assert_curriculum_manage_chapter(db, current_user, chapter_id)
+    svc = PackService(db)
+    try:
+        await svc.delete_chapter(
+            uuid.UUID(current_user.school_id),
+            chapter_id,
+            actor_id=uuid.UUID(current_user.id),
+        )
+    except PackError as e:
+        raise _err(e)
+    return APIResponse(data=None, message="Chapter removed")
+
+
 @router.post("/chapters/{chapter_id}/topics", response_model=APIResponse[TopicOut], status_code=201)
 async def add_topic(
     chapter_id: uuid.UUID,
@@ -204,6 +259,7 @@ async def add_topic(
     current_user: CurrentUser = Depends(require_roles(*_BUILD)),
     db: AsyncSession = Depends(get_db),
 ):
+    await assert_curriculum_manage_chapter(db, current_user, chapter_id)
     svc = PackService(db)
     try:
         topic = await svc.add_topic(
@@ -229,6 +285,39 @@ async def add_topic(
     )
 
 
+@router.put("/topics/{topic_id}", response_model=APIResponse[TopicOut])
+async def update_topic(
+    topic_id: uuid.UUID,
+    body: TopicUpdate,
+    current_user: CurrentUser = Depends(require_roles(*_BUILD)),
+    db: AsyncSession = Depends(get_db),
+):
+    await assert_curriculum_manage_topic(db, current_user, topic_id)
+    svc = PackService(db)
+    try:
+        topic = await svc.update_topic(
+            uuid.UUID(current_user.school_id),
+            topic_id,
+            body,
+            actor_id=uuid.UUID(current_user.id),
+        )
+    except PackError as e:
+        raise _err(e)
+    outcomes = await svc.get_outcomes_for_topics([topic.id])
+    return APIResponse(
+        data=TopicOut(
+            id=topic.id,
+            title=topic.title,
+            order_index=topic.order_index,
+            concepts=topic.concepts,
+            learning_outcomes=[
+                LearningOutcomeOut.model_validate(lo) for lo in outcomes.get(topic.id, [])
+            ],
+        ),
+        message="Topic updated",
+    )
+
+
 @router.post(
     "/topics/{topic_id}/learning-outcomes",
     response_model=APIResponse[LearningOutcomeOut],
@@ -240,6 +329,7 @@ async def add_topic_learning_outcome(
     current_user: CurrentUser = Depends(require_roles(*_BUILD)),
     db: AsyncSession = Depends(get_db),
 ):
+    await assert_curriculum_manage_topic(db, current_user, topic_id)
     svc = PackService(db)
     try:
         outcome = await svc.add_learning_outcome_to_topic(
@@ -267,6 +357,7 @@ async def add_chapter_learning_outcome(
     current_user: CurrentUser = Depends(require_roles(*_BUILD)),
     db: AsyncSession = Depends(get_db),
 ):
+    await assert_curriculum_manage_chapter(db, current_user, chapter_id)
     svc = PackService(db)
     try:
         outcome = await svc.add_learning_outcome_to_chapter(
@@ -293,6 +384,7 @@ async def update_learning_outcome(
     current_user: CurrentUser = Depends(require_roles(*_BUILD)),
     db: AsyncSession = Depends(get_db),
 ):
+    await assert_curriculum_manage_outcome(db, current_user, outcome_id)
     svc = PackService(db)
     try:
         outcome = await svc.update_learning_outcome(
@@ -307,6 +399,25 @@ async def update_learning_outcome(
         data=LearningOutcomeOut.model_validate(outcome),
         message="Learning outcome updated",
     )
+
+
+@router.delete("/learning-outcomes/{outcome_id}", response_model=APIResponse[None])
+async def delete_learning_outcome(
+    outcome_id: uuid.UUID,
+    current_user: CurrentUser = Depends(require_roles(*_BUILD)),
+    db: AsyncSession = Depends(get_db),
+):
+    await assert_curriculum_manage_outcome(db, current_user, outcome_id)
+    svc = PackService(db)
+    try:
+        await svc.delete_learning_outcome(
+            uuid.UUID(current_user.school_id),
+            outcome_id,
+            actor_id=uuid.UUID(current_user.id),
+        )
+    except PackError as e:
+        raise _err(e)
+    return APIResponse(data=None, message="Learning outcome removed")
 
 
 @router.get("/packs/{pack_id}/grounding", response_model=APIResponse[CurriculumGroundingOut])
@@ -361,6 +472,11 @@ async def approve_pack(
     db: AsyncSession = Depends(get_db),
 ):
     svc = PackService(db)
+    try:
+        existing = await svc.get_pack(uuid.UUID(current_user.school_id), pack_id)
+    except PackError as e:
+        raise _err(e)
+    await _assert_manage(db, current_user, existing.class_id)
     try:
         pack = await svc.approve_pack(
             uuid.UUID(current_user.school_id), pack_id, uuid.UUID(current_user.id)

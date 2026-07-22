@@ -94,7 +94,7 @@ async def test_approval_event_traceable(
     await svc.add_chapter(
         test_school.id,
         pack.id,
-        ChapterIn(title="Geometry"),
+        ChapterIn(title="Geometry", topics=[TopicIn(title="Triangles")]),
         actor_id=admin_user.id,
     )
     await svc.approve_pack(test_school.id, pack.id, admin_user.id)

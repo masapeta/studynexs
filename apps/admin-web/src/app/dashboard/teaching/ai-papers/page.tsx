@@ -10,7 +10,10 @@ import { PageHeaderCard } from "@/components/layout/PageHeaderCard";
 import { formatClassLabel, sortClasses } from "@/lib/format";
 import { DocumentPreviewModal } from "@/components/DocumentPreviewModal";
 import { CurriculumGroundingBadge } from "@/components/curriculum/CurriculumGroundingBadge";
+import { AcademicIntelligenceBanner } from "@/components/curriculum/AcademicIntelligenceBanner";
 import { useAuth } from "@/lib/auth-context";
+import Link from "next/link";
+import { TEACHING } from "@/lib/dashboard-routes";
 
 type Question = {
   number: string;
@@ -586,6 +589,24 @@ function AiPapersPageInner() {
             )}
           </div>
         )}
+
+        {useGrounding && packId ? (
+          <div style={{ marginBottom: 16 }}>
+            <AcademicIntelligenceBanner packId={packId} />
+          </div>
+        ) : useGrounding && !packs.length && classId && subjectId ? (
+          <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
+            No approved pack for grounding.
+            {permissions?.can_manage_curriculum ? (
+              <>
+                {" "}
+                <Link href={TEACHING.curriculumOnboarding}>Complete academic onboarding</Link> first.
+              </>
+            ) : (
+              " Ask your class incharge or admin to onboard curriculum."
+            )}
+          </p>
+        ) : null}
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr auto", gap: 16, alignItems: "end" }}>
           <div>

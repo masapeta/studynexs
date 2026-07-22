@@ -1,12 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Check, Clock, ExternalLink, Plus, RefreshCw, Save } from "lucide-react";
+import { Check, Clock, ExternalLink, Plus, RefreshCw, Save, Sparkles } from "lucide-react";
 import { api, getApiErrorMessage } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 import { AppSelect } from "@/components/ui/AppSelect";
 import { PageHeaderCard } from "@/components/layout/PageHeaderCard";
 import { CurriculumGroundingBadge } from "@/components/curriculum/CurriculumGroundingBadge";
+import { AcademicIntelligenceBanner } from "@/components/curriculum/AcademicIntelligenceBanner";
 import { formatClassLabel, sortClasses } from "@/lib/format";
 import { TEACHING } from "@/lib/dashboard-routes";
 
@@ -109,6 +111,9 @@ const EVENT_LABELS: Record<string, string> = {
   kg_spine_started: "Knowledge graph spine started",
   kg_spine_succeeded: "Knowledge graph spine built",
   kg_spine_failed: "Knowledge graph spine failed",
+  extraction_started: "AI extraction started",
+  extraction_succeeded: "AI extraction completed",
+  extraction_failed: "AI extraction failed",
 };
 
 function formatEventDetail(event: AuditEvent): string {
@@ -189,6 +194,21 @@ export default function CurriculumManagementPage() {
   const [newLoCode, setNewLoCode] = useState("");
   const [newLoDescription, setNewLoDescription] = useState("");
 
+  const { permissions } = useAuth();
+  const canManageCurriculum = Boolean(permissions?.can_manage_curriculum);
+
+  const onboardingContext = useMemo(() => {
+    if (typeof window === "undefined") {
+      return { classId: null as string | null, subjectId: null as string | null, packId: null as string | null };
+    }
+    const params = new URLSearchParams(window.location.search);
+    return {
+      classId: params.get("class_id"),
+      subjectId: params.get("subject_id"),
+      packId: params.get("pack_id"),
+    };
+  }, []);
+
   const selectedPack = packs.find((p) => p.id === packId);
   const isDraft = selectedPack?.status === "draft";
 
@@ -213,9 +233,16 @@ export default function CurriculumManagementPage() {
       .then((r) => {
         const items = sortClasses<any>(r.items || r.data || []);
         setClasses(items);
+        const fromOnboarding =
+          onboardingContext.classId && items.some((c) => c.id === onboardingContext.classId)
+            ? onboardingContext.classId
+            : null;
         const preferred =
-          items.find((c) => /10/.test(String(c.grade))) ?? items[items.length - 1] ?? items[0];
-        if (preferred) setClassId(preferred.id);
+          fromOnboarding ??
+          items.find((c) => /10/.test(String(c.grade)))?.id ??
+          items[items.length - 1]?.id ??
+          items[0]?.id;
+        if (preferred) setClassId(preferred);
       })
       .catch(() => {});
     api("/api/v1/school/academic-years")
@@ -234,14 +261,18 @@ export default function CurriculumManagementPage() {
       .then((r) => {
         const items = r.items || r.data || (Array.isArray(r) ? r : []);
         setSubjects(items);
-        setSubjectId(items[0]?.id || "");
+        const fromOnboarding =
+          onboardingContext.subjectId && items.some((s: { id: string }) => s.id === onboardingContext.subjectId)
+            ? onboardingContext.subjectId
+            : null;
+        setSubjectId(fromOnboarding || items[0]?.id || "");
       })
       .catch(() => {});
-  }, [classId]);
+  }, [classId, onboardingContext.subjectId]);
 
   useEffect(() => {
-    loadPacks().catch(() => setPacks([]));
-  }, [classId, subjectId]);
+    loadPacks(classId, subjectId, onboardingContext.packId || undefined).catch(() => setPacks([]));
+  }, [classId, subjectId, onboardingContext.packId]);
 
   const refreshPackData = useCallback(async () => {
     if (!packId) {
@@ -549,6 +580,12 @@ export default function CurriculumManagementPage() {
         title="Curriculum management"
         subtitle="Build draft curriculum packs, approve for institutional memory, and manage the knowledge spine."
       >
+        {canManageCurriculum ? (
+          <Link href={TEACHING.curriculumOnboarding} className="sn-btn-ghost" style={btn}>
+            <Sparkles size={14} style={{ marginRight: 6, verticalAlign: "middle" }} />
+            Academic onboarding
+          </Link>
+        ) : null}
         <Link href={TEACHING.documentIngest} className="sn-btn-ghost" style={btn}>
           <ExternalLink size={14} style={{ marginRight: 6, verticalAlign: "middle" }} />
           Document ingest
@@ -647,6 +684,12 @@ export default function CurriculumManagementPage() {
           </button>
         </div>
       </section>
+
+      {packId ? (
+        <div style={{ marginBottom: 16 }}>
+          <AcademicIntelligenceBanner packId={packId} canRetry={canManageCurriculum} />
+        </div>
+      ) : null}
 
       {packId && (
         <div className="sn-two-col" style={{ gap: 16, alignItems: "start", marginBottom: 16 }}>

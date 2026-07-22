@@ -54,6 +54,7 @@ Documentation must be updated whenever implementation changes (end of every engi
 | Graph queries for copilots | ✅ Batch 23 | Tests passing |
 | Student → weak Concept links | ✅ Batch 22 | Tests passing |
 | Curriculum management UI | ✅ Batch 21 | Build passing |
+| Academic Onboarding (Stage 2A) | ✅ Stage 2A | Tests passing (15) + e2e-onboarding-review + web build |
 | Content Review Queue | ✅ Batch 20 | Tests passing |
 | Question → Concept links | ✅ Batch 19 | Tests passing |
 | ConceptCard (tutor grounding) | ✅ Batch 18 | Tests passing |

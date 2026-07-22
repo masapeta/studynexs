@@ -1034,4 +1034,45 @@ docs/pilot/GATE1_EXECUTION.md
 
 ---
 
+# Engineering Session 11 — Stage 2A Academic Onboarding Core (2026-07-22)
+
+**Authorization:** ARM — Stage 2A production academic onboarding for paid-school tenants. Gate 1A HTTPS remains separate. **Committed** (isolated Stage 2A batch).
+
+## Done
+
+- **Backend:** `CurriculumExtractionService`, onboarding endpoints, `intelligence_status`, `pack_readiness`, `curriculum_authz` (resource-derived class scope on all draft mutations), `PackService` chapter/outcome edit+delete, `retry_rag_index`, credit purpose `curriculum_extraction` (3).
+- **Frontend:** Wizard `/dashboard/teaching/curriculum/onboarding`, `OnboardingReviewPanel` (chapter/topic/LO correction), `AcademicIntelligenceBanner`, role-aware links on curriculum / lesson-plans / ai-papers; incharge class selector restricted.
+- **Docs:** Decision log D-2026-07-22, execution plan slice 2A, blueprint, module + platform.json + CHANGELOG.
+
+## Verification (final)
+
+| Check | Result |
+|-------|--------|
+| `pytest tests/test_academic_onboarding.py` | 15 passed |
+| Full `pytest tests/` | 397 passed, 2 skipped |
+| `npm run build` (admin-web) | OK |
+| Reference smoke | 32/32 green |
+| `e2e-smoke.cjs` | 19/19 green |
+| `e2e-reference-journeys.cjs` | 18/18 green |
+| `e2e-onboarding-review.cjs` | PASS (exactly 1 pack-detail GET) |
+
+## Reference School demo path
+
+1. Tenant `reference` — login as principal/admin.
+2. **Teaching → Curriculum → Academic onboarding** (or `/dashboard/teaching/curriculum/onboarding`).
+3. Pick class + subject + year; paste chapter list; **Generate draft pack**.
+4. Review and correct structure in-panel; **Approve pack (HOD)**.
+5. Banner progresses to **Academic Intelligence Ready** (KG + RAG audit events).
+6. **Lesson plans** / **Question papers** — select approved pack; banner confirms readiness; generate grounded output.
+
+## Out of scope (deferred)
+
+Public signup, tenant cloning, TTL cleanup, digital assessment, parent automation (Stage 2B+).
+
+## Stop point
+
+**Stage 2A accepted and committed.** Stage 2B remains frozen.
+
+---
+
 ## Machine-readable snapshot (read this first)

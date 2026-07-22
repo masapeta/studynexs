@@ -45,6 +45,7 @@ CREDIT_RULES: dict[str, int] = {
     "tutor_explain": 1,
     "parent_briefing": 1,
     "parent_ask": 1,
+    "curriculum_extraction": 3,
 }
 
 BILLING_POLICY = (
