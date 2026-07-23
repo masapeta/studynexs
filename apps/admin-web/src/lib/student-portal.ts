@@ -24,4 +24,27 @@ export type TutorLesson = {
   trigger: string;
   mistake_summary?: string;
   steps: TutorStep[];
+  pack_id?: string | null;
+  concept_id?: string | null;
+  concept_slug?: string | null;
+};
+
+export type DailyLearningPlan = {
+  student_id: string;
+  status: "ready" | "empty" | string;
+  title: string;
+  reason: string;
+  recommended_action: string;
+  topic?: string | null;
+  mastery_topic?: string | null;
+  mastery_pct?: number | null;
+  lesson_key?: string | null;
+  pack_id?: string | null;
+  concept_id?: string | null;
+  concept_slug?: string | null;
+  source_count: number;
+  grounded: boolean;
+  fallback: boolean;
+  evidence_summary: string;
+  next_steps: string[];
 };

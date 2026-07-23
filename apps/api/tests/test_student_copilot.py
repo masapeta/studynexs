@@ -154,6 +154,7 @@ async def test_study_context_lists_weak_concepts(db_session):
     assert ctx.primary_concept_slug == "slope"
     assert ctx.grounded is True
     assert ctx.weak_concepts[0].pack_id == ids["pack"].id
+    assert ctx.weak_concepts[0].mastery_topic == "Linear Equations"
 
 
 @pytest.mark.asyncio
@@ -204,6 +205,86 @@ async def test_study_context_api(client: AsyncClient, db_session):
     assert body["primary_concept_slug"] == "slope"
     assert len(body["weak_concepts"]) >= 1
     assert body["weak_concepts"][0]["pack_id"] == str(ids["pack"].id)
+
+
+@pytest.mark.asyncio
+async def test_daily_plan_uses_approved_learning_evidence(db_session):
+    ids = await _seed_copilot(db_session)
+    plan = await StudentCopilotService(db_session).get_daily_plan(
+        school_id=ids["school"].id,
+        student_id=ids["student"].id,
+        embedder=ids["embedder"],
+        store=ids["store"],
+    )
+
+    assert plan.status == "ready"
+    assert plan.fallback is False
+    assert plan.grounded is True
+    assert plan.lesson_key == "slope"
+    assert plan.pack_id == ids["pack"].id
+    assert plan.concept_id == ids["concept"].id
+    assert plan.mastery_topic == "Linear Equations"
+    assert plan.mastery_pct == 55.0
+
+
+@pytest.mark.asyncio
+async def test_daily_plan_empty_state_is_not_demo_fallback(db_session):
+    ids = await _seed_copilot(db_session, mastery_pct=85.0)
+    plan = await StudentCopilotService(db_session).get_daily_plan(
+        school_id=ids["school"].id,
+        student_id=ids["student"].id,
+        embedder=ids["embedder"],
+        store=ids["store"],
+    )
+
+    assert plan.status == "empty"
+    assert plan.fallback is False
+    assert plan.grounded is False
+    assert plan.lesson_key is None
+    assert "No weak concept evidence" in plan.evidence_summary
+
+
+@pytest.mark.asyncio
+async def test_daily_plan_api_is_student_scoped(client: AsyncClient, db_session):
+    ids = await _seed_copilot(db_session)
+    token = access_token_for(ids["student_user"])
+
+    res = await client.get(
+        f"/api/v1/tutor/students/{ids['student'].id}/daily-plan",
+        headers=auth_headers(token),
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()["data"]
+    assert body["status"] == "ready"
+    assert body["lesson_key"] == "slope"
+    assert body["pack_id"] == str(ids["pack"].id)
+    assert body["mastery_topic"] == "Linear Equations"
+    assert body["fallback"] is False
+
+    other_user = User(
+        school_id=ids["school"].id,
+        mobile="+910000000099",
+        full_name="Other Student",
+        role=UserRole.STUDENT,
+        is_active=True,
+    )
+    db_session.add(other_user)
+    await db_session.flush()
+    other_student = Student(
+        school_id=ids["school"].id,
+        user_id=other_user.id,
+        class_id=ids["student"].class_id,
+        admission_no="A2",
+    )
+    db_session.add(other_student)
+    await db_session.flush()
+    other_token = access_token_for(other_user)
+
+    denied = await client.get(
+        f"/api/v1/tutor/students/{ids['student'].id}/daily-plan",
+        headers=auth_headers(other_token),
+    )
+    assert denied.status_code == 403
 
 
 @pytest.mark.asyncio

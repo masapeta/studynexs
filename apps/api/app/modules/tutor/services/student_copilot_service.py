@@ -31,6 +31,7 @@ from app.modules.knowledge_graph.services.student_weak_concept_service import (
 from app.modules.tutor.schemas.copilot import (
     CopilotAnswerOut,
     CopilotAskIn,
+    DailyLearningPlanOut,
     StudyContextOut,
     WeakConceptStudyOut,
 )
@@ -128,6 +129,7 @@ class StudentCopilotService:
                     slug=concept.slug,
                     title=concept.title,
                     pack_id=concept.pack_id,
+                    mastery_topic=str(meta.get("topic")) if meta and meta.get("topic") else None,
                     mastery_pct=mastery,
                     has_approved_card=card is not None,
                 )
@@ -163,6 +165,86 @@ class StudentCopilotService:
             curriculum_context=context_text,
             source_count=len(chunks),
             grounded=bool(chunks),
+        )
+
+    async def get_daily_plan(
+        self,
+        *,
+        school_id: uuid.UUID,
+        student_id: uuid.UUID,
+        embedder: EmbeddingService | None = None,
+        store: VectorStore | None = None,
+    ) -> DailyLearningPlanOut:
+        """Deterministic "study this today" plan from approved academic evidence.
+
+        This is intentionally not an LLM call. It consumes the certified learning
+        evidence chain through weak concepts, approved ConceptCards, and RAG
+        context, then returns a student-facing plan only when real evidence
+        exists. Empty state is explicit and is not treated as a demo fallback.
+        """
+        ctx = await self.get_study_context(
+            school_id=school_id,
+            student_id=student_id,
+            embedder=embedder,
+            store=store,
+        )
+        if not ctx.weak_concepts:
+            return DailyLearningPlanOut(
+                student_id=student_id,
+                status="empty",
+                title="No learning action yet",
+                reason=(
+                    "Your next recommendation appears after an assessed topic creates "
+                    "mastery evidence."
+                ),
+                recommended_action="Check back after your teacher records marks for an assessment.",
+                grounded=False,
+                fallback=False,
+                evidence_summary="No weak concept evidence is currently available.",
+                next_steps=[
+                    "Attend your next class.",
+                    "Complete assigned homework.",
+                    "Ask your teacher which topic to revise first.",
+                ],
+            )
+
+        primary = ctx.weak_concepts[0]
+        mastery_label = (
+            f"{primary.mastery_pct:.0f}% mastery"
+            if primary.mastery_pct is not None
+            else "recent mastery evidence"
+        )
+        source_label = (
+            f"{ctx.source_count} curriculum source{'s' if ctx.source_count != 1 else ''}"
+            if ctx.source_count
+            else "approved curriculum evidence"
+        )
+        return DailyLearningPlanOut(
+            student_id=student_id,
+            status="ready",
+            title=f"Study {primary.title} today",
+            reason=f"Recommended because your latest evidence shows {mastery_label}.",
+            recommended_action=(
+                "Open the tutor lesson, review each step, then ask one follow-up question."
+            ),
+            topic=primary.title,
+            mastery_topic=primary.mastery_topic,
+            mastery_pct=primary.mastery_pct,
+            lesson_key=primary.slug,
+            pack_id=primary.pack_id,
+            concept_id=primary.concept_id,
+            concept_slug=primary.slug,
+            source_count=ctx.source_count,
+            grounded=ctx.grounded and primary.has_approved_card,
+            fallback=False,
+            evidence_summary=(
+                f"Linked to approved CurriculumPack {primary.pack_id} and {source_label}."
+            ),
+            next_steps=[
+                "Open the recommended tutor lesson.",
+                "Replay any step that feels unclear.",
+                "Ask Student Copilot one question about this concept.",
+            ],
         )
 
     async def ask(

@@ -12,6 +12,7 @@ class WeakConceptStudyOut(BaseModel):
     slug: str
     title: str
     pack_id: uuid.UUID
+    mastery_topic: Optional[str] = None
     mastery_pct: Optional[float] = None
     has_approved_card: bool = False
 
@@ -23,6 +24,26 @@ class StudyContextOut(BaseModel):
     curriculum_context: str = ""
     source_count: int = 0
     grounded: bool = False
+
+
+class DailyLearningPlanOut(BaseModel):
+    student_id: uuid.UUID
+    status: str  # ready | empty
+    title: str
+    reason: str
+    recommended_action: str
+    topic: Optional[str] = None
+    mastery_topic: Optional[str] = None
+    mastery_pct: Optional[float] = None
+    lesson_key: Optional[str] = None
+    pack_id: Optional[uuid.UUID] = None
+    concept_id: Optional[uuid.UUID] = None
+    concept_slug: Optional[str] = None
+    source_count: int = 0
+    grounded: bool = False
+    fallback: bool = False
+    evidence_summary: str = ""
+    next_steps: list[str] = Field(default_factory=list)
 
 
 class CopilotAskIn(BaseModel):

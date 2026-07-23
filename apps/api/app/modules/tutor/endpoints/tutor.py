@@ -19,7 +19,12 @@ from app.modules.ai.gateway.input_guard import (
     sanitize_prompt_text,
     sanitize_tts_voice,
 )
-from app.modules.tutor.schemas.copilot import CopilotAnswerOut, CopilotAskIn, StudyContextOut
+from app.modules.tutor.schemas.copilot import (
+    CopilotAnswerOut,
+    CopilotAskIn,
+    DailyLearningPlanOut,
+    StudyContextOut,
+)
 from app.modules.tutor.schemas.tutor import TutorLessonOut, TutorRecommendationOut
 from app.modules.tutor.services.student_copilot_service import StudentCopilotService
 from app.modules.tutor.services.tts_service import (
@@ -92,6 +97,27 @@ async def student_study_context(
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return APIResponse(data=ctx)
+
+
+@router.get(
+    "/students/{student_id}/daily-plan",
+    response_model=APIResponse[DailyLearningPlanOut],
+)
+async def student_daily_plan(
+    student_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Student-facing next learning activity from existing academic evidence."""
+    await assert_can_access_student(current_user, db, student_id)
+    try:
+        plan = await StudentCopilotService(db).get_daily_plan(
+            school_id=uuid.UUID(current_user.school_id),
+            student_id=student_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return APIResponse(data=plan)
 
 
 @router.post(

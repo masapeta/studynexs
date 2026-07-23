@@ -45,7 +45,7 @@ The percentages below are product-coverage estimates, not engineering effort est
 | Student Records Intelligence | 65% | Student lists, profiles, guardians, class assignment. Longitudinal history and progression are partial. |
 | Assessment Evaluation Intelligence | 80% | Answer-sheet upload, OCR/vision, grounded AI suggestions, HITL approval, marks propagation, recovery checks, browser evidence strip, and deterministic evidence ledger are runtime/browser proven. |
 | Learning Intelligence | 75% | Gradebook, mastery, misconceptions, weak-topic flags, teacher review actions, and assessment-to-learning evidence chain are runtime/browser-proven. Student, Tutor, and Parent consumers are verified downstream without fallback; broader student-success UX remains incomplete. |
-| Student Intelligence | 50% | Student portal, tutor, recommendations, concept-card grounding. Not yet certified as the primary pilot journey. |
+| Student Intelligence | 70% | Student portal, daily learning plan, tutor recommendations, concept-card grounded lessons, and Student Copilot are runtime/browser-proven against the same mastery and weak-concept evidence. Full practice/remediation depth remains incomplete. |
 | Parent Intelligence | 45% | Parent portal, child summary, Parent Copilot briefing/ask, fees/notices. Needs teacher-controlled parent journey maturity. |
 | School Operations Intelligence | 45% | Attendance, timetable, notices, events, transport, library, residential, fees, payroll, expenses exist in pieces. Needs unified operating story. |
 | Staff Intelligence | 40% | Staff directory, onboarding, payroll, teacher mappings. Needs complete HR lifecycle. |
@@ -96,10 +96,12 @@ The percentages below are product-coverage estimates, not engineering effort est
 | Learning | Weakness flags | Already implemented | Yes | High | Mastery, teacher RBAC | Teacher review, approve, edit, dismiss, notify, digest, and evidence-chain inspection are runtime/browser-proven. |
 | Learning | Learning evidence chain | Already implemented | Yes | High | CurriculumPack, QuestionPaper, Exam, approved evaluation, marks, mastery, KG weak concepts | Deterministically links assessment evidence to mastery, weak concepts, and downstream Student/Tutor/Parent consumers without fallback. |
 | Learning | Class-level weak-topic summary | Partially implemented | Yes | Medium | Mastery, exam analytics | Needed for leadership/action narrative. |
-| Student | Student portal | Partially implemented | Yes | Medium | Student account, portal context | Exists but not certified for pilot walkthrough. |
-| Student | AI Tutor recommendations | Partially implemented | Yes | Medium | Mastery, concept cards | Runtime-proven but not yet full executive browser story. |
-| Student | Concept-card grounded lesson | Partially implemented | Yes | Medium | Concept cards, tutor | Important trust mechanism. |
-| Student | Personalized next activity | Partially implemented | Yes | Medium | Mastery, tutor content | Needs clearer user journey. |
+| Student | Student portal | Already implemented | Yes | Medium | Student account, portal context | Student home now has a certified daily learning entry point. |
+| Student | Daily learning plan | Already implemented | Yes | Medium | Mastery, KG weak concepts, concept cards, RAG | Runtime/browser-proven as a deterministic next activity from approved academic evidence. |
+| Student | AI Tutor recommendations | Already implemented | Yes | Medium | Mastery, concept cards | Runtime/browser-proven against the same weak-concept evidence. |
+| Student | Concept-card grounded lesson | Already implemented | Yes | Medium | Concept cards, tutor | Browser-proven through the student Tutor journey. |
+| Student | Student Copilot grounded answer | Already implemented | Yes | Medium | Student Copilot, RAG, concept cards, AI credits | Runtime/browser-proven with citations and no fallback for the certified path. |
+| Student | Personalized practice/remediation depth | Partially implemented | Yes | Medium | Daily plan, tutor content, future practice flow | Daily plan exists; full practice engine is not implemented. |
 | Parent | Parent portal | Partially implemented | Yes | Medium | Parent-child links | Exists but not certified as a pilot journey. |
 | Parent | Child summary/progress | Partially implemented | Yes | Medium | Portal, mastery, fees/notices | Needs safe, clear parent narrative. |
 | Parent | Parent Copilot briefing | Partially implemented | Yes | Medium | Mastery, approved pack, parent context | Runtime-proven for same-pack grounding. |
@@ -134,7 +136,7 @@ These are gaps against the Product Blueprint, not approved tasks.
 - Seamless admission-to-enrollment flow.
 - Complete admin setup journey.
 - Broader assessment UX polish beyond the proven evidence-chain review path.
-- Student remediation journey visible end-to-end.
+- Student practice/remediation depth beyond the certified daily plan and Tutor lesson.
 - Parent communication journey with explicit teacher control.
 - Principal weekly operating rhythm.
 - Management/trustee executive operating view.
@@ -152,7 +154,7 @@ These capabilities exist but should be treated carefully in executive demonstrat
 |---|---|---|
 | Admissions | Pipeline and stages exist, but not a seamless school intake journey. | Admin can take a candidate from inquiry to enrolled student without operational ambiguity. |
 | Assessment evaluation | Runtime and browser proof now cover upload, OCR/vision, grounded AI suggestions, teacher approval, marks, mastery, and evidence ledger. | Wider UX polish and operational hardening can be considered only after ARM authorization. |
-| Student Tutor | Recommendations and concept-card grounding exist. | Student can understand and complete a next learning activity tied to approved evidence. |
+| Student practice depth | Daily plan, concept-card Tutor lesson, and grounded Student Copilot are certified; broader practice/remediation loops are not complete. | Student can complete practice/remediation activities beyond guided Tutor learning, if ARM authorizes that scope. |
 | Parent Copilot | Briefing/ask exists and same-pack grounding is proven. | Parent receives clear, safe guidance with teacher-control expectations visible. |
 | Principal operating rhythm | Principal can see readiness and dashboard data. | Principal can run a weekly academic review from StudyNexs without manual report assembly. |
 | Operations modules | Many modules exist separately. | Admin staff can run daily school operations through one understandable flow. |
@@ -171,7 +173,7 @@ These capabilities exist but should be treated carefully in executive demonstrat
 | Principal Intelligence | Medium / Strong | Safe to present readiness and dashboard; frame weekly rhythm as emerging. |
 | Assessment Evaluation | Strong / Medium | Safe to present as a traceable academic evidence chain; keep the live walkthrough focused on the proven teacher review path. |
 | Learning Intelligence | Strong / Medium | Safe to present as a deterministic assessment-to-learning evidence chain with teacher review controls; do not present it as a complete student-success product yet. |
-| Student Intelligence | Medium | Show carefully if needed; not the primary certified pilot story. |
+| Student Intelligence | Strong / Medium | Safe to present the certified daily learning plan, evidence topic, Tutor lesson, and grounded Student Copilot path; do not present a full practice engine. |
 | Parent Intelligence | Medium | Show carefully if needed; emphasize teacher control and safe explanation. |
 | Admissions Intelligence | Medium | Present as operational surface, not complete admissions intelligence. |
 | School Operations Intelligence | Medium / Low | Present as breadth, not as the main value proof. |
@@ -191,25 +193,24 @@ Recently completed vertical:
   - Completed the assessment-to-mastery evidence chain with deterministic provenance, teacher HITL approval, marks/mastery propagation, browser proof, and same-pack runtime verification.
 - Learning Intelligence
   - Completed the post-assessment learning evidence chain with teacher-scoped mastery evidence, weak-topic review actions, KG weak-concept verification, browser proof, and downstream Student/Tutor/Parent verification without fallback.
+- Student Intelligence
+  - Completed the student-facing next-learning chain with a deterministic daily plan, source mastery topic, concept-card Tutor lesson, grounded Student Copilot answer, runtime proof, browser proof, and cross-student RBAC verification.
 
 Candidate focus areas pending pilot evidence and ARM authorization:
 
-1. Student Intelligence
-   - Hypothesis: Once learning evidence is trusted, students need a clearer next-learning experience.
-
-2. Parent Intelligence
+1. Parent Intelligence
    - Hypothesis: Parent trust becomes valuable only after teacher-reviewed assessment evidence is reliable.
 
-3. Principal Intelligence
+2. Principal Intelligence
    - Hypothesis: Principal weekly rhythm becomes compelling once enough academic signals exist across teacher, assessment, mastery, and intervention paths.
 
-4. School Operations Intelligence
+3. School Operations Intelligence
    - Hypothesis: Operational modules become more valuable when connected to the academic operating rhythm rather than shown as isolated ERP features.
 
-5. Finance Intelligence
+4. Finance Intelligence
    - Hypothesis: Finance becomes leadership-critical after operational usage is real and schools ask for management-grade visibility.
 
-6. Alumni Intelligence
+5. Alumni Intelligence
    - Hypothesis: Alumni belongs after the student lifecycle and year-to-year progression are mature.
 
 These are hypotheses only. They must be validated through pilot evidence, internal review, and explicit ARM authorization before becoming implementation scope.

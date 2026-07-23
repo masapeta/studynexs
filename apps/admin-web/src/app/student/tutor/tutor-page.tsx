@@ -5,7 +5,8 @@ import { useSearchParams } from "next/navigation";
 import PortalShell from "@/components/PortalShell";
 import TutorLessonPlayer from "@/components/tutor/TutorLessonPlayer";
 import { api, getApiErrorMessage } from "@/lib/api";
-import { STUDENT_NAV, TutorLesson } from "@/lib/student-portal";
+import { STUDENT_NAV } from "@/lib/student-portal";
+import type { DailyLearningPlan, TutorLesson } from "@/lib/student-portal";
 
 type Rec = {
   lesson_key: string;
@@ -17,7 +18,12 @@ type Rec = {
 
 type StudyContext = {
   primary_concept_slug?: string;
-  weak_concepts: { slug: string; title: string; mastery_pct?: number }[];
+  weak_concepts: {
+    slug: string;
+    title: string;
+    mastery_pct?: number;
+    mastery_topic?: string | null;
+  }[];
 };
 
 type CopilotAnswer = {
@@ -25,6 +31,8 @@ type CopilotAnswer = {
   concept_title?: string;
   follow_up_hints?: string[];
   grounded: boolean;
+  pack_id?: string;
+  source_count?: number;
 };
 
 export default function StudentTutorPage() {
@@ -34,6 +42,7 @@ export default function StudentTutorPage() {
   const [studentId, setStudentId] = useState<string | null>(null);
   const [recs, setRecs] = useState<Rec[]>([]);
   const [studyContext, setStudyContext] = useState<StudyContext | null>(null);
+  const [dailyPlan, setDailyPlan] = useState<DailyLearningPlan | null>(null);
   const [lesson, setLesson] = useState<TutorLesson | null>(null);
   const [activeKey, setActiveKey] = useState<string | null>(lessonParam);
   const [question, setQuestion] = useState("");
@@ -52,13 +61,15 @@ export default function StudentTutorPage() {
           return;
         }
         setStudentId(sid);
-        const [recRes, ctxRes] = await Promise.all([
+        const [recRes, ctxRes, planRes] = await Promise.all([
           api(`/api/v1/tutor/students/${sid}/recommendations`),
           api(`/api/v1/tutor/students/${sid}/study-context`).catch(() => ({ data: null })),
+          api(`/api/v1/tutor/students/${sid}/daily-plan`).catch(() => ({ data: null })),
         ]);
         setRecs(recRes.data || []);
         setStudyContext(ctxRes.data);
-        const key = lessonParam || recRes.data?.[0]?.lesson_key;
+        setDailyPlan(planRes.data);
+        const key = lessonParam || planRes.data?.lesson_key || recRes.data?.[0]?.lesson_key;
         if (key) {
           setActiveKey(key);
           const les = await api(`/api/v1/tutor/students/${sid}/lessons/${key}`);
@@ -111,10 +122,45 @@ export default function StudentTutorPage() {
   return (
     <PortalShell title="AI Tutor" subtitle="Learn like your teacher explains" nav={STUDENT_NAV}>
       <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>
-        Mistake Recovery — grounded in your curriculum. Ask a question or follow a lesson.
+        Mistake Recovery - grounded in your curriculum. Ask a question or follow a lesson.
       </p>
 
       {error && <p style={{ color: "var(--danger)" }}>{error}</p>}
+
+      {dailyPlan ? (
+        <div
+          className="portal-card"
+          data-testid="student-intelligence-evidence"
+          style={{ marginBottom: 16, padding: 14 }}
+        >
+          <div style={{ fontSize: 12, fontWeight: 800, color: "var(--text-muted)", marginBottom: 6 }}>
+            Daily learning plan
+          </div>
+          <div style={{ fontWeight: 800 }}>{dailyPlan.title}</div>
+          <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "6px 0 0" }}>
+            {dailyPlan.reason}
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10, fontSize: 12 }}>
+            <span className={`badge ${dailyPlan.grounded && !dailyPlan.fallback ? "badge-success" : "badge-warning"}`}>
+              {dailyPlan.grounded && !dailyPlan.fallback ? "Evidence verified" : "Awaiting evidence"}
+            </span>
+            {dailyPlan.mastery_pct != null && (
+              <span className="badge badge-warning">{Math.round(dailyPlan.mastery_pct)}% mastery</span>
+            )}
+            {dailyPlan.mastery_topic ? (
+              <span className="badge badge-info">From {dailyPlan.mastery_topic}</span>
+            ) : null}
+            {dailyPlan.source_count > 0 && (
+              <span className="badge badge-success">{dailyPlan.source_count} sources</span>
+            )}
+          </div>
+          {dailyPlan.evidence_summary ? (
+            <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "8px 0 0" }}>
+              {dailyPlan.evidence_summary}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       {studyContext?.weak_concepts?.length ? (
         <div className="portal-card" style={{ marginBottom: 16, padding: 14 }}>
@@ -133,7 +179,8 @@ export default function StudentTutorPage() {
                 }}
               >
                 {c.title}
-                {c.mastery_pct != null ? ` · ${Math.round(c.mastery_pct)}%` : ""}
+                {c.mastery_pct != null ? ` - ${Math.round(c.mastery_pct)}%` : ""}
+                {c.mastery_topic ? ` from ${c.mastery_topic}` : ""}
               </span>
             ))}
           </div>
@@ -148,13 +195,13 @@ export default function StudentTutorPage() {
           id="copilot-question"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          placeholder="What is slope in a linear equation?"
+          placeholder="Why is this concept weak for me?"
           rows={2}
           maxLength={800}
           style={{ width: "100%", marginTop: 8, marginBottom: 8, resize: "vertical" }}
         />
         <button type="submit" className="btn btn-primary" disabled={asking || !question.trim()}>
-          {asking ? "Thinking…" : "Ask"}
+          {asking ? "Thinking..." : "Ask"}
         </button>
         {copilotAnswer ? (
           <div style={{ marginTop: 12, fontSize: 14, lineHeight: 1.5 }}>
@@ -164,6 +211,14 @@ export default function StudentTutorPage() {
               </div>
             ) : null}
             <p style={{ margin: 0 }}>{copilotAnswer.answer}</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10, fontSize: 12 }}>
+              <span className={`badge ${copilotAnswer.grounded ? "badge-success" : "badge-warning"}`}>
+                {copilotAnswer.grounded ? "Grounded answer" : "Needs evidence"}
+              </span>
+              {copilotAnswer.source_count ? (
+                <span className="badge badge-success">{copilotAnswer.source_count} sources</span>
+              ) : null}
+            </div>
             {copilotAnswer.follow_up_hints?.length ? (
               <ul style={{ marginTop: 8, paddingLeft: 18, fontSize: 13, color: "var(--text-muted)" }}>
                 {copilotAnswer.follow_up_hints.map((h) => (
