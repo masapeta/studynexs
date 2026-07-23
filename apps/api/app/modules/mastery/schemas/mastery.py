@@ -83,6 +83,51 @@ class FlagOut(BaseModel):
     subject_name: Optional[str] = None
 
 
+class LearningEvidenceExamOut(BaseModel):
+    exam_id: uuid.UUID
+    title: str
+    exam_type: str
+    assessed_on: Optional[date] = None
+    marks_obtained: Optional[float] = None
+    total_marks: Optional[float] = None
+    topic_pct: Optional[float] = None
+    question_paper_id: Optional[uuid.UUID] = None
+    curriculum_pack_id: Optional[uuid.UUID] = None
+    question_paper_grounded: bool = False
+    citation_count: int = 0
+    evaluation_ids: list[uuid.UUID] = Field(default_factory=list)
+    approved_evaluation_ids: list[uuid.UUID] = Field(default_factory=list)
+
+
+class LearningEvidenceChainOut(BaseModel):
+    tenant_slug: str
+    school_id: uuid.UUID
+    flag_id: uuid.UUID
+    student_id: uuid.UUID
+    class_id: uuid.UUID
+    subject_id: uuid.UUID
+    topic: str
+    topic_display: str
+    flag_status: FlagStatus
+    reviewed_by: Optional[uuid.UUID] = None
+    reviewed_at: Optional[datetime] = None
+    notified_at: Optional[datetime] = None
+    mastery: Optional[TopicMasteryOut] = None
+    exams: list[LearningEvidenceExamOut] = Field(default_factory=list)
+    curriculum_pack_ids: list[uuid.UUID] = Field(default_factory=list)
+    question_paper_ids: list[uuid.UUID] = Field(default_factory=list)
+    evaluation_ids: list[uuid.UUID] = Field(default_factory=list)
+    approved_evaluation_ids: list[uuid.UUID] = Field(default_factory=list)
+    weak_concept_count: int = 0
+    weak_concept_pack_ids: list[uuid.UUID] = Field(default_factory=list)
+    misconception_count: int = 0
+    parent_note_available: bool = False
+    parent_notified: bool = False
+    grounded: bool = False
+    fallback: bool = False
+    warnings: list[str] = Field(default_factory=list)
+
+
 class NarrativeUpdate(BaseModel):
     narrative: str = Field(..., min_length=1, max_length=2000)
 

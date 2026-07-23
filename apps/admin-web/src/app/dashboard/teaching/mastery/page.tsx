@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { PageHeaderCard } from "@/components/layout/PageHeaderCard";
@@ -21,35 +21,94 @@ const REASON_LABELS: Record<string, string> = {
   absolute_floor: "Below 40%",
 };
 
+type ApiResponse<T> = {
+  data: T;
+  message?: string;
+};
+
+type MasteryHistory = {
+  date?: string;
+  title?: string;
+  pct?: number | string;
+};
+
+type MasteryFlagEvidence = {
+  student_name?: string;
+  subject_name?: string;
+  mastery_pct?: number;
+  class_avg_pct?: number;
+  trend?: string;
+  assessments_count?: number;
+  history?: MasteryHistory[];
+};
+
+type MasteryFlagRow = {
+  id: string;
+  student_name?: string;
+  class_name?: string;
+  class_id: string;
+  subject_id: string;
+  topic_display: string;
+  severity: "high" | "medium" | string;
+  status: "pending_review" | "approved" | "notified" | "dismissed" | string;
+  reasons?: string[];
+  evidence?: MasteryFlagEvidence;
+  narrative?: string;
+  dismissed_reason?: string;
+};
+
+type LearningEvidenceExam = {
+  title: string;
+  topic_pct?: number | string | null;
+  question_paper_grounded?: boolean;
+};
+
+type LearningEvidenceChain = {
+  curriculum_pack_ids?: string[];
+  question_paper_ids?: string[];
+  approved_evaluation_ids?: string[];
+  mastery?: { mastery_pct: number };
+  weak_concept_count?: number;
+  grounded?: boolean;
+  warnings?: string[];
+  exams?: LearningEvidenceExam[];
+};
+
+type CreditsResponse = {
+  user_credits_remaining?: number | null;
+  credits_remaining?: number;
+  purpose_costs?: { mastery_narrative?: number };
+};
+
 export default function MasteryFlagsPage() {
   const router = useRouter();
   const [tab, setTab] = useState<string>("pending_review");
-  const [flags, setFlags] = useState<any[]>([]);
+  const [flags, setFlags] = useState<MasteryFlagRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [chainBusyId, setChainBusyId] = useState<string | null>(null);
+  const [chains, setChains] = useState<Record<string, LearningEvidenceChain>>({});
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [credits, setCredits] = useState<{
-    user_credits_remaining?: number | null;
-    credits_remaining?: number;
-    purpose_costs?: { mastery_narrative?: number };
-  } | null>(null);
+  const [credits, setCredits] = useState<CreditsResponse | null>(null);
 
-  function load(status = tab) {
+  const load = useCallback((status: string) => {
     setLoading(true);
-    api(`/api/v1/mastery/flags?status=${status}`)
+    api<ApiResponse<MasteryFlagRow[]>>(`/api/v1/mastery/flags?status=${status}`)
       .then((r) => setFlags(r.data || []))
       .catch((e) => setError(getApiErrorMessage(e, "Failed to load flags")))
       .finally(() => setLoading(false));
-  }
+  }, []);
 
   useEffect(() => {
-    load(tab);
-    setError("");
-    api("/api/v1/ai/credits").then(setCredits).catch(() => {});
-  }, [tab]);
+    void Promise.resolve().then(() => {
+      load(tab);
+      setError("");
+      api<CreditsResponse>("/api/v1/ai/credits").then(setCredits).catch(() => {});
+    });
+  }, [tab, load]);
 
-  async function act(flag: any, action: "approve" | "dismiss" | "notify") {
+  async function act(flag: MasteryFlagRow, action: "approve" | "dismiss" | "notify") {
     setBusyId(flag.id);
     setError("");
     try {
@@ -60,18 +119,21 @@ export default function MasteryFlagsPage() {
           setError("Not enough AI credits remaining this month. Contact your class incharge or principal.");
           return;
         }
-        const res = await api(`/api/v1/mastery/flags/${flag.id}/approve`, { method: "POST" });
+        const res = await api<ApiResponse<MasteryFlagRow>>(
+          `/api/v1/mastery/flags/${flag.id}/approve`,
+          { method: "POST" }
+        );
         // Show the drafted note immediately for editing.
-        setDrafts((d) => ({ ...d, [flag.id]: res.data.narrative }));
-        api("/api/v1/ai/credits").then(setCredits).catch(() => {});
+        setDrafts((d) => ({ ...d, [flag.id]: res.data.narrative || "" }));
+        api<CreditsResponse>("/api/v1/ai/credits").then(setCredits).catch(() => {});
         setTab("approved");
       } else if (action === "dismiss") {
-        const reason = window.prompt("Why dismiss? (optional — helps tune the alerts)") || undefined;
+        const reason = window.prompt("Why dismiss? (optional - helps tune the alerts)") || undefined;
         await api(`/api/v1/mastery/flags/${flag.id}/dismiss`, {
           method: "POST",
           body: JSON.stringify({ reason }),
         });
-        load();
+        load(tab);
       } else {
         // Save any narrative edits before sending.
         const edited = drafts[flag.id];
@@ -82,9 +144,12 @@ export default function MasteryFlagsPage() {
             body: JSON.stringify({ narrative }),
           });
         }
-        const res = await api(`/api/v1/mastery/flags/${flag.id}/notify`, { method: "POST" });
+        const res = await api<ApiResponse<MasteryFlagRow>>(
+          `/api/v1/mastery/flags/${flag.id}/notify`,
+          { method: "POST" }
+        );
         alert(res.message || "Sent");
-        load();
+        load(tab);
       }
     } catch (e) {
       setError(getApiErrorMessage(e, "Action failed"));
@@ -93,10 +158,26 @@ export default function MasteryFlagsPage() {
     }
   }
 
+  async function loadEvidenceChain(flag: MasteryFlagRow) {
+    if (chains[flag.id]) return;
+    setChainBusyId(flag.id);
+    setError("");
+    try {
+      const res = await api<ApiResponse<LearningEvidenceChain>>(
+        `/api/v1/mastery/flags/${flag.id}/evidence-chain`
+      );
+      setChains((current) => ({ ...current, [flag.id]: res.data }));
+    } catch (e) {
+      setError(getApiErrorMessage(e, "Failed to load evidence chain"));
+    } finally {
+      setChainBusyId(null);
+    }
+  }
+
   return (
     <>
       <PageHeaderCard
-        title="Topic Mastery — Weakness Flags"
+        title="Topic Mastery - Weakness Flags"
         subtitle="Raised by score rules, never by AI. Nothing reaches a parent without your approval."
       >
         <button className="btn btn-ghost sn-filter-pill" onClick={() => router.push(TEACHING.masteryDigest)}>
@@ -139,7 +220,7 @@ export default function MasteryFlagsPage() {
                     ))}
                   </div>
                   <div style={{ marginTop: 6, fontSize: 14 }}>
-                    <b>{ev.subject_name}</b> → {f.topic_display}
+                    <b>{ev.subject_name}</b> - {f.topic_display}
                   </div>
                 </div>
                 <button
@@ -164,9 +245,21 @@ export default function MasteryFlagsPage() {
               </div>
               {(ev.history || []).length > 0 && (
                 <div style={{ marginTop: 8, fontSize: 12, color: "var(--text-secondary)" }}>
-                  {(ev.history || []).map((h: any) => `${h.date} · ${h.title}: ${h.pct}%`).join("   |   ")}
+                  {(ev.history || []).map((h: MasteryHistory) => `${h.date} - ${h.title}: ${h.pct}%`).join("   |   ")}
                 </div>
               )}
+
+              <div style={{ marginTop: 12 }}>
+                <button
+                  className="btn btn-ghost"
+                  style={btn}
+                  disabled={chainBusyId === f.id}
+                  onClick={() => loadEvidenceChain(f)}
+                >
+                  {chainBusyId === f.id ? "Loading evidence..." : chains[f.id] ? "Evidence chain loaded" : "View evidence chain"}
+                </button>
+              </div>
+              {chains[f.id] && <EvidenceChainPanel chain={chains[f.id]} />}
 
               {/* Parent note (approved+) — editable until sent */}
               {(f.status === "approved" || f.status === "notified") && (
@@ -200,7 +293,7 @@ export default function MasteryFlagsPage() {
                       Dismiss
                     </button>
                     <button className="btn btn-primary" style={btn} disabled={busyId === f.id} onClick={() => act(f, "approve")}>
-                      {busyId === f.id ? "Drafting note…" : "Approve & draft note"}
+                      {busyId === f.id ? "Drafting note..." : "Approve & draft note"}
                     </button>
                   </>
                 )}
@@ -210,7 +303,7 @@ export default function MasteryFlagsPage() {
                       Dismiss
                     </button>
                     <button className="btn btn-primary" style={btn} disabled={busyId === f.id} onClick={() => act(f, "notify")}>
-                      {busyId === f.id ? "Sending…" : "Send to parent"}
+                      {busyId === f.id ? "Sending..." : "Send to parent"}
                     </button>
                   </>
                 )}
@@ -226,6 +319,61 @@ export default function MasteryFlagsPage() {
         </div>
       )}
     </>
+  );
+}
+
+function EvidenceChainPanel({ chain }: { chain: LearningEvidenceChain }) {
+  const exams = chain.exams || [];
+  const warnings = chain.warnings || [];
+  const weakConceptCount = chain.weak_concept_count || 0;
+  return (
+    <div
+      data-testid="learning-evidence-chain"
+      style={{
+        marginTop: 12,
+        padding: 12,
+        border: "1px solid var(--border-light)",
+        borderRadius: "var(--radius-lg)",
+        background: "rgba(255,255,255,0.42)",
+      }}
+    >
+      <div style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.4, color: "var(--text-muted)" }}>
+        Learning evidence chain
+      </div>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10, fontSize: 12 }}>
+        <EvidencePill label="Pack" ok={(chain.curriculum_pack_ids || []).length > 0} value={(chain.curriculum_pack_ids || []).length || 0} />
+        <EvidencePill label="Paper" ok={(chain.question_paper_ids || []).length > 0} value={(chain.question_paper_ids || []).length || 0} />
+        <EvidencePill label="Exam" ok={exams.length > 0} value={exams.length} />
+        <EvidencePill label="Evaluation" ok={(chain.approved_evaluation_ids || []).length > 0} value={(chain.approved_evaluation_ids || []).length || 0} />
+        <EvidencePill label="Mastery" ok={!!chain.mastery} value={chain.mastery ? `${Math.round(chain.mastery.mastery_pct)}%` : "none"} />
+        <EvidencePill label="Weak concept" ok={weakConceptCount > 0} value={weakConceptCount} />
+        <EvidencePill label="Grounded" ok={!!chain.grounded} value={chain.grounded ? "yes" : "no"} />
+      </div>
+      {exams.length > 0 && (
+        <div style={{ marginTop: 10, fontSize: 12, color: "var(--text-secondary)" }}>
+          {exams
+            .map((exam: LearningEvidenceExam) => `${exam.title}: ${exam.topic_pct ?? "?"}% topic score${exam.question_paper_grounded ? " - grounded paper" : ""}`)
+            .join(" | ")}
+        </div>
+      )}
+      {warnings.length > 0 ? (
+        <div style={{ marginTop: 8, fontSize: 12, color: "var(--warning, #d97706)" }}>
+          Needs attention: {warnings.join(", ")}
+        </div>
+      ) : (
+        <div style={{ marginTop: 8, fontSize: 12, color: "var(--success, #059669)" }}>
+          Chain verified from assessment evidence to mastery signal.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EvidencePill({ label, ok, value }: { label: string; ok: boolean; value: string | number }) {
+  return (
+    <span className={`badge ${ok ? "badge-success" : "badge-warning"}`}>
+      {label}: {value}
+    </span>
   );
 }
 

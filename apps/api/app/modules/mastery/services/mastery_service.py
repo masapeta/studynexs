@@ -261,12 +261,18 @@ async def _raise_flags(
 
     # Evidence is frozen at raise time — names included so the narrative the
     # teacher approves later is grounded without further queries.
-    subject_name = await db.scalar(select(Subject.name).where(Subject.id == subject_id))
+    subject_name = await db.scalar(
+        select(Subject.name).where(Subject.id == subject_id, Subject.school_id == school_id)
+    )
     name_rows = (
         await db.execute(
             select(Student.id, User.full_name)
             .join(User, User.id == Student.user_id)
-            .where(Student.id.in_([row["student_id"] for row, _ in candidates]))
+            .where(
+                Student.school_id == school_id,
+                User.school_id == school_id,
+                Student.id.in_([row["student_id"] for row, _ in candidates]),
+            )
         )
     ).all()
     student_names = {sid: name for sid, name in name_rows}

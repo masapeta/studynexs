@@ -44,7 +44,7 @@ The percentages below are product-coverage estimates, not engineering effort est
 | Admissions Intelligence | 65% | Candidate pipeline, stages, document extraction, admission pages. Full admission-to-enrollment journey needs cohesion. |
 | Student Records Intelligence | 65% | Student lists, profiles, guardians, class assignment. Longitudinal history and progression are partial. |
 | Assessment Evaluation Intelligence | 80% | Answer-sheet upload, OCR/vision, grounded AI suggestions, HITL approval, marks propagation, recovery checks, browser evidence strip, and deterministic evidence ledger are runtime/browser proven. |
-| Learning Intelligence | 60% | Gradebook, mastery, misconceptions, weak-topic updates, and assessment-to-mastery propagation are runtime-proven. Needs stronger school-facing learning narrative. |
+| Learning Intelligence | 75% | Gradebook, mastery, misconceptions, weak-topic flags, teacher review actions, and assessment-to-learning evidence chain are runtime/browser-proven. Student, Tutor, and Parent consumers are verified downstream without fallback; broader student-success UX remains incomplete. |
 | Student Intelligence | 50% | Student portal, tutor, recommendations, concept-card grounding. Not yet certified as the primary pilot journey. |
 | Parent Intelligence | 45% | Parent portal, child summary, Parent Copilot briefing/ask, fees/notices. Needs teacher-controlled parent journey maturity. |
 | School Operations Intelligence | 45% | Attendance, timetable, notices, events, transport, library, residential, fees, payroll, expenses exist in pieces. Needs unified operating story. |
@@ -90,9 +90,11 @@ The percentages below are product-coverage estimates, not engineering effort est
 | Assessment Evaluation | Teacher HITL approval | Already implemented | Yes | High | Evaluation service, exam marks | Teacher approval records approving teacher and timestamp in the evidence ledger. |
 | Assessment Evaluation | Marks saved to gradebook | Already implemented | Yes | High | Exams, gradebook, mastery | Runtime-proven through marks and mastery propagation. |
 | Assessment Evaluation | Academic evidence ledger | Already implemented | Yes | High | CurriculumPack, QuestionPaper, Exam, AnswerSheet, Evaluation | Deterministically links tenant, pack, paper, exam, student, answer sheet, evaluation, approving teacher, timestamp, grounded status, and citations. |
-| Learning | Gradebook | Partially implemented | Yes | High | Exam marks | Exists as a surface/path, needs stronger end-to-end clarity. |
-| Learning | Mastery recomputation | Partially implemented | Yes | High | Marks, concepts, misconceptions | Runtime-proven for same academic loop. |
-| Learning | Misconception tracking | Partially implemented | Yes | Medium | Evaluation details | Useful for tutor/parent/principal insight. |
+| Learning | Gradebook | Already implemented | Yes | High | Exam marks | Verified as the upstream marks surface feeding mastery and weak-topic evidence. |
+| Learning | Mastery recomputation | Already implemented | Yes | High | Marks, concepts, misconceptions | Runtime-proven for the same academic evidence chain. |
+| Learning | Misconception tracking | Partially implemented | Yes | Medium | Evaluation details | Verified as part of the learning evidence chain; broader teacher-facing misconception UX remains partial. |
+| Learning | Weakness flags | Already implemented | Yes | High | Mastery, teacher RBAC | Teacher review, approve, edit, dismiss, notify, digest, and evidence-chain inspection are runtime/browser-proven. |
+| Learning | Learning evidence chain | Already implemented | Yes | High | CurriculumPack, QuestionPaper, Exam, approved evaluation, marks, mastery, KG weak concepts | Deterministically links assessment evidence to mastery, weak concepts, and downstream Student/Tutor/Parent consumers without fallback. |
 | Learning | Class-level weak-topic summary | Partially implemented | Yes | Medium | Mastery, exam analytics | Needed for leadership/action narrative. |
 | Student | Student portal | Partially implemented | Yes | Medium | Student account, portal context | Exists but not certified for pilot walkthrough. |
 | Student | AI Tutor recommendations | Partially implemented | Yes | Medium | Mastery, concept cards | Runtime-proven but not yet full executive browser story. |
@@ -168,7 +170,7 @@ These capabilities exist but should be treated carefully in executive demonstrat
 | Assessment Authoring | Strong / Medium | Safe to present question-paper generation; avoid overpromising full exam-cycle polish. |
 | Principal Intelligence | Medium / Strong | Safe to present readiness and dashboard; frame weekly rhythm as emerging. |
 | Assessment Evaluation | Strong / Medium | Safe to present as a traceable academic evidence chain; keep the live walkthrough focused on the proven teacher review path. |
-| Learning Intelligence | Medium | Present as connected evidence chain, not a complete student-success product yet. |
+| Learning Intelligence | Strong / Medium | Safe to present as a deterministic assessment-to-learning evidence chain with teacher review controls; do not present it as a complete student-success product yet. |
 | Student Intelligence | Medium | Show carefully if needed; not the primary certified pilot story. |
 | Parent Intelligence | Medium | Show carefully if needed; emphasize teacher control and safe explanation. |
 | Admissions Intelligence | Medium | Present as operational surface, not complete admissions intelligence. |
@@ -187,11 +189,13 @@ Recently completed vertical:
 
 - Assessment Evaluation Intelligence
   - Completed the assessment-to-mastery evidence chain with deterministic provenance, teacher HITL approval, marks/mastery propagation, browser proof, and same-pack runtime verification.
+- Learning Intelligence
+  - Completed the post-assessment learning evidence chain with teacher-scoped mastery evidence, weak-topic review actions, KG weak-concept verification, browser proof, and downstream Student/Tutor/Parent verification without fallback.
 
 Candidate focus areas pending pilot evidence and ARM authorization:
 
-1. Learning Intelligence
-   - Hypothesis: Once marks and mastery are trusted, students need a clearer next-learning experience.
+1. Student Intelligence
+   - Hypothesis: Once learning evidence is trusted, students need a clearer next-learning experience.
 
 2. Parent Intelligence
    - Hypothesis: Parent trust becomes valuable only after teacher-reviewed assessment evidence is reliable.

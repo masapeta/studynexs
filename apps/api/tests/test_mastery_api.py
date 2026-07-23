@@ -1,10 +1,22 @@
 """Tests — flags review API: approve (mocked LLM), narrative edit, notify, gates."""
 
+from datetime import datetime, timezone
+
 import pytest
 from sqlalchemy import select
 
+from app.db.models.answer_sheet_evaluation import EVAL_STATUS_APPROVED, AnswerSheetEvaluation
+from app.db.models.curriculum_pack import (
+    CurriculumChapter,
+    CurriculumPack,
+    CurriculumTopic,
+    PackStatus,
+)
+from app.db.models.examination import Exam
+from app.db.models.knowledge_graph import ConceptSource, CurriculumConcept
 from app.db.models.mastery import MasteryFlag
 from app.db.models.notification import Notification
+from app.db.models.question_paper import PaperStatus, QuestionPaper
 from tests.conftest import auth_headers, get_auth_token
 from tests.test_mastery_flags import _seed_flagging_scenario
 
@@ -301,6 +313,41 @@ async def test_teacher_cannot_read_heatmap_outside_teaching_scope(
 
 
 @pytest.mark.asyncio
+async def test_teacher_cannot_read_topic_typeahead_outside_teaching_scope(
+    client,
+    admin_user,
+    teacher_user,
+    student_user,
+    test_school,
+    test_class,
+    db_session,
+):
+    """Topic typeahead must be scoped like the mastery matrix it feeds."""
+    flag, science_token = await _out_of_scope_maths_flag_and_science_teacher_token(
+        client, db_session, test_class=test_class, test_school=test_school,
+        student_user=student_user, teacher_user=teacher_user,
+    )
+    resp = await client.get(
+        f"/api/v1/mastery/topics?subject_id={flag.subject_id}",
+        headers=auth_headers(science_token),
+    )
+    assert resp.status_code == 403
+
+    # Without an explicit subject filter, the Science teacher still sees only their scoped topics.
+    resp = await client.get("/api/v1/mastery/topics", headers=auth_headers(science_token))
+    assert resp.status_code == 200
+    assert resp.json()["data"] == []
+
+    admin_token = await get_auth_token(client, "test_admin", "Admin@123")
+    resp = await client.get(
+        f"/api/v1/mastery/topics?subject_id={flag.subject_id}",
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 200
+    assert resp.json()["data"] == ["Algebra"]
+
+
+@pytest.mark.asyncio
 async def test_flag_list_subject_filter_cannot_escape_teaching_scope(
     client,
     admin_user,
@@ -367,3 +414,158 @@ async def test_digest_scoped_to_teaching_assignments(
     resp = await client.get("/api/v1/mastery/digest", headers=auth_headers(admin_token))
     assert resp.status_code == 200
     assert len(resp.json()["data"]["students"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_flag_evidence_chain_links_curriculum_assessment_and_learning(
+    client,
+    admin_user,
+    student_user,
+    test_school,
+    test_class,
+    db_session,
+):
+    """Learning evidence chain proves pack → paper → exam → marks → mastery → flag."""
+    from app.modules.mastery.services.mastery_service import recompute_class_subject
+
+    weak, subject, token = await _seed_flagging_scenario(
+        client, db_session, test_school, test_class, student_user
+    )
+    flag = await _flag_of(db_session, weak.id)
+
+    pack = CurriculumPack(
+        school_id=test_school.id,
+        class_id=test_class.id,
+        subject_id=subject.id,
+        academic_year_id=test_class.academic_year_id,
+        board="SSC",
+        book_title="Maths",
+        version=1,
+        status=PackStatus.APPROVED,
+        created_by=admin_user.id,
+        approved_by=admin_user.id,
+        approved_at=datetime.now(timezone.utc),
+        rag_indexed_at=datetime.now(timezone.utc),
+        rag_index_topic_count=1,
+    )
+    db_session.add(pack)
+    await db_session.flush()
+    chapter = CurriculumChapter(
+        school_id=test_school.id,
+        pack_id=pack.id,
+        number="1",
+        title="Algebra",
+        order_index=1,
+    )
+    db_session.add(chapter)
+    await db_session.flush()
+    topic = CurriculumTopic(
+        school_id=test_school.id,
+        chapter_id=chapter.id,
+        title="Algebra",
+        order_index=1,
+        concepts=["Linear equations"],
+    )
+    db_session.add(topic)
+    await db_session.flush()
+    concept = CurriculumConcept(
+        school_id=test_school.id,
+        pack_id=pack.id,
+        topic_id=topic.id,
+        slug="linear-equations",
+        title="Linear equations",
+        order_index=1,
+        source=ConceptSource.PACK_JSONB,
+    )
+    db_session.add(concept)
+    paper = QuestionPaper(
+        school_id=test_school.id,
+        class_id=test_class.id,
+        subject_id=subject.id,
+        created_by=admin_user.id,
+        pack_id=pack.id,
+        grounded=True,
+        grounding_sources=[{"index": 1, "chapter": "Algebra", "topic": "Algebra"}],
+        title="Algebra Evidence Paper",
+        board="SSC",
+        grade=test_class.grade,
+        subject_name=subject.name,
+        total_marks=25,
+        topics=["Algebra"],
+        sections=[],
+        status=PaperStatus.APPROVED,
+        approved_by=admin_user.id,
+        approved_at=datetime.now(timezone.utc),
+    )
+    db_session.add(paper)
+    await db_session.flush()
+
+    exams = list(
+        (
+            await db_session.execute(
+                select(Exam).where(
+                    Exam.school_id == test_school.id,
+                    Exam.class_id == test_class.id,
+                    Exam.subject_id == subject.id,
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert exams
+    for exam in exams:
+        exam.source_paper_id = paper.id
+
+    evaluation = AnswerSheetEvaluation(
+        school_id=test_school.id,
+        exam_id=exams[0].id,
+        student_id=weak.id,
+        created_by=admin_user.id,
+        status=EVAL_STATUS_APPROVED,
+        ai_suggestions={"1": {"marks_suggested": 2, "max_marks": 5}},
+        approved_by=admin_user.id,
+        approved_at=datetime.now(timezone.utc),
+    )
+    db_session.add(evaluation)
+    await db_session.flush()
+
+    await recompute_class_subject(db_session, test_school.id, test_class.id, subject.id)
+
+    resp = await client.get(
+        f"/api/v1/mastery/flags/{flag.id}/evidence-chain",
+        headers=auth_headers(token),
+    )
+    assert resp.status_code == 200, resp.text
+    chain = resp.json()["data"]
+    assert chain["tenant_slug"] == "test"
+    assert chain["curriculum_pack_ids"] == [str(pack.id)]
+    assert chain["question_paper_ids"] == [str(paper.id)]
+    assert chain["approved_evaluation_ids"] == [str(evaluation.id)]
+    assert chain["mastery"]["topic_display"] == "Algebra"
+    assert chain["weak_concept_count"] >= 1
+    assert chain["weak_concept_pack_ids"] == [str(pack.id)]
+    assert chain["grounded"] is True
+    assert chain["fallback"] is False
+    assert chain["warnings"] == []
+
+
+@pytest.mark.asyncio
+async def test_teacher_cannot_read_evidence_chain_outside_scope(
+    client,
+    admin_user,
+    teacher_user,
+    student_user,
+    test_school,
+    test_class,
+    db_session,
+):
+    flag, science_token = await _out_of_scope_maths_flag_and_science_teacher_token(
+        client, db_session, test_class=test_class, test_school=test_school,
+        student_user=student_user, teacher_user=teacher_user,
+    )
+    resp = await client.get(
+        f"/api/v1/mastery/flags/{flag.id}/evidence-chain",
+        headers=auth_headers(science_token),
+    )
+    assert resp.status_code == 403
