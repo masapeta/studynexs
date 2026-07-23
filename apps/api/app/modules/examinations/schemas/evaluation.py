@@ -58,12 +58,22 @@ class EvaluationOut(BaseModel):
     error_message: Optional[str] = None
     job_id: Optional[uuid.UUID] = None
     created_at: Optional[datetime] = None
+    question_paper_id: Optional[uuid.UUID] = None
+    curriculum_pack_id: Optional[uuid.UUID] = None
+    question_paper_grounded: bool = False
+    evaluation_grounded: bool = False
+    citation_ids: list[str] = Field(default_factory=list)
+    evidence_ledger: dict[str, Any] | None = None
 
 
 class MisconceptionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    class_id: uuid.UUID | None = None
+    subject_id: uuid.UUID | None = None
+    student_id: uuid.UUID | None = None
+    source_evaluation_id: uuid.UUID | None = None
     topic: str
     question_no: Optional[str] = None
     common_mistake: str
@@ -100,6 +110,10 @@ class EvaluationApprove(BaseModel):
 class CorrectionHistoryItem(BaseModel):
     evaluation_id: uuid.UUID
     exam_id: uuid.UUID
+    question_paper_id: Optional[uuid.UUID] = None
+    curriculum_pack_id: Optional[uuid.UUID] = None
+    question_paper_grounded: bool = False
+    evaluation_grounded: bool = False
     exam_title: str
     student_id: uuid.UUID
     question_no: str
@@ -110,3 +124,5 @@ class CorrectionHistoryItem(BaseModel):
     override_reason: Optional[str] = None
     approved_at: Optional[datetime] = None
     topic: Optional[str] = None
+    method: Optional[str] = None
+    citation_ids: list[str] = Field(default_factory=list)

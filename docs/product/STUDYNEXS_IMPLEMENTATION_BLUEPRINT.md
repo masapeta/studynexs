@@ -43,8 +43,8 @@ The percentages below are product-coverage estimates, not engineering effort est
 | Principal Intelligence | 70% | Dashboard, Academic Intelligence Ready, grounding evidence, certified Principal walkthrough. Weekly operating rhythm is not complete. |
 | Admissions Intelligence | 65% | Candidate pipeline, stages, document extraction, admission pages. Full admission-to-enrollment journey needs cohesion. |
 | Student Records Intelligence | 65% | Student lists, profiles, guardians, class assignment. Longitudinal history and progression are partial. |
-| Assessment Evaluation Intelligence | 60% | Answer-sheet upload, OCR/vision, AI suggestions, HITL approval, marks propagation runtime path. Browser journey is not yet fully executive-demo-ready. |
-| Learning Intelligence | 55% | Gradebook, mastery, misconceptions, weak-topic updates. Needs stronger school-facing learning narrative. |
+| Assessment Evaluation Intelligence | 80% | Answer-sheet upload, OCR/vision, grounded AI suggestions, HITL approval, marks propagation, recovery checks, browser evidence strip, and deterministic evidence ledger are runtime/browser proven. |
+| Learning Intelligence | 60% | Gradebook, mastery, misconceptions, weak-topic updates, and assessment-to-mastery propagation are runtime-proven. Needs stronger school-facing learning narrative. |
 | Student Intelligence | 50% | Student portal, tutor, recommendations, concept-card grounding. Not yet certified as the primary pilot journey. |
 | Parent Intelligence | 45% | Parent portal, child summary, Parent Copilot briefing/ask, fees/notices. Needs teacher-controlled parent journey maturity. |
 | School Operations Intelligence | 45% | Attendance, timetable, notices, events, transport, library, residential, fees, payroll, expenses exist in pieces. Needs unified operating story. |
@@ -84,11 +84,12 @@ The percentages below are product-coverage estimates, not engineering effort est
 | Assessment Authoring | Question citations / grounding | Already implemented | Yes | High | RAG sources | Critical trust surface. |
 | Assessment Authoring | Question paper review/approval | Partially implemented | Yes | High | Question paper lifecycle, teacher/HOD approval | Exists but needs smoother executive journey. |
 | Assessment Authoring | Exam creation from question paper | Partially implemented | Yes | High | Exams module, question paper | Runtime path exists; browser story not fully certified. |
-| Assessment Evaluation | Answer-sheet upload | Partially implemented | Yes | High | Files, exam roster | Runtime-proven; UX maturity varies. |
-| Assessment Evaluation | OCR / vision extraction | Partially implemented | Yes | High | Vision model, upload service | Runtime-proven in Batch 2 proof. |
-| Assessment Evaluation | AI scoring suggestions | Partially implemented | Yes | High | Evaluation service, LLM gateway | Must remain teacher-reviewed. |
-| Assessment Evaluation | Teacher HITL approval | Partially implemented | Yes | High | Evaluation service, exam marks | Runtime-proven, needs polished browser confidence. |
-| Assessment Evaluation | Marks saved to gradebook | Partially implemented | Yes | High | Exams, gradebook, mastery | Runtime-proven in academic loop. |
+| Assessment Evaluation | Answer-sheet upload | Already implemented | Yes | High | Files, exam roster | Runtime/browser-proven in Assessment Evaluation Intelligence vertical. |
+| Assessment Evaluation | OCR / vision extraction | Already implemented | Yes | High | Vision model, upload service | Runtime-proven through answer-sheet evaluation path. |
+| Assessment Evaluation | AI scoring suggestions | Already implemented | Yes | High | Evaluation service, LLM gateway, RAG grounding | Suggestions preserve grounded citation evidence and remain teacher-reviewed. |
+| Assessment Evaluation | Teacher HITL approval | Already implemented | Yes | High | Evaluation service, exam marks | Teacher approval records approving teacher and timestamp in the evidence ledger. |
+| Assessment Evaluation | Marks saved to gradebook | Already implemented | Yes | High | Exams, gradebook, mastery | Runtime-proven through marks and mastery propagation. |
+| Assessment Evaluation | Academic evidence ledger | Already implemented | Yes | High | CurriculumPack, QuestionPaper, Exam, AnswerSheet, Evaluation | Deterministically links tenant, pack, paper, exam, student, answer sheet, evaluation, approving teacher, timestamp, grounded status, and citations. |
 | Learning | Gradebook | Partially implemented | Yes | High | Exam marks | Exists as a surface/path, needs stronger end-to-end clarity. |
 | Learning | Mastery recomputation | Partially implemented | Yes | High | Marks, concepts, misconceptions | Runtime-proven for same academic loop. |
 | Learning | Misconception tracking | Partially implemented | Yes | Medium | Evaluation details | Useful for tutor/parent/principal insight. |
@@ -130,7 +131,7 @@ These are gaps against the Product Blueprint, not approved tasks.
 
 - Seamless admission-to-enrollment flow.
 - Complete admin setup journey.
-- Full polished assessment browser journey from exam creation to teacher-approved marks.
+- Broader assessment UX polish beyond the proven evidence-chain review path.
 - Student remediation journey visible end-to-end.
 - Parent communication journey with explicit teacher control.
 - Principal weekly operating rhythm.
@@ -148,7 +149,7 @@ These capabilities exist but should be treated carefully in executive demonstrat
 | Capability area | Current partial state | Completion signal |
 |---|---|---|
 | Admissions | Pipeline and stages exist, but not a seamless school intake journey. | Admin can take a candidate from inquiry to enrolled student without operational ambiguity. |
-| Assessment evaluation | Runtime loop exists, including vision/OCR and teacher approval. | Teacher can complete the browser journey smoothly without engineering assistance. |
+| Assessment evaluation | Runtime and browser proof now cover upload, OCR/vision, grounded AI suggestions, teacher approval, marks, mastery, and evidence ledger. | Wider UX polish and operational hardening can be considered only after ARM authorization. |
 | Student Tutor | Recommendations and concept-card grounding exist. | Student can understand and complete a next learning activity tied to approved evidence. |
 | Parent Copilot | Briefing/ask exists and same-pack grounding is proven. | Parent receives clear, safe guidance with teacher-control expectations visible. |
 | Principal operating rhythm | Principal can see readiness and dashboard data. | Principal can run a weekly academic review from StudyNexs without manual report assembly. |
@@ -166,7 +167,7 @@ These capabilities exist but should be treated carefully in executive demonstrat
 | Teaching Intelligence | Strong | Safe to present through Principal + Teacher flow. |
 | Assessment Authoring | Strong / Medium | Safe to present question-paper generation; avoid overpromising full exam-cycle polish. |
 | Principal Intelligence | Medium / Strong | Safe to present readiness and dashboard; frame weekly rhythm as emerging. |
-| Assessment Evaluation | Medium | Present as validated capability, not yet the smoothest live executive path. |
+| Assessment Evaluation | Strong / Medium | Safe to present as a traceable academic evidence chain; keep the live walkthrough focused on the proven teacher review path. |
 | Learning Intelligence | Medium | Present as connected evidence chain, not a complete student-success product yet. |
 | Student Intelligence | Medium | Show carefully if needed; not the primary certified pilot story. |
 | Parent Intelligence | Medium | Show carefully if needed; emphasize teacher control and safe explanation. |
@@ -182,27 +183,29 @@ These capabilities exist but should be treated carefully in executive demonstrat
 
 This section is intentionally non-authorizing. It does not define release scope or approved tasks.
 
+Recently completed vertical:
+
+- Assessment Evaluation Intelligence
+  - Completed the assessment-to-mastery evidence chain with deterministic provenance, teacher HITL approval, marks/mastery propagation, browser proof, and same-pack runtime verification.
+
 Candidate focus areas pending pilot evidence and ARM authorization:
 
-1. Assessment Evaluation Intelligence
-   - Hypothesis: Completing the assessment-to-mastery journey may most strengthen trust after teachers accept curriculum-grounded lesson plans and question papers.
-
-2. Learning Intelligence
+1. Learning Intelligence
    - Hypothesis: Once marks and mastery are trusted, students need a clearer next-learning experience.
 
-3. Parent Intelligence
+2. Parent Intelligence
    - Hypothesis: Parent trust becomes valuable only after teacher-reviewed assessment evidence is reliable.
 
-4. Principal Intelligence
+3. Principal Intelligence
    - Hypothesis: Principal weekly rhythm becomes compelling once enough academic signals exist across teacher, assessment, mastery, and intervention paths.
 
-5. School Operations Intelligence
+4. School Operations Intelligence
    - Hypothesis: Operational modules become more valuable when connected to the academic operating rhythm rather than shown as isolated ERP features.
 
-6. Finance Intelligence
+5. Finance Intelligence
    - Hypothesis: Finance becomes leadership-critical after operational usage is real and schools ask for management-grade visibility.
 
-7. Alumni Intelligence
+6. Alumni Intelligence
    - Hypothesis: Alumni belongs after the student lifecycle and year-to-year progression are mature.
 
 These are hypotheses only. They must be validated through pilot evidence, internal review, and explicit ARM authorization before becoming implementation scope.

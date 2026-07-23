@@ -81,7 +81,7 @@ export default function EvaluateExamPage() {
           const [qRes, evRes, stuRes] = await Promise.all([
             api(`/api/v1/exams/${examId}/questions`),
             api(`/api/v1/exams/${examId}/evaluations`),
-            api(`/api/v1/academic/students?class_id=${c.id}&page_size=200`),
+            api(`/api/v1/academic/students?class_id=${c.id}&page_size=100`),
           ]);
           const qs = qRes.data || [];
           setQuestions(qs);
@@ -330,6 +330,7 @@ export default function EvaluateExamPage() {
                   {activeEval.correction_summary}
                 </div>
               )}
+              <EvaluationEvidenceStrip evaluation={activeEval} />
               <table className="data-table">
                 <thead><tr><th>Q</th><th>AI marks</th><th>Final marks</th><th>Feedback & rubric</th></tr></thead>
                 <tbody>
@@ -381,6 +382,61 @@ export default function EvaluateExamPage() {
       </div>
     </>
   );
+}
+
+type EvaluationEvidence = {
+  evidence_ledger?: {
+    curriculum_pack_id?: unknown;
+    question_paper_id?: unknown;
+    citation_ids?: unknown;
+  };
+  curriculum_pack_id?: string | null;
+  question_paper_id?: string | null;
+  citation_ids?: string[] | null;
+  evaluation_grounded?: boolean | null;
+};
+
+function EvaluationEvidenceStrip({ evaluation }: { evaluation: EvaluationEvidence }) {
+  const ledger = evaluation.evidence_ledger || {};
+  const packId =
+    evaluation.curriculum_pack_id ||
+    (typeof ledger.curriculum_pack_id === "string" ? ledger.curriculum_pack_id : "");
+  const paperId =
+    evaluation.question_paper_id ||
+    (typeof ledger.question_paper_id === "string" ? ledger.question_paper_id : "");
+  const citations =
+    evaluation.citation_ids ||
+    (Array.isArray(ledger.citation_ids) ? ledger.citation_ids.map(String) : []);
+  if (!packId && !paperId) return null;
+
+  const grounded = evaluation.evaluation_grounded === true;
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 8,
+        alignItems: "center",
+        padding: 12,
+        marginBottom: 16,
+        borderRadius: 12,
+        border: "1px solid var(--border)",
+        background: "var(--surface-muted)",
+        fontSize: 12,
+        color: "var(--text-muted)",
+      }}
+    >
+      <strong style={{ color: "var(--text-primary)" }}>Evidence chain</strong>
+      {packId && <span style={metaChip}>CurriculumPack {shortId(packId)}</span>}
+      {paperId && <span style={metaChip}>Question paper {shortId(paperId)}</span>}
+      <span style={metaChip}>{grounded ? "Grounded evaluation" : "Needs citation review"}</span>
+      <span style={metaChip}>{citations.length} citation{citations.length === 1 ? "" : "s"}</span>
+    </div>
+  );
+}
+
+function shortId(value: string) {
+  return String(value).slice(0, 8);
 }
 
 const btn: React.CSSProperties = { width: "auto", padding: "8px 18px", borderRadius: "var(--radius-full)", fontSize: 13 };

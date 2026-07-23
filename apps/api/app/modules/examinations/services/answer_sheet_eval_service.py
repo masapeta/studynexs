@@ -27,8 +27,8 @@ from app.modules.ai.services.ai_credits import (
     check_ai_credits,
     credits_for_purpose,
 )
+from app.modules.ai.services.assessment_grounding import ground_for_evaluation, resolve_citations
 from app.modules.ai.services.evaluation_engine import SubjectiveItem, evaluate_subjective
-from app.modules.ai.services.assessment_grounding import ground_for_evaluation
 from app.modules.ai.services.question_bank_service import fetch_rubrics_for_paper
 from app.modules.examinations.schemas.evaluation import EvaluationApprove
 from app.modules.examinations.schemas.exam import MarkEntry
@@ -433,6 +433,9 @@ class AnswerSheetEvalService:
         misconception_hint: str | None = None,
         criteria: list | None = None,
         missing_concepts: list | None = None,
+        citations: list[int] | None = None,
+        grounding_sources: list[dict] | None = None,
+        grounded: bool = False,
     ) -> dict:
         """One question's suggestion, in the shape the approve flow + corrections history expect.
 
@@ -451,6 +454,9 @@ class AnswerSheetEvalService:
             "method": method,
             "criteria": criteria or [],
             "missing_concepts": missing_concepts or [],
+            "citations": citations or [],
+            "grounding_sources": grounding_sources or [],
+            "grounded": grounded,
         }
 
     async def _grade_exam(
@@ -597,6 +603,12 @@ class AnswerSheetEvalService:
             m = meta[item.number]
             eng = engine_out.get(item.number)
             if eng is not None:
+                citations = [int(n) for n in (eng.get("citations") or []) if str(n).isdigit()]
+                grounding_sources = (
+                    resolve_citations(grounding.sources, citations)
+                    if not grounding.is_empty and citations
+                    else []
+                )
                 suggestions[item.number] = self._make_suggestion(
                     marks=eng["marks_suggested"],
                     max_marks=m["max_marks"],
@@ -610,6 +622,9 @@ class AnswerSheetEvalService:
                     ),
                     criteria=eng.get("criteria"),
                     missing_concepts=eng.get("missing_concepts"),
+                    citations=citations,
+                    grounding_sources=grounding_sources,
+                    grounded=bool(grounding_sources),
                 )
             else:
                 marks, feedback, confidence = grade_subjective_heuristic(
@@ -741,8 +756,13 @@ class AnswerSheetEvalService:
         limit: int = 100,
     ) -> list[dict]:
         query = (
-            select(AnswerSheetEvaluation, Exam)
+            select(AnswerSheetEvaluation, Exam, QuestionPaper)
             .join(Exam, Exam.id == AnswerSheetEvaluation.exam_id)
+            .outerjoin(
+                QuestionPaper,
+                (QuestionPaper.id == Exam.source_paper_id)
+                & (QuestionPaper.school_id == school_id),
+            )
             .where(
                 AnswerSheetEvaluation.school_id == school_id,
                 AnswerSheetEvaluation.status == EVAL_STATUS_APPROVED,
@@ -766,16 +786,27 @@ class AnswerSheetEvalService:
         ).all()
 
         history: list[dict] = []
-        for ev, exam in rows:
+        for ev, exam, paper in rows:
             suggestions = ev.ai_suggestions or {}
             overrides = ev.teacher_overrides or {}
             for qno, suggestion in suggestions.items():
                 override = overrides.get(qno) or {}
                 ai_marks = float(suggestion.get("marks_suggested", 0))
                 teacher_marks = float(override.get("marks", ai_marks))
+                citation_ids = [
+                    str(src.get("ref_id"))
+                    for src in (suggestion.get("grounding_sources") or [])
+                    if isinstance(src, dict) and src.get("ref_id")
+                ]
                 history.append({
                     "evaluation_id": ev.id,
                     "exam_id": exam.id,
+                    "question_paper_id": exam.source_paper_id,
+                    "curriculum_pack_id": paper.pack_id if paper else None,
+                    "question_paper_grounded": bool(paper and paper.grounded),
+                    "evaluation_grounded": bool(
+                        suggestion.get("grounded") and suggestion.get("grounding_sources")
+                    ),
                     "exam_title": exam.title,
                     "student_id": ev.student_id,
                     "question_no": qno,
@@ -786,5 +817,7 @@ class AnswerSheetEvalService:
                     "override_reason": override.get("reason"),
                     "approved_at": ev.approved_at,
                     "topic": suggestion.get("topic"),
+                    "method": suggestion.get("method"),
+                    "citation_ids": sorted(set(citation_ids)),
                 })
         return history

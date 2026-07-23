@@ -1,6 +1,7 @@
 """Answer sheet evaluation v1 — grade, approve, corrections history."""
+import json
 import uuid
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
 import pytest
@@ -9,12 +10,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.academic import AcademicYear, Class, Subject
+from app.db.models.answer_sheet_evaluation import EVAL_STATUS_PROCESSING, AnswerSheetEvaluation
+from app.db.models.curriculum_pack import CurriculumPack, PackStatus
 from app.db.models.examination import Exam, ExamMark, ExamType
-from app.db.models.question_bank import QuestionBankItem
 from app.db.models.question_paper import PaperStatus, QuestionPaper
 from app.db.models.school import School
 from app.db.models.student import Student
 from app.db.models.user import User, UserRole
+from app.modules.ai.gateway import LLMResult
+from app.modules.ai.services.assessment_grounding import GroundingContext
 from app.modules.ai.services.question_bank_service import ingest_from_paper
 from app.modules.examinations.services.answer_sheet_eval_service import (
     AnswerSheetEvalService,
@@ -148,6 +152,7 @@ async def _seed_eval_fixture(db: AsyncSession):
     await db.flush()
     return {
         "school": school,
+        "academic_year": ay,
         "class": cls,
         "subject": maths,
         "student": student,
@@ -241,6 +246,180 @@ async def test_eval_create_and_approve(
 
 
 @pytest.mark.asyncio
+async def test_eval_response_exposes_academic_evidence_ledger(
+    client: AsyncClient, db_session: AsyncSession, monkeypatch
+):
+    fx = await _seed_eval_fixture(db_session)
+    pack = CurriculumPack(
+        school_id=fx["school"].id,
+        class_id=fx["class"].id,
+        subject_id=fx["subject"].id,
+        academic_year_id=fx["academic_year"].id,
+        board="SSC",
+        book_title="Traceable Maths Pack",
+        created_by=fx["incharge"].id,
+        status=PackStatus.APPROVED,
+        approved_by=fx["incharge"].id,
+        approved_at=datetime.now(timezone.utc),
+    )
+    db_session.add(pack)
+    await db_session.flush()
+    fx["paper"].pack_id = pack.id
+    fx["paper"].grounded = True
+    fx["paper"].grounding_sources = [
+        {
+            "index": 1,
+            "chapter": "Quadratic Equations",
+            "topic": "Quadratic Equations",
+            "ref_id": "trace-topic-1",
+        }
+    ]
+    await db_session.flush()
+
+    async def _fake_grounding(*_args, **_kwargs):
+        return GroundingContext(
+            context_text="[1] Quadratic Equations: factorisation and roots.",
+            sources=[
+                {
+                    "index": 1,
+                    "chapter": "Quadratic Equations",
+                    "topic": "Quadratic Equations",
+                    "ref_id": "trace-topic-1",
+                }
+            ],
+        )
+
+    async def _fake_llm(*_args, **_kwargs):
+        return LLMResult(
+            text=json.dumps({
+                "evaluations": [
+                    {
+                        "number": "3",
+                        "criteria": [
+                            {
+                                "criterion": "Uses the core process",
+                                "max_points": 3,
+                                "awarded_points": 2,
+                                "met": False,
+                            }
+                        ],
+                        "marks_suggested": 2,
+                        "feedback": "Partially correct.",
+                        "confidence": 0.8,
+                        "citations": [1],
+                    }
+                ]
+            }),
+            provider="stub",
+            model="stub-model",
+            tokens_in=12,
+            tokens_out=34,
+            latency_ms=1,
+        )
+
+    monkeypatch.setattr(
+        "app.modules.examinations.services.answer_sheet_eval_service.ground_for_evaluation",
+        _fake_grounding,
+    )
+    monkeypatch.setattr("app.modules.ai.services.evaluation_engine.generate_llm", _fake_llm)
+
+    token = access_token_for(fx["incharge"])
+    resp = await client.post(
+        f"/api/v1/exams/{fx['exam'].id}/evaluations",
+        headers=auth_headers(token),
+        json={
+            "student_id": str(fx["student"].id),
+            "student_answers": {
+                "1": "4",
+                "2": "B",
+                "3": "plants use sunlight",
+            },
+        },
+    )
+    assert resp.status_code == 201, resp.text
+    data = resp.json()["data"]
+    assert data["question_paper_id"] == str(fx["paper"].id)
+    assert data["curriculum_pack_id"] == str(pack.id)
+    assert data["question_paper_grounded"] is True
+    assert data["evaluation_grounded"] is True
+    assert "trace-topic-1" in data["citation_ids"]
+    assert data["evidence_ledger"]["question_paper_id"] == str(fx["paper"].id)
+    assert data["evidence_ledger"]["curriculum_pack_id"] == str(pack.id)
+    assert data["ai_suggestions"]["3"]["grounded"] is True
+    assert data["ai_suggestions"]["3"]["grounding_sources"][0]["ref_id"] == "trace-topic-1"
+
+    approve = await client.post(
+        f"/api/v1/exams/evaluations/{data['id']}/approve",
+        headers=auth_headers(token),
+        json={},
+    )
+    assert approve.status_code == 200, approve.text
+    approved = approve.json()["data"]
+    assert approved["status"] == "approved"
+    assert approved["evidence_ledger"]["teacher_approved_by"] == str(fx["incharge"].id)
+    assert approved["evidence_ledger"]["teacher_approved_at"]
+
+    corr = await client.get(
+        f"/api/v1/exams/corrections?class_id={fx['class'].id}",
+        headers=auth_headers(token),
+    )
+    assert corr.status_code == 200, corr.text
+    row = next(r for r in corr.json()["data"] if r["question_no"] == "3")
+    assert row["question_paper_id"] == str(fx["paper"].id)
+    assert row["curriculum_pack_id"] == str(pack.id)
+    assert row["evaluation_grounded"] is True
+    assert "trace-topic-1" in row["citation_ids"]
+
+
+@pytest.mark.asyncio
+async def test_eval_approval_recovers_cleanly_after_invalid_override(
+    client: AsyncClient, db_session: AsyncSession
+):
+    fx = await _seed_eval_fixture(db_session)
+    token = access_token_for(fx["incharge"])
+    resp = await client.post(
+        f"/api/v1/exams/{fx['exam'].id}/evaluations",
+        headers=auth_headers(token),
+        json={
+            "student_id": str(fx["student"].id),
+            "student_answers": {"1": "4", "2": "B", "3": "plants use sunlight"},
+        },
+    )
+    assert resp.status_code == 201, resp.text
+    eval_id = resp.json()["data"]["id"]
+
+    bad = await client.post(
+        f"/api/v1/exams/evaluations/{eval_id}/approve",
+        headers=auth_headers(token),
+        json={"teacher_overrides": {"3": {"marks": 99, "reason": "bad input"}}},
+    )
+    assert bad.status_code == 400
+
+    row = await AnswerSheetEvalService(db_session).get_evaluation(
+        fx["school"].id, uuid.UUID(eval_id)
+    )
+    assert row is not None
+    assert row.status == "suggested"
+    marks = (
+        await db_session.execute(
+            select(ExamMark).where(
+                ExamMark.exam_id == fx["exam"].id,
+                ExamMark.student_id == fx["student"].id,
+            )
+        )
+    ).scalar_one_or_none()
+    assert marks is None
+
+    good = await client.post(
+        f"/api/v1/exams/evaluations/{eval_id}/approve",
+        headers=auth_headers(token),
+        json={"teacher_overrides": {"3": {"marks": 2, "reason": "reviewed"}}},
+    )
+    assert good.status_code == 200, good.text
+    assert good.json()["data"]["status"] == "approved"
+
+
+@pytest.mark.asyncio
 async def test_corrections_history(
     client: AsyncClient, db_session: AsyncSession
 ):
@@ -253,7 +432,11 @@ async def test_corrections_history(
         headers=auth_headers(token),
         json={
             "student_id": str(fx["student"].id),
-            "student_answers": {"1": "4", "2": "B", "3": "full answer about photosynthesis plants food sunlight"},
+            "student_answers": {
+                "1": "4",
+                "2": "B",
+                "3": "full answer about photosynthesis plants food sunlight",
+            },
         },
     )
     eval_id = (
@@ -487,11 +670,6 @@ async def test_teacher_cannot_see_other_subject_misconceptions(
 async def test_eval_reject_while_processing(
     client: AsyncClient, db_session: AsyncSession
 ):
-    from app.db.models.answer_sheet_evaluation import (
-        AnswerSheetEvaluation,
-        EVAL_STATUS_PROCESSING,
-    )
-
     fx = await _seed_eval_fixture(db_session)
     token = access_token_for(fx["incharge"])
     db_session.add(

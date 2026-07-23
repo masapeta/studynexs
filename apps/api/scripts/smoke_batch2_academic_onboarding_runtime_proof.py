@@ -27,8 +27,10 @@ from pathlib import Path
 from typing import Any
 
 _scripts_dir = Path(__file__).resolve().parent
-if str(_scripts_dir) not in sys.path:
-    sys.path.insert(0, str(_scripts_dir))
+_api_dir = _scripts_dir.parent
+for _path in (str(_api_dir), str(_scripts_dir)):
+    if _path not in sys.path:
+        sys.path.insert(0, _path)
 
 import httpx
 
@@ -393,6 +395,7 @@ def _wait_for_evaluation(
     *,
     role: str,
     timeout_s: int = 45,
+    inline_fallback: bool = True,
 ) -> dict:
     deadline = time.time() + timeout_s
     started = time.time()
@@ -407,7 +410,8 @@ def _wait_for_evaluation(
         if last.get("status") == "failed":
             raise RuntimeError(f"Evaluation failed: {last.get('error_message')}")
         if (
-            not executed_inline
+            inline_fallback
+            and not executed_inline
             and last.get("status") == "processing"
             and time.time() - started > 12
         ):
@@ -514,6 +518,25 @@ def main() -> int:
             "file_id": file_id,
         },
     )
+    if propose.status_code == 429:
+        print(
+            "  curriculum extraction credit gate reached; "
+            "activating principal AI override and retrying once"
+        )
+        _activate_ai_override(client, principal_auth)
+        propose = client.post(
+            f"{BASE}/api/v1/curriculum/onboarding/propose",
+            headers=teacher_auth,
+            json={
+                "class_id": class_id,
+                "subject_id": subject_id,
+                "academic_year_id": year_id,
+                "board": "SSC",
+                "book_title": "Batch 2 Runtime Proof Mathematics Source",
+                "input_type": "syllabus",
+                "file_id": file_id,
+            },
+        )
     if propose.status_code >= 400:
         print(f"PROPOSE FAILED: {propose.status_code}\n{propose.text[:700]}")
         return 1
@@ -849,6 +872,7 @@ def main() -> int:
         teacher_auth,
         evaluation_id,
         role="teacher",
+        inline_fallback=False,
     )
     if evaluation_row.get("status") != "suggested":
         print(json.dumps(evaluation_row, indent=2, default=str)[:1000])
@@ -858,17 +882,52 @@ def main() -> int:
         raise RuntimeError("AI Evaluation produced no suggestions")
     if str(evaluation_row.get("file_id")) != str(answer_sheet_file_id):
         raise RuntimeError("Evaluation did not retain the uploaded answer-sheet file")
+    if str(evaluation_row.get("curriculum_pack_id")) != str(pack_id):
+        raise RuntimeError(
+            "Evaluation API did not prove the originating CurriculumPack: "
+            f"{evaluation_row.get('curriculum_pack_id')} != {pack_id}"
+        )
+    if str(evaluation_row.get("question_paper_id")) != str(paper_id):
+        raise RuntimeError(
+            "Evaluation API did not prove the originating QuestionPaper: "
+            f"{evaluation_row.get('question_paper_id')} != {paper_id}"
+        )
+    if evaluation_row.get("question_paper_grounded") is not True:
+        raise RuntimeError("Evaluation API did not prove the source paper was grounded")
+    if evaluation_row.get("evaluation_grounded") is not True:
+        raise RuntimeError(
+            "Evaluation API did not prove assessment marking used grounded curriculum citations"
+        )
+    eval_citations = [str(c) for c in (evaluation_row.get("citation_ids") or [])]
+    if not eval_citations:
+        raise RuntimeError("Evaluation API returned no citation evidence")
+    eval_ledger = evaluation_row.get("evidence_ledger") or {}
+    required_eval_ledger = {
+        "tenant_id": school_id,
+        "curriculum_pack_id": pack_id,
+        "question_paper_id": paper_id,
+        "exam_id": exam_id,
+        "student_id": student_id,
+        "answer_sheet_file_id": answer_sheet_file_id,
+        "evaluation_id": evaluation_id,
+    }
+    for key, expected in required_eval_ledger.items():
+        if str(eval_ledger.get(key)) != str(expected):
+            raise RuntimeError(
+                f"Evaluation evidence ledger mismatch for {key}: "
+                f"{eval_ledger.get(key)} != {expected}"
+            )
     _record_pack_evidence(
         evidence,
         capability="Assessment Evaluation",
         tenant=TENANT_SLUG,
-        observed_pack_id=pack_id,
+        observed_pack_id=evaluation_row.get("curriculum_pack_id"),
         expected_pack_id=pack_id,
         vector_count=vector_count,
-        grounded=True,
-        citation_ids=[paper_id, exam_id, evaluation_id, answer_sheet_file_id],
+        grounded=evaluation_row.get("evaluation_grounded"),
+        citation_ids=eval_citations + [paper_id, exam_id, evaluation_id, answer_sheet_file_id],
         source_count=len(suggestions),
-        detail="linked approved_qp+exam+answer_sheet",
+        detail="api-ledger linked approved_qp+exam+answer_sheet",
     )
     print(
         f"  answer_sheet_file_id={answer_sheet_file_id} "
@@ -884,8 +943,14 @@ def main() -> int:
     if approve_eval.status_code >= 400:
         print(f"EVAL APPROVE FAILED: {approve_eval.status_code}\n{approve_eval.text[:700]}")
         return 1
-    if _data(approve_eval.json()).get("status") != "approved":
+    approved_eval_row = _data(approve_eval.json())
+    if approved_eval_row.get("status") != "approved":
         raise RuntimeError("Teacher approval did not approve evaluation")
+    approved_ledger = approved_eval_row.get("evidence_ledger") or {}
+    if str(approved_ledger.get("teacher_approved_by") or "") != str(_data(me.json()).get("id")):
+        raise RuntimeError("Teacher approval ledger did not capture approving teacher")
+    if not approved_ledger.get("teacher_approved_at"):
+        raise RuntimeError("Teacher approval ledger did not capture approval timestamp")
     marks = client.get(f"{BASE}/api/v1/exams/{exam_id}/marks", headers=teacher_auth)
     marks.raise_for_status()
     mark_rows = _list(marks.json())
