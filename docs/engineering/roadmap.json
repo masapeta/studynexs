@@ -1,53 +1,19 @@
 {
   "schema_version": 3,
   "last_completed_batch": {
-    "number": 1,
-    "title": "Curriculum Intelligence",
-    "release": "0.1",
-    "status": "accepted_frozen",
-    "completed_at": "2026-07-23",
-    "commit": "63a5584",
-    "evidence": "docs/product/BATCH_01_COMPLETION_REPORT.md"
-  },
-  "current_batch": {
     "number": 2,
     "title": "Academic Onboarding",
     "release": "0.2",
-    "status": "authorized_active",
-    "started_at": "2026-07-23",
-    "scope": [
-      "Curriculum-first onboarding experience",
-      "Supported syllabus / TOC / curriculum source intake",
-      "AI extraction into draft CurriculumPack",
-      "Human review and approval",
-      "Existing KG + RAG indexing",
-      "Academic Intelligence Ready readiness gate",
-      "Lesson-plan grounding verified from the same approved CurriculumPack",
-      "Question-paper grounding verified from the same approved CurriculumPack"
-    ],
-    "must_reuse": [
-      "CurriculumPack",
-      "DocumentIntelligenceService",
-      "CurriculumExtractionService",
-      "PackService.approve_pack",
-      "Knowledge Graph",
-      "RAG",
-      "LLM gateway",
-      "AI credits",
-      "existing approval workflow"
-    ],
-    "non_goals": [
-      "full textbook warehousing",
-      "parallel ingestion service",
-      "second curriculum engine",
-      "complete OCR automation",
-      "Batch 3 assessment automation"
-    ]
+    "status": "accepted_frozen",
+    "completed_at": "2026-07-23",
+    "commit": "469c0f8",
+    "evidence": "docs/product/BATCH_02_COMPLETION_REPORT.md"
   },
+  "current_batch": null,
   "business_milestone": {
     "release": "0.2",
     "name": "Academic Onboarding",
-    "status": "authorized_active",
+    "status": "accepted_frozen",
     "exit_criteria": [
       "Principal or academic coordinator can provide a curriculum source",
       "AI extracts draft structure through existing services",
@@ -57,21 +23,20 @@
       "UI shows Academic Intelligence Ready",
       "Lesson-plan generation cites the newly approved pack",
       "Question-paper generation cites the newly approved pack",
-      "Grounding verification proves both outputs use the same approved CurriculumPack"
+      "Grounding verification proves downstream AI uses the same approved CurriculumPack",
+      "Runtime evidence ledger passes"
     ]
   },
   "next_milestone": {
-    "batch": 2,
-    "title": "Batch 2 — Academic Onboarding",
-    "summary": "Build the curriculum-first onboarding experience that teaches StudyNexs a school's curriculum and culminates in Academic Intelligence Ready.",
+    "batch": 3,
+    "title": "Batch 3 — Not Authorized",
+    "summary": "No active implementation batch. ARM must explicitly authorize the next execution batch.",
     "dependencies_blocking": [],
     "dependencies_satisfied": [
       "Batch 1 accepted",
-      "CurriculumPack foundation",
-      "Document Intelligence foundation",
-      "KG/RAG pipeline",
-      "approval governance",
-      "same-pack grounding evidence"
+      "Batch 2 accepted",
+      "Academic Onboarding runtime proof",
+      "same-pack evidence ledger"
     ],
     "execution_doc": "docs/product/PRODUCT_EXECUTION_PLAN.md"
   },
@@ -80,7 +45,11 @@
       "release": "0.3",
       "batch": 3,
       "title": "Assessment Intelligence",
-      "until": "Batch 2 Academic Onboarding is accepted"
+      "until": "explicit ARM authorization"
+    },
+    {
+      "title": "Production async evaluation worker parity",
+      "until": "operational hardening batch"
     },
     {
       "title": "Full textbook warehousing",
@@ -91,11 +60,13 @@
     {
       "release": "0.3",
       "batch": 3,
-      "title": "Assessment Intelligence"
+      "title": "Assessment Intelligence",
+      "status": "not_authorized"
     },
     {
       "release": "1.0",
-      "title": "Pilot Ready"
+      "title": "Pilot Ready",
+      "status": "future"
     }
   ]
 }

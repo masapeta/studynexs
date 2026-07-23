@@ -21,30 +21,29 @@ If documentation and implementation differ, verify with code, tests, and runtime
 | Field | Value |
 |---|---|
 | Architecture version | 2.7 |
-| Last accepted product batch | **Batch 1 — Curriculum Intelligence** |
-| Release | **0.1 — Accepted / Frozen** |
-| Commit | `63a5584` — `feat(curriculum): complete Batch 1 intelligence closure` |
-| Current authorized batch | **Batch 2 — Academic Onboarding** |
-| Batch 2 status | AUTHORIZED / active |
+| Last accepted product batch | **Batch 2 — Academic Onboarding** |
+| Release | **0.2 — Accepted / Frozen** |
+| Commit | `469c0f8` — `feat(onboarding): complete Batch 2 academic onboarding proof` |
+| Current authorized batch | **None** |
+| Batch 3 status | Not authorized |
 | Branch | `develop` |
 
 ---
 
-## Batch 1 acceptance snapshot
+## Batch 2 acceptance snapshot
 
 | Signal | Status | Evidence |
 |---|---:|---|
-| Completion report | Accepted | [`product/BATCH_01_COMPLETION_REPORT.md`](./product/BATCH_01_COMPLETION_REPORT.md) |
+| Completion report | Accepted | [`product/BATCH_02_COMPLETION_REPORT.md`](./product/BATCH_02_COMPLETION_REPORT.md) |
 | API readiness | PASS | DB + Redis healthy |
 | Alembic | PASS | `a1b2c3d4e5f7 (head)` |
 | API import | PASS | `import app.main` |
-| Focused API tests | PASS | 39 passed |
+| Focused API tests | PASS | 15 onboarding + 17 tutor/parent/content-review tests |
 | Web production build | PASS | `npm run build` |
-| Browser onboarding review | PASS | tenant reference + single pack-detail GET + 0 disallowed console errors |
-| Browser smoke | PASS | 20 checks + 0 disallowed console errors |
-| Live curriculum-intelligence rehearsal | PASS | teacher draft → principal approval → KG/RAG → cited lesson plan + QP |
-| Supporting-material document ingest | PASS | indexed 1 chunk, then self-cleaned |
-| Learning loop smoke | PASS | 20 WORKS, 2 PARTIAL, 0 FAIL |
+| Runtime proof | PASS | Uploaded source → approved pack → KG/RAG → downstream AI loop |
+| Evidence ledger | PASS | Tenant, pack, vector count, grounding, citation/source evidence |
+| Answer-sheet vision path | PASS | Uploaded PNG + `answer_sheet_vision` LLM call |
+| Same-pack downstream proof | PASS | Lesson plan, materials, QP, assessment, tutor, student, parent |
 
 ---
 
@@ -52,12 +51,12 @@ If documentation and implementation differ, verify with code, tests, and runtime
 
 | Field | Value |
 |---|---|
-| Focus | **Batch 2 — Academic Onboarding** |
-| Goal | Curriculum-first onboarding that culminates in **Academic Intelligence Ready** |
-| Must reuse | `CurriculumPack`, Document Intelligence, extraction service, approval workflow, KG, RAG |
-| Must not build | Full textbook warehousing, parallel ingestion service, second curriculum engine, Batch 3 assessment automation |
-| Blocked by | None — implementation authorized by ARM |
-| Detail | [`product/CURRENT_BATCH.md`](./product/CURRENT_BATCH.md) |
+| Focus | **No active implementation batch** |
+| Latest milestone | **Release 0.2 — Batch 2 Academic Onboarding** |
+| Status | Accepted / Frozen |
+| Next batch | Not authorized |
+| Blocked by | ARM must explicitly authorize the next execution batch |
+| Detail | [`product/BATCH_02_COMPLETION_REPORT.md`](./product/BATCH_02_COMPLETION_REPORT.md) |
 
 ---
 
@@ -66,15 +65,15 @@ If documentation and implementation differ, verify with code, tests, and runtime
 | Capability | Status | Verified |
 |---|---|---|
 | Curriculum Intelligence | Accepted / Frozen | Batch 1 report + runtime evidence |
-| Academic Onboarding | Authorized | Implementation active under Batch 2 |
+| Academic Onboarding | Accepted / Frozen | Batch 2 report + runtime evidence ledger |
 | RAG | Complete | Tests + live pack citation evidence |
-| Knowledge Graph | Complete | KG ready in live rehearsal |
-| Document Intelligence | Complete for supporting-material ingest | Live ingest smoke |
-| Teacher Copilot | Complete for grounded lesson-plan evidence | Live rehearsal |
-| Assessment Intelligence | Existing foundation | Batch 3 deferred |
-| Student Copilot / Tutor | Complete for concept-card-grounded reference loop | Learning-loop smoke |
-| Parent Copilot | Complete for same-topic reference loop | Learning-loop smoke |
-| Authorization / tenant isolation | Complete for Batch 1 scope | Tests + browser tenant tracker |
+| Knowledge Graph | Complete | KG ready in runtime proof |
+| Document Intelligence | Complete for onboarding/source ingest and supporting-material ingest | Runtime proof + ingest smoke |
+| Teacher Copilot | Complete for grounded lesson-plan evidence | Runtime proof |
+| Assessment Intelligence | Existing foundation; deeper Batch 3 work deferred | Runtime proof covered approved QP → evaluation → marks/mastery |
+| Student Copilot / Tutor | Complete for concept-card-grounded reference loop | Runtime proof |
+| Parent Copilot | Complete for same-pack parent briefing/ask loop | Runtime proof |
+| Authorization / tenant isolation | Complete for Batch 2 scope | Tests + same-pack tenant evidence |
 
 ---
 

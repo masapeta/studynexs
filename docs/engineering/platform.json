@@ -4,31 +4,30 @@
   "updated_at": "2026-07-23",
   "last_engineering_batch": 29,
   "last_product_batch": {
-    "number": 1,
-    "title": "Curriculum Intelligence",
-    "release": "0.1",
-    "status": "accepted_frozen",
-    "commit": "63a5584",
-    "evidence": "docs/product/BATCH_01_COMPLETION_REPORT.md"
-  },
-  "current_product_batch": {
     "number": 2,
     "title": "Academic Onboarding",
     "release": "0.2",
-    "status": "authorized_active",
-    "authorized_by": "ARM",
-    "authorized_at": "2026-07-23"
+    "status": "accepted_frozen",
+    "commit": "469c0f8",
+    "evidence": "docs/product/BATCH_02_COMPLETION_REPORT.md"
+  },
+  "current_product_batch": null,
+  "next_product_batch": {
+    "number": 3,
+    "title": "Assessment Intelligence",
+    "release": "0.3",
+    "status": "not_authorized"
   },
   "branch": "develop",
-  "last_commit": "63a5584",
+  "last_commit": "469c0f8",
   "tests": {
-    "suite": "Batch 1 focused + runtime/browser validation",
-    "passed": 39,
+    "suite": "Batch 2 focused + runtime validation",
+    "passed": 32,
     "skipped": 0,
     "failed": 0,
     "errors": 0,
     "last_run": "2026-07-23",
-    "last_run_evidence": "Focused pytest 39 passed; web build passed; browser smoke 20 checks; live curriculum-intelligence, document-ingest, and learning-loop smokes passed",
+    "last_run_evidence": "Academic onboarding pytest 15 passed; tutor/parent/content-review pytest 17 passed; web build passed; runtime proof and evidence ledger passed",
     "verified": true
   },
   "providers": {
@@ -59,7 +58,7 @@
     { "capability": "ConceptCard (tutor grounding unit)", "status": "complete", "verified": "tests_passing", "batch": "18", "module": "CURRICULUM_INTELLIGENCE" },
     { "capability": "Content Review Queue", "status": "complete", "verified": "tests_passing", "batch": "20", "module": "CURRICULUM_INTELLIGENCE" },
     { "capability": "Curriculum management UI", "status": "complete", "verified": "build_passing", "batch": "21", "module": "CURRICULUM_INTELLIGENCE" },
-    { "capability": "Text-based curriculum draft onboarding core", "status": "complete", "verified": "tests_passing", "batch": "Stage 2A", "module": "CURRICULUM_INTELLIGENCE" },
+    { "capability": "Academic Onboarding runtime proof", "status": "accepted_frozen", "verified": "runtime_evidence_ledger", "batch": "2", "module": "CURRICULUM_INTELLIGENCE" },
     { "capability": "Student → weak Concept graph links", "status": "complete", "verified": "tests_passing", "batch": "22", "module": "KNOWLEDGE_GRAPH" },
     { "capability": "Graph queries for copilots", "status": "complete", "verified": "tests_passing", "batch": "23", "module": "KNOWLEDGE_GRAPH" },
     { "capability": "Student Copilot", "status": "complete", "verified": "tests_passing", "batch": "25-26", "module": "STUDENT_COPILOT" },

@@ -4,7 +4,7 @@
 > **Constitutional priority:** [`PRODUCT_EXECUTION_CONSTITUTION.md`](./PRODUCT_EXECUTION_CONSTITUTION.md)
 
 **Last updated:** 2026-07-23
-**Current governance state:** Batch 1 accepted and frozen; Batch 2 authorized, implementation active.
+**Current governance state:** Batch 1 and Batch 2 accepted and frozen; no implementation batch is currently authorized.
 
 ---
 
@@ -13,11 +13,11 @@
 | Release | Batch | Capability | Status | Evidence |
 |---|---:|---|---|---|
 | **Release 0.1** | **Batch 1** | Curriculum Intelligence | **Accepted / Frozen** | [`BATCH_01_COMPLETION_REPORT.md`](./BATCH_01_COMPLETION_REPORT.md) |
-| **Release 0.2** | **Batch 2** | Academic Onboarding | **AUTHORIZED** | [`CURRENT_BATCH.md`](./CURRENT_BATCH.md) |
+| **Release 0.2** | **Batch 2** | Academic Onboarding | **Accepted / Frozen** | [`BATCH_02_COMPLETION_REPORT.md`](./BATCH_02_COMPLETION_REPORT.md) |
 | **Release 0.3** | Batch 3 | Assessment Intelligence | Deferred | Not authorized |
 | **Release 1.0** | Pilot Ready | Principal-demo-to-pilot readiness | Future | Not authorized |
 
-Batch 1 is immutable except for production defects, security fixes, or critical regressions.
+Batch 1 and Batch 2 are immutable except for production defects, security fixes, or critical regressions.
 
 ---
 
@@ -27,14 +27,14 @@ Only one batch may have status **AUTHORIZED** at any time.
 
 | Field | Value |
 |---|---|
-| **Release** | 0.2 |
-| **Batch** | 2 |
-| **Title** | Academic Onboarding |
-| **Status** | **AUTHORIZED** |
-| **Authorized by** | ARM |
-| **Authorization date** | 2026-07-23 |
-| **Previous batch** | Release 0.1 / Batch 1 — Curriculum Intelligence (**Frozen**) |
-| **Next batch** | Not Authorized |
+| **Release** | None |
+| **Batch** | None |
+| **Title** | No current authorized batch |
+| **Status** | **NO ACTIVE BATCH** |
+| **Authorized by** | ARM approval required before Batch 3 |
+| **Authorization date** | Not applicable |
+| **Previous batch** | Release 0.2 / Batch 2 — Academic Onboarding (**Frozen**) |
+| **Next batch** | Release 0.3 / Batch 3 — Not Authorized |
 
 All other batches must be one of: Planned, Frozen, Deferred, or Completed.
 
@@ -42,15 +42,15 @@ All other batches must be one of: Planned, Frozen, Deferred, or Completed.
 
 ## Current phase
 
-**Batch 2 — Academic Onboarding**
+**No active implementation batch**
 
 ### Status
 
-**AUTHORIZED. Implement Batch 2 only within the Academic Onboarding scope below.**
+**Release 0.2 / Batch 2 — Academic Onboarding is Accepted / Frozen. Batch 3 is not authorized.**
 
 ### Objective
 
-Build the curriculum-first Academic Onboarding experience that teaches StudyNexs a school's curriculum and culminates in **Academic Intelligence Ready**.
+Batch 2 delivered the curriculum-first Academic Onboarding experience that teaches StudyNexs a school's curriculum and culminates in **Academic Intelligence Ready**, then proved downstream AI grounding through the same approved `CurriculumPack`.
 
 ### Product story
 
@@ -127,17 +127,17 @@ A principal or academic coordinator can start with a real curriculum source and 
 
 ### Batch 2 acceptance criteria
 
-- [ ] Academic Onboarding has a clear first-run entry point for a paid school.
-- [ ] Supported curriculum sources are named honestly in the UI.
-- [ ] Uploaded/pasted curriculum source creates a draft `CurriculumPack` through the existing extraction service.
-- [ ] Teacher draft ownership and class-incharge/admin approval remain enforced.
-- [ ] Approval triggers the existing KG + RAG pipeline.
-- [ ] **Academic Intelligence Ready** is shown only after approval, KG success, RAG success, and retrievable topics/vectors.
-- [ ] Lesson-plan generation cites the newly onboarded approved pack.
-- [ ] Question-paper generation cites the newly onboarded approved pack.
-- [ ] Grounding verification proves both outputs use the same approved `CurriculumPack`.
-- [ ] Tenant isolation is verified for all Batch 2 routes.
-- [ ] Runtime evidence is recorded in a Batch 2 completion report.
+- [x] Academic Onboarding has a clear first-run entry point for a paid school.
+- [x] Supported curriculum sources are named honestly in the UI.
+- [x] Uploaded/pasted curriculum source creates a draft `CurriculumPack` through the existing extraction service.
+- [x] Teacher draft ownership and class-incharge/admin approval remain enforced.
+- [x] Approval triggers the existing KG + RAG pipeline.
+- [x] **Academic Intelligence Ready** is shown only after approval, KG success, RAG success, and retrievable topics/vectors.
+- [x] Lesson-plan generation cites the newly onboarded approved pack.
+- [x] Question-paper generation cites the newly onboarded approved pack.
+- [x] Grounding verification proves both outputs use the same approved `CurriculumPack`.
+- [x] Tenant isolation is verified for all Batch 2 routes.
+- [x] Runtime evidence is recorded in a Batch 2 completion report.
 
 ### Recommended implementation slices
 
@@ -151,7 +151,43 @@ A principal or academic coordinator can start with a real curriculum source and 
 
 ---
 
-## Accepted batch
+## Accepted batches
+
+**Batch 2 — Academic Onboarding**
+
+### Status
+
+**Accepted / Frozen**
+
+### Delivered capability
+
+StudyNexs now has a curriculum-first onboarding loop:
+
+- uploaded curriculum source intake;
+- AI extraction into draft `CurriculumPack`;
+- teacher/HOD human review;
+- class-incharge/admin approval governance;
+- KG + RAG readiness;
+- deterministic same-pack evidence ledger;
+- downstream proof across lesson plans, learning materials, question papers, assessment evaluation, mastery, student tutor/copilot, and parent copilot.
+
+### Acceptance evidence
+
+See [`BATCH_02_COMPLETION_REPORT.md`](./BATCH_02_COMPLETION_REPORT.md).
+
+### Commit
+
+`469c0f8` — `feat(onboarding): complete Batch 2 academic onboarding proof`
+
+### Freeze rule
+
+Do not modify Batch 2 architecture or implementation except for:
+
+- production defects;
+- security fixes;
+- critical regressions.
+
+---
 
 **Batch 1 — Curriculum Intelligence**
 
@@ -197,7 +233,7 @@ Do not modify Batch 1 architecture or implementation except for:
 
 - Full textbook PDF warehousing.
 - Full textbook-to-`CurriculumPack` automation across arbitrary book layouts.
-- Full live answer-sheet OCR/evaluation automation.
+- Production async answer-sheet evaluation worker hardening.
 - Advanced report cards.
 - Rich student practice engine.
 - Public/prospect full learner loop.

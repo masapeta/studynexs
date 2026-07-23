@@ -8,6 +8,26 @@ See [`../README.md`](../README.md) for document precedence.
 
 ---
 
+## 2026-07-23 — Batch 2 Academic Onboarding accepted and frozen
+
+**Decision:** Accept **Release 0.2 / Batch 2 — Academic Onboarding** and freeze its architecture and implementation.
+
+**Reason:** Batch 2 proves that a newly uploaded curriculum source can become a human-approved `CurriculumPack`, reach KG/RAG readiness, and ground downstream lesson plans, learning materials, question papers, assessment evaluation, mastery, Student Tutor/Copilot, and Parent Copilot through the same approved academic memory.
+
+**Acceptance evidence:**
+
+- [`../product/BATCH_02_COMPLETION_REPORT.md`](../product/BATCH_02_COMPLETION_REPORT.md)
+- commit `469c0f8` — `feat(onboarding): complete Batch 2 academic onboarding proof`
+- runtime proof pack `1bdfffc6-933d-4780-9de4-b7d6c92201bb`
+
+**Known operational limitation:** Production async evaluation worker parity remains an operational hardening task. This is not a Batch 2 product blocker because the existing evaluation service behavior is validated through runtime proof.
+
+**Freeze rule:** Do not modify Batch 2 except for production defects, security fixes, or critical regressions.
+
+**Status:** Active
+
+---
+
 ## 2026-07-23 — Batch 1 Curriculum Intelligence accepted and frozen
 
 **Decision:** Accept **Batch 1 — Curriculum Intelligence** as Release 0.1 and freeze its architecture and implementation.
@@ -51,7 +71,7 @@ See [`../README.md`](../README.md) for document precedence.
 
 **Operational rule:** During Batch 2, do not create intermediate planning/governance documents. Update governance only when Batch 2 is complete or when ARM explicitly requests it.
 
-**Status:** Active
+**Status:** Superseded by Batch 2 acceptance entry above.
 
 **References:** [`../product/CURRENT_BATCH.md`](../product/CURRENT_BATCH.md) · [`../product/PRODUCT_EXECUTION_PLAN.md`](../product/PRODUCT_EXECUTION_PLAN.md)
 

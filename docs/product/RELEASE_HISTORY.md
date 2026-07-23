@@ -1,4 +1,4 @@
-# StudyNexs Release History
+﻿# StudyNexs Release History
 
 > Product execution releases. Each release maps to an accepted batch or future milestone.
 
@@ -11,17 +11,17 @@
 | Release | Batch | Name | Status | Evidence |
 |---|---:|---|---|---|
 | **0.1** | **1** | Curriculum Intelligence | **Accepted / Frozen** | [`BATCH_01_COMPLETION_REPORT.md`](./BATCH_01_COMPLETION_REPORT.md) |
-| **0.2** | **2** | Academic Onboarding | **AUTHORIZED** | [`CURRENT_BATCH.md`](./CURRENT_BATCH.md) |
+| **0.2** | **2** | Academic Onboarding | **Accepted / Frozen** | [`BATCH_02_COMPLETION_REPORT.md`](./BATCH_02_COMPLETION_REPORT.md) |
 | **0.3** | 3 | Assessment Intelligence | Deferred | Not authorized |
 | **1.0** | Pilot Ready | Principal-demo-to-pilot readiness | Future | Not authorized |
 
 ---
 
-## Release 0.1 — Batch 1 Curriculum Intelligence
+## Release 0.1 â€” Batch 1 Curriculum Intelligence
 
 **Status:** Accepted / Frozen
 **Accepted date:** 2026-07-23
-**Commit:** `63a5584` — `feat(curriculum): complete Batch 1 intelligence closure`
+**Commit:** `63a5584` â€” `feat(curriculum): complete Batch 1 intelligence closure`
 
 ### Delivered
 
@@ -42,55 +42,49 @@ Do not modify Release 0.1 / Batch 1 except for:
 
 ---
 
-## Release 0.2 — Batch 2 Academic Onboarding
+## Release 0.2 â€” Batch 2 Academic Onboarding
 
-**Status:** AUTHORIZED, implementation active.
+**Status:** Accepted / Frozen
+**Accepted date:** 2026-07-23
+**Commit:** `469c0f8` â€” `feat(onboarding): complete Batch 2 academic onboarding proof`
 
-### Goal
+### Delivered
 
-Deliver the curriculum-first onboarding experience that teaches StudyNexs a school's curriculum and ends in **Academic Intelligence Ready**.
+- Uploaded curriculum source intake.
+- AI extraction into draft `CurriculumPack`.
+- Teacher/HOD human review and approval governance.
+- KG + RAG readiness gate.
+- Grounded lesson plan and learning materials from the newly approved pack.
+- Grounded question paper from the newly approved pack.
+- Answer-sheet upload / vision path exercised.
+- AI evaluation suggestions, teacher approval, marks, mastery, student tutor/copilot, and parent copilot verified through the same approved pack.
+- Deterministic same-pack evidence ledger.
 
-Completion must prove the newly approved pack is used downstream:
+### Evidence
 
-```text
-Academic Intelligence Ready
-↓
-Generate Lesson Plan
-↓
-Generate Question Paper
-↓
-Grounding Verified
-```
+- [`BATCH_02_COMPLETION_REPORT.md`](./BATCH_02_COMPLETION_REPORT.md)
+- Runtime proof pack: `1bdfffc6-933d-4780-9de4-b7d6c92201bb`
+- Implementation commit: `469c0f8`
 
-### Required reuse
+### Freeze rule
 
-- `CurriculumPack`
-- Document Intelligence
-- existing extraction service
-- approval workflow
-- KG
-- RAG
-- downstream AI grounding
+Do not modify Release 0.2 / Batch 2 except for:
 
-### Explicit non-goals
-
-- full textbook warehousing;
-- second curriculum engine;
-- parallel ingestion service;
-- complete OCR automation;
-- Batch 3 assessment automation.
+- production defects;
+- security fixes;
+- critical regressions.
 
 ---
 
-## Release 0.3 — Assessment Intelligence
+## Release 0.3 â€” Assessment Intelligence
 
-**Status:** Deferred.
+**Status:** Deferred / Not authorized.
 
-Assessment generation, answer-sheet evaluation, marks, gradebook, mastery, report-card, and remediation loops should be planned only after Release 0.2 is accepted.
+Batch 3 is not authorized. It should be planned only after ARM explicitly selects and authorizes the next execution batch.
 
 ---
 
-## Release 1.0 — Pilot Ready
+## Release 1.0 â€” Pilot Ready
 
 **Status:** Future.
 

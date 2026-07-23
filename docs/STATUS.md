@@ -1,4 +1,4 @@
-# StudyNexs — Current Status
+﻿# StudyNexs â€” Current Status
 
 > **Owner:** Avinash Reddy Masapeta (ARM)
 > **As of:** 2026-07-23
@@ -8,20 +8,20 @@
 
 ## Executive status
 
-**Batch 1 — Curriculum Intelligence is accepted and frozen.**
+**Release 0.2 / Batch 2 â€” Academic Onboarding is accepted and frozen.**
 
-The platform now has the required curriculum-intelligence foundation:
+The platform now has the required academic-onboarding foundation:
 
-- curriculum ownership;
-- approval governance;
+- uploaded curriculum source intake;
+- AI extraction into draft `CurriculumPack`;
+- human review and approval governance;
 - tenant-scoped `CurriculumPack`;
-- KG/RAG grounding;
-- same-pack grounding across multiple AI capabilities;
-- teacher-owned workflow;
-- runtime validation;
-- documented limitations.
+- KG/RAG readiness;
+- Academic Intelligence Ready;
+- deterministic same-pack evidence ledger;
+- runtime proof across lesson plans, learning materials, question papers, assessment evaluation, mastery, student tutor/copilot, and parent copilot.
 
-Batch 1 should not be modified except for production defects, security fixes, or critical regressions.
+Batch 1 and Batch 2 should not be modified except for production defects, security fixes, or critical regressions.
 
 ---
 
@@ -29,62 +29,56 @@ Batch 1 should not be modified except for production defects, security fixes, or
 
 | Area | Status |
 |---|---|
-| Current release | **Release 0.1 — Batch 1 Curriculum Intelligence** |
+| Current release | **Release 0.2 â€” Batch 2 Academic Onboarding** |
 | Release status | **Accepted / Frozen** |
-| Latest accepted commit | `63a5584` — `feat(curriculum): complete Batch 1 intelligence closure` |
-| Completion report | [`product/BATCH_01_COMPLETION_REPORT.md`](./product/BATCH_01_COMPLETION_REPORT.md) |
-| Current authorized release | **Release 0.2 — Batch 2 Academic Onboarding** |
-| Batch 2 implementation | **Authorized / active** |
+| Latest accepted commit | `469c0f8` â€” `feat(onboarding): complete Batch 2 academic onboarding proof` |
+| Completion report | [`product/BATCH_02_COMPLETION_REPORT.md`](./product/BATCH_02_COMPLETION_REPORT.md) |
+| Previous release | **Release 0.1 â€” Batch 1 Curriculum Intelligence** |
+| Previous release status | **Accepted / Frozen** |
+| Current authorized release | **None** |
+| Batch 3 implementation | **Not authorized** |
 
 ---
 
-## Batch 1 validation evidence
+## Batch 2 validation evidence
 
 | Gate | Result |
 |---|---:|
-| API readiness | PASS — DB + Redis healthy |
-| Alembic current/head | PASS — `a1b2c3d4e5f7 (head)` |
+| API readiness | PASS â€” DB + Redis healthy |
+| Alembic current/head | PASS â€” `a1b2c3d4e5f7 (head)` |
 | API import | PASS |
-| Focused API tests | PASS — 39 passed |
+| Academic Onboarding regression | PASS â€” 15 passed |
+| Tutor / Student Copilot / Parent Copilot / Content Review regression | PASS â€” 17 passed |
 | Web production build + TypeScript | PASS |
-| Browser onboarding review E2E | PASS |
-| Browser smoke E2E | PASS — 20 checks |
-| Live curriculum-intelligence rehearsal | PASS |
-| Supporting-material document ingest | PASS |
-| Reference learning loop | PASS — 20 WORKS, 2 PARTIAL, 0 FAIL |
+| Runtime proof script lint + compile | PASS |
+| Full runtime proof | PASS |
+| Evidence ledger | PASS â€” every downstream capability proved tenant `reference`, same pack, vectors, grounding, and source/citation evidence |
+
+Runtime proof artifacts:
+
+| Artifact | ID |
+|---|---|
+| Curriculum source file | `42ebd493-756e-42db-a885-a350a55e9f58` |
+| Approved CurriculumPack | `1bdfffc6-933d-4780-9de4-b7d6c92201bb` |
+| Question paper | `b2c8e0bb-0a19-408d-9de1-f51640c29ad1` |
+| Exam | `71c0fb96-ecc9-4e77-bb78-ca44ce059bb1` |
+| Answer-sheet file | `a1c6a024-a148-41ca-bb1c-f3e03d566cad` |
+| Evaluation | `17168b3b-9f1e-4291-b18a-03a2504ed752` |
 
 ---
 
-## Current authorized batch
+## Current authorization state
 
-**Batch 2 — Academic Onboarding**
+No implementation batch is currently authorized.
 
-Objective: deliver the curriculum-first onboarding experience that teaches StudyNexs a school's curriculum and culminates in **Academic Intelligence Ready**.
-
-Batch 2 must reuse:
-
-- `CurriculumPack`;
-- Document Intelligence;
-- existing extraction service;
-- approval workflow;
-- KG;
-- RAG;
-- existing downstream AI grounding.
-
-Batch 2 must not implement:
-
-- a second curriculum engine;
-- parallel ingestion services;
-- full textbook warehousing;
-- complete OCR automation;
-- Batch 3 assessment automation.
-
-Implementation is authorized by ARM as of 2026-07-23.
+Batch 3 must not begin until ARM explicitly authorizes the next execution batch.
 
 ---
 
 ## Known repository state
 
-The Batch 1 commit is isolated. The working tree may still contain unrelated uncommitted dashboard/briefing/status/showcase artifacts from earlier sessions; those are not part of Batch 1 acceptance.
+The Batch 2 implementation commit is isolated. The working tree may still contain unrelated uncommitted dashboard/briefing/status/showcase artifacts from earlier sessions; those are not part of Release 0.2 acceptance.
 
-Global repo lint remains a known technical-debt area. Batch 1 validation used focused tests, web build, browser smokes, runtime smokes, and scoped fatal lint checks.
+Global repo lint remains a known technical-debt area. Batch 2 validation used focused tests, web build, runtime proof, evidence ledger, and scoped lint/compile checks.
+
+Known operational limitation: the local runtime proof queues answer-sheet evaluation, waits, and executes the existing evaluation service inline if the queued worker does not finish within the script timeout. Product behavior is validated; production async worker parity should be handled as a separate operational hardening task.
