@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import re
 import uuid
-from datetime import date, timedelta
+from datetime import date
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -108,19 +108,15 @@ class DashboardService:
         expenses_month = await SchoolOpsService(self.db).expenses_month_total(school_id)
 
         today = date.today()
-        att = await self.db.execute(
-            select(
-                func.count().filter(Attendance.status == AttendanceStatus.PRESENT),
-                func.count(),
-            ).where(
-                Attendance.school_id == school_id,
-                Attendance.date == today,
-            )
+        att_status, att_pct, marked_today, enrolled = await self._school_attendance_state(
+            school_id, today
         )
-        present, total = att.one()
-        att_pct = round((present / total) * 100, 1) if total else 0.0
 
-        class_perf = await self._class_attendance_bars(school_id, limit=6)
+        class_perf: list[dict] = []
+        if att_status != "not_recorded":
+            class_perf = await self._class_attendance_bars(
+                school_id, limit=6, chart_date=today
+            )
 
         pending_qp = await self.db.scalar(
             select(func.count())
@@ -133,12 +129,15 @@ class DashboardService:
 
         return DashboardSummaryOut(
             persona="admin",
-            subtitle="School-wide overview for today.",
+            subtitle=self._admin_subtitle(att_status),
             total_students=students or 0,
             total_teachers=teachers or 0,
             total_classes=classes or 0,
             pending_fees=float(fee_stats.get("pending_amount") or 0),
+            school_attendance_status=att_status,
             school_attendance_percent=att_pct,
+            attendance_marked_today=marked_today,
+            attendance_enrolled=enrolled,
             admissions_pipeline=pipeline_count or 0,
             expenses_this_month=expenses_month,
             class_performance=class_perf,
@@ -151,29 +150,51 @@ class DashboardService:
             notices=await self._notices_brief(school_id, scope),
         )
 
-    async def _resolve_attendance_chart_date(self, school_id: uuid.UUID) -> date:
-        """Prefer today; fall back to the latest day with attendance (demo-safe)."""
-        today = date.today()
-        today_rows = await self.db.scalar(
-            select(func.count())
-            .select_from(Attendance)
-            .where(Attendance.school_id == school_id, Attendance.date == today)
+    async def _school_attendance_state(
+        self, school_id: uuid.UUID, on_date: date
+    ) -> tuple[str, float | None, int, int]:
+        """Truthful attendance state for today — never treat zero records as 0% failure."""
+        enrolled = int(
+            await self.db.scalar(
+                select(func.count()).select_from(Student).where(Student.school_id == school_id)
+            )
+            or 0
         )
-        if today_rows:
-            return today
-        latest = await self.db.scalar(
-            select(func.max(Attendance.date)).where(
+        row = await self.db.execute(
+            select(
+                func.count().filter(Attendance.status == AttendanceStatus.PRESENT),
+                func.count(func.distinct(Attendance.student_id)),
+            ).where(
                 Attendance.school_id == school_id,
-                Attendance.date >= today - timedelta(days=14),
+                Attendance.date == on_date,
             )
         )
-        return latest or today
+        present, marked = row.one()
+        present_i = int(present or 0)
+        marked_i = int(marked or 0)
+
+        if marked_i == 0:
+            return "not_recorded", None, 0, enrolled
+
+        pct = round((present_i / marked_i) * 100, 1)
+        if enrolled > 0 and marked_i < enrolled:
+            return "in_progress", pct, marked_i, enrolled
+        if pct < 90.0:
+            return "attention_needed", pct, marked_i, enrolled
+        return "healthy", pct, marked_i, enrolled
+
+    @staticmethod
+    def _admin_subtitle(att_status: str) -> str:
+        if att_status == "not_recorded":
+            return "Attendance has not been recorded yet today."
+        if att_status == "in_progress":
+            return "Roll call is in progress across the school."
+        return "School-wide overview for today."
 
     async def _class_attendance_bars(
-        self, school_id: uuid.UUID, *, limit: int = 6
+        self, school_id: uuid.UUID, *, limit: int = 6, chart_date: date
     ) -> list[dict]:
-        """Per-class attendance for the principal insights chart."""
-        chart_date = await self._resolve_attendance_chart_date(school_id)
+        """Per-class attendance for the principal insights chart (single date, no fallback)."""
         rows = (
             await self.db.execute(
                 select(

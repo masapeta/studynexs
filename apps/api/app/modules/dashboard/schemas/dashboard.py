@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field
 
 from app.modules.dashboard.schemas.teacher_home import TeacherCommandCenterOut
 
+SchoolAttendanceStatus = Literal["not_recorded", "in_progress", "attention_needed", "healthy"]
+
 
 class QuickActionOut(BaseModel):
     label: str
@@ -52,7 +54,10 @@ class DashboardSummaryOut(BaseModel):
     total_teachers: int | None = None
     total_classes: int | None = None
     pending_fees: float | None = None
+    school_attendance_status: SchoolAttendanceStatus | None = None
     school_attendance_percent: float | None = None
+    attendance_marked_today: int | None = None
+    attendance_enrolled: int | None = None
     admissions_pipeline: int | None = None
     expenses_this_month: float | None = None
     class_performance: list[dict] = Field(default_factory=list)

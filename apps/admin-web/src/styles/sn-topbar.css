@@ -4,7 +4,7 @@
 .sn-app .header.topbar {
   --topbar-glass-bg: rgba(255, 255, 255, 0.16);
   --topbar-glass-bg-hover: rgba(255, 255, 255, 0.26);
-  --topbar-glass-border: rgba(255, 255, 255, 0.42);
+  --topbar-glass-border: rgba(100, 116, 139, 0.28);
   --topbar-glass-specular: inset 0 1px 0 rgba(255, 255, 255, 0.58),
     inset 0 -1px 0 rgba(255, 255, 255, 0.08);
 
@@ -67,6 +67,7 @@
   justify-self: start;
   display: flex;
   align-items: center;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -152,8 +153,14 @@
 }
 
 .sn-app .topbar-context-chip {
-  max-width: 100%;
-  color: var(--text-secondary);
+  max-width: min(100%, 18rem);
+  color: color-mix(in srgb, var(--text-secondary, #475569) 85%, #0f172a 15%);
+}
+
+.sn-app .topbar-date-chip--inline {
+  color: color-mix(in srgb, var(--text-secondary, #475569) 85%, #0f172a 15%);
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 .sn-app .topbar-chip--static {

@@ -220,6 +220,15 @@ class FeeService:
         ).where(StudentFeeRecord.school_id == school_id, StudentFeeRecord.status != FeeStatus.PAID)
         pending_amount = await self.db.scalar(pending_fees_query) or 0.0
 
+        pending_families_query = select(
+            func.count(func.distinct(StudentFeeRecord.student_id))
+        ).where(
+            StudentFeeRecord.school_id == school_id,
+            StudentFeeRecord.status != FeeStatus.PAID,
+            StudentFeeRecord.amount > StudentFeeRecord.paid_amount,
+        )
+        pending_families = int(await self.db.scalar(pending_families_query) or 0)
+
         # This Month
         this_month_query = select(func.sum(FeeReceipt.amount_paid)).where(
             FeeReceipt.school_id == school_id, FeeReceipt.paid_at >= current_month_start
@@ -229,6 +238,7 @@ class FeeService:
         return {
             "total_collected": float(total_collected),
             "pending_amount": float(pending_amount),
+            "pending_families": pending_families,
             "this_month": float(this_month),
         }
 

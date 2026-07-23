@@ -57,7 +57,13 @@ def _load_snapshot() -> dict[str, Any]:
     data["modules"] = modules_file.get("modules", [])
     data["roadmap"] = roadmap
     data["last_completed_batch"] = roadmap.get("last_completed_batch", {}).get("title")
-    data["current_batch"] = roadmap.get("current_batch")
+    current = roadmap.get("current_batch")
+    if isinstance(current, dict):
+        data["current_batch"] = current.get("title") or (
+            f"Batch {current['number']}" if current.get("number") is not None else None
+        )
+    else:
+        data["current_batch"] = current
     data["next_batch"] = roadmap.get("next_milestone", {}).get("title")
     data["next_milestone"] = roadmap.get("next_milestone", {})
     return data

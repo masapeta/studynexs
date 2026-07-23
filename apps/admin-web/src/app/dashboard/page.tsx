@@ -22,7 +22,7 @@ type Summary = BriefingSummary & {
 };
 
 type EventItem = { id: string; title: string; event_date: string };
-type FeeStats = { total_collected?: number; pending_amount?: number };
+type FeeStats = { total_collected?: number; pending_amount?: number; pending_families?: number };
 
 function DashboardSkeleton() {
   return (

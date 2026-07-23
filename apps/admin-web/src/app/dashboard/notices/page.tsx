@@ -23,10 +23,11 @@ const AUDIENCE_MAP: Record<
 function audienceLabel(n: { audience?: string; target_roles?: string[] }) {
   if (n.audience === "internal") return "Staff";
   const roles = n.target_roles || [];
-  if (roles.includes("parent") && roles.includes("student")) return "All";
+  if (roles.includes("parent") && roles.includes("student")) return "Parents & Students";
   if (roles.includes("parent")) return "Parents";
   if (roles.includes("student")) return "Students";
-  return "All";
+  if (n.audience === "external") return "Parents & Students";
+  return "School-wide";
 }
 
 function timeAgo(iso?: string) {

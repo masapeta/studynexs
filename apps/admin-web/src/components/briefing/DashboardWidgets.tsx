@@ -5,6 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import {
   BookOpen,
   CalendarCheck,
+  CalendarDays,
+  CheckSquare,
   Plus,
   UserPlus,
   Wallet,
@@ -215,7 +217,17 @@ export function DashboardWidgets({ userId, isAdmin, layout = "default" }: Props)
       </div>
       <div className="dashboard-events-list">
         {weekEvents.length === 0 ? (
-          <p className="briefing-muted-text">No events scheduled this week.</p>
+          <div className="briefing-exec-empty-state">
+            <CalendarDays size={22} className="briefing-exec-empty-state__icon" aria-hidden />
+            <p className="briefing-exec-empty-state__title">Nothing scheduled this week</p>
+            <span className="briefing-exec-empty-state__hint">
+              Your calendar is clear — add exams, PTMs, or celebrations so staff and parents stay
+              aligned.
+            </span>
+            <Link href="/dashboard/events" className="briefing-exec-empty-state__link">
+              Schedule an event
+            </Link>
+          </div>
         ) : (
           weekEvents.map((e) => {
             const { month, day } = eventBadgeParts(e.event_date);
@@ -246,15 +258,25 @@ export function DashboardWidgets({ userId, isAdmin, layout = "default" }: Props)
         <h3>To-do list</h3>
       </div>
       <div className="dashboard-todo-list">
-        {todos.map((t, i) => (
-          <label key={i} className="dashboard-todo-row">
-            <input type="checkbox" checked={t.done} onChange={() => toggleTodo(i)} />
-            <span className={t.done ? "done" : ""}>{t.text}</span>
-            {t.priority === "high" && !t.done && (
-              <StatusBadge tone="red">Urgent</StatusBadge>
-            )}
-          </label>
-        ))}
+        {todos.length === 0 ? (
+          <div className="briefing-exec-empty-state briefing-exec-empty-state--compact">
+            <CheckSquare size={20} className="briefing-exec-empty-state__icon" aria-hidden />
+            <p className="briefing-exec-empty-state__title">Your list is clear</p>
+            <span className="briefing-exec-empty-state__hint">
+              Add follow-ups from today&apos;s priority queue — tasks stay on this device.
+            </span>
+          </div>
+        ) : (
+          todos.map((t, i) => (
+            <label key={i} className="dashboard-todo-row">
+              <input type="checkbox" checked={t.done} onChange={() => toggleTodo(i)} />
+              <span className={t.done ? "done" : ""}>{t.text}</span>
+              {t.priority === "high" && !t.done && (
+                <StatusBadge tone="red">Urgent</StatusBadge>
+              )}
+            </label>
+          ))
+        )}
       </div>
       <div className="dashboard-todo-add">
         <input

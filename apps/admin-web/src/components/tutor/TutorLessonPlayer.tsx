@@ -48,7 +48,7 @@ export default function TutorLessonPlayer({ lesson }: { lesson: TutorLesson }) {
         setActiveVoiceLabel(data.voice_display || "Neerja");
         if (!enabled) {
           setVoiceError(
-            "Neerja is off on the API process your browser reached. Use API URL http://127.0.0.1:8000 (not localhost) if Docker/WSL also uses port 8000, then restart uvicorn with edge-tts in the venv."
+            "Teacher voice is temporarily unavailable. You can still read the lesson steps below."
           );
         }
       })
@@ -56,7 +56,7 @@ export default function TutorLessonPlayer({ lesson }: { lesson: TutorLesson }) {
         cloudEnabledRef.current = false;
         setCloudEnabled(false);
         setVoiceError(
-          "Cannot reach the API for Neerja voice. Start uvicorn on 127.0.0.1:8000 with edge-tts in the venv."
+          "Teacher voice is temporarily unavailable. You can still read the lesson steps below."
         );
       })
       .finally(() => setTtsStatusLoaded(true));
@@ -119,7 +119,7 @@ export default function TutorLessonPlayer({ lesson }: { lesson: TutorLesson }) {
         } catch {
           if (attempt === 1) {
             setVoiceError(
-              "Neerja cloud voice failed. Confirm edge-tts is installed in the API venv and restart the server."
+              "Teacher voice is temporarily unavailable. You can still read the lesson steps below."
             );
           }
         }
@@ -161,8 +161,8 @@ export default function TutorLessonPlayer({ lesson }: { lesson: TutorLesson }) {
   if (!step) return null;
 
   const voiceHint = cloudEnabled
-    ? `${activeVoiceLabel} · Microsoft Neural (${cloudBackendRef.current}) · English (India)`
-    : "Neerja voice unavailable — confirm API at 127.0.0.1:8000 (not localhost) with edge-tts in the venv.";
+    ? `${activeVoiceLabel} · English (India) teacher voice`
+    : "Teacher voice is off — you can still read the lesson steps below.";
 
   return (
     <div className="tutor-player">

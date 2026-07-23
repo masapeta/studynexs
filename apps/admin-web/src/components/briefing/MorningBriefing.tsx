@@ -6,10 +6,16 @@ import { StatusBadge } from "./StatusBadge";
 import { DashboardWidgets } from "./DashboardWidgets";
 import { DashboardAnalytics } from "./DashboardAnalytics";
 import { SchoolDayPanel } from "./SchoolDayPanel";
-import { inr } from "@/lib/format";
+import { inr, noticeAudienceLabel } from "@/lib/format";
 import { FINANCE, STUDENTS, TEACHING } from "@/lib/dashboard-routes";
 
 export type { TimetablePeriod } from "./SchoolDayPanel";
+
+export type SchoolAttendanceStatus =
+  | "not_recorded"
+  | "in_progress"
+  | "attention_needed"
+  | "healthy";
 
 export type BriefingSummary = {
   persona: "admin" | "class_incharge" | "teacher";
@@ -19,7 +25,10 @@ export type BriefingSummary = {
   total_classes?: number | null;
   pending_fees?: number | null;
   pending_qp_approvals?: number | null;
+  school_attendance_status?: SchoolAttendanceStatus | null;
   school_attendance_percent?: number | null;
+  attendance_marked_today?: number | null;
+  attendance_enrolled?: number | null;
   incharge_classes?: {
     class_id: string;
     class_label: string;
@@ -48,6 +57,7 @@ export type BriefingSummary = {
 export type FeeStats = {
   total_collected?: number;
   pending_amount?: number;
+  pending_families?: number;
 };
 
 type Props = {
@@ -70,6 +80,7 @@ type PriorityAlert = {
   href: string;
   kicker: string;
   body: string;
+  action: string;
   tone: "coral" | "brass" | "neutral";
 };
 
@@ -109,7 +120,11 @@ export function MorningBriefing({
 }: Props) {
   const first = userName.split(" ")[0] || "there";
   const isAdmin = summary.persona === "admin";
-  const att = summary.school_attendance_percent ?? 0;
+  const attStatus = summary.school_attendance_status ?? "not_recorded";
+  const att =
+    summary.school_attendance_percent != null ? summary.school_attendance_percent : null;
+  const markedToday = summary.attendance_marked_today ?? 0;
+  const enrolledToday = summary.attendance_enrolled ?? summary.total_students ?? 0;
   const pendingFees = summary.pending_fees ?? feeStats?.pending_amount ?? 0;
   const collected = feeStats?.total_collected ?? 0;
   const pipeline = summary.admissions_pipeline ?? 0;
@@ -129,12 +144,35 @@ export function MorningBriefing({
 
   const adminKpis: KpiItem[] = [
     { label: "Students", value: summary.total_students ?? 0 },
-    {
-      label: "Present today",
-      value: `${att}%`,
-      hint: att < 90 ? "Below target" : undefined,
-      hintWarn: att < 90,
-    },
+    (() => {
+      if (attStatus === "not_recorded") {
+        return {
+          label: "Present today",
+          value: "—",
+          hint: "Not recorded yet",
+        };
+      }
+      if (attStatus === "in_progress") {
+        return {
+          label: "Present today",
+          value: att != null ? `${att}%` : "—",
+          hint: `Roll in progress · ${markedToday}/${enrolledToday} marked`,
+        };
+      }
+      if (attStatus === "attention_needed") {
+        return {
+          label: "Present today",
+          value: att != null ? `${att}%` : "—",
+          hint: "Below target",
+          hintWarn: true,
+        };
+      }
+      return {
+        label: "Present today",
+        value: att != null ? `${att}%` : "—",
+        hint: "On track",
+      };
+    })(),
     {
       label: "Fees collected",
       value: inr(collected),
@@ -152,21 +190,47 @@ export function MorningBriefing({
 
   const priorityAlerts: PriorityAlert[] = [];
 
-  if (isAdmin && att < 90) {
+  if (isAdmin && attStatus === "attention_needed" && att != null) {
     priorityAlerts.push({
       priority: 1,
       href: "/dashboard/attendance",
       kicker: "Attendance below 90%",
       body: `${att}% present school-wide today`,
+      action: "Review attendance",
       tone: "coral",
     });
   }
+  if (isAdmin && attStatus === "not_recorded") {
+    priorityAlerts.push({
+      priority: 3,
+      href: "/dashboard/attendance",
+      kicker: "Attendance not recorded",
+      body: "Today’s rolls have not been marked yet",
+      action: "Mark attendance",
+      tone: "neutral",
+    });
+  }
   if (pendingFees > 0) {
+    const familyHint =
+      feeStats?.pending_families && feeStats.pending_families > 0
+        ? ` across ${feeStats.pending_families} famil${feeStats.pending_families === 1 ? "y" : "ies"}`
+        : "";
     priorityAlerts.push({
       priority: 2,
       href: FINANCE.fees,
       kicker: "Fees outstanding",
-      body: `${inr(pendingFees)} pending collection`,
+      body: `${inr(pendingFees)} pending${familyHint}`,
+      action: "Open fee follow-up",
+      tone: "brass",
+    });
+  }
+  if (qpPending > 0) {
+    priorityAlerts.push({
+      priority: 2,
+      href: TEACHING.aiPapers,
+      kicker: `${qpPending} paper${qpPending === 1 ? "" : "s"} awaiting approval`,
+      body: "Teachers are waiting on your review before exams can proceed",
+      action: "Approve papers",
       tone: "brass",
     });
   }
@@ -175,17 +239,9 @@ export function MorningBriefing({
       priority: 3,
       href: STUDENTS.admissions,
       kicker: "Admissions pipeline",
-      body: `${pipeline} candidates in progress`,
+      body: `${pipeline} candidate${pipeline === 1 ? "" : "s"} in progress`,
+      action: "Review admissions",
       tone: "neutral",
-    });
-  }
-  if (qpPending > 0) {
-    priorityAlerts.push({
-      priority: 2,
-      href: TEACHING.aiPapers,
-      kicker: `${qpPending} papers awaiting approval`,
-      body: "Review AI question papers from your teachers",
-      tone: "brass",
     });
   }
   if (!isAdmin && lowAttClasses.length > 0) {
@@ -194,6 +250,7 @@ export function MorningBriefing({
       href: "/dashboard/attendance",
       kicker: "Low attendance in class",
       body: lowAttClasses.map((c) => c.class_label).join(", "),
+      action: "Review attendance",
       tone: "coral",
     });
   }
@@ -201,13 +258,35 @@ export function MorningBriefing({
   priorityAlerts.sort((a, b) => a.priority - b.priority);
   const topAlerts = priorityAlerts.slice(0, 4);
   const allClear =
-    isAdmin && priorityAlerts.length === 0 && att >= 90 && pendingFees === 0 && qpPending === 0;
+    isAdmin &&
+    priorityAlerts.length === 0 &&
+    attStatus === "healthy" &&
+    pendingFees === 0 &&
+    qpPending === 0;
+
+  const storyLine = isAdmin
+    ? (() => {
+        if (allClear) {
+          return `${att}% present school-wide · operations look healthy today`;
+        }
+        if (attStatus === "not_recorded") {
+          return topAlerts.length <= 1
+            ? "Attendance has not been recorded yet · mark today's rolls to begin"
+            : `Attendance has not been recorded yet · ${topAlerts.length} items need your attention`;
+        }
+        if (attStatus === "in_progress") {
+          return `Roll call in progress (${markedToday}/${enrolledToday} marked) · ${topAlerts.length} item${topAlerts.length === 1 ? "" : "s"} need your attention`;
+        }
+        return `${att ?? "—"}% present school-wide · ${topAlerts.length} item${topAlerts.length === 1 ? "" : "s"} need your attention`;
+      })()
+    : summary.subtitle;
 
   return (
     <div className="briefing-page briefing-page--executive">
       <header className="briefing-header briefing-exec-header">
         <h1 className="briefing-title">Good morning, {first}</h1>
         <p className="briefing-subtitle">{summary.subtitle}</p>
+        {isAdmin ? <p className="briefing-exec-story">{storyLine}</p> : null}
       </header>
 
       <ExecutiveKpiBar items={isAdmin ? adminKpis : inchargeKpis} />
@@ -219,7 +298,7 @@ export function MorningBriefing({
 
         <div className="briefing-glass-chip briefing-card briefing-panel briefing-exec-priority">
           <div className="briefing-panel-head">
-            <h3>Priority queue</h3>
+            <h3>What needs attention</h3>
             {priorityAlerts.length > 4 && (
               <Link href="/dashboard/attendance" className="briefing-link briefing-panel-action">
                 View all
@@ -233,18 +312,23 @@ export function MorningBriefing({
             <p className="briefing-muted-text">No urgent items right now.</p>
           ) : (
             <div className="briefing-exec-priority-list">
-              {topAlerts.map((alert) => (
+              {topAlerts.map((alert, index) => (
                 <Link
                   key={alert.kicker}
                   href={alert.href}
-                  className={`briefing-exec-priority-item briefing-exec-priority-item--${alert.tone}`}
+                  className={`briefing-exec-priority-item briefing-exec-priority-item--${alert.tone}${
+                    index === 0 ? " briefing-exec-priority-item--primary" : ""
+                  }`}
                 >
                   <span className="briefing-exec-priority-dot" aria-hidden />
                   <div className="briefing-exec-priority-copy">
                     <strong>{alert.kicker}</strong>
                     <span>{alert.body}</span>
                   </div>
-                  <ChevronRight size={14} className="briefing-exec-priority-chevron" aria-hidden />
+                  <span className="briefing-exec-priority-action">
+                    {alert.action}
+                    <ChevronRight size={14} aria-hidden />
+                  </span>
                 </Link>
               ))}
             </div>
@@ -272,7 +356,7 @@ export function MorningBriefing({
             <p className="briefing-notice-title">{notice.title}</p>
             <p className="briefing-notice-body">{notice.content}</p>
             <div className="briefing-notice-meta">
-              <StatusBadge tone="brass">{notice.audience}</StatusBadge>
+              <StatusBadge tone="brass">{noticeAudienceLabel(notice.audience)}</StatusBadge>
               {(notice.priority === "high" || notice.priority === "urgent") && (
                 <StatusBadge tone="red">{notice.priority}</StatusBadge>
               )}
@@ -308,6 +392,7 @@ export function MorningBriefing({
         <DashboardAnalytics
           classPerformance={summary.class_performance}
           feeStats={feeStats}
+          attendanceStatus={attStatus}
         />
       )}
       {isAdmin && <DashboardWidgets userId={userId} isAdmin={isAdmin} layout="executive" />}

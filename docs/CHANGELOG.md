@@ -25,6 +25,21 @@ changes under **[Unreleased]** until the first tagged release. Architectural *re
 
 ---
 
+> Session 2026-07-20 — Gate 1 Batch A (trust, truthful dashboard, customer-safe errors). **Uncommitted.**
+
+### Added (Gate 1 Batch A)
+- **Dashboard attendance state machine** — `school_attendance_status` (`not_recorded` | `in_progress` | `attention_needed` | `healthy`); no false 0% when rolls missing; chart uses today only.
+- **`customer-errors.ts`** — sanitizes technical API/network messages for UI.
+- **`docs/showcase/GATE1_LANGUAGE_AUDIT.md`** — educator terminology audit (documentation only; no copy changes).
+- **`tests/test_dashboard_attendance_state.py`** (4).
+
+### Changed (Gate 1 Batch A)
+- **Principal dashboard** — KPI/priority/story reflect attendance state; fee decision card; Engineering nav hidden from school roles; notice audience labels; chart labels above bars.
+- **`TutorLessonPlayer`** — customer-safe voice unavailable messaging (no hosts/ports in UI).
+- **`api.ts`** — `getApiErrorMessage` / document fetch use customer-safe sanitization.
+
+---
+
 > Session 2026-07-15 — Engineering OS (validation standard + lifecycle reorg). **Uncommitted.**
 
 ### Added

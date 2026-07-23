@@ -2,7 +2,7 @@
 
 import re
 import uuid
-from datetime import date
+from datetime import date, time
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -34,6 +34,13 @@ class EventOut(BaseModel):
     venue: Optional[str] = None
     target_roles: Optional[list[str]] = None
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("event_time", mode="before")
+    @classmethod
+    def serialize_event_time(cls, value: time | str | None) -> str | None:
+        if value is None or isinstance(value, str):
+            return value
+        return value.strftime("%H:%M")
 
 class EventCreate(BaseModel):
     title: str = Field(..., max_length=200)

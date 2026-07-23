@@ -127,6 +127,10 @@ export function TopBar({ userName, userRole, academicLabel, showSettings = true,
             <GraduationCap size={14} aria-hidden />
             <span className="topbar-context">{academicLabel}</span>
           </div>
+          <div className="topbar-chip topbar-chip--static topbar-date-chip topbar-date-chip--inline">
+            <Calendar size={14} aria-hidden />
+            <span>{todayCompact()}</span>
+          </div>
         </div>
 
         <div className="topbar-center">
@@ -174,11 +178,6 @@ export function TopBar({ userName, userRole, academicLabel, showSettings = true,
                 </div>
               </div>
             )}
-          </div>
-
-          <div className="topbar-chip topbar-date-chip">
-            <Calendar size={14} aria-hidden />
-            <span>{todayCompact()}</span>
           </div>
 
           <div className="topbar-profile-wrap" ref={profileRef}>

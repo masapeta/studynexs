@@ -4,6 +4,29 @@ export function inr(n: number | null | undefined): string {
   return "₹" + v.toLocaleString("en-IN");
 }
 
+/** Compact INR for dashboard headlines (e.g. ₹3.97L, ₹12.5K). */
+export function inrCompact(n: number | null | undefined): string {
+  const v = Number(n ?? 0);
+  if (v >= 100_000) {
+    return `₹${(v / 100_000).toFixed(2)}L`;
+  }
+  if (v >= 1_000) {
+    return `₹${(v / 1_000).toFixed(1)}K`;
+  }
+  return inr(v);
+}
+
+/** Human-readable notice audience for principal-facing UI. */
+export function noticeAudienceLabel(audience: string | null | undefined): string {
+  const key = (audience || "").toLowerCase();
+  if (key === "external") return "Parents & Students";
+  if (key === "internal") return "Staff";
+  if (key === "all") return "Everyone";
+  if (key === "parents") return "Parents";
+  if (key === "students") return "Students";
+  return audience?.trim() || "School-wide";
+}
+
 /** Compact date for top bar chips (e.g. Jul 2, Thu). */
 export function todayCompact(d = new Date()): string {
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
