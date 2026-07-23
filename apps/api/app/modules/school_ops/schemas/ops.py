@@ -2,7 +2,7 @@
 
 import re
 import uuid
-from datetime import date
+from datetime import date, time
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -34,6 +34,13 @@ class EventOut(BaseModel):
     venue: Optional[str] = None
     target_roles: Optional[list[str]] = None
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("event_time", mode="before")
+    @classmethod
+    def serialize_event_time(cls, value: object) -> object:
+        if isinstance(value, time):
+            return value.strftime("%H:%M")
+        return value
 
 class EventCreate(BaseModel):
     title: str = Field(..., max_length=200)
@@ -154,7 +161,9 @@ class OfferStageDetails(BaseModel):
         if self.exam_marks > self.max_marks:
             raise ValueError("Exam marks cannot exceed maximum marks")
         if self.merit_result == "fail":
-            raise ValueError("Cannot move to offer with a fail result — move candidate back to interview")
+            raise ValueError(
+                "Cannot move to offer with a fail result — move candidate back to interview"
+            )
         if not self.recommended_for_offer:
             raise ValueError("Candidate must be recommended for offer based on exam merit")
         if not self.parent_agreed:

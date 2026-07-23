@@ -7,6 +7,18 @@ changes under **[Unreleased]** until the first tagged release. Architectural *re
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-07-23
+
+### Fixed
+- Release 0.3.1 certification blocker: `/api/v1/ops/events` now serializes persisted
+  database `TIME` values as `HH:MM` strings, preventing the principal/teacher browser
+  walkthrough from failing with an HTTP 500 on the events feed.
+
+### Validation
+- Added regression coverage for `EventOut` serialization and `/api/v1/ops/events`.
+- Certification rerun passed from a fresh stack: `/ready`, API import, Reference School
+  smoke, Principal + Teacher runtime proof, production web build, and browser walkthrough.
+
 > Session 2026-07-22 — **Stage 2A: Production Academic Onboarding Core** (ARM accepted).
 
 ### Added (Stage 2A)
