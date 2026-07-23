@@ -8,6 +8,26 @@ See [`../README.md`](../README.md) for document precedence.
 
 ---
 
+## 2026-07-23 — Batch 3 School Pilot Experience accepted and frozen
+
+**Decision:** Accept **Release 0.3 / Batch 3 — School Pilot Experience** and freeze its architecture and implementation.
+
+**Reason:** Batch 3 proves that the existing Principal and Teacher pilot journeys can complete successfully without engineering assistance during the walkthrough. The batch validated login, tenant scope, curriculum readiness, Academic Intelligence readiness, teacher class/subject scope, same-pack grounded lesson-plan generation, same-pack grounded question-paper generation, and focused browser walkthroughs.
+
+**Acceptance evidence:**
+
+- [`../product/BATCH_03_COMPLETION_REPORT.md`](../product/BATCH_03_COMPLETION_REPORT.md)
+- commit `649d835` — `feat(pilot): complete Batch 3 principal teacher proof`
+- runtime proof pack `1bdfffc6-933d-4780-9de4-b7d6c92201bb`
+
+**Known pilot preflight:** Reference tenant AI credits were exhausted by repeated validation runs. The existing principal emergency override path is validated and should be part of pilot preflight when needed.
+
+**Freeze rule:** Do not modify Batch 3 except for production defects, security fixes, or critical regressions.
+
+**Status:** Active
+
+---
+
 ## 2026-07-23 — Batch 2 Academic Onboarding accepted and frozen
 
 **Decision:** Accept **Release 0.2 / Batch 2 — Academic Onboarding** and freeze its architecture and implementation.
@@ -88,12 +108,13 @@ See [`../README.md`](../README.md) for document precedence.
 **Out of scope (Stage 2A):** Public signup, tenant cloning, TTL cleanup, digital student assessment, parent automation.
 
 **Implementation seams (reuse, do not duplicate):**
+
 - `CurriculumExtractionService` → LLM gateway + credits (`curriculum_extraction`, 3 credits)
 - `PackService.populate_draft_structure` / `approve_pack` → KG + RAG side effects
 - `GET /packs/{id}/intelligence-status` → readiness gate for UI banner
 - Admin UI: `/dashboard/teaching/curriculum/onboarding` wizard + `AcademicIntelligenceBanner` on curriculum, lesson-plans, ai-papers
 
-**Status:** ✅ Active (Stage 2A shipped — ARM accepted 2026-07-22)
+**Status:** Active (Stage 2A shipped — ARM accepted 2026-07-22)
 
 **References:** [`../product/PRODUCT_EXECUTION_PLAN.md`](../product/PRODUCT_EXECUTION_PLAN.md) · [`../showcase/DEMO_EXPERIENCE_GAP_ANALYSIS.md`](../showcase/DEMO_EXPERIENCE_GAP_ANALYSIS.md)
 
@@ -107,7 +128,7 @@ See [`../README.md`](../README.md) for document precedence.
 
 **Alternatives:** Continue platform polish (Phase 3B UI); parallel batch work — rejected per scope discipline.
 
-**Status:** ✅ Active
+**Status:** Active
 
 **References:**
 
@@ -129,7 +150,7 @@ Historical decisions from the Platform Foundation Phase and earlier product work
 
 ## Entry template
 
-```
+```text
 ## YYYY-MM-DD — Title
 
 **Decision:**

@@ -1,4 +1,4 @@
-﻿# StudyNexs Release History
+# StudyNexs Release History
 
 > Product execution releases. Each release maps to an accepted batch or future milestone.
 
@@ -12,16 +12,18 @@
 |---|---:|---|---|---|
 | **0.1** | **1** | Curriculum Intelligence | **Accepted / Frozen** | [`BATCH_01_COMPLETION_REPORT.md`](./BATCH_01_COMPLETION_REPORT.md) |
 | **0.2** | **2** | Academic Onboarding | **Accepted / Frozen** | [`BATCH_02_COMPLETION_REPORT.md`](./BATCH_02_COMPLETION_REPORT.md) |
-| **0.3** | 3 | Assessment Intelligence | Deferred | Not authorized |
+| **0.3** | **3** | School Pilot Experience | **Accepted / Frozen** | [`BATCH_03_COMPLETION_REPORT.md`](./BATCH_03_COMPLETION_REPORT.md) |
+| **0.4** | 4 | Student + Parent Pilot Experience | Deferred | Not authorized |
+| **0.5** | 5 | Pilot Operations / Assessment Reliability | Future | Not authorized |
 | **1.0** | Pilot Ready | Principal-demo-to-pilot readiness | Future | Not authorized |
 
 ---
 
-## Release 0.1 â€” Batch 1 Curriculum Intelligence
+## Release 0.1 — Batch 1 Curriculum Intelligence
 
 **Status:** Accepted / Frozen
 **Accepted date:** 2026-07-23
-**Commit:** `63a5584` â€” `feat(curriculum): complete Batch 1 intelligence closure`
+**Commit:** `63a5584` — `feat(curriculum): complete Batch 1 intelligence closure`
 
 ### Delivered
 
@@ -42,11 +44,11 @@ Do not modify Release 0.1 / Batch 1 except for:
 
 ---
 
-## Release 0.2 â€” Batch 2 Academic Onboarding
+## Release 0.2 — Batch 2 Academic Onboarding
 
 **Status:** Accepted / Frozen
 **Accepted date:** 2026-07-23
-**Commit:** `469c0f8` â€” `feat(onboarding): complete Batch 2 academic onboarding proof`
+**Commit:** `469c0f8` — `feat(onboarding): complete Batch 2 academic onboarding proof`
 
 ### Delivered
 
@@ -76,15 +78,54 @@ Do not modify Release 0.2 / Batch 2 except for:
 
 ---
 
-## Release 0.3 â€” Assessment Intelligence
+## Release 0.3 — Batch 3 School Pilot Experience
 
-**Status:** Deferred / Not authorized.
+**Status:** Accepted / Frozen
+**Accepted date:** 2026-07-23
+**Commit:** `649d835` — `feat(pilot): complete Batch 3 principal teacher proof`
 
-Batch 3 is not authorized. It should be planned only after ARM explicitly selects and authorizes the next execution batch.
+### Delivered
+
+- Principal runtime proof.
+- Teacher runtime proof.
+- Principal browser walkthrough.
+- Teacher browser walkthrough.
+- Tenant isolation verification for both pilot personas.
+- Same-pack grounding verification for teacher lesson plan and question paper.
+- Focused pilot-success validation harnesses.
+- Batch 3 completion report.
+
+### Evidence
+
+- [`BATCH_03_COMPLETION_REPORT.md`](./BATCH_03_COMPLETION_REPORT.md)
+- Runtime proof pack: `1bdfffc6-933d-4780-9de4-b7d6c92201bb`
+- Implementation commit: `649d835`
+
+### Freeze rule
+
+Do not modify Release 0.3 / Batch 3 except for:
+
+- production defects;
+- security fixes;
+- critical regressions.
 
 ---
 
-## Release 1.0 â€” Pilot Ready
+## Release 0.4 — Student + Parent Pilot Experience
+
+**Status:** Deferred / Not authorized.
+
+Release 0.4 must not begin until ARM explicitly authorizes the next execution batch.
+
+---
+
+## Release 0.5 — Pilot Operations / Assessment Reliability
+
+**Status:** Future / Not authorized.
+
+---
+
+## Release 1.0 — Pilot Ready
 
 **Status:** Future.
 

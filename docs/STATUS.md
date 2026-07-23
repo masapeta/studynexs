@@ -1,4 +1,4 @@
-﻿# StudyNexs â€” Current Status
+# StudyNexs — Current Status
 
 > **Owner:** Avinash Reddy Masapeta (ARM)
 > **As of:** 2026-07-23
@@ -8,20 +8,19 @@
 
 ## Executive status
 
-**Release 0.2 / Batch 2 â€” Academic Onboarding is accepted and frozen.**
+**Release 0.3 / Batch 3 — School Pilot Experience is accepted and frozen.**
 
-The platform now has the required academic-onboarding foundation:
+The platform now has the validated first-pilot experience for the two decision-critical school users:
 
-- uploaded curriculum source intake;
-- AI extraction into draft `CurriculumPack`;
-- human review and approval governance;
-- tenant-scoped `CurriculumPack`;
-- KG/RAG readiness;
-- Academic Intelligence Ready;
-- deterministic same-pack evidence ledger;
-- runtime proof across lesson plans, learning materials, question papers, assessment evaluation, mastery, student tutor/copilot, and parent copilot.
+- Principal runtime proof;
+- Teacher runtime proof;
+- Principal browser walkthrough;
+- Teacher browser walkthrough;
+- tenant isolation verification;
+- same-pack grounding verification for teacher-generated lesson plan and question paper;
+- focused evidence recorded in the Batch 3 completion report.
 
-Batch 1 and Batch 2 should not be modified except for production defects, security fixes, or critical regressions.
+Release 0.1, Release 0.2, and Release 0.3 should not be modified except for production defects, security fixes, or critical regressions.
 
 ---
 
@@ -29,41 +28,38 @@ Batch 1 and Batch 2 should not be modified except for production defects, securi
 
 | Area | Status |
 |---|---|
-| Current release | **Release 0.2 â€” Batch 2 Academic Onboarding** |
+| Current release | **Release 0.3 — Batch 3 School Pilot Experience** |
 | Release status | **Accepted / Frozen** |
-| Latest accepted commit | `469c0f8` â€” `feat(onboarding): complete Batch 2 academic onboarding proof` |
-| Completion report | [`product/BATCH_02_COMPLETION_REPORT.md`](./product/BATCH_02_COMPLETION_REPORT.md) |
-| Previous release | **Release 0.1 â€” Batch 1 Curriculum Intelligence** |
+| Latest accepted commit | `649d835` — `feat(pilot): complete Batch 3 principal teacher proof` |
+| Completion report | [`product/BATCH_03_COMPLETION_REPORT.md`](./product/BATCH_03_COMPLETION_REPORT.md) |
+| Previous release | **Release 0.2 — Batch 2 Academic Onboarding** |
 | Previous release status | **Accepted / Frozen** |
 | Current authorized release | **None** |
-| Batch 3 implementation | **Not authorized** |
+| Release 0.4 implementation | **Not authorized** |
 
 ---
 
-## Batch 2 validation evidence
+## Batch 3 validation evidence
 
 | Gate | Result |
 |---|---:|
-| API readiness | PASS â€” DB + Redis healthy |
-| Alembic current/head | PASS â€” `a1b2c3d4e5f7 (head)` |
-| API import | PASS |
-| Academic Onboarding regression | PASS â€” 15 passed |
-| Tutor / Student Copilot / Parent Copilot / Content Review regression | PASS â€” 17 passed |
-| Web production build + TypeScript | PASS |
-| Runtime proof script lint + compile | PASS |
-| Full runtime proof | PASS |
-| Evidence ledger | PASS â€” every downstream capability proved tenant `reference`, same pack, vectors, grounding, and source/citation evidence |
+| API readiness | PASS — DB + Redis healthy |
+| Principal runtime proof | PASS |
+| Teacher runtime proof | PASS |
+| Principal + Teacher browser walkthrough | PASS — 13 checks |
+| Tenant tracking | PASS — tenant `reference` |
+| Same-pack grounding | PASS — lesson plan + question paper use pack `1bdfffc6-933d-4780-9de4-b7d6c92201bb` |
+| Admin web production build | PASS |
+| Reference School smoke | PASS — 32 checks |
+| Focused lint/compile checks | PASS |
 
 Runtime proof artifacts:
 
 | Artifact | ID |
 |---|---|
-| Curriculum source file | `42ebd493-756e-42db-a885-a350a55e9f58` |
 | Approved CurriculumPack | `1bdfffc6-933d-4780-9de4-b7d6c92201bb` |
-| Question paper | `b2c8e0bb-0a19-408d-9de1-f51640c29ad1` |
-| Exam | `71c0fb96-ecc9-4e77-bb78-ca44ce059bb1` |
-| Answer-sheet file | `a1c6a024-a148-41ca-bb1c-f3e03d566cad` |
-| Evaluation | `17168b3b-9f1e-4291-b18a-03a2504ed752` |
+| Final proof lesson plan | `8e245b4e-a5cf-4cff-bfd3-69714cc6c2fc` |
+| Final proof question paper | `2f3022d0-187c-4bce-98e1-53dbb0799238` |
 
 ---
 
@@ -71,14 +67,14 @@ Runtime proof artifacts:
 
 No implementation batch is currently authorized.
 
-Batch 3 must not begin until ARM explicitly authorizes the next execution batch.
+Release 0.4 must not begin until ARM explicitly authorizes the next execution batch.
 
 ---
 
 ## Known repository state
 
-The Batch 2 implementation commit is isolated. The working tree may still contain unrelated uncommitted dashboard/briefing/status/showcase artifacts from earlier sessions; those are not part of Release 0.2 acceptance.
+The Batch 3 implementation commit is isolated. The working tree may still contain unrelated uncommitted dashboard/briefing/status/showcase artifacts from earlier sessions; those are not part of Release 0.3 acceptance.
 
-Global repo lint remains a known technical-debt area. Batch 2 validation used focused tests, web build, runtime proof, evidence ledger, and scoped lint/compile checks.
+Reference tenant AI credits were exhausted by repeated validation runs; the existing principal emergency override path was used and is now asserted by the Batch 3 proof. For a real pilot, preflight should ensure sufficient AI budget or active principal override.
 
-Known operational limitation: the local runtime proof queues answer-sheet evaluation, waits, and executes the existing evaluation service inline if the queued worker does not finish within the script timeout. Product behavior is validated; production async worker parity should be handled as a separate operational hardening task.
+Global repo lint remains a known technical-debt area. Batch 3 validation used focused tests, web build, browser walkthrough, runtime proof, and scoped lint/compile checks.

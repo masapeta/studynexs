@@ -13,7 +13,9 @@
 |---|---:|---|---|
 | **Release 0.1** | **Batch 1** | Curriculum Intelligence | **Accepted / Frozen** |
 | **Release 0.2** | **Batch 2** | Academic Onboarding | **Accepted / Frozen** |
-| **Release 0.3** | Batch 3 | Assessment Intelligence | Deferred / Not authorized |
+| **Release 0.3** | **Batch 3** | School Pilot Experience | **Accepted / Frozen** |
+| **Release 0.4** | Batch 4 | Student + Parent Pilot Experience | Deferred / Not authorized |
+| **Release 0.5** | Batch 5 | Pilot Operations / Assessment Reliability | Future |
 | **Release 1.0** | Pilot Ready | Principal-demo-to-pilot readiness | Future |
 
 Release history artifact: [`product/RELEASE_HISTORY.md`](./product/RELEASE_HISTORY.md).
@@ -29,7 +31,10 @@ Release 0.1 — Batch 1 Curriculum Intelligence
 Release 0.2 — Batch 2 Academic Onboarding
         ✓ Accepted / Frozen
         ↓
-Release 0.3 — Assessment Intelligence
+Release 0.3 — Batch 3 School Pilot Experience
+        ✓ Accepted / Frozen
+        ↓
+Release 0.4 — Student + Parent Pilot Experience
         Deferred / Not authorized
         ↓
 Release 1.0 — Pilot Ready
@@ -42,11 +47,20 @@ Release 1.0 — Pilot Ready
 
 There is no active implementation batch.
 
-Release 0.2 is frozen. Batch 3 must not begin until ARM explicitly authorizes the next execution batch.
+Release 0.3 is frozen. Release 0.4 must not begin until ARM explicitly authorizes the next execution batch.
 
 ---
 
 ## Frozen foundation
+
+### Batch 3 — School Pilot Experience
+
+Batch 3 is accepted and frozen.
+
+Accepted evidence:
+
+- [`product/BATCH_03_COMPLETION_REPORT.md`](./product/BATCH_03_COMPLETION_REPORT.md)
+- commit `649d835` — `feat(pilot): complete Batch 3 principal teacher proof`
 
 ### Batch 2 — Academic Onboarding
 
@@ -66,7 +80,7 @@ Accepted evidence:
 - [`product/BATCH_01_COMPLETION_REPORT.md`](./product/BATCH_01_COMPLETION_REPORT.md)
 - commit `63a5584` — `feat(curriculum): complete Batch 1 intelligence closure`
 
-No further Batch 1 or Batch 2 changes are authorized except production defects, security fixes, or critical regressions.
+No further Batch 1, Batch 2, or Batch 3 changes are authorized except production defects, security fixes, or critical regressions.
 
 ---
 
@@ -74,19 +88,20 @@ No further Batch 1 or Batch 2 changes are authorized except production defects, 
 
 ### Now
 
-Hold Release 0.2 frozen and review the next execution priority.
+Hold Release 0.3 frozen. No implementation batch is currently authorized.
 
 ### Next
 
-Batch 3 remains unauthorized until ARM explicitly selects the next batch.
+Release 0.4 remains unauthorized until ARM explicitly selects and authorizes the next batch.
 
 ### Later
 
 Candidate future work:
 
+- Student + Parent Pilot Experience;
 - production async evaluation worker parity;
 - Assessment Intelligence deepening;
-- pilot readiness and deployment hardening;
+- pilot operations and deployment hardening;
 - controlled Reference School demo polish.
 
 ### Future
@@ -94,7 +109,7 @@ Candidate future work:
 Pilot-ready release:
 
 - stable demo environment;
-- principal demo journey;
+- principal + teacher + student + parent pilot journey;
 - school onboarding;
 - operational reliability;
 - support/rollback/monitoring readiness.
