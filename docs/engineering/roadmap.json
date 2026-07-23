@@ -1,63 +1,101 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "last_completed_batch": {
-    "number": 28,
-    "title": "Parent Copilot UI",
-    "completed_at": "2026-07-15"
+    "number": 1,
+    "title": "Curriculum Intelligence",
+    "release": "0.1",
+    "status": "accepted_frozen",
+    "completed_at": "2026-07-23",
+    "commit": "63a5584",
+    "evidence": "docs/product/BATCH_01_COMPLETION_REPORT.md"
   },
   "current_batch": {
-    "number": 29,
-    "title": "Infrastructure Readiness",
-    "started_at": "2026-07-15",
+    "number": 2,
+    "title": "Academic Onboarding",
+    "release": "0.2",
+    "status": "authorized_active",
+    "started_at": "2026-07-23",
     "scope": [
-      "P0-01 Shared API host (reserved subdomains)",
-      "Runtime tenant slug on web",
-      "Dockerfile [rag] extra",
-      "URL_ARCHITECTURE.md + DEPLOYMENT_ARCHITECTURE.md"
+      "Curriculum-first onboarding experience",
+      "Supported syllabus / TOC / curriculum source intake",
+      "AI extraction into draft CurriculumPack",
+      "Human review and approval",
+      "Existing KG + RAG indexing",
+      "Academic Intelligence Ready readiness gate",
+      "Lesson-plan grounding verified from the same approved CurriculumPack",
+      "Question-paper grounding verified from the same approved CurriculumPack"
+    ],
+    "must_reuse": [
+      "CurriculumPack",
+      "DocumentIntelligenceService",
+      "CurriculumExtractionService",
+      "PackService.approve_pack",
+      "Knowledge Graph",
+      "RAG",
+      "LLM gateway",
+      "AI credits",
+      "existing approval workflow"
+    ],
+    "non_goals": [
+      "full textbook warehousing",
+      "parallel ingestion service",
+      "second curriculum engine",
+      "complete OCR automation",
+      "Batch 3 assessment automation"
     ]
   },
   "business_milestone": {
-    "gate": 1,
-    "name": "Demo Ready",
-    "sub_gate": "1A — Demo Online",
-    "status": "blocked_after_batch_29",
-    "started_at": "2026-07-15",
+    "release": "0.2",
+    "name": "Academic Onboarding",
+    "status": "authorized_active",
     "exit_criteria": [
-      "HTTPS URL available",
-      "Smoke tests pass (100%)",
-      "Principal demo completed successfully",
-      "No critical issues found"
+      "Principal or academic coordinator can provide a curriculum source",
+      "AI extracts draft structure through existing services",
+      "Teacher or coordinator can review and edit",
+      "Class incharge or administrator approves",
+      "KG and RAG complete",
+      "UI shows Academic Intelligence Ready",
+      "Lesson-plan generation cites the newly approved pack",
+      "Question-paper generation cites the newly approved pack",
+      "Grounding verification proves both outputs use the same approved CurriculumPack"
     ]
   },
   "next_milestone": {
-    "batch": null,
-    "title": "Gate 1A — Demo Online",
-    "summary": "Batch 29 infra readiness first, then HTTPS demo URL, env config, demo seed, smokes green. Gate 1B Demo Reliable follows.",
-    "estimated_days": 3,
-    "dependencies_blocking": ["HTTPS demo deployment credentials"],
+    "batch": 2,
+    "title": "Batch 2 — Academic Onboarding",
+    "summary": "Build the curriculum-first onboarding experience that teaches StudyNexs a school's curriculum and culminates in Academic Intelligence Ready.",
+    "dependencies_blocking": [],
     "dependencies_satisfied": [
-      "Batches 1-28",
-      "Demo seeds and smokes (localhost)",
-      "Batch 29 infrastructure readiness (in progress)"
+      "Batch 1 accepted",
+      "CurriculumPack foundation",
+      "Document Intelligence foundation",
+      "KG/RAG pipeline",
+      "approval governance",
+      "same-pack grounding evidence"
     ],
-    "dependencies_optional": [],
-    "execution_doc": "docs/pilot/GATE1_EXECUTION.md"
+    "execution_doc": "docs/product/PRODUCT_EXECUTION_PLAN.md"
   },
-  "gate_1b": {
-    "title": "Demo Reliable",
-    "reliability_targets": {
-      "ai_success_rate_pct": 95,
-      "page_load_fcp_seconds": 2,
-      "qp_generation_seconds": 20,
-      "fallback_coverage_pct": 100,
-      "critical_errors": 0,
-      "smoke_tests_pct": 100
+  "deferred": [
+    {
+      "release": "0.3",
+      "batch": 3,
+      "title": "Assessment Intelligence",
+      "until": "Batch 2 Academic Onboarding is accepted"
+    },
+    {
+      "title": "Full textbook warehousing",
+      "until": "explicit product decision and copyright/data-retention plan"
     }
-  },
-  "deferred": {
-    "batch": 30,
-    "title": "Learning Analytics foundation",
-    "until": "Gate 1 exit (principal demo + no critical issues) or ARM reprioritizes"
-  },
-  "upcoming": []
+  ],
+  "upcoming": [
+    {
+      "release": "0.3",
+      "batch": 3,
+      "title": "Assessment Intelligence"
+    },
+    {
+      "release": "1.0",
+      "title": "Pilot Ready"
+    }
+  ]
 }

@@ -1,180 +1,204 @@
 # StudyNexs Product Execution Plan
 
-> **Living document** — update this file as batch progress changes.  
+> **Living document** — update this file when product execution batches are accepted or re-prioritized.
 > **Constitutional priority:** [`PRODUCT_EXECUTION_CONSTITUTION.md`](./PRODUCT_EXECUTION_CONSTITUTION.md)
 
-**Last updated:** 2026-07-22 (Stage 2A — Academic Onboarding Core shipped, uncommitted)
+**Last updated:** 2026-07-23
+**Current governance state:** Batch 1 accepted and frozen; Batch 2 authorized, implementation active.
 
 ---
 
-## Current slice (in progress)
+## Release train
 
-| Slice | Scope | Status |
-|-------|--------|--------|
-| **1** | Admin draft pack builder — create pack, add chapters/topics, view structure, approve | ✅ Shipped |
-| **2A** | **Academic Onboarding** — AI draft from syllabus/TOC, HOD review, approve → KG+RAG, intelligence-ready banner | ✅ Shipped (ARM review) |
-| **2B** | Public self-guided + sales-demo tenants (clone, TTL) | ⬜ Deferred |
-| **3** | Learning outcomes per topic (schema + API) | 🟡 Partial (onboarding populates LOs) |
-| **4** | Audit trail display + formal log on approve | 🟡 Partial (audit events + UI labels) |
+| Release | Batch | Capability | Status | Evidence |
+|---|---:|---|---|---|
+| **Release 0.1** | **Batch 1** | Curriculum Intelligence | **Accepted / Frozen** | [`BATCH_01_COMPLETION_REPORT.md`](./BATCH_01_COMPLETION_REPORT.md) |
+| **Release 0.2** | **Batch 2** | Academic Onboarding | **AUTHORIZED** | [`CURRENT_BATCH.md`](./CURRENT_BATCH.md) |
+| **Release 0.3** | Batch 3 | Assessment Intelligence | Deferred | Not authorized |
+| **Release 1.0** | Pilot Ready | Principal-demo-to-pilot readiness | Future | Not authorized |
 
-**Stage 2A entry points:**
-- API: `POST /api/v1/curriculum/onboarding/propose`, `GET …/intelligence-status`, `POST …/retry-rag-index`, `PUT …/topics/{id}`
-- UI: `/dashboard/teaching/curriculum/onboarding`, `AcademicIntelligenceBanner` on curriculum / lesson-plans / ai-papers
-- Tests: `apps/api/tests/test_academic_onboarding.py` (15); `e2e-onboarding-review.cjs`
-
-**Slice 1 files:** `apps/admin-web/src/app/dashboard/teaching/curriculum/page.tsx` (wires existing pack APIs; no backend changes)
-
-## Current release
-
-Targeting **Batch 1 completion** — institutional curriculum memory as shared grounding for all AI capabilities.
+Batch 1 is immutable except for production defects, security fixes, or critical regressions.
 
 ---
 
-## Current batch
+## Batch Authorization
 
-**Batch 1 — Curriculum Intelligence**
+Only one batch may have status **AUTHORIZED** at any time.
 
-### Mission
+| Field | Value |
+|---|---|
+| **Release** | 0.2 |
+| **Batch** | 2 |
+| **Title** | Academic Onboarding |
+| **Status** | **AUTHORIZED** |
+| **Authorized by** | ARM |
+| **Authorization date** | 2026-07-23 |
+| **Previous batch** | Release 0.1 / Batch 1 — Curriculum Intelligence (**Frozen**) |
+| **Next batch** | Not Authorized |
 
-Create the institutional memory of the school's curriculum.
+All other batches must be one of: Planned, Frozen, Deferred, or Completed.
+
+---
+
+## Current phase
+
+**Batch 2 — Academic Onboarding**
+
+### Status
+
+**AUTHORIZED. Implement Batch 2 only within the Academic Onboarding scope below.**
+
+### Objective
+
+Build the curriculum-first Academic Onboarding experience that teaches StudyNexs a school's curriculum and culminates in **Academic Intelligence Ready**.
+
+### Product story
+
+```text
+Create School
+↓
+Upload Syllabus / TOC / Curriculum Source
+↓
+AI extracts structure
+↓
+Human review
+↓
+Approve CurriculumPack
+↓
+KG + RAG indexing
+↓
+Academic Intelligence Ready
+↓
+Generate Lesson Plan
+↓
+Generate Question Paper
+↓
+Grounding Verified
+↓
+Downstream AI capabilities use the same approved CurriculumPack
+```
 
 ### Primary persona
 
-**Teacher / academic coordinator** (with principal oversight for pack approval)
+School principal / academic coordinator, with teacher participation for subject-level curriculum ownership.
 
-### Problem being solved
+### Architecture reuse requirements
 
-Curriculum knowledge is scattered across PDFs, WhatsApp forwards, and teacher memory. AI features cannot be consistent or trustworthy without a single approved academic source per school.
+Batch 2 must reuse the existing Batch 1 foundation:
 
-### Educational capability delivered
+- `CurriculumPack`
+- `CurriculumExtractionService`
+- `DocumentIntelligenceService`
+- existing approval workflow
+- `PackService.approve_pack()`
+- Knowledge Graph spine
+- RAG indexing and retrieval
+- LLM gateway + AI credits
+- existing role/RBAC model
 
-A school uploads curriculum once; every AI capability retrieves curriculum knowledge consistently from the shared **CurriculumPack**.
+### Hard constraints
 
----
+Do **not** build:
 
-## Objectives
+- a second curriculum engine;
+- a parallel ingestion service;
+- full textbook warehousing;
+- complete OCR automation for all textbook formats;
+- advanced report-card workflows;
+- rich student practice engine;
+- Batch 3 / Assessment Intelligence work.
 
-1. Ingest and structure curriculum content (subject → grade → chapter → topic → outcomes).
-2. Index curriculum for retrieval (RAG) with tenant + pack isolation.
-3. Expose search and AI retrieval APIs scoped by `school_id`.
-4. Provide administration UI for pack lifecycle (draft → review → approve).
-5. Prove end-to-end: **teacher uploads once → QP / tutor / copilot cite the same pack**.
+### Batch 2 deliverable
 
----
+A principal or academic coordinator can start with a real curriculum source and reach an approved, indexed, ready curriculum pack:
 
-## Deliverables
+1. Create/select school context.
+2. Select class, subject, academic year, board, and source metadata.
+3. Upload or provide a syllabus / TOC / curriculum source.
+4. AI extracts chapter/topic/outcome structure into a draft `CurriculumPack`.
+5. Teacher/academic coordinator reviews and edits.
+6. Class incharge/admin approves.
+7. KG + RAG indexing completes.
+8. UI shows **Academic Intelligence Ready**.
+9. Generate a lesson plan from the newly approved pack.
+10. Generate a question paper from the newly approved pack.
+11. Verify grounding/citations point back to the same approved pack.
+12. Tutor and parent surfaces continue to ground on the same approved pack where their current flows support it.
 
-| # | Deliverable | Status | Notes |
-|---|-------------|--------|-------|
-| 1 | CurriculumPack ingestion | 🟡 Partial | API ingest endpoints exist; document upload path |
-| 2 | Subject hierarchy | 🟡 Partial | Pack/chapter/topic model in API |
-| 3 | Grade hierarchy | 🟡 Partial | Class/subject linkage in packs |
-| 4 | Learning outcomes | ⬜ | Structured outcomes per topic |
-| 5 | Chapter mapping | 🟡 Partial | Admin UI: add chapter + topic on draft packs |
-| 6 | Topic mapping | 🟡 Partial | Concepts on chapter add; RAG unit unchanged |
-| 7 | Metadata extraction | 🟡 Partial | Ingest pipeline; expand coverage |
-| 8 | Curriculum RAG indexing | 🟡 Partial | Qdrant indexing via `RagService` |
-| 9 | Search APIs | 🟡 Partial | RAG retrieval endpoints |
-| 10 | AI Retrieval APIs | 🟡 Partial | Gateway-grounded retrieval; wire all consumers |
-| 11 | Curriculum Administration UI | 🟡 Partial | Create draft, chapter editor, approve — Slice 1 ✅ |
+### Batch 2 acceptance criteria
 
-**Legend:** ✅ Done · 🟡 Partial · ⬜ Not started
+- [ ] Academic Onboarding has a clear first-run entry point for a paid school.
+- [ ] Supported curriculum sources are named honestly in the UI.
+- [ ] Uploaded/pasted curriculum source creates a draft `CurriculumPack` through the existing extraction service.
+- [ ] Teacher draft ownership and class-incharge/admin approval remain enforced.
+- [ ] Approval triggers the existing KG + RAG pipeline.
+- [ ] **Academic Intelligence Ready** is shown only after approval, KG success, RAG success, and retrievable topics/vectors.
+- [ ] Lesson-plan generation cites the newly onboarded approved pack.
+- [ ] Question-paper generation cites the newly onboarded approved pack.
+- [ ] Grounding verification proves both outputs use the same approved `CurriculumPack`.
+- [ ] Tenant isolation is verified for all Batch 2 routes.
+- [ ] Runtime evidence is recorded in a Batch 2 completion report.
 
----
+### Recommended implementation slices
 
-## Milestones
-
-| Milestone | Target | Status |
-|-----------|--------|--------|
-| M1 — Pack CRUD + approval workflow API complete | Batch 1 | 🟡 |
-| M2 — RAG index + retrieval APIs tenant-scoped | Batch 1 | 🟡 |
-| M3 — Admin UI: upload, review, approve | Batch 1 | 🟡 Slice 1: draft create + chapter add ✅ |
-| M4 — Assessment QP consumes approved pack (proof) | Batch 1 | 🟡 Exists for QP; generalize |
-| M5 — Capability acceptance evidence + demo scenario | Batch 1 | ⬜ |
-
----
-
-## Progress
-
-**Overall:** In progress — substantial API foundation; batch not yet acceptance-complete.
-
-Do not start Batch 2 until Batch 1 acceptance criteria are met and documented.
-
----
-
-## Dependencies
-
-- Postgres + Qdrant (docker compose dev stack)
-- AI Gateway (metered LLM calls)
-- Tenant isolation via `school_id` on all curriculum queries
-- Platform Design System v1 for admin UI (no redesign)
-
----
-
-## Known risks
-
-| Risk | Mitigation |
-|------|------------|
-| Ingest quality varies by board/format | Human review step before approve |
-| RAG drift across features | Single CurriculumPack contract; refuse ungrounded generation |
-| Scope creep into Assessment batch | Finish curriculum memory first |
+| Slice | Scope | Acceptance |
+|---|---|---|
+| **2.1** | Source intake UX and API contract | UI and API describe supported sources without promising full textbook warehousing |
+| **2.2** | Uploaded source → extraction handoff | Reuse Document Intelligence / extraction services; no parallel stack |
+| **2.3** | Review/edit refinement | Draft structure can be reviewed and corrected before approval |
+| **2.4** | Ready-state orchestration | Existing KG/RAG readiness drives the UI banner |
+| **2.5** | End-to-end validation | Fresh school/source reaches ready pack and downstream citations |
 
 ---
 
-## Blocked items
+## Accepted batch
 
-| Item | Blocker |
-|------|---------|
-| Phase 3B.1 Parent portal parity | Separate implementation plan — not Batch 1 |
-| Phase 3B.2 Parent experience strategy | UX exploration only |
+**Batch 1 — Curriculum Intelligence**
 
----
+### Status
 
-## Success criteria (batch acceptance)
+**Accepted / Frozen**
 
-- [ ] A teacher uploads curriculum once through the admin UI. _(Slice 1: manual chapter entry ✅; document ingest path separate)_
-- [ ] Pack reaches **approved** state with audit trail.
-- [ ] RAG index reflects approved content (tenant-scoped).
-- [ ] At least two AI capabilities (e.g. QP generation + one retrieval API) cite the **same** CurriculumPack consistently.
-- [ ] Capability acceptance document completed per Constitution.
+### Delivered capability
 
----
+StudyNexs now has an institutional curriculum memory foundation:
 
-## Release checklist
+- teacher-owned curriculum drafts;
+- class-incharge/admin approval governance;
+- tenant-scoped `CurriculumPack` lifecycle;
+- KG + RAG indexing on approval;
+- same-pack grounding across lesson plans, question papers, tutor, and parent evidence paths.
 
-- [ ] API tests pass for curriculum module
-- [ ] Tenant isolation verified on all curriculum routes
-- [ ] Admin UI uses Design System v1 (no new platform layers)
-- [ ] Demo scenario recorded
-- [ ] Decision Log entry for batch completion
-- [ ] `STATUS.md` updated
+### Acceptance evidence
 
----
+See [`BATCH_01_COMPLETION_REPORT.md`](./BATCH_01_COMPLETION_REPORT.md).
 
-## Acceptance criteria (capability evidence template)
+### Batch 1 acceptance criteria
 
-_To complete when Batch 1 ships:_
+| Criterion | Status |
+|---|---:|
+| Teacher creates curriculum through admin UI/onboarding path | ✅ Accepted |
+| Pack reaches approved state with audit trail | ✅ Accepted |
+| RAG index reflects approved content, tenant-scoped | ✅ Accepted |
+| At least two AI capabilities cite the same `CurriculumPack` | ✅ Accepted |
+| Capability acceptance document completed | ✅ Accepted |
 
-| Field | Value |
-|-------|-------|
-| Capability Delivered | |
-| Problem Solved | |
-| Primary Persona | |
-| Business Outcome | |
-| Time Saved | |
-| Manual Work Eliminated | |
-| AI Capability Enabled | |
-| Future Capabilities Unlocked | |
-| Evidence | |
-| Demonstration Scenario | |
-| Release Recommendation | |
+### Freeze rule
+
+Do not modify Batch 1 architecture or implementation except for:
+
+- production defects;
+- security fixes;
+- critical regressions.
 
 ---
 
-## Next batch preview
+## Deferred backlog
 
-**Batch 2 — Assessment Intelligence** (not started)
-
-Assessment generation, evaluation, and grading loops grounded in Batch 1 curriculum memory.
-
-**Do not implement Batch 2 until Batch 1 is accepted.**
+- Full textbook PDF warehousing.
+- Full textbook-to-`CurriculumPack` automation across arbitrary book layouts.
+- Full live answer-sheet OCR/evaluation automation.
+- Advanced report cards.
+- Rich student practice engine.
+- Public/prospect full learner loop.
+- Batch 3 — Assessment Intelligence.

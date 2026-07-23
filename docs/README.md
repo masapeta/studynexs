@@ -39,6 +39,7 @@ Capability Evidence
 | Document | Answers | Path |
 |----------|---------|------|
 | **Product Execution Plan** | What is the team building now? | [`product/PRODUCT_EXECUTION_PLAN.md`](./product/PRODUCT_EXECUTION_PLAN.md) |
+| **Current Batch** | What must the active coding session execute? | [`product/CURRENT_BATCH.md`](./product/CURRENT_BATCH.md) |
 
 When a batch completes, update **only** the Product Execution Plan (plus capability evidence and Decision Log entries as required).
 
@@ -57,4 +58,6 @@ When a batch completes, update **only** the Product Execution Plan (plus capabil
 
 ## Current execution target
 
-**Batch 1 — Curriculum Intelligence** · [`product/PRODUCT_EXECUTION_PLAN.md`](./product/PRODUCT_EXECUTION_PLAN.md)
+**Batch 1 — Curriculum Intelligence** is accepted and frozen as Release 0.1.
+
+**Current authorized target:** **Batch 2 — Academic Onboarding** · [`product/CURRENT_BATCH.md`](./product/CURRENT_BATCH.md)

@@ -1,133 +1,93 @@
 # Platform Status — Engineering Dashboard
 
 > **Master dashboard** for StudyNexs platform engineering. Machine-readable data:
-> [`docs/engineering/`](./engineering/) (`platform.json`, `modules.json`, `roadmap.json`) — powers
-> **Dashboard → Platform → Engineering**. Canonical policy: [`/CLAUDE.md`](../CLAUDE.md). Session
-> detail: [`AGENT_HANDOVER.md`](./AGENT_HANDOVER.md).
+> [`docs/engineering/`](./engineering/) powers **Dashboard → Platform → Engineering**.
+> Canonical execution plan: [`product/PRODUCT_EXECUTION_PLAN.md`](./product/PRODUCT_EXECUTION_PLAN.md).
+
+**Last updated:** 2026-07-23
+
+---
 
 ## Source of truth
 
-This dashboard **summarizes** the current platform. It is a navigation aid, not an oracle.
+This dashboard summarizes current platform state. It is a navigation aid, not an oracle.
 
-**If documentation and implementation differ, the implementation is authoritative.** Verify with
-code, tests, and runtime behavior — then update this dashboard and `docs/engineering/*.json`.
-
-Documentation must be updated whenever implementation changes (end of every engineering batch).
+If documentation and implementation differ, verify with code, tests, and runtime behavior, then update this dashboard and `docs/engineering/*.json`.
 
 ---
 
-## Architecture version
+## Current product state
 
 | Field | Value |
-|-------|-------|
-| **Architecture version** | **2.6** |
-| **Last updated** | 2026-07-15 |
-| **Last engineering batch** | 28 (Parent Copilot UI) |
-| **Business milestone** | **Gate 1A — Demo Online** (after Batch 29) |
-| **Current batch** | **29 — Infrastructure Readiness** (in progress) |
-| **Branch** | `develop` |
-| **Commit** | `45ed42a` (pushed) |
+|---|---|
+| Architecture version | 2.7 |
+| Last accepted product batch | **Batch 1 — Curriculum Intelligence** |
+| Release | **0.1 — Accepted / Frozen** |
+| Commit | `63a5584` — `feat(curriculum): complete Batch 1 intelligence closure` |
+| Current authorized batch | **Batch 2 — Academic Onboarding** |
+| Batch 2 status | AUTHORIZED / active |
+| Branch | `develop` |
 
 ---
 
-## Next milestone
+## Batch 1 acceptance snapshot
+
+| Signal | Status | Evidence |
+|---|---:|---|
+| Completion report | Accepted | [`product/BATCH_01_COMPLETION_REPORT.md`](./product/BATCH_01_COMPLETION_REPORT.md) |
+| API readiness | PASS | DB + Redis healthy |
+| Alembic | PASS | `a1b2c3d4e5f7 (head)` |
+| API import | PASS | `import app.main` |
+| Focused API tests | PASS | 39 passed |
+| Web production build | PASS | `npm run build` |
+| Browser onboarding review | PASS | tenant reference + single pack-detail GET + 0 disallowed console errors |
+| Browser smoke | PASS | 20 checks + 0 disallowed console errors |
+| Live curriculum-intelligence rehearsal | PASS | teacher draft → principal approval → KG/RAG → cited lesson plan + QP |
+| Supporting-material document ingest | PASS | indexed 1 chunk, then self-cleaned |
+| Learning loop smoke | PASS | 20 WORKS, 2 PARTIAL, 0 FAIL |
+
+---
+
+## Current milestone
 
 | Field | Value |
-|-------|-------|
-| **Focus** | **Batch 29 — Infrastructure Readiness**, then **Gate 1A** |
-| **1A success** | HTTPS · login · demo data · AI works · smokes 100% |
-| **1B next** | Demo Reliable — targets in `GATE1_EXECUTION.md` |
-| **Exit** | Principal demo + no critical issues → stop polishing |
-| **Blocked** | HTTPS deploy — cloud credentials |
-| **Detail** | [`pilot/GATE1_EXECUTION.md`](./pilot/GATE1_EXECUTION.md) |
-
----
-
-## Snapshot
-
-| Signal | Status | Verified |
-|--------|--------|----------|
-| Tests (`apps/api/tests/`) | 340 passed, 2 skipped, 0 errors | Verified 2026-07-15 (isolated full suite) |
-| Parent Copilot | ✅ Batches 27–28 | Tests + build passing |
-| Student Copilot | ✅ Batches 25–26 | Tests + build passing |
-| RAG hybrid + re-rank | ✅ Batch 24 | Tests passing |
-| Graph queries for copilots | ✅ Batch 23 | Tests passing |
-| Student → weak Concept links | ✅ Batch 22 | Tests passing |
-| Curriculum management UI | ✅ Batch 21 | Build passing |
-| Academic Onboarding (Stage 2A) | ✅ Stage 2A | Tests passing (15) + e2e-onboarding-review + web build |
-| Content Review Queue | ✅ Batch 20 | Tests passing |
-| Question → Concept links | ✅ Batch 19 | Tests passing |
-| ConceptCard (tutor grounding) | ✅ Batch 18 | Tests passing |
-| Knowledge Graph (spine + links) | ✅ Batches 17–23 | Tests passing |
-| LLM gateway | ✅ live | Tests passing |
-| Embeddings | ✅ OpenAI + stub | Tests passing |
-| Vector DB | ✅ Qdrant | Tests passing |
-| RAG (core) | ✅ index/retrieve/citations | Tests passing |
-| Assessment Intelligence | ✅ Batch 14 | Tests passing |
-| Teacher Copilot | ✅ Batch 15 | Tests passing |
-| Document Intelligence | ✅ Batch 16 | Tests passing |
-
-**Verified legend:** `tests_passing` · `integration_pending` · `partial` · `not_started`
+|---|---|
+| Focus | **Batch 2 — Academic Onboarding** |
+| Goal | Curriculum-first onboarding that culminates in **Academic Intelligence Ready** |
+| Must reuse | `CurriculumPack`, Document Intelligence, extraction service, approval workflow, KG, RAG |
+| Must not build | Full textbook warehousing, parallel ingestion service, second curriculum engine, Batch 3 assessment automation |
+| Blocked by | None — implementation authorized by ARM |
+| Detail | [`product/CURRENT_BATCH.md`](./product/CURRENT_BATCH.md) |
 
 ---
 
 ## Capability matrix
 
-| Capability | Status | Verified | Batch |
-|------------|--------|----------|-------|
-| Student Copilot | ✅ | Tests passing | 25–26 |
-| Parent Copilot | ✅ | Tests passing | 27–28 |
-| RAG hybrid search + re-ranking | ✅ | Tests passing | 24 |
-| Graph queries for copilots | ✅ | Tests passing | 23 |
-| Student → weak Concept links | ✅ | Tests passing | 22 |
-| Curriculum management UI | ✅ | Build passing | 21 |
-| Content Review Queue | ✅ | Tests passing | 20 |
-| Question → Concept links | ✅ | Tests passing | 19 |
-| ConceptCard | ✅ | Tests passing | 18 |
-| Knowledge Graph spine | ✅ | Tests passing | 17 |
-| Document Intelligence | ✅ | Tests passing | 16 |
-| Teacher Copilot | ✅ | Tests passing | 15 |
-| Pack-grounded evaluation | ✅ | Tests passing | 14 |
-| Grounded QP generation | ✅ | Tests passing | 12 |
-| RAG index / retrieve / citations | ✅ | Tests passing | 9–12 |
-| Mastery engine | ✅ | Tests passing | pre-12 |
-| Authorization / tenant isolation | ✅ | Tests passing | 1–6 |
-
-Full matrix: [`engineering/platform.json`](./engineering/platform.json)
+| Capability | Status | Verified |
+|---|---|---|
+| Curriculum Intelligence | Accepted / Frozen | Batch 1 report + runtime evidence |
+| Academic Onboarding | Authorized | Implementation active under Batch 2 |
+| RAG | Complete | Tests + live pack citation evidence |
+| Knowledge Graph | Complete | KG ready in live rehearsal |
+| Document Intelligence | Complete for supporting-material ingest | Live ingest smoke |
+| Teacher Copilot | Complete for grounded lesson-plan evidence | Live rehearsal |
+| Assessment Intelligence | Existing foundation | Batch 3 deferred |
+| Student Copilot / Tutor | Complete for concept-card-grounded reference loop | Learning-loop smoke |
+| Parent Copilot | Complete for same-topic reference loop | Learning-loop smoke |
+| Authorization / tenant isolation | Complete for Batch 1 scope | Tests + browser tenant tracker |
 
 ---
 
-## Module index (status + verification + dependencies)
+## Maintenance rule
 
-| Module | Status | Verified | Depends on (satisfied) | Pending |
-|--------|--------|----------|------------------------|---------|
-| RAG | ✅ | Tests passing | Embeddings, Vector Store, Knowledge Graph | — |
-| Knowledge Graph | ✅ | Tests passing | Curriculum Intelligence | — |
-| Curriculum Intelligence | ✅ | Tests passing | RAG, Embeddings, File Processing | — |
-| Teacher Copilot | ✅ | Tests passing | Embeddings, RAG, Curriculum, AI Platform | — |
-| Assessment Intelligence | ✅ | Tests passing | RAG, AI Platform | — |
-| Student Copilot | ✅ | Tests passing | Mastery, RAG, Knowledge Graph, AI Platform | — |
-| Parent Copilot | ✅ | Tests passing | Mastery, RAG, Knowledge Graph, Authorization | — |
-| File Processing | ✅ | Tests passing | AI Platform, OCR Pipeline, RAG | — |
-| Mastery Engine | ✅ | Tests passing | Authorization | — |
-| AI Platform | ✅ | Tests passing | — | — |
+At the end of every accepted product batch, update:
 
-Module detail: [`docs/modules/`](./modules/) · structured deps: [`engineering/modules.json`](./engineering/modules.json)
+1. `docs/product/PRODUCT_EXECUTION_PLAN.md`
+2. `docs/ROADMAP.md`
+3. `docs/STATUS.md`
+4. `docs/decisions/DECISION_LOG.md`
+5. `docs/engineering/roadmap.json`
+6. `docs/engineering/platform.json`
+7. the batch completion report / release-history artifact
 
----
-
-## Maintenance (every engineering batch)
-
-Follow [`engineering/005-development-lifecycle.md`](./engineering/005-development-lifecycle.md). Validation standard: [`engineering/004-validation-and-testing.md`](./engineering/004-validation-and-testing.md).
-
-1. Implement + validate per [`004-validation-and-testing.md`](./engineering/004-validation-and-testing.md)
-2. Update `docs/engineering/platform.json`, `modules.json`, `roadmap.json`
-3. Update this file + affected `docs/modules/*.md`
-4. Update `STATUS.md`, `CHANGELOG.md`, `ROADMAP.md`, `AGENT_HANDOVER.md`
-5. Bump `architecture_version` when platform contracts change materially
-
-**Do not** rewrite core engineering standards (`docs/engineering/001`–`005`) unless repeated sessions prove a gap — grow module docs and update this dashboard instead. Policy: [`engineering/ONBOARDING.md`](./engineering/ONBOARDING.md).
-
-Cursor rule: [`.cursor/rules/engineering-dashboard.mdc`](../.cursor/rules/engineering-dashboard.mdc)
-
-In-app: **Dashboard → Platform → Engineering** (`/dashboard/platform/engineering`, admin only)
+During an active batch, do not create intermediate governance documents unless ARM explicitly asks. Update governance again when the batch is complete.
