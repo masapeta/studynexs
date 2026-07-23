@@ -200,8 +200,9 @@ def main() -> int:
         if isinstance(ev_body, dict):
             evals = ev_body.get("data") or []
             suggested = [e for e in evals if e.get("status") == "suggested"]
-            if not suggested:
-                results.append((False, 0, "demo: pending eval", "no suggested eval"))
+            approved = [e for e in evals if e.get("status") == "approved"]
+            if not suggested and not approved:
+                results.append((False, 0, "demo: eval evidence", "no suggested or approved eval"))
 
     # Demo v1 — parent class work notice (Journey 3/4)
     notices_body = check(client, base, "demo: class work notice", "/api/v1/notices")
