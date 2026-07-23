@@ -12,9 +12,10 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.academic import Class
+from app.db.models.academic import Class, Subject
+from app.db.models.misconception import MisconceptionEntry
 from app.db.models.school import School
-from app.db.models.student import Parent, Relationship, Student, StudentParentMap
+from app.db.models.student import Student
 from app.modules.ai.embeddings import EmbeddingService
 from app.modules.ai.gateway import LLMMessage, generate_llm, record_usage
 from app.modules.ai.gateway.input_guard import sanitize_prompt_text
@@ -107,6 +108,40 @@ class ParentCopilotService:
             )
         ).scalar_one_or_none()
 
+    async def _exam_focus_from_misconceptions(
+        self, *, school_id: uuid.UUID, student_id: uuid.UUID
+    ) -> tuple[list[ParentFocusAreaOut], list[str]]:
+        """Recent exam-derived topics (same chain as tutor recommendations)."""
+        rows = (
+            await self.db.execute(
+                select(MisconceptionEntry, Subject.name)
+                .join(Subject, Subject.id == MisconceptionEntry.subject_id)
+                .where(
+                    MisconceptionEntry.school_id == school_id,
+                    MisconceptionEntry.student_id == student_id,
+                    Subject.school_id == school_id,
+                )
+                .order_by(MisconceptionEntry.created_at.desc())
+                .limit(4)
+            )
+        ).all()
+        focus: list[ParentFocusAreaOut] = []
+        lines: list[str] = []
+        for mc, subject_name in rows:
+            topic = (mc.topic or "General").strip()
+            if not topic or any(f.topic == topic for f in focus):
+                continue
+            mistake = (mc.common_mistake or "review this concept")[:120]
+            lines.append(f"- Recent exam ({subject_name} / {topic}): {mistake}")
+            focus.append(
+                ParentFocusAreaOut(
+                    topic=topic,
+                    subject_name=subject_name,
+                    mastery_pct=None,
+                )
+            )
+        return focus, lines
+
     async def _progress_snapshot(
         self,
         *,
@@ -123,8 +158,15 @@ class ParentCopilotService:
         )
         focus: list[ParentFocusAreaOut] = []
         weak_lines: list[str] = []
+        exam_focus, exam_lines = await self._exam_focus_from_misconceptions(
+            school_id=school_id, student_id=student_id
+        )
+        focus.extend(exam_focus)
+        weak_lines.extend(exam_lines)
         if progress:
             for wt in progress.weak_topics[:6]:
+                if any(f.topic == wt.topic_display for f in focus):
+                    continue
                 line = f"- {wt.subject_name}: {wt.topic_display} ({wt.mastery_pct:.0f}% mastery)"
                 weak_lines.append(line)
                 focus.append(

@@ -7,6 +7,7 @@ export interface UserPermissions {
   scoped_only: boolean;
   incharge_class_ids: string[];
   teaching_class_ids: string[];
+  teaching_assignments: Array<{ class_id: string; subject_id: string }>;
   can_view_dashboard: boolean;
   can_view_classes: boolean;
   can_manage_students: boolean;
@@ -27,6 +28,8 @@ export interface UserPermissions {
   can_use_settings: boolean;
   can_approve_question_papers: boolean;
   can_manage_curriculum: boolean;
+  can_edit_curriculum_draft: boolean;
+  can_approve_curriculum: boolean;
 }
 
 export const EMPTY_PERMISSIONS: UserPermissions = {
@@ -35,6 +38,7 @@ export const EMPTY_PERMISSIONS: UserPermissions = {
   scoped_only: true,
   incharge_class_ids: [],
   teaching_class_ids: [],
+  teaching_assignments: [],
   can_view_dashboard: false,
   can_view_classes: false,
   can_manage_students: false,
@@ -55,6 +59,8 @@ export const EMPTY_PERMISSIONS: UserPermissions = {
   can_use_settings: false,
   can_approve_question_papers: false,
   can_manage_curriculum: false,
+  can_edit_curriculum_draft: false,
+  can_approve_curriculum: false,
 };
 
 type NavGate = keyof UserPermissions;
@@ -66,7 +72,7 @@ const TEACHING_SUBROUTES: { prefix: string; gate: NavGate }[] = [
   { prefix: TEACHING.exams, gate: "can_use_exams" },
   { prefix: TEACHING.gradebook, gate: "can_use_exams" },
   { prefix: TEACHING.lessonPlans, gate: "can_use_exams" },
-  { prefix: TEACHING.curriculumOnboarding, gate: "can_manage_curriculum" },
+  { prefix: TEACHING.curriculumOnboarding, gate: "can_edit_curriculum_draft" },
   { prefix: TEACHING.curriculum, gate: "can_use_exams" },
 ];
 

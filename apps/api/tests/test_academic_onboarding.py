@@ -787,18 +787,24 @@ async def test_permissions_can_manage_curriculum(
         headers=auth_headers(teacher_token),
     )
     assert teacher_perms.json()["data"]["can_manage_curriculum"] is False
+    assert teacher_perms.json()["data"]["can_edit_curriculum_draft"] is False
+    assert teacher_perms.json()["data"]["can_approve_curriculum"] is False
 
     incharge_perms = await client.get(
         "/api/v1/users/me/permissions",
         headers=auth_headers(incharge_token),
     )
     assert incharge_perms.json()["data"]["can_manage_curriculum"] is True
+    assert incharge_perms.json()["data"]["can_edit_curriculum_draft"] is True
+    assert incharge_perms.json()["data"]["can_approve_curriculum"] is True
 
     admin_perms = await client.get(
         "/api/v1/users/me/permissions",
         headers=auth_headers(admin_token),
     )
     assert admin_perms.json()["data"]["can_manage_curriculum"] is True
+    assert admin_perms.json()["data"]["can_edit_curriculum_draft"] is True
+    assert admin_perms.json()["data"]["can_approve_curriculum"] is True
 
 
 def test_compute_intelligence_status_ready():

@@ -16,6 +16,10 @@ import { TEACHING } from "@/lib/dashboard-routes";
 type AcademicYear = { id: string; name: string; is_active?: boolean };
 type ClassRow = { id: string; grade: string; section: string };
 type SubjectRow = { id: string; name: string };
+type TeachingAssignment = { class_id: string; subject_id: string };
+
+const EMPTY_IDS: string[] = [];
+const EMPTY_TEACHING_ASSIGNMENTS: TeachingAssignment[] = [];
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -44,11 +48,18 @@ function curriculumBuilderHref(classId: string, subjectId: string, packId: strin
 export default function CurriculumOnboardingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { permissions, loading: authLoading } = useAuth();
-  const canManage = Boolean(permissions?.can_manage_curriculum);
+  const { permissions, user, loading: authLoading } = useAuth();
+  const canEditDraft = Boolean(permissions?.can_edit_curriculum_draft);
+  const canApproveCurriculum = Boolean(permissions?.can_approve_curriculum);
   const isAdmin = Boolean(permissions?.is_admin);
-  const inchargeClassIds = permissions?.incharge_class_ids || [];
-  const [step, setStep] = useState(1);
+  const inchargeClassIds = permissions?.incharge_class_ids ?? EMPTY_IDS;
+  const teachingClassIds = permissions?.teaching_class_ids ?? EMPTY_IDS;
+  const teachingAssignments = permissions?.teaching_assignments ?? EMPTY_TEACHING_ASSIGNMENTS;
+  const requestedPackId = searchParams.get("pack_id");
+  const requestedStep = searchParams.get("step");
+  const [step, setStep] = useState(() =>
+    requestedStep === "3" || requestedStep === "4" ? Number(requestedStep) : 1
+  );
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
   const [years, setYears] = useState<AcademicYear[]>([]);
@@ -63,24 +74,60 @@ export default function CurriculumOnboardingPage() {
   const [curriculumText, setCurriculumText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [packId, setPackId] = useState<string | null>(null);
+  const [packId, setPackId] = useState<string | null>(requestedPackId);
   const [proposalNote, setProposalNote] = useState("");
   const [reviewDetail, setReviewDetail] = useState<PackDetail | null>(null);
   const [canApprovePack, setCanApprovePack] = useState(false);
 
-  const contextLabel = useMemo(() => {
-    const cls = classes.find((c) => c.id === classId);
-    const sub = subjects.find((s) => s.id === subjectId);
-    if (!cls || !sub) return "";
-    return `${formatClassLabel(cls.grade, cls.section)} · ${sub.name}`;
-  }, [classes, subjects, classId, subjectId]);
-
   const selectableClasses = useMemo(() => {
     if (isAdmin) return classes;
-    if (inchargeClassIds.length === 0) return [];
-    const allowed = new Set(inchargeClassIds);
+    const allowed = new Set([...inchargeClassIds, ...teachingClassIds]);
+    if (allowed.size === 0) return [];
     return classes.filter((c) => allowed.has(c.id));
-  }, [classes, inchargeClassIds, isAdmin]);
+  }, [classes, inchargeClassIds, teachingClassIds, isAdmin]);
+
+  const selectedClassId =
+    selectableClasses.find((item) => item.id === classId)?.id || selectableClasses[0]?.id || "";
+
+  const selectableSubjects = useMemo(() => {
+    if (isAdmin || inchargeClassIds.includes(selectedClassId)) return subjects;
+    const assignedSubjectIds = new Set(
+      teachingAssignments
+        .filter((assignment) => assignment.class_id === selectedClassId)
+        .map((assignment) => assignment.subject_id)
+    );
+    return subjects.filter((subject) => assignedSubjectIds.has(subject.id));
+  }, [inchargeClassIds, isAdmin, selectedClassId, subjects, teachingAssignments]);
+
+  const selectedSubjectId =
+    selectableSubjects.find((item) => item.id === subjectId)?.id || selectableSubjects[0]?.id || "";
+
+  const contextLabel = useMemo(() => {
+    const cls = classes.find((c) => c.id === selectedClassId);
+    const sub = subjects.find((s) => s.id === selectedSubjectId);
+    if (!cls || !sub) return "";
+    return `${formatClassLabel(cls.grade, cls.section)} · ${sub.name}`;
+  }, [classes, selectedClassId, selectedSubjectId, subjects]);
+
+  const canApproveThisPack = Boolean(
+    reviewDetail &&
+      canApproveCurriculum &&
+      (isAdmin || inchargeClassIds.includes(reviewDetail.class_id)) &&
+      (!reviewDetail.created_by || !user?.id || reviewDetail.created_by !== user.id || isAdmin)
+  );
+
+  const canEditThisPack = Boolean(
+    reviewDetail &&
+      (
+      isAdmin ||
+      inchargeClassIds.includes(reviewDetail.class_id) ||
+      teachingAssignments.some(
+        (assignment) =>
+          assignment.class_id === reviewDetail.class_id &&
+          assignment.subject_id === reviewDetail.subject_id
+      )
+      )
+  );
 
   const handleStructureChange = useCallback((detail: PackDetail) => {
     setReviewDetail(detail);
@@ -106,36 +153,21 @@ export default function CurriculumOnboardingPage() {
   }, []);
 
   useEffect(() => {
-    if (selectableClasses.length === 0) return;
-    if (!classId || !selectableClasses.some((c) => c.id === classId)) {
-      setClassId(selectableClasses[0].id);
-    }
-  }, [selectableClasses, classId]);
-
-  useEffect(() => {
-    const qpPack = searchParams.get("pack_id");
-    const qpStep = searchParams.get("step");
-    if (qpPack) setPackId(qpPack);
-    if (qpStep === "3" || qpStep === "4") setStep(Number(qpStep));
-  }, [searchParams]);
-
-  useEffect(() => {
-    if (!classId) return;
-    api(`/api/v1/academic/subjects?class_id=${classId}`)
+    if (!selectedClassId) return;
+    api(`/api/v1/academic/subjects?class_id=${selectedClassId}`)
       .then((r) => {
-        const items = r.items || r.data || [];
+        const items = (r.items || r.data || []) as SubjectRow[];
         setSubjects(items);
-        setSubjectId(items[0]?.id || "");
       })
       .catch(() => {});
-  }, [classId]);
+  }, [selectedClassId]);
 
   async function proposeDraft() {
-    if (!canManage) {
-      setError("Curriculum onboarding is limited to admins and class incharges.");
+    if (!canEditDraft) {
+      setError("You need a subject assignment or class incharge role to create curriculum drafts.");
       return;
     }
-    if (!classId || !subjectId || !yearId) {
+    if (!selectedClassId || !selectedSubjectId || !yearId) {
       setError("Select class, subject, and academic year.");
       return;
     }
@@ -156,8 +188,8 @@ export default function CurriculumOnboardingPage() {
       }>("/api/v1/curriculum/onboarding/propose", {
         method: "POST",
         body: JSON.stringify({
-          class_id: classId,
-          subject_id: subjectId,
+          class_id: selectedClassId,
+          subject_id: selectedSubjectId,
           academic_year_id: yearId,
           board,
           book_title: bookTitle || undefined,
@@ -183,7 +215,7 @@ export default function CurriculumOnboardingPage() {
   }
 
   async function approvePack() {
-    if (!packId || !canManage) return;
+    if (!packId || !canApproveThisPack) return;
     setBusy(true);
     setError("");
     try {
@@ -204,15 +236,15 @@ export default function CurriculumOnboardingPage() {
     );
   }
 
-  if (!canManage) {
+  if (!canEditDraft) {
     return (
       <div className="sn-workspace sn-workspace--primary" style={{ maxWidth: 720, margin: "0 auto" }}>
         <PageHeaderCard
           title="Academic Onboarding"
-          subtitle="Only school admins and class incharges can onboard curriculum for a class."
+          subtitle="Curriculum onboarding requires a subject assignment, class incharge role, or admin access."
         />
         <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-          Subject teachers can use approved packs in lesson plans and question papers, but cannot create or approve curriculum packs.
+          Mapped subject teachers can draft curriculum for their class and subject. Class incharges and principals review and approve before packs become institutional memory.
         </p>
         <Link href={TEACHING.curriculum} className="sn-btn sn-btn--ghost" style={btn}>
           View curriculum packs
@@ -225,7 +257,7 @@ export default function CurriculumOnboardingPage() {
     <div className="sn-workspace sn-workspace--primary" style={{ maxWidth: 880, margin: "0 auto" }}>
       <PageHeaderCard
         title="Academic Onboarding"
-        subtitle="Teach StudyNexs your school's curriculum once — AI assists; you approve."
+        subtitle="Subject teachers build the curriculum; class incharges and administrators approve it."
       />
 
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
@@ -259,7 +291,7 @@ export default function CurriculumOnboardingPage() {
             <AppSelect
               aria-label="Class"
               variant="field"
-              value={classId}
+              value={selectedClassId}
               onChange={setClassId}
               options={selectableClasses.map((c) => ({
                 value: c.id,
@@ -272,11 +304,16 @@ export default function CurriculumOnboardingPage() {
             <AppSelect
               aria-label="Subject"
               variant="field"
-              value={subjectId}
+              value={selectedSubjectId}
               onChange={setSubjectId}
-              options={subjects.map((s) => ({ value: s.id, label: s.name }))}
+              options={selectableSubjects.map((s) => ({ value: s.id, label: s.name }))}
             />
           </label>
+          {selectedClassId && selectableSubjects.length === 0 ? (
+            <p role="status" style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)" }}>
+              You are not assigned to a subject in this class. Choose one of your assigned classes.
+            </p>
+          ) : null}
           <label>
             Academic year
             <AppSelect
@@ -305,7 +342,13 @@ export default function CurriculumOnboardingPage() {
               <input style={inputStyle} value={edition} onChange={(e) => setEdition(e.target.value)} />
             </label>
           </div>
-          <button type="button" className="sn-btn sn-btn--primary" style={btn} onClick={() => setStep(2)}>
+          <button
+            type="button"
+            className="sn-btn sn-btn--primary"
+            style={btn}
+            onClick={() => setStep(2)}
+            disabled={!selectedClassId || !selectedSubjectId}
+          >
             Continue <ArrowRight size={14} style={{ marginLeft: 6 }} />
           </button>
         </section>
@@ -366,38 +409,52 @@ export default function CurriculumOnboardingPage() {
           ) : null}
           <AcademicIntelligenceBanner
             packId={packId}
-            canRetry={canManage}
+            canRetry={canEditThisPack}
             onReadyChange={(ready) => setCanApprovePack(ready)}
           />
-          <OnboardingReviewPanel packId={packId} onStructureChange={handleStructureChange} />
-          <p style={{ fontSize: 13, margin: 0 }}>
-            Open the full curriculum builder for chapter-level edits while keeping this class and pack selected.
-          </p>
+          <OnboardingReviewPanel
+            packId={packId}
+            editable={canEditThisPack}
+            onStructureChange={handleStructureChange}
+          />
+          {canEditThisPack ? (
+            <p style={{ fontSize: 13, margin: 0 }}>
+              Open the full curriculum builder for chapter-level edits while keeping this class and pack selected.
+            </p>
+          ) : null}
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Link
-              href={curriculumBuilderHref(classId, subjectId, packId)}
-              className="sn-btn sn-btn--ghost"
-              style={btn}
-            >
-              Edit in curriculum builder
-            </Link>
+            {canEditThisPack ? (
+              <Link
+                href={curriculumBuilderHref(selectedClassId, selectedSubjectId, packId)}
+                className="sn-btn sn-btn--ghost"
+                style={btn}
+              >
+                Edit in curriculum builder
+              </Link>
+            ) : null}
             {step === 3 ? (
               <>
                 <button type="button" className="sn-btn sn-btn--ghost" style={btn} onClick={() => setStep(2)}>
                   Back
                 </button>
-                <button
-                  type="button"
-                  className="sn-btn sn-btn--primary"
-                  style={btn}
-                  disabled={
-                    busy ||
-                    !(reviewDetail?.chapters || []).some((ch) => (ch.topics || []).length > 0)
-                  }
-                  onClick={approvePack}
-                >
-                  {busy ? "Approving…" : "Approve pack (HOD)"}
-                </button>
+                {canApproveThisPack ? (
+                  <button
+                    type="button"
+                    className="sn-btn sn-btn--primary"
+                    style={btn}
+                    disabled={
+                      busy ||
+                      !(reviewDetail?.chapters || []).some((ch) => (ch.topics || []).length > 0)
+                    }
+                    onClick={approvePack}
+                  >
+                    {busy ? "Approving…" : "Approve curriculum pack"}
+                  </button>
+                ) : (
+                  <p role="status" style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)" }}>
+                    This draft is ready for review. Its class incharge or a school administrator can approve it.
+                  </p>
+                )}
               </>
             ) : (
               <button
@@ -416,7 +473,7 @@ export default function CurriculumOnboardingPage() {
 
       {step === 4 && packId ? (
         <section className="sn-workspace-zone" style={{ marginTop: 16, display: "grid", gap: 12 }}>
-          <AcademicIntelligenceBanner packId={packId} canRetry={canManage} />
+          <AcademicIntelligenceBanner packId={packId} canRetry={canEditThisPack} />
           <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: 0 }}>
             Lesson plans and question papers on the teaching hub now use this approved pack when you select it for {contextLabel}.
           </p>

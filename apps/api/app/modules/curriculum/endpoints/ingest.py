@@ -15,18 +15,19 @@ from app.modules.ai.services.document_intelligence_service import (
     DocumentIntelligenceError,
     DocumentIntelligenceService,
 )
-from app.modules.curriculum.services.pack_service import PackError, PackService
 from app.modules.curriculum.schemas.ingest import (
     IngestDocumentIn,
     IngestDocumentOut,
-    IngestStatusOut,
     IngestionSummaryOut,
+    IngestStatusOut,
 )
+from app.modules.curriculum.services.curriculum_authz import assert_curriculum_draft_edit_pack
+from app.modules.curriculum.services.pack_service import PackError
 from app.shared.schemas.common import APIResponse
 
 router = APIRouter(route_class=CommitOnSuccessRoute)
 
-_BUILD = ("class_incharge", "admin", "super_admin")
+_DRAFT_EDIT = ("teacher", "class_incharge", "admin", "super_admin")
 _READ = ("teacher", "class_incharge", "admin", "super_admin")
 
 
@@ -44,9 +45,10 @@ def _err(e: DocumentIntelligenceError) -> HTTPException:
 async def ingest_document(
     pack_id: uuid.UUID,
     body: IngestDocumentIn,
-    current_user: CurrentUser = Depends(require_roles(*_BUILD)),
+    current_user: CurrentUser = Depends(require_roles(*_DRAFT_EDIT)),
     db: AsyncSession = Depends(get_db),
 ):
+    await assert_curriculum_draft_edit_pack(db, current_user, pack_id)
     svc = DocumentIntelligenceService(db)
     try:
         result = await svc.ingest_uploaded_file(

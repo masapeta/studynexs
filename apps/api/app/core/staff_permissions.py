@@ -16,8 +16,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import CurrentUser
 from app.db.models.academic import Class, TeacherSubjectMapping
+from app.db.models.curriculum_pack import CurriculumPack
 from app.db.models.examination import Exam
-from app.db.models.question_paper import PaperStatus, QuestionPaper, _LOCKED_STATUSES
+from app.db.models.question_paper import _LOCKED_STATUSES, PaperStatus, QuestionPaper
 from app.db.models.report_card import ReportCard, ReportStatus
 
 _ADMIN_ROLES = frozenset({"admin", "super_admin"})
@@ -73,6 +74,22 @@ class StaffScope:
         if class_id in self.incharge_class_ids:
             return True
         return self.teaches(class_id, subject_id)
+
+    def can_edit_curriculum_draft(self, class_id: uuid.UUID, subject_id: uuid.UUID) -> bool:
+        if self.is_admin:
+            return True
+        if class_id in self.incharge_class_ids:
+            return True
+        return self.teaches(class_id, subject_id)
+
+    def can_approve_curriculum_pack(self, pack: CurriculumPack) -> bool:
+        if self.is_admin:
+            return True
+        if pack.class_id not in self.incharge_class_ids:
+            return False
+        if pack.created_by == self.user_id:
+            return False
+        return True
 
     def can_edit_question_paper(self, paper: QuestionPaper) -> bool:
         if paper.status in _LOCKED_STATUSES:

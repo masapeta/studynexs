@@ -14,12 +14,15 @@ import { TEACHING } from "@/lib/dashboard-routes";
 
 type CurriculumPack = {
   id: string;
+  class_id: string;
+  subject_id: string;
   status: string;
   board: string;
   book_title?: string | null;
   version: number;
   concept_count?: number;
   approved_at?: string | null;
+  created_by?: string | null;
 };
 
 type LearningOutcome = {
@@ -80,6 +83,10 @@ type ReviewItem = {
 };
 
 type AcademicYear = { id: string; name: string; is_active?: boolean };
+type TeachingAssignment = { class_id: string; subject_id: string };
+
+const EMPTY_IDS: string[] = [];
+const EMPTY_TEACHING_ASSIGNMENTS: TeachingAssignment[] = [];
 
 type AuditEvent = {
   id: string;
@@ -194,8 +201,13 @@ export default function CurriculumManagementPage() {
   const [newLoCode, setNewLoCode] = useState("");
   const [newLoDescription, setNewLoDescription] = useState("");
 
-  const { permissions } = useAuth();
-  const canManageCurriculum = Boolean(permissions?.can_manage_curriculum);
+  const { permissions, user } = useAuth();
+  const canEditDraft = Boolean(permissions?.can_edit_curriculum_draft);
+  const canApproveCurriculum = Boolean(permissions?.can_approve_curriculum);
+  const isAdmin = Boolean(permissions?.is_admin);
+  const inchargeClassIds = permissions?.incharge_class_ids ?? EMPTY_IDS;
+  const teachingClassIds = permissions?.teaching_class_ids ?? EMPTY_IDS;
+  const teachingAssignments = permissions?.teaching_assignments ?? EMPTY_TEACHING_ASSIGNMENTS;
 
   const onboardingContext = useMemo(() => {
     if (typeof window === "undefined") {
@@ -209,8 +221,39 @@ export default function CurriculumManagementPage() {
     };
   }, []);
 
+  const selectableClasses = useMemo(() => {
+    if (isAdmin) return classes;
+    const allowed = new Set([...inchargeClassIds, ...teachingClassIds]);
+    return classes.filter((item) => allowed.has(item.id));
+  }, [classes, inchargeClassIds, isAdmin, teachingClassIds]);
+
+  const selectableSubjects = useMemo(() => {
+    if (isAdmin || inchargeClassIds.includes(classId)) return subjects;
+    const assignedSubjectIds = new Set(
+      teachingAssignments
+        .filter((assignment) => assignment.class_id === classId)
+        .map((assignment) => assignment.subject_id)
+    );
+    return subjects.filter((item) => assignedSubjectIds.has(item.id));
+  }, [classId, inchargeClassIds, isAdmin, subjects, teachingAssignments]);
+
+  const canEditSelectedScope =
+    Boolean(classId && subjectId) &&
+    (isAdmin ||
+      inchargeClassIds.includes(classId) ||
+      teachingAssignments.some(
+        (assignment) => assignment.class_id === classId && assignment.subject_id === subjectId
+      ));
+
   const selectedPack = packs.find((p) => p.id === packId);
   const isDraft = selectedPack?.status === "draft";
+  const canApproveSelectedPack =
+    canApproveCurriculum &&
+    isDraft &&
+    Boolean(selectedPack) &&
+    (isAdmin || inchargeClassIds.includes(selectedPack.class_id)) &&
+    (!selectedPack?.created_by || !user?.id || selectedPack.created_by !== user.id || isAdmin);
+  const canEditSelectedDraft = canEditSelectedScope && isDraft;
 
   async function loadPacks(nextClassId = classId, nextSubjectId = subjectId, preferPackId?: string) {
     if (!nextClassId || !nextSubjectId) {
@@ -233,16 +276,6 @@ export default function CurriculumManagementPage() {
       .then((r) => {
         const items = sortClasses<any>(r.items || r.data || []);
         setClasses(items);
-        const fromOnboarding =
-          onboardingContext.classId && items.some((c) => c.id === onboardingContext.classId)
-            ? onboardingContext.classId
-            : null;
-        const preferred =
-          fromOnboarding ??
-          items.find((c) => /10/.test(String(c.grade)))?.id ??
-          items[items.length - 1]?.id ??
-          items[0]?.id;
-        if (preferred) setClassId(preferred);
       })
       .catch(() => {});
     api("/api/v1/school/academic-years")
@@ -256,19 +289,40 @@ export default function CurriculumManagementPage() {
   }, []);
 
   useEffect(() => {
+    if (selectableClasses.length === 0) {
+      if (classId) setClassId("");
+      return;
+    }
+    if (!selectableClasses.some((item) => item.id === classId)) {
+      const fromOnboarding = selectableClasses.find(
+        (item) => item.id === onboardingContext.classId
+      );
+      setClassId(fromOnboarding?.id || selectableClasses[0].id);
+    }
+  }, [classId, onboardingContext.classId, selectableClasses]);
+
+  useEffect(() => {
     if (!classId) return;
     api(`/api/v1/academic/subjects?class_id=${classId}`)
       .then((r) => {
         const items = r.items || r.data || (Array.isArray(r) ? r : []);
         setSubjects(items);
-        const fromOnboarding =
-          onboardingContext.subjectId && items.some((s: { id: string }) => s.id === onboardingContext.subjectId)
-            ? onboardingContext.subjectId
-            : null;
-        setSubjectId(fromOnboarding || items[0]?.id || "");
       })
       .catch(() => {});
-  }, [classId, onboardingContext.subjectId]);
+  }, [classId]);
+
+  useEffect(() => {
+    if (selectableSubjects.length === 0) {
+      if (subjectId) setSubjectId("");
+      return;
+    }
+    if (!selectableSubjects.some((item) => item.id === subjectId)) {
+      const fromOnboarding = selectableSubjects.find(
+        (item) => item.id === onboardingContext.subjectId
+      );
+      setSubjectId(fromOnboarding?.id || selectableSubjects[0].id);
+    }
+  }, [onboardingContext.subjectId, selectableSubjects, subjectId]);
 
   useEffect(() => {
     loadPacks(classId, subjectId, onboardingContext.packId || undefined).catch(() => setPacks([]));
@@ -580,7 +634,7 @@ export default function CurriculumManagementPage() {
         title="Curriculum management"
         subtitle="Build draft curriculum packs, approve for institutional memory, and manage the knowledge spine."
       >
-        {canManageCurriculum ? (
+        {canEditDraft ? (
           <Link href={TEACHING.curriculumOnboarding} className="sn-btn-ghost" style={btn}>
             <Sparkles size={14} style={{ marginRight: 6, verticalAlign: "middle" }} />
             Academic onboarding
@@ -607,7 +661,10 @@ export default function CurriculumManagementPage() {
             <AppSelect
               value={classId}
               onChange={setClassId}
-              options={classes.map((c) => ({ value: c.id, label: formatClassLabel(c.grade, c.section) }))}
+              options={selectableClasses.map((c) => ({
+                value: c.id,
+                label: formatClassLabel(c.grade, c.section),
+              }))}
             />
           </div>
           <div>
@@ -617,7 +674,7 @@ export default function CurriculumManagementPage() {
             <AppSelect
               value={subjectId}
               onChange={setSubjectId}
-              options={subjects.map((s) => ({ value: s.id, label: s.name }))}
+              options={selectableSubjects.map((s) => ({ value: s.id, label: s.name }))}
             />
           </div>
           <div>
@@ -645,12 +702,12 @@ export default function CurriculumManagementPage() {
             className="sn-btn-primary"
             style={btn}
             onClick={() => setShowCreatePack((v) => !v)}
-            disabled={busy || !classId || !subjectId}
+            disabled={busy || !canEditSelectedScope}
           >
             <Plus size={14} style={{ marginRight: 6, verticalAlign: "middle" }} />
             {showCreatePack ? "Hide create form" : "New draft pack"}
           </button>
-          {isDraft && packId && (
+          {canEditSelectedDraft && packId && (
             <button type="button" className="sn-btn-ghost" style={btn} onClick={savePackMeta} disabled={busy}>
               <Save size={14} style={{ marginRight: 6, verticalAlign: "middle" }} />
               Save draft
@@ -664,7 +721,7 @@ export default function CurriculumManagementPage() {
                   Approved {new Date(selectedPack.approved_at).toLocaleString()}
                 </span>
               )}
-              {isDraft && (
+              {canApproveSelectedPack && (
                 <button type="button" className="sn-btn-primary" style={btn} onClick={approvePack} disabled={busy}>
                   <Check size={14} style={{ marginRight: 6, verticalAlign: "middle" }} />
                   Approve pack
@@ -687,7 +744,7 @@ export default function CurriculumManagementPage() {
 
       {packId ? (
         <div style={{ marginBottom: 16 }}>
-          <AcademicIntelligenceBanner packId={packId} canRetry={canManageCurriculum} />
+          <AcademicIntelligenceBanner packId={packId} canRetry={canEditSelectedDraft} />
         </div>
       ) : null}
 
@@ -749,7 +806,7 @@ export default function CurriculumManagementPage() {
         </div>
       )}
 
-      {isDraft && packId && packDetail && (
+      {canEditSelectedDraft && packId && packDetail && (
         <section className="sn-glass-card" style={{ padding: 20, marginBottom: 16 }}>
           <h3 style={{ margin: "0 0 12px", fontSize: 15 }}>Pack metadata</h3>
           <div className="sn-form-grid" style={{ gap: 14 }}>
@@ -856,7 +913,7 @@ export default function CurriculumManagementPage() {
         </section>
       )}
 
-      {isDraft && packId && (
+      {canEditSelectedDraft && packId && (
         <section className="sn-glass-card" style={{ padding: 20, marginBottom: 16 }}>
           <h3 style={{ margin: "0 0 12px", fontSize: 15 }}>Add content</h3>
           <div className="sn-form-grid" style={{ gap: 14 }}>
@@ -1025,7 +1082,7 @@ export default function CurriculumManagementPage() {
               </strong>
               {(ch as PackChapter).learning_outcomes?.map((lo) => (
                 <div key={lo.id} style={{ marginLeft: 12, marginTop: 6, fontSize: 12 }}>
-                  {isDraft ? (
+                  {canEditSelectedDraft ? (
                     <input
                       style={inputStyle}
                       defaultValue={lo.description}
@@ -1044,7 +1101,7 @@ export default function CurriculumManagementPage() {
               <ul style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 13 }}>
                 {ch.topics.map((t) => (
                   <li key={t.id}>
-                    {isDraft ? (
+                    {canEditSelectedDraft ? (
                       <input
                         style={{ ...inputStyle, marginBottom: 4 }}
                         defaultValue={t.title}
@@ -1063,7 +1120,7 @@ export default function CurriculumManagementPage() {
                     )}
                     {(t as PackTopic).learning_outcomes?.map((lo) => (
                       <div key={lo.id} style={{ marginTop: 4, fontSize: 12 }}>
-                        {isDraft ? (
+                        {canEditSelectedDraft ? (
                           <input
                             style={inputStyle}
                             defaultValue={lo.description}

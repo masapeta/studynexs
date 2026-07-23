@@ -29,7 +29,8 @@ from app.modules.curriculum.schemas.pack import (
     TopicUpdate,
 )
 from app.modules.curriculum.services.curriculum_authz import (
-    assert_curriculum_manage,
+    assert_curriculum_approve_pack,
+    assert_curriculum_draft_edit,
     assert_curriculum_manage_chapter,
     assert_curriculum_manage_outcome,
     assert_curriculum_manage_pack,
@@ -42,7 +43,8 @@ from app.shared.schemas.common import APIResponse
 
 router = APIRouter(route_class=CommitOnSuccessRoute)
 
-_BUILD = ("class_incharge", "admin", "super_admin")
+_DRAFT_EDIT = ("teacher", "class_incharge", "admin", "super_admin")
+_APPROVE = ("class_incharge", "admin", "super_admin")
 _READ = ("teacher", "class_incharge", "admin", "super_admin")
 
 
@@ -58,9 +60,11 @@ def _err(e: PackError) -> HTTPException:
     return HTTPException(status_code=code, detail=msg)
 
 
-async def _assert_manage(db: AsyncSession, current_user: CurrentUser, class_id: uuid.UUID) -> None:
+async def _assert_draft_edit(
+    db: AsyncSession, current_user: CurrentUser, class_id: uuid.UUID, subject_id: uuid.UUID
+) -> None:
     scope = await get_staff_scope(db, current_user)
-    assert_curriculum_manage(scope, class_id)
+    assert_curriculum_draft_edit(scope, class_id, subject_id)
 
 
 async def _detail(svc: PackService, pack) -> PackDetailOut:
@@ -70,10 +74,10 @@ async def _detail(svc: PackService, pack) -> PackDetailOut:
 @router.post("/packs", response_model=APIResponse[PackOut], status_code=201)
 async def create_pack(
     body: PackCreate,
-    current_user: CurrentUser = Depends(require_roles(*_BUILD)),
+    current_user: CurrentUser = Depends(require_roles(*_DRAFT_EDIT)),
     db: AsyncSession = Depends(get_db),
 ):
-    await _assert_manage(db, current_user, body.class_id)
+    await _assert_draft_edit(db, current_user, body.class_id, body.subject_id)
     svc = PackService(db)
     try:
         pack = await svc.create_pack(
@@ -116,7 +120,7 @@ async def get_pack(
 async def update_pack(
     pack_id: uuid.UUID,
     body: PackUpdate,
-    current_user: CurrentUser = Depends(require_roles(*_BUILD)),
+    current_user: CurrentUser = Depends(require_roles(*_DRAFT_EDIT)),
     db: AsyncSession = Depends(get_db),
 ):
     await assert_curriculum_manage_pack(db, current_user, pack_id)
@@ -137,7 +141,7 @@ async def update_pack(
 async def add_chapter(
     pack_id: uuid.UUID,
     body: ChapterIn,
-    current_user: CurrentUser = Depends(require_roles(*_BUILD)),
+    current_user: CurrentUser = Depends(require_roles(*_DRAFT_EDIT)),
     db: AsyncSession = Depends(get_db),
 ):
     await assert_curriculum_manage_pack(db, current_user, pack_id)
@@ -187,7 +191,7 @@ async def add_chapter(
 async def update_chapter(
     chapter_id: uuid.UUID,
     body: ChapterUpdate,
-    current_user: CurrentUser = Depends(require_roles(*_BUILD)),
+    current_user: CurrentUser = Depends(require_roles(*_DRAFT_EDIT)),
     db: AsyncSession = Depends(get_db),
 ):
     await assert_curriculum_manage_chapter(db, current_user, chapter_id)
@@ -236,7 +240,7 @@ async def update_chapter(
 @router.delete("/chapters/{chapter_id}", response_model=APIResponse[None])
 async def delete_chapter(
     chapter_id: uuid.UUID,
-    current_user: CurrentUser = Depends(require_roles(*_BUILD)),
+    current_user: CurrentUser = Depends(require_roles(*_DRAFT_EDIT)),
     db: AsyncSession = Depends(get_db),
 ):
     await assert_curriculum_manage_chapter(db, current_user, chapter_id)
@@ -256,7 +260,7 @@ async def delete_chapter(
 async def add_topic(
     chapter_id: uuid.UUID,
     body: TopicIn,
-    current_user: CurrentUser = Depends(require_roles(*_BUILD)),
+    current_user: CurrentUser = Depends(require_roles(*_DRAFT_EDIT)),
     db: AsyncSession = Depends(get_db),
 ):
     await assert_curriculum_manage_chapter(db, current_user, chapter_id)
@@ -289,7 +293,7 @@ async def add_topic(
 async def update_topic(
     topic_id: uuid.UUID,
     body: TopicUpdate,
-    current_user: CurrentUser = Depends(require_roles(*_BUILD)),
+    current_user: CurrentUser = Depends(require_roles(*_DRAFT_EDIT)),
     db: AsyncSession = Depends(get_db),
 ):
     await assert_curriculum_manage_topic(db, current_user, topic_id)
@@ -326,7 +330,7 @@ async def update_topic(
 async def add_topic_learning_outcome(
     topic_id: uuid.UUID,
     body: LearningOutcomeIn,
-    current_user: CurrentUser = Depends(require_roles(*_BUILD)),
+    current_user: CurrentUser = Depends(require_roles(*_DRAFT_EDIT)),
     db: AsyncSession = Depends(get_db),
 ):
     await assert_curriculum_manage_topic(db, current_user, topic_id)
@@ -354,7 +358,7 @@ async def add_topic_learning_outcome(
 async def add_chapter_learning_outcome(
     chapter_id: uuid.UUID,
     body: LearningOutcomeIn,
-    current_user: CurrentUser = Depends(require_roles(*_BUILD)),
+    current_user: CurrentUser = Depends(require_roles(*_DRAFT_EDIT)),
     db: AsyncSession = Depends(get_db),
 ):
     await assert_curriculum_manage_chapter(db, current_user, chapter_id)
@@ -381,7 +385,7 @@ async def add_chapter_learning_outcome(
 async def update_learning_outcome(
     outcome_id: uuid.UUID,
     body: LearningOutcomeUpdate,
-    current_user: CurrentUser = Depends(require_roles(*_BUILD)),
+    current_user: CurrentUser = Depends(require_roles(*_DRAFT_EDIT)),
     db: AsyncSession = Depends(get_db),
 ):
     await assert_curriculum_manage_outcome(db, current_user, outcome_id)
@@ -404,7 +408,7 @@ async def update_learning_outcome(
 @router.delete("/learning-outcomes/{outcome_id}", response_model=APIResponse[None])
 async def delete_learning_outcome(
     outcome_id: uuid.UUID,
-    current_user: CurrentUser = Depends(require_roles(*_BUILD)),
+    current_user: CurrentUser = Depends(require_roles(*_DRAFT_EDIT)),
     db: AsyncSession = Depends(get_db),
 ):
     await assert_curriculum_manage_outcome(db, current_user, outcome_id)
@@ -468,15 +472,11 @@ async def list_pack_audit(
 @router.post("/packs/{pack_id}/approve", response_model=APIResponse[PackOut])
 async def approve_pack(
     pack_id: uuid.UUID,
-    current_user: CurrentUser = Depends(require_roles(*_BUILD)),
+    current_user: CurrentUser = Depends(require_roles(*_APPROVE)),
     db: AsyncSession = Depends(get_db),
 ):
     svc = PackService(db)
-    try:
-        existing = await svc.get_pack(uuid.UUID(current_user.school_id), pack_id)
-    except PackError as e:
-        raise _err(e)
-    await _assert_manage(db, current_user, existing.class_id)
+    await assert_curriculum_approve_pack(db, current_user, pack_id)
     try:
         pack = await svc.approve_pack(
             uuid.UUID(current_user.school_id), pack_id, uuid.UUID(current_user.id)

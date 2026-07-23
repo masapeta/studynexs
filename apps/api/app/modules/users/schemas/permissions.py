@@ -6,12 +6,20 @@ import uuid
 from pydantic import BaseModel, Field
 
 
+class TeachingAssignmentOut(BaseModel):
+    """A class × subject assignment used to scope teacher-facing controls."""
+
+    class_id: uuid.UUID
+    subject_id: uuid.UUID
+
+
 class UserPermissionsOut(BaseModel):
     role: str
     is_admin: bool
     scoped_only: bool
     incharge_class_ids: list[uuid.UUID] = Field(default_factory=list)
     teaching_class_ids: list[uuid.UUID] = Field(default_factory=list)
+    teaching_assignments: list[TeachingAssignmentOut] = Field(default_factory=list)
     # Nav / feature gates
     can_view_dashboard: bool = True
     can_view_classes: bool = False
@@ -33,3 +41,5 @@ class UserPermissionsOut(BaseModel):
     can_use_settings: bool = False
     can_approve_question_papers: bool = False
     can_manage_curriculum: bool = False
+    can_edit_curriculum_draft: bool = False
+    can_approve_curriculum: bool = False

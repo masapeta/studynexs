@@ -20,23 +20,36 @@ from pathlib import Path
 _scripts_dir = Path(__file__).resolve().parent
 if str(_scripts_dir) not in sys.path:
     sys.path.insert(0, str(_scripts_dir))
+_api_root = _scripts_dir.parent
+if str(_api_root) not in sys.path:
+    sys.path.insert(0, str(_api_root))
 
 from sqlalchemy import select
 
 from app.core.database import async_session_factory
 from app.db.models.academic import AcademicYear, Class, Subject
 from app.db.models.answer_sheet_evaluation import (
+    EVAL_STATUS_APPROVED,
     EVAL_STATUS_SUGGESTED,
     AnswerSheetEvaluation,
 )
+from app.db.models.misconception import MisconceptionEntry
 from app.db.models.communication import Notice, NoticeAudience, NoticePriority
-from app.db.models.curriculum_pack import CurriculumPack, PackStatus
+from app.db.models.concept_card import ConceptCard, ConceptCardStatus
+from app.db.models.curriculum_pack import CurriculumPack, CurriculumTopic, PackStatus
 from app.db.models.examination import Exam, ExamType
+from app.db.models.knowledge_graph import CurriculumConcept
 from app.db.models.question_paper import PaperStatus, QuestionPaper
 from app.db.models.school import School
 from app.db.models.student import Student
-from app.db.models.user import User, UserRole
+from app.db.models.user import User
 from app.modules.ai.services.question_bank_service import ingest_from_paper
+from app.modules.curriculum.schemas.concept_card import ConceptCardCreate
+from app.modules.curriculum.services.concept_card_service import ConceptCardService
+from app.modules.examinations.schemas.evaluation import EvaluationApprove
+from app.modules.examinations.services.answer_sheet_eval_service import AnswerSheetEvalService
+from app.modules.knowledge_graph.services.graph_service import KnowledgeGraphService
+from app.modules.mastery.services.mastery_service import recompute_class_subject
 from reference_school_config import (
     LOGIN_CLASS_INCHARGE,
     LOGIN_TEACHER_MATHS,
@@ -47,6 +60,7 @@ from reference_school_config import (
 APPROVED_PAPER_TITLE = "Class 10 Maths — Quadratic Equations (Demo)"
 PENDING_PAPER_TITLE = "Class 10 Maths — Progressions (Pending approval)"
 DEMO_EXAM_TITLE = "Unit Test — Quadratic Equations"
+QUADRATIC_TOPIC = "Quadratic Equations"
 CLASS_WORK_NOTICE_TITLE = "Class work — Quadratic Equations practice"
 
 DEMO_SECTIONS = [
@@ -114,9 +128,9 @@ DEMO_AI_SUGGESTIONS = {
         "missing_concepts": ["Discriminant"],
     },
     "3": {
-        "marks_suggested": 2.5,
+        "marks_suggested": 1.0,
         "max_marks": 3.0,
-        "feedback": "Good explanation of complex roots; add mention of conjugate pairs for full marks.",
+        "feedback": "Partial credit — states no real roots but misses conjugate-pair detail.",
         "confidence": 0.82,
         "student_answer": DEMO_STUDENT_ANSWERS["3"],
         "topic": "Quadratic Equations",
@@ -396,12 +410,27 @@ async def _seed_demo_exam_and_eval(ctx, db, paper: QuestionPaper) -> None:
     ).scalar_one_or_none()
 
     if existing_eval:
-        if existing_eval.status != EVAL_STATUS_SUGGESTED:
+        stale = existing_eval.ai_suggestions != DEMO_AI_SUGGESTIONS
+        if existing_eval.status == EVAL_STATUS_APPROVED:
+            if stale:
+                existing_eval.status = EVAL_STATUS_SUGGESTED
+                existing_eval.ai_suggestions = DEMO_AI_SUGGESTIONS
+                existing_eval.input_answers = DEMO_STUDENT_ANSWERS
+                existing_eval.approved_by = None
+                existing_eval.approved_at = None
+                existing_eval.correction_summary = (
+                    "AI suggests 3/6 — review Q2 (discriminant) and Q3 (partial credit)."
+                )
+                print("  = eval reset to suggested (demo marks updated)")
+            else:
+                print("  = eval already approved")
+                return
+        elif existing_eval.status != EVAL_STATUS_SUGGESTED:
             existing_eval.status = EVAL_STATUS_SUGGESTED
             existing_eval.ai_suggestions = DEMO_AI_SUGGESTIONS
             existing_eval.input_answers = DEMO_STUDENT_ANSWERS
             existing_eval.correction_summary = (
-                "AI suggests 4.5/6 — review Q2 (discriminant) and Q3 (partial credit)."
+                "AI suggests 3/6 — review Q2 (discriminant) and Q3 (partial credit)."
             )
             print("  = eval reset to suggested for demo")
         else:
@@ -418,11 +447,232 @@ async def _seed_demo_exam_and_eval(ctx, db, paper: QuestionPaper) -> None:
             input_answers=DEMO_STUDENT_ANSWERS,
             ai_suggestions=DEMO_AI_SUGGESTIONS,
             correction_summary=(
-                "AI suggests 4.5/6 — review Q2 (discriminant) and Q3 (partial credit)."
+                "AI suggests 3/6 — review Q2 (discriminant) and Q3 (partial credit)."
             ),
         )
     )
     print("  + AI answer-sheet eval (suggested) for student roll 1")
+
+
+async def _seed_quadratic_concept_card(ctx, db) -> None:
+    """Approved Concept Card on Quadratic Equations — tutor grounding (not template fallback)."""
+    school, cls, maths, incharge = (
+        ctx["school"],
+        ctx["cls"],
+        ctx["maths"],
+        ctx["incharge"],
+    )
+    if not all([cls, maths, incharge]):
+        print("  ! skip quadratic concept card — missing class/subject/incharge")
+        return
+
+    ay = (
+        await db.execute(select(AcademicYear).where(AcademicYear.id == cls.academic_year_id))
+    ).scalar_one_or_none()
+    if not ay:
+        return
+
+    pack = (
+        await db.execute(
+            select(CurriculumPack).where(
+                CurriculumPack.school_id == school.id,
+                CurriculumPack.class_id == cls.id,
+                CurriculumPack.subject_id == maths.id,
+                CurriculumPack.academic_year_id == ay.id,
+                CurriculumPack.status == PackStatus.APPROVED,
+            )
+        )
+    ).scalar_one_or_none()
+    if pack is None:
+        print("  ! skip quadratic concept card — no approved maths pack")
+        return
+
+    concept = (
+        await db.execute(
+            select(CurriculumConcept)
+            .join(CurriculumTopic, CurriculumTopic.id == CurriculumConcept.topic_id)
+            .where(
+                CurriculumConcept.school_id == school.id,
+                CurriculumConcept.pack_id == pack.id,
+                CurriculumTopic.title.ilike(f"%{QUADRATIC_TOPIC}%"),
+                CurriculumConcept.slug == "quadratic-formula",
+            )
+        )
+    ).scalar_one_or_none()
+
+    if concept is None:
+        concept = (
+            await db.execute(
+                select(CurriculumConcept)
+                .join(CurriculumTopic, CurriculumTopic.id == CurriculumConcept.topic_id)
+                .where(
+                    CurriculumConcept.school_id == school.id,
+                    CurriculumConcept.pack_id == pack.id,
+                    CurriculumTopic.title.ilike(f"%{QUADRATIC_TOPIC}%"),
+                )
+                .order_by(CurriculumConcept.order_index)
+            )
+        ).scalars().first()
+
+    if concept is None:
+        await KnowledgeGraphService(db).build_spine_from_pack(
+            school_id=school.id, pack_id=pack.id
+        )
+        concept = (
+            await db.execute(
+                select(CurriculumConcept)
+                .join(CurriculumTopic, CurriculumTopic.id == CurriculumConcept.topic_id)
+                .where(
+                    CurriculumConcept.school_id == school.id,
+                    CurriculumConcept.pack_id == pack.id,
+                    CurriculumTopic.title.ilike(f"%{QUADRATIC_TOPIC}%"),
+                    CurriculumConcept.slug == "quadratic-formula",
+                )
+            )
+        ).scalar_one_or_none()
+        if concept is None:
+            concept = (
+                await db.execute(
+                    select(CurriculumConcept)
+                    .join(CurriculumTopic, CurriculumTopic.id == CurriculumConcept.topic_id)
+                    .where(
+                        CurriculumConcept.school_id == school.id,
+                        CurriculumConcept.pack_id == pack.id,
+                        CurriculumTopic.title.ilike(f"%{QUADRATIC_TOPIC}%"),
+                    )
+                    .order_by(CurriculumConcept.order_index)
+                )
+            ).scalars().first()
+
+    if concept is None:
+        print("  ! skip quadratic concept card — no spine concept for Quadratic Equations")
+        return
+
+    existing = (
+        await db.execute(
+            select(ConceptCard).where(
+                ConceptCard.school_id == school.id,
+                ConceptCard.concept_id == concept.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if existing and existing.status == ConceptCardStatus.APPROVED:
+        print(f"  = quadratic concept card approved (slug={concept.slug})")
+        return
+
+    svc = ConceptCardService(db)
+    if existing is None:
+        card = await svc.create_card(
+            school_id=school.id,
+            concept_id=concept.id,
+            data=ConceptCardCreate(
+                title=f"{QUADRATIC_TOPIC} — discriminant and roots",
+                explanation=(
+                    "For a quadratic equation ax² + bx + c = 0, the discriminant "
+                    "Δ = b² − 4ac tells you about the roots. When Δ > 0 there are two "
+                    "distinct real roots; when Δ = 0 one repeated root; when Δ < 0 there "
+                    "are no real roots (only complex conjugate pairs). Always substitute "
+                    "roots back into the original equation to verify."
+                ),
+                examples=[
+                    "2x² − 5x + 2 = 0 factors to (2x − 1)(x − 2) = 0, so x = ½ or 2.",
+                    "For 2x² + 3x + 5 = 0, Δ = 9 − 40 = −31 — no real roots.",
+                ],
+                hints=[
+                    "Write the equation in standard form ax² + bx + c = 0 first.",
+                    "Compute b² − 4ac before choosing factorisation or the formula.",
+                ],
+                visual_kind="equation",
+            ),
+            created_by=incharge.id,
+        )
+    else:
+        card = existing
+
+    await svc.approve_card(
+        school_id=school.id, card_id=card.id, approved_by=incharge.id
+    )
+    print(f"  + approved concept card for tutor (slug={concept.slug})")
+
+
+async def _remove_legacy_fractions_misconceptions(ctx, db) -> None:
+    """Drop pre-loop fractions seed so tutor uses exam-derived weak topics."""
+    school, student = ctx["school"], ctx["student"]
+    if not student:
+        return
+    rows = (
+        await db.execute(
+            select(MisconceptionEntry).where(
+                MisconceptionEntry.school_id == school.id,
+                MisconceptionEntry.student_id == student.id,
+                MisconceptionEntry.topic.ilike("%fraction%"),
+            )
+        )
+    ).scalars().all()
+    for row in rows:
+        await db.delete(row)
+    if rows:
+        print(f"  - removed {len(rows)} legacy fractions misconception(s)")
+
+
+async def _finalize_demo_eval_and_mastery(ctx, db) -> None:
+    """Approve AI eval → finalized marks → misconceptions → mastery recompute."""
+    school, cls, maths, incharge, student = (
+        ctx["school"],
+        ctx["cls"],
+        ctx["maths"],
+        ctx["incharge"],
+        ctx["student"],
+    )
+    if not all([cls, maths, incharge, student]):
+        print("  ! skip eval finalization — missing class/subject/incharge/student")
+        return
+
+    exam = (
+        await db.execute(
+            select(Exam).where(
+                Exam.school_id == school.id,
+                Exam.class_id == cls.id,
+                Exam.subject_id == maths.id,
+                Exam.title == DEMO_EXAM_TITLE,
+            )
+        )
+    ).scalar_one_or_none()
+    if exam is None:
+        return
+
+    eval_row = (
+        await db.execute(
+            select(AnswerSheetEvaluation).where(
+                AnswerSheetEvaluation.school_id == school.id,
+                AnswerSheetEvaluation.exam_id == exam.id,
+                AnswerSheetEvaluation.student_id == student.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if eval_row is None:
+        return
+
+    if eval_row.status == EVAL_STATUS_SUGGESTED:
+        svc = AnswerSheetEvalService(db)
+        await svc.approve(
+            school_id=school.id,
+            evaluation_id=eval_row.id,
+            data=EvaluationApprove(
+                correction_summary=(
+                    "Teacher approved AI marks — Q2 discriminant error noted for remediation."
+                ),
+            ),
+            approved_by=incharge.id,
+        )
+        print("  + eval approved (marks finalized, misconceptions extracted)")
+    elif eval_row.status == EVAL_STATUS_APPROVED:
+        print("  = eval already finalized")
+    else:
+        print(f"  ! eval status={eval_row.status} — skip finalization")
+
+    topic_rows = await recompute_class_subject(db, school.id, cls.id, maths.id)
+    print(f"  + mastery recomputed ({topic_rows} topic rows)")
 
 
 async def _seed_class_work_notice(ctx, db) -> None:
@@ -471,7 +721,10 @@ async def main() -> None:
         paper = await _seed_approved_paper(ctx, db)
         await _seed_pending_paper(ctx, db)
         if paper:
+            await _seed_quadratic_concept_card(ctx, db)
             await _seed_demo_exam_and_eval(ctx, db, paper)
+            await _remove_legacy_fractions_misconceptions(ctx, db)
+            await _finalize_demo_eval_and_mastery(ctx, db)
         await _seed_class_work_notice(ctx, db)
         await db.commit()
         print("Demo v1 seed complete.")

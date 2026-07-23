@@ -37,7 +37,9 @@ class ConceptCard(BaseModel):
     hints: Mapped[list | None] = mapped_column(JSONB)
     visual_kind: Mapped[str] = mapped_column(String(50), nullable=False, default="generic")
     status: Mapped[ConceptCardStatus] = mapped_column(
-        Enum(ConceptCardStatus), nullable=False, default=ConceptCardStatus.DRAFT
+        Enum(ConceptCardStatus, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+        default=ConceptCardStatus.DRAFT,
     )
     created_by: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False

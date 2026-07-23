@@ -39,13 +39,17 @@ class ContentReviewItem(BaseModel):
         UUID(as_uuid=True), ForeignKey("curriculum_packs.id", ondelete="CASCADE"), nullable=False
     )
     item_type: Mapped[ContentReviewItemType] = mapped_column(
-        Enum(ContentReviewItemType), nullable=False
+        Enum(ContentReviewItemType, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
     )
     status: Mapped[ContentReviewStatus] = mapped_column(
-        Enum(ContentReviewStatus), nullable=False, default=ContentReviewStatus.PENDING
+        Enum(ContentReviewStatus, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+        default=ContentReviewStatus.PENDING,
     )
     source: Mapped[ContentReviewSource] = mapped_column(
-        Enum(ContentReviewSource), nullable=False
+        Enum(ContentReviewSource, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
     )
     concept_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),

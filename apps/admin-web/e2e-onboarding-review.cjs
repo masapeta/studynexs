@@ -13,6 +13,8 @@ const {
   REFERENCE_TENANT,
   requireReferenceTenant,
   attachConsoleGuard,
+  attachApiFailureTracker,
+  attachTenantTracker,
   reportConsoleErrors,
 } = require("./e2e-harness-utils.cjs");
 
@@ -27,28 +29,39 @@ const results = [];
 const ok = (label, note = "") => results.push([true, label, note]);
 const bad = (label, note = "") => results.push([false, label, note]);
 
+async function shot(page, name) {
+  try {
+    await page.screenshot({
+      path: path.join(SHOTS, `${name}.png`),
+      fullPage: true,
+      timeout: 10000,
+    });
+  } catch (e) {
+    console.log(`WARN screenshot skipped for ${name}: ${e.message}`);
+  }
+}
+
 async function authenticateStaff(page) {
-  const loginResp = await fetch(`${API}/api/v1/auth/login`, {
-    method: "POST",
+  const loginResp = await page.request.post(`${API}/api/v1/auth/login`, {
     headers: {
       "Content-Type": "application/json",
       "X-Tenant-Slug": TENANT,
     },
-    body: JSON.stringify({ username: "principal", password: "Demo@1234" }),
+    data: { username: "principal", password: "Demo@1234" },
   });
-  if (loginResp.status === 429) {
+  if (loginResp.status() === 429) {
     throw new Error(
       "API login rate limited (429) — wait 15 min or clear auth:ratelimit:login:* in Redis"
     );
   }
-  if (!loginResp.ok) {
-    throw new Error(`API login failed: ${loginResp.status}`);
+  if (!loginResp.ok()) {
+    throw new Error(`API login failed: ${loginResp.status()}`);
   }
   const { access_token: accessToken } = await loginResp.json();
-  await page.goto(`${BASE}/login?portal=staff`, { waitUntil: "domcontentloaded" });
-  await page.evaluate((token) => {
+  await page.addInitScript(({ token, tenant }) => {
     sessionStorage.setItem("sn_access_token", token);
-  }, accessToken);
+    sessionStorage.setItem("sn_prospect_tenant_slug", tenant);
+  }, { token: accessToken, tenant: TENANT });
   await page.goto(`${BASE}/dashboard`, { waitUntil: "domcontentloaded" });
   await page.waitForURL("**/dashboard**", { timeout: 20000 });
   await page.getByText("Students").first().waitFor({ timeout: 15000 });
@@ -70,12 +83,6 @@ async function apiJson(path, token, options = {}) {
 }
 
 async function ensureDraftPackId(token) {
-  const listed = await apiJson("/api/v1/curriculum/packs", token);
-  if (listed.resp.ok) {
-    const draft = (listed.body.data || []).find((p) => p.status === "draft");
-    if (draft?.id) return draft.id;
-  }
-
   const classes = await apiJson("/api/v1/academic/classes?page_size=5", token);
   const classId = classes.body.items?.[0]?.id || classes.body.data?.[0]?.id;
   if (!classId) return null;
@@ -95,7 +102,7 @@ async function ensureDraftPackId(token) {
       subject_id: subjectId,
       academic_year_id: yearId,
       board: "SSC",
-      book_title: "E2E draft pack",
+      book_title: `E2E draft pack ${Date.now()}`,
     }),
   });
   if (!created.resp.ok) return null;
@@ -128,7 +135,9 @@ function isExpectedPackDetailRequest(url, packId) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const page = await ctx.newPage();
   const consoleBuckets = { all: [], disallowed: [] };
+  const tenantTracker = attachTenantTracker(page, TENANT);
   attachConsoleGuard(page, consoleBuckets);
+  attachApiFailureTracker(page, consoleBuckets);
 
   let expectedPackId = null;
   const packDetailRequests = [];
@@ -143,6 +152,7 @@ function isExpectedPackDetailRequest(url, packId) {
   try {
     const token = await authenticateStaff(page);
     ok("login");
+    results.push(tenantTracker.assert("tenant reference"));
 
     let packId = process.env.E2E_DRAFT_PACK_ID || null;
     if (!packId && token) {
@@ -174,12 +184,12 @@ function isExpectedPackDetailRequest(url, packId) {
       } else {
         bad("console errors", consoleBuckets.disallowed.slice(0, 3).join(" | "));
       }
-      await page.screenshot({ path: path.join(SHOTS, "onboarding-review.png"), fullPage: true });
+      await shot(page, "onboarding-review");
     }
   } catch (e) {
     bad("onboarding review harness", e.message);
     try {
-      await page.screenshot({ path: path.join(SHOTS, "onboarding-review-FAIL.png"), fullPage: true });
+      await shot(page, "onboarding-review-FAIL");
     } catch {}
   }
 

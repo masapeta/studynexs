@@ -23,15 +23,17 @@ type PackDetail = {
   subject_id: string;
   board: string;
   book_title?: string | null;
+  created_by?: string | null;
   chapters: PackChapter[];
 };
 
 type Props = {
   packId: string;
+  editable?: boolean;
   onStructureChange?: (detail: PackDetail) => void;
 };
 
-export function OnboardingReviewPanel({ packId, onStructureChange }: Props) {
+export function OnboardingReviewPanel({ packId, editable = true, onStructureChange }: Props) {
   const [detail, setDetail] = useState<PackDetail | null>(null);
   const [error, setError] = useState("");
   const [busyTopicId, setBusyTopicId] = useState<string | null>(null);
@@ -168,6 +170,7 @@ export function OnboardingReviewPanel({ packId, onStructureChange }: Props) {
           <ChapterEditor
             chapter={chapter}
             busy={busyChapterId === chapter.id}
+            editable={editable}
             onSave={saveChapter}
             onRemove={removeChapter}
           />
@@ -181,6 +184,7 @@ export function OnboardingReviewPanel({ packId, onStructureChange }: Props) {
                 key={topic.id}
                 topic={topic}
                 busy={busyTopicId === topic.id}
+                editable={editable}
                 onSave={saveTopic}
                 onSaveOutcome={saveOutcome}
                 onRemoveOutcome={removeOutcome}
@@ -196,6 +200,7 @@ export function OnboardingReviewPanel({ packId, onStructureChange }: Props) {
                   key={lo.id}
                   outcome={lo}
                   busy={busyOutcomeId === lo.id}
+                  editable={editable}
                   onSave={saveOutcome}
                   onRemove={removeOutcome}
                 />
@@ -211,11 +216,13 @@ export function OnboardingReviewPanel({ packId, onStructureChange }: Props) {
 function ChapterEditor({
   chapter,
   busy,
+  editable,
   onSave,
   onRemove,
 }: {
   chapter: PackChapter;
   busy: boolean;
+  editable: boolean;
   onSave: (chapter: PackChapter, number: string, title: string) => void | Promise<void>;
   onRemove: (chapter: PackChapter) => void | Promise<void>;
 }) {
@@ -236,20 +243,20 @@ function ChapterEditor({
           onChange={(e) => setNumber(e.target.value)}
           placeholder="#"
           aria-label={`Chapter number for ${chapter.title}`}
-          disabled={busy}
+          disabled={busy || !editable}
         />
         <input
           className="form-input"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           aria-label={`Chapter title for ${chapter.title}`}
-          disabled={busy}
+          disabled={busy || !editable}
         />
         <button
           type="button"
           className="sn-btn sn-btn--ghost"
           style={{ width: "auto", padding: "6px 14px", fontSize: 12 }}
-          disabled={busy}
+          disabled={busy || !editable}
           onClick={() => void onSave(chapter, number, title)}
         >
           {busy ? "Saving…" : "Save chapter"}
@@ -258,7 +265,7 @@ function ChapterEditor({
           type="button"
           className="sn-btn sn-btn--ghost"
           style={{ width: "auto", padding: "6px 14px", fontSize: 12, color: "var(--danger)" }}
-          disabled={busy}
+          disabled={busy || !editable}
           onClick={() => void onRemove(chapter)}
         >
           Remove
@@ -271,6 +278,7 @@ function ChapterEditor({
 function TopicEditor({
   topic,
   busy,
+  editable,
   onSave,
   onSaveOutcome,
   onRemoveOutcome,
@@ -278,6 +286,7 @@ function TopicEditor({
 }: {
   topic: PackTopic;
   busy: boolean;
+  editable: boolean;
   onSave: (topic: PackTopic, title: string, concepts: string) => void | Promise<void>;
   onSaveOutcome: (outcome: LearningOutcome, description: string) => void | Promise<void>;
   onRemoveOutcome: (outcome: LearningOutcome) => void | Promise<void>;
@@ -298,7 +307,7 @@ function TopicEditor({
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         aria-label={`Topic title for ${topic.title}`}
-        disabled={busy}
+        disabled={busy || !editable}
       />
       <input
         className="form-input"
@@ -306,7 +315,7 @@ function TopicEditor({
         onChange={(e) => setConcepts(e.target.value)}
         placeholder="Concepts (comma-separated)"
         aria-label={`Concepts for ${topic.title}`}
-        disabled={busy}
+        disabled={busy || !editable}
       />
       {(topic.learning_outcomes || []).length > 0 ? (
         <div style={{ display: "grid", gap: 6 }}>
@@ -315,6 +324,7 @@ function TopicEditor({
               key={lo.id}
               outcome={lo}
               busy={busyOutcomeId === lo.id}
+              editable={editable}
               onSave={onSaveOutcome}
               onRemove={onRemoveOutcome}
             />
@@ -325,7 +335,7 @@ function TopicEditor({
         type="button"
         className="sn-btn sn-btn--ghost"
         style={{ width: "auto", padding: "6px 14px", fontSize: 12 }}
-        disabled={busy}
+        disabled={busy || !editable}
         onClick={() => void onSave(topic, title, concepts)}
       >
         {busy ? "Saving…" : "Save topic"}
@@ -337,11 +347,13 @@ function TopicEditor({
 function OutcomeEditor({
   outcome,
   busy,
+  editable,
   onSave,
   onRemove,
 }: {
   outcome: LearningOutcome;
   busy: boolean;
+  editable: boolean;
   onSave: (outcome: LearningOutcome, description: string) => void | Promise<void>;
   onRemove: (outcome: LearningOutcome) => void | Promise<void>;
 }) {
@@ -358,13 +370,13 @@ function OutcomeEditor({
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         aria-label="Learning outcome description"
-        disabled={busy}
+        disabled={busy || !editable}
       />
       <button
         type="button"
         className="sn-btn sn-btn--ghost"
         style={{ width: "auto", padding: "4px 10px", fontSize: 11 }}
-        disabled={busy}
+        disabled={busy || !editable}
         onClick={() => void onSave(outcome, description)}
       >
         Save
@@ -373,7 +385,7 @@ function OutcomeEditor({
         type="button"
         className="sn-btn sn-btn--ghost"
         style={{ width: "auto", padding: "4px 10px", fontSize: 11, color: "var(--danger)" }}
-        disabled={busy}
+        disabled={busy || !editable}
         onClick={() => void onRemove(outcome)}
       >
         Remove

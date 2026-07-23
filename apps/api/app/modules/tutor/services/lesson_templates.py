@@ -64,6 +64,54 @@ LESSON_TEMPLATES: dict[str, dict] = {
             },
         ],
     },
+    "quadratic_equations": {
+        "topic": "Quadratic equations — factorisation and the discriminant",
+        "subject_name": "Mathematics",
+        "steps": [
+            {
+                "title": "What went wrong",
+                "narration": (
+                    "Let's look at where the slip happened. "
+                    "With quadratics, students often mix up the discriminant formula "
+                    "or forget that negative discriminant means no real roots. "
+                    "We'll connect your exam mistake to the correct rule."
+                ),
+                "visual_kind": "equation",
+                "caption": "b² − 4ac tells you about roots",
+            },
+            {
+                "title": "Teacher explains",
+                "narration": (
+                    "For ax squared plus bx plus c equals zero, the discriminant is b squared minus four a c. "
+                    "If it is positive, you get two distinct real roots. "
+                    "If it is zero, one repeated root. "
+                    "If it is negative, there are no real roots — only complex conjugate pairs."
+                ),
+                "visual_kind": "equation",
+                "caption": "Δ = b² − 4ac",
+            },
+            {
+                "title": "See it visually",
+                "narration": (
+                    "Take two x squared minus five x plus two equals zero. "
+                    "Factorise to two x minus one times x minus two equals zero, so x equals one half or two. "
+                    "Always substitute back to check both roots satisfy the original equation."
+                ),
+                "visual_kind": "equation",
+                "caption": "Check by substitution",
+            },
+            {
+                "title": "Practice",
+                "narration": (
+                    "Try x squared minus five x plus six equals zero. "
+                    "Factorise, find both roots, and verify. "
+                    "Replay this step if you want to hear the factorisation again."
+                ),
+                "visual_kind": "equation",
+                "caption": "Factorise and verify",
+            },
+        ],
+    },
     "linear_equations": {
         "topic": "Linear equations — keeping balance",
         "subject_name": "Mathematics",
@@ -200,6 +248,8 @@ def match_lesson_key(topic: str) -> str:
     t = topic.lower()
     if "fraction" in t or "denominator" in t:
         return "fractions"
+    if "quadratic" in t or "discriminant" in t:
+        return "quadratic_equations"
     if "linear" in t or "equation" in t or "algebra" in t:
         return "linear_equations"
     if "photo" in t or "chlorophyll" in t or "plant" in t:

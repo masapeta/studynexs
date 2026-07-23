@@ -36,9 +36,14 @@ class DocumentIngestion(BaseModel):
     file_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("uploaded_files.id"), nullable=False
     )
-    doc_type: Mapped[DocumentType] = mapped_column(Enum(DocumentType), nullable=False)
+    doc_type: Mapped[DocumentType] = mapped_column(
+        Enum(DocumentType, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+    )
     status: Mapped[IngestStatus] = mapped_column(
-        Enum(IngestStatus), nullable=False, default=IngestStatus.PENDING
+        Enum(IngestStatus, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+        default=IngestStatus.PENDING,
     )
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     chunks_indexed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

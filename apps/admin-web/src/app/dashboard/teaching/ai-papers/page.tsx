@@ -597,13 +597,13 @@ function AiPapersPageInner() {
         ) : useGrounding && !packs.length && classId && subjectId ? (
           <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
             No approved pack for grounding.
-            {permissions?.can_manage_curriculum ? (
+            {permissions?.can_edit_curriculum_draft ? (
               <>
                 {" "}
                 <Link href={TEACHING.curriculumOnboarding}>Complete academic onboarding</Link> first.
               </>
             ) : (
-              " Ask your class incharge or admin to onboard curriculum."
+              " Ask your class incharge or school administrator to approve a curriculum pack."
             )}
           </p>
         ) : null}

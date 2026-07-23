@@ -113,6 +113,8 @@ class PackOut(BaseModel):
     version: int
     status: PackStatus
     blueprint: Optional[list] = None
+    created_by: Optional[uuid.UUID] = None
+    approved_by: Optional[uuid.UUID] = None
     created_at: Optional[datetime] = None
     approved_at: Optional[datetime] = None
     rag_indexed_at: Optional[datetime] = None

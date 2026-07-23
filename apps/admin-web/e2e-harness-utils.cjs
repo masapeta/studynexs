@@ -34,12 +34,12 @@ function isAllowedConsoleError(message) {
 function attachConsoleGuard(page, buckets) {
   page.on("console", (m) => {
     if (m.type() !== "error") return;
-    const text = m.text();
+    const text = `${m.text()} [url=${page.url()}]`;
     buckets.all.push(text);
     if (!isAllowedConsoleError(text)) buckets.disallowed.push(text);
   });
   page.on("pageerror", (e) => {
-    const text = `PAGEERROR: ${e.message}`;
+    const text = `PAGEERROR: ${e.message} [url=${page.url()}]`;
     buckets.all.push(text);
     buckets.disallowed.push(text);
   });
@@ -71,19 +71,44 @@ function attachTenantTracker(page, expectedTenant = REFERENCE_TENANT) {
   };
 }
 
+function isAllowedApiFailure(url, status) {
+  if (status === 401 && url.includes("/api/v1/auth/refresh")) return true;
+  return false;
+}
+
+function attachApiFailureTracker(page, buckets) {
+  buckets.apiFailures = buckets.apiFailures || [];
+  page.on("response", (res) => {
+    const url = res.url();
+    const status = res.status();
+    if (!url.includes("/api/v1/") || status < 400) return;
+    if (isAllowedApiFailure(url, status)) return;
+    buckets.apiFailures.push(`${status} ${url} [page=${page.url()}]`);
+  });
+}
+
 function reportConsoleErrors(buckets) {
   const unique = [...new Set(buckets.all)];
   const disallowed = [...new Set(buckets.disallowed)];
+  const apiFailures = [...new Set(buckets.apiFailures || [])];
   if (unique.length) {
     console.log(`browser console errors (${unique.length} total, ${disallowed.length} disallowed):`);
     unique.slice(0, 12).forEach((e) => {
       const tag = isAllowedConsoleError(e) ? "allow" : "FAIL";
-      console.log(`  [${tag}] ${e.slice(0, 180)}`);
+      console.log(`  [${tag}] ${e.slice(0, 260)}`);
     });
+    if (disallowed.length) {
+      console.log("disallowed console details:");
+      disallowed.slice(0, 12).forEach((e) => console.log(`  - ${e.slice(0, 320)}`));
+    }
   } else {
     console.log("no browser console errors");
   }
-  return disallowed.length;
+  if (apiFailures.length) {
+    console.log(`failed API responses (${apiFailures.length}):`);
+    apiFailures.slice(0, 12).forEach((e) => console.log(`  - ${e}`));
+  }
+  return disallowed.length + apiFailures.length;
 }
 
 module.exports = {
@@ -91,6 +116,7 @@ module.exports = {
   requireReferenceTenant,
   isAllowedConsoleError,
   attachConsoleGuard,
+  attachApiFailureTracker,
   attachTenantTracker,
   reportConsoleErrors,
 };

@@ -267,19 +267,19 @@ export default function LessonPlansPage() {
         <div style={{ marginBottom: 16 }}>
           <AcademicIntelligenceBanner
             packId={packId}
-            canRetry={Boolean(permissions?.can_manage_curriculum)}
+            canRetry={Boolean(permissions?.can_edit_curriculum_draft)}
           />
         </div>
       ) : approvedPacks.length === 0 && classId && subjectId ? (
         <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
           No approved curriculum pack yet.
-          {permissions?.can_manage_curriculum ? (
+          {permissions?.can_edit_curriculum_draft ? (
             <>
               {" "}
               <Link href={TEACHING.curriculumOnboarding}>Run academic onboarding</Link> to ground lesson plans.
             </>
           ) : (
-            " Ask your class incharge or admin to approve a curriculum pack."
+            " Ask your class incharge or school administrator to approve a curriculum pack."
           )}
         </p>
       ) : null}

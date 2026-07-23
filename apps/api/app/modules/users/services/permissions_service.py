@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from app.core.staff_permissions import StaffScope
-from app.modules.users.schemas.permissions import UserPermissionsOut
+from app.modules.users.schemas.permissions import TeachingAssignmentOut, UserPermissionsOut
 
 
 def portal_permissions(role: str) -> UserPermissionsOut:
@@ -34,6 +34,12 @@ def permissions_from_scope(scope: StaffScope) -> UserPermissionsOut:
         scoped_only=scope.scoped_only,
         incharge_class_ids=sorted(scope.incharge_class_ids),
         teaching_class_ids=sorted(scope.teaching_class_ids),
+        teaching_assignments=[
+            TeachingAssignmentOut(class_id=class_id, subject_id=subject_id)
+            for class_id, subject_id in sorted(
+                scope.teaching_pairs, key=lambda pair: (str(pair[0]), str(pair[1]))
+            )
+        ],
         can_view_dashboard=True,
         can_view_classes=scope.is_admin or has_incharge,
         can_manage_students=scope.is_admin,
@@ -54,4 +60,6 @@ def permissions_from_scope(scope: StaffScope) -> UserPermissionsOut:
         can_use_settings=scope.is_admin,
         can_approve_question_papers=scope.is_admin or has_incharge,
         can_manage_curriculum=scope.is_admin or has_incharge,
+        can_edit_curriculum_draft=scope.is_admin or has_incharge or has_teaching,
+        can_approve_curriculum=scope.is_admin or has_incharge,
     )

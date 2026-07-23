@@ -66,8 +66,54 @@ async def list_recommendations(
 ) -> list[TutorRecommendationOut]:
     recs: list[TutorRecommendationOut] = []
     seen: set[str] = set()
+    card_svc = ConceptCardService(db)
 
-    # Graph weak concepts first (Batch 25 — Student Copilot spine).
+    async def _subject_name_for_misconception(mc: MisconceptionEntry) -> str:
+        name = (
+            await db.scalar(
+                select(Subject.name).where(
+                    Subject.id == mc.subject_id,
+                    Subject.school_id == school_id,
+                )
+            )
+        )
+        return name or "From your exam"
+
+    # Exam mistakes first — same chain as parent briefing and seeded unit test.
+    for mc in await _student_misconceptions(db, school_id, student_id):
+        key = await card_svc.resolve_approved_lesson_key(
+            school_id=school_id, topic=mc.topic
+        ) or slugify_lesson_key(mc.topic)
+        if key in seen:
+            continue
+        seen.add(key)
+        recs.append(
+            TutorRecommendationOut(
+                lesson_key=key,
+                topic=mc.topic,
+                subject_name=await _subject_name_for_misconception(mc),
+                reason=f"Exam mistake: {mc.common_mistake[:120]}",
+            )
+        )
+
+    for topic, subject, pct in await _weak_topics(db, school_id, student_id):
+        key = await card_svc.resolve_approved_lesson_key(
+            school_id=school_id, topic=topic
+        ) or slugify_lesson_key(topic)
+        if key in seen:
+            continue
+        seen.add(key)
+        recs.append(
+            TutorRecommendationOut(
+                lesson_key=key,
+                topic=topic,
+                subject_name=subject,
+                mastery_pct=pct,
+                reason=f"Weak topic — {pct:.0f}% mastery",
+            )
+        )
+
+    # Graph weak concepts last (longitudinal spine — may predate latest exam).
     for concept, meta in await StudentWeakConceptService(db).get_weak_concepts_for_student(
         school_id=school_id, student_id=student_id
     ):
@@ -84,35 +130,6 @@ async def list_recommendations(
                 subject_name="Curriculum",
                 mastery_pct=pct,
                 reason=reason,
-            )
-        )
-
-    for mc in await _student_misconceptions(db, school_id, student_id):
-        key = slugify_lesson_key(mc.topic)
-        if key in seen:
-            continue
-        seen.add(key)
-        recs.append(
-            TutorRecommendationOut(
-                lesson_key=key,
-                topic=mc.topic,
-                subject_name="From your exam",
-                reason=f"Exam mistake: {mc.common_mistake[:120]}",
-            )
-        )
-
-    for topic, subject, pct in await _weak_topics(db, school_id, student_id):
-        key = slugify_lesson_key(topic)
-        if key in seen:
-            continue
-        seen.add(key)
-        recs.append(
-            TutorRecommendationOut(
-                lesson_key=key,
-                topic=topic,
-                subject_name=subject,
-                mastery_pct=pct,
-                reason=f"Weak topic — {pct:.0f}% mastery",
             )
         )
 
@@ -196,8 +213,43 @@ async def get_lesson(
         )
 
     # Match misconception or weak topic by slug
+    card_svc = ConceptCardService(db)
     for mc in await _student_misconceptions(db, school_id, student_id):
-        if slugify_lesson_key(mc.topic) == lesson_key:
+        if slugify_lesson_key(mc.topic) == lesson_key or (
+            await card_svc.resolve_approved_lesson_key(school_id=school_id, topic=mc.topic)
+        ) == lesson_key:
+            resolved = await card_svc.resolve_approved_lesson_key(
+                school_id=school_id, topic=mc.topic
+            )
+            if resolved:
+                card_match = await card_svc.get_approved_by_slug(
+                    school_id=school_id, slug=resolved
+                )
+                if card_match is not None:
+                    card, concept = card_match
+                    weak = await _weak_topics(db, school_id, student_id)
+                    pct = None
+                    subject = (
+                        await db.scalar(
+                            select(Subject.name).where(
+                                Subject.id == mc.subject_id,
+                                Subject.school_id == school_id,
+                            )
+                        )
+                    ) or "Curriculum"
+                    for t, s, p in weak:
+                        if t.lower() in mc.topic.lower() or mc.topic.lower() in t.lower():
+                            pct = p
+                            subject = s
+                            break
+                    return build_lesson_from_concept_card(
+                        card=card,
+                        concept=concept,
+                        subject_name=subject,
+                        mastery_pct=pct,
+                        trigger="concept_card",
+                        mistake_summary=mc.common_mistake,
+                    )
             key = match_lesson_key(mc.topic)
             return build_lesson_from_template(
                 key if key in LESSON_TEMPLATES else lesson_key,

@@ -20,6 +20,15 @@ from app.modules.ai.rag.service import RagService, RetrievedChunk, _topic_text
 _TOKEN_RE = re.compile(r"[a-z0-9]+", re.IGNORECASE)
 
 
+def _parse_uuid(value: str | None) -> uuid.UUID | None:
+    if not value:
+        return None
+    try:
+        return uuid.UUID(str(value))
+    except ValueError:
+        return None
+
+
 def _tokens(text: str) -> set[str]:
     return {t.lower() for t in _TOKEN_RE.findall(text) if len(t) > 2}
 
@@ -73,7 +82,7 @@ class HybridRetrievalService:
         if not merged:
             return []
 
-        topic_ids = [uuid.UUID(c.ref_id) for c in merged if c.ref_id]
+        topic_ids = [uid for c in merged if (uid := _parse_uuid(c.ref_id))]
         signals = await self._load_topic_signals(
             school_id=sid,
             pack_id=pid,
@@ -85,7 +94,11 @@ class HybridRetrievalService:
 
         if opts.rerank:
             reranked = [
-                self._rerank_chunk(c, query_tokens=query_tokens, signals=signals.get(c.ref_id))
+                self._rerank_chunk(
+                    c,
+                    query_tokens=query_tokens,
+                    signals=signals.get(str(c.ref_id)) if c.ref_id else None,
+                )
                 for c in merged
             ]
             reranked.sort(key=lambda c: c.score, reverse=True)

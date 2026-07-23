@@ -11,7 +11,7 @@ from app.db.models.concept_card import ConceptCard, ConceptCardStatus
 from app.db.models.curriculum_pack import PackStatus
 from app.db.models.knowledge_graph import CurriculumConcept
 from app.modules.curriculum.schemas.concept_card import ConceptCardCreate, ConceptCardUpdate
-from app.modules.curriculum.services.pack_service import PackError, PackService
+from app.modules.curriculum.services.pack_service import PackService
 
 
 class ConceptCardError(ValueError):
@@ -168,3 +168,37 @@ class ConceptCardService:
         if row is None:
             return None
         return row[0], row[1]
+
+    async def resolve_approved_lesson_key(
+        self, *, school_id: uuid.UUID, topic: str
+    ) -> str | None:
+        """Map an exam/mastery topic label to an approved concept slug (tutor grounding)."""
+        needle = topic.strip().lower()
+        if not needle:
+            return None
+        from app.db.models.curriculum_pack import CurriculumTopic
+        from sqlalchemy import case
+
+        row = (
+            await self.db.execute(
+                select(CurriculumConcept.slug)
+                .join(ConceptCard, ConceptCard.concept_id == CurriculumConcept.id)
+                .join(CurriculumTopic, CurriculumTopic.id == CurriculumConcept.topic_id)
+                .where(
+                    ConceptCard.school_id == school_id,
+                    ConceptCard.status == ConceptCardStatus.APPROVED,
+                    CurriculumConcept.school_id == school_id,
+                    CurriculumTopic.school_id == school_id,
+                )
+                .where(
+                    (CurriculumTopic.title.ilike(f"%{needle}%"))
+                    | (CurriculumConcept.title.ilike(f"%{needle}%"))
+                )
+                .order_by(
+                    case((CurriculumConcept.title.ilike(f"%{needle}%"), 0), else_=1),
+                    CurriculumConcept.order_index.desc(),
+                )
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        return row

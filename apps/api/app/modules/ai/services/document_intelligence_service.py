@@ -23,7 +23,7 @@ from app.modules.ai.embeddings import EmbeddingService
 from app.modules.ai.gateway.input_guard import sanitize_prompt_text
 from app.modules.ai.rag import RagService
 from app.modules.ai.vectorstore.base import VectorStore
-from app.modules.curriculum.services.pack_service import PackError, PackService
+from app.modules.curriculum.services.pack_service import PackService
 from app.modules.files.services.file_service import FileService
 from app.modules.files.services.file_validation import (
     max_upload_bytes,
@@ -257,11 +257,19 @@ class DocumentIntelligenceService:
 
         indexed_document_chunks = doc_chunks_db
         if self.store is not None:
-            vector_count = await self.rag.count_document_chunks(
-                school_id=school_id, pack_id=pack_id
-            )
-            if vector_count:
-                indexed_document_chunks = vector_count
+            try:
+                vector_count = await self.rag.count_document_chunks(
+                    school_id=school_id, pack_id=pack_id
+                )
+                if vector_count:
+                    indexed_document_chunks = vector_count
+            except Exception:  # noqa: BLE001
+                logger.warning(
+                    "document_chunk_count_failed",
+                    school_id=str(school_id),
+                    pack_id=str(pack_id),
+                    exc_info=True,
+                )
 
         return {
             "indexed_topic_count": indexed_topic_count,

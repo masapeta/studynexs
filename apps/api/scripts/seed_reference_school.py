@@ -3,7 +3,7 @@
 One command for prospects to experience the platform end-to-end:
   cd apps/api && python scripts/seed_reference_school.py
 
-Chains idempotent demo seeds, adds curriculum pack + tutor misconception,
+Chains idempotent demo seeds, curriculum pack, and closed learning-loop demo v1 assets,
 prints login card for principal / teacher / parent / student.
 
 Requires: Postgres + migrations applied.
@@ -22,12 +22,10 @@ if str(_scripts_dir) not in sys.path:
 from sqlalchemy import select
 
 from app.core.database import async_session_factory
-from app.db.models.academic import Class, Subject
+from app.db.models.academic import Class
 from app.db.models.misconception import MisconceptionEntry
 from app.db.models.school import School
 from app.db.models.student import Student
-from app.db.models.user import User
-from app.modules.examinations.services.misconception_service import _fingerprint
 from reference_school_config import (
     DEMO_PASSWORD,
     LOGIN_PARENT,
@@ -64,23 +62,13 @@ def _run_chain() -> None:
         subprocess.run([py, str(path)], check=False, cwd=here.parent)
 
 
-async def _seed_tutor_misconception() -> None:
-    """Give student_demo a fractions mistake so tutor shows exam-driven lesson."""
+async def _cleanup_legacy_fractions_misconception() -> None:
+    """Remove old fractions misconception seed — demo v1 uses exam-derived topics."""
     async with async_session_factory() as db:
         school = (
             await db.execute(select(School).where(School.tenant_slug == TENANT_SLUG))
         ).scalar_one_or_none()
         if school is None:
-            print("No Reference School tenant — run seed chain first.")
-            return
-
-        principal = (
-            await db.execute(
-                select(User).where(User.school_id == school.id, User.username == LOGIN_PRINCIPAL)
-            )
-        ).scalar_one_or_none()
-        if principal is None:
-            print("No principal user.")
             return
 
         cls = (
@@ -107,53 +95,20 @@ async def _seed_tutor_misconception() -> None:
         if stu is None:
             return
 
-        maths = (
-            await db.execute(
-                select(Subject).where(
-                    Subject.school_id == school.id,
-                    Subject.class_id == cls.id,
-                    Subject.name == "Mathematics",
-                )
-            )
-        ).scalar_one_or_none()
-        if maths is None:
-            return
-
-        topic = "Fractions — adding with different denominators"
-        mistake = (
-            "Added numerators and denominators separately (e.g. 1/2 + 1/3 = 2/5) "
-            "instead of finding a common denominator first."
-        )
-        fp = _fingerprint(topic=topic, mistake=mistake)
-        existing = (
+        rows = (
             await db.execute(
                 select(MisconceptionEntry).where(
                     MisconceptionEntry.school_id == school.id,
-                    MisconceptionEntry.content_fingerprint == fp,
                     MisconceptionEntry.student_id == stu.id,
+                    MisconceptionEntry.topic.ilike("%fraction%"),
                 )
             )
-        ).scalar_one_or_none()
-        if existing is None:
-            db.add(
-                MisconceptionEntry(
-                    school_id=school.id,
-                    class_id=cls.id,
-                    subject_id=maths.id,
-                    student_id=stu.id,
-                    topic=topic,
-                    question_no="7",
-                    common_mistake=mistake,
-                    remedial_activity="Practice LCM and equivalent fractions before adding.",
-                    created_by=principal.id,
-                    content_fingerprint=fp,
-                    occurrence_count=1,
-                )
-            )
+        ).scalars().all()
+        for row in rows:
+            await db.delete(row)
+        if rows:
             await db.commit()
-            print("  + tutor misconception seeded for student_demo (fractions)")
-        else:
-            print("  = tutor misconception already present")
+            print(f"  - removed {len(rows)} legacy fractions misconception(s)")
 
 
 def _print_login_card() -> None:
@@ -187,7 +142,7 @@ Validate (API on :8000):
 def main() -> None:
     print(f"Seeding Reference School: {SCHOOL_NAME} (tenant={TENANT_SLUG})")
     _run_chain()
-    asyncio.run(_seed_tutor_misconception())
+    asyncio.run(_cleanup_legacy_fractions_misconception())
     _print_login_card()
 
 

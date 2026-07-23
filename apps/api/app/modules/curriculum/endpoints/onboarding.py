@@ -16,7 +16,10 @@ from app.modules.curriculum.schemas.onboarding import (
     OnboardingProposeRequest,
     OnboardingProposeResponse,
 )
-from app.modules.curriculum.services.curriculum_authz import assert_curriculum_manage
+from app.modules.curriculum.services.curriculum_authz import (
+    assert_curriculum_draft_edit,
+    assert_curriculum_draft_edit_pack,
+)
 from app.modules.curriculum.services.curriculum_extraction_service import (
     CurriculumExtractionError,
     CurriculumExtractionService,
@@ -27,15 +30,15 @@ from app.shared.schemas.common import APIResponse
 
 router = APIRouter(route_class=CommitOnSuccessRoute)
 
-_BUILD = ("class_incharge", "admin", "super_admin")
+_DRAFT_EDIT = ("teacher", "class_incharge", "admin", "super_admin")
 _READ = ("teacher", "class_incharge", "admin", "super_admin")
 
 
-async def _assert_manage_pack_class(
-    db: AsyncSession, current_user: CurrentUser, class_id: uuid.UUID
+async def _assert_draft_edit_class_subject(
+    db: AsyncSession, current_user: CurrentUser, class_id: uuid.UUID, subject_id: uuid.UUID
 ) -> None:
     scope = await get_staff_scope(db, current_user)
-    assert_curriculum_manage(scope, class_id)
+    assert_curriculum_draft_edit(scope, class_id, subject_id)
 
 
 @router.post(
@@ -45,11 +48,11 @@ async def _assert_manage_pack_class(
 )
 async def propose_draft_pack(
     body: OnboardingProposeRequest,
-    current_user: CurrentUser = Depends(require_roles(*_BUILD)),
+    current_user: CurrentUser = Depends(require_roles(*_DRAFT_EDIT)),
     db: AsyncSession = Depends(get_db),
 ):
     """Create a draft CurriculumPack from admin inputs + AI extraction."""
-    await _assert_manage_pack_class(db, current_user, body.class_id)
+    await _assert_draft_edit_class_subject(db, current_user, body.class_id, body.subject_id)
     svc = CurriculumExtractionService(db)
     try:
         result = await svc.propose_draft_pack(
@@ -89,7 +92,7 @@ async def pack_intelligence_status(
 @router.post("/packs/{pack_id}/retry-rag-index", response_model=APIResponse)
 async def retry_rag_index(
     pack_id: uuid.UUID,
-    current_user: CurrentUser = Depends(require_roles(*_BUILD)),
+    current_user: CurrentUser = Depends(require_roles(*_DRAFT_EDIT)),
     db: AsyncSession = Depends(get_db),
 ):
     svc = PackService(db)
@@ -97,7 +100,7 @@ async def retry_rag_index(
         pack = await svc.get_pack(uuid.UUID(current_user.school_id), pack_id)
     except PackError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    await _assert_manage_pack_class(db, current_user, pack.class_id)
+    await assert_curriculum_draft_edit_pack(db, current_user, pack_id)
     try:
         pack = await svc.retry_rag_index(
             uuid.UUID(current_user.school_id),
