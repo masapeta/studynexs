@@ -11,6 +11,8 @@ class ParentFocusAreaOut(BaseModel):
     subject_name: str
     mastery_pct: float | None = None
     concept_slug: str | None = None
+    pack_id: uuid.UUID | None = None
+    concept_id: uuid.UUID | None = None
 
 
 class ParentBriefingOut(BaseModel):
@@ -19,6 +21,9 @@ class ParentBriefingOut(BaseModel):
     focus_areas: list[ParentFocusAreaOut] = Field(default_factory=list)
     home_tips: list[str] = Field(default_factory=list)
     encouragement: str = ""
+    pack_id: uuid.UUID | None = None
+    concept_id: uuid.UUID | None = None
+    source_count: int = 0
     grounded: bool = False
     model: str | None = None
 
@@ -30,5 +35,8 @@ class ParentAskIn(BaseModel):
 class ParentAnswerOut(BaseModel):
     answer: str
     home_tips: list[str] = Field(default_factory=list)
+    pack_id: uuid.UUID | None = None
+    concept_id: uuid.UUID | None = None
+    source_count: int = 0
     grounded: bool = False
     model: str | None = None

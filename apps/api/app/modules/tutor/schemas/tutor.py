@@ -22,6 +22,9 @@ class TutorLessonOut(BaseModel):
     mastery_pct: Optional[float] = None
     trigger: str  # exam_mistake | weak_topic | demo
     mistake_summary: Optional[str] = None
+    pack_id: Optional[uuid.UUID] = None
+    concept_id: Optional[uuid.UUID] = None
+    concept_slug: Optional[str] = None
     steps: list[TutorStepOut] = Field(default_factory=list)
 
 
@@ -31,3 +34,7 @@ class TutorRecommendationOut(BaseModel):
     subject_name: str
     mastery_pct: Optional[float] = None
     reason: str
+    pack_id: Optional[uuid.UUID] = None
+    concept_id: Optional[uuid.UUID] = None
+    concept_slug: Optional[str] = None
+    source: str = "template"

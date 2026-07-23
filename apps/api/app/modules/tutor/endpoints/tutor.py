@@ -112,7 +112,7 @@ async def student_copilot_ask(
             school_id=uuid.UUID(current_user.school_id),
             student_id=student_id,
             body=body,
-            user_id=uuid.UUID(current_user.user_id),
+            user_id=uuid.UUID(current_user.id),
             role=current_user.role,
         )
     except ValueError as exc:

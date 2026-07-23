@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, RefreshCw, Sparkles } from "lucide-react";
 import { api, fetchProtectedDocumentUrl, getApiErrorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -29,16 +29,34 @@ type ApprovedPack = {
   board: string;
   book_title?: string | null;
 };
+type ClassRow = { id: string; grade: string; section: string };
+type SubjectRow = { id: string; name: string };
 
 const btn: React.CSSProperties = { width: "auto", padding: "8px 18px", borderRadius: "var(--radius-full)", fontSize: 13 };
 
+function readDeepLinkParams() {
+  if (typeof window === "undefined") {
+    return { classId: "", subjectId: "", packId: "", topic: "" };
+  }
+  const params = new URLSearchParams(window.location.search);
+  return {
+    classId: params.get("class_id") || "",
+    subjectId: params.get("subject_id") || "",
+    packId: params.get("pack_id") || "",
+    topic: params.get("topic") || "",
+  };
+}
+
 export default function LessonPlansPage() {
   const { user, permissions } = useAuth();
-  const [classes, setClasses] = useState<any[]>([]);
-  const [subjects, setSubjects] = useState<any[]>([]);
+  const [deepLink] = useState(readDeepLinkParams);
+  const subjectPrefillConsumed = useRef(false);
+  const packPrefillConsumed = useRef(false);
+  const [classes, setClasses] = useState<ClassRow[]>([]);
+  const [subjects, setSubjects] = useState<SubjectRow[]>([]);
   const [classId, setClassId] = useState("");
   const [subjectId, setSubjectId] = useState("");
-  const [topic, setTopic] = useState("");
+  const [topic, setTopic] = useState(() => deepLink.topic);
   const [packId, setPackId] = useState("");
   const [approvedPacks, setApprovedPacks] = useState<ApprovedPack[]>([]);
   const [useCopilot, setUseCopilot] = useState(false);
@@ -51,44 +69,51 @@ export default function LessonPlansPage() {
   useEffect(() => {
     api("/api/v1/academic/classes?page_size=100")
       .then((r) => {
-        const items = sortClasses<any>(r.items || r.data || []);
+        const items = sortClasses<ClassRow>((r.items || r.data || []) as ClassRow[]);
         setClasses(items);
-        if (items[0]) setClassId(items[0].id);
+        const wanted = deepLink.classId;
+        const match = wanted && items.find((c) => c.id === wanted);
+        if (match) setClassId(match.id);
+        else if (items[0]) setClassId(items[0].id);
       })
       .catch(() => {});
     api("/api/v1/lesson-plans/next")
       .then((r) => setPlan(r.data || null))
       .catch(() => {});
-  }, []);
+  }, [deepLink.classId]);
 
   useEffect(() => {
     if (!classId) return;
     api(`/api/v1/academic/subjects?class_id=${classId}`)
       .then((r) => {
-        const items = r.items || r.data || (Array.isArray(r) ? r : []);
+        const items = (r.items || r.data || (Array.isArray(r) ? r : [])) as SubjectRow[];
         setSubjects(items);
-        setSubjectId(items[0]?.id || "");
+        const wanted = subjectPrefillConsumed.current ? "" : deepLink.subjectId;
+        subjectPrefillConsumed.current = true;
+        const match = wanted && items.find((s) => s.id === wanted);
+        setSubjectId(match ? match.id : items[0]?.id || "");
       })
       .catch(() => {});
-  }, [classId]);
+  }, [classId, deepLink.subjectId]);
 
   useEffect(() => {
     if (!classId || !subjectId) {
-      setApprovedPacks([]);
-      setPackId("");
       return;
     }
     api(`/api/v1/curriculum/packs?class_id=${classId}&subject_id=${subjectId}`)
       .then((r) => {
         const approved = (r.data || []).filter((p: ApprovedPack) => p.status === "approved");
         setApprovedPacks(approved);
-        setPackId(approved[0]?.id || "");
+        const wanted = packPrefillConsumed.current ? "" : deepLink.packId;
+        packPrefillConsumed.current = true;
+        const match = wanted && approved.find((p: ApprovedPack) => p.id === wanted);
+        setPackId(match ? match.id : approved[0]?.id || "");
       })
       .catch(() => {
         setApprovedPacks([]);
         setPackId("");
       });
-  }, [classId, subjectId]);
+  }, [classId, deepLink.packId, subjectId]);
 
   async function generate() {
     if (!classId || !subjectId) {

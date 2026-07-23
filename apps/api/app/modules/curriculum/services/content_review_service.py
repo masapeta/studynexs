@@ -19,11 +19,8 @@ from app.db.models.document_ingestion import DocumentIngestion
 from app.db.models.knowledge_graph import CurriculumConcept
 from app.modules.curriculum.schemas.concept_card import ConceptCardCreate, ConceptCardUpdate
 from app.modules.curriculum.schemas.content_review import EnqueueConceptGapRequest
-from app.modules.curriculum.services.concept_card_service import (
-    ConceptCardError,
-    ConceptCardService,
-)
-from app.modules.curriculum.services.pack_service import PackError, PackService
+from app.modules.curriculum.services.concept_card_service import ConceptCardService
+from app.modules.curriculum.services.pack_service import PackService
 
 logger = structlog.get_logger()
 
@@ -159,10 +156,13 @@ class ContentReviewService:
     ) -> ContentReviewItem | None:
         concept = (
             await self.db.execute(
-                select(CurriculumConcept).where(
+                select(CurriculumConcept)
+                .where(
                     CurriculumConcept.school_id == school_id,
                     CurriculumConcept.slug == slug,
                 )
+                .order_by(CurriculumConcept.created_at.desc(), CurriculumConcept.id.desc())
+                .limit(1)
             )
         ).scalar_one_or_none()
         if concept is None:

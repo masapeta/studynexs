@@ -197,8 +197,17 @@ class StudentCopilotService:
         card_explanation: str | None = None
 
         if concept_slug:
+            pairs = await self.weak.get_weak_concepts_for_student(
+                school_id=school_id, student_id=student_id
+            )
+            for concept, _meta in pairs:
+                if concept.slug == concept_slug:
+                    pack_id = concept.pack_id
+                    concept_id = concept.id
+                    concept_title = concept.title
+                    break
             match = await self.cards.get_approved_by_slug(
-                school_id=school_id, slug=concept_slug
+                school_id=school_id, slug=concept_slug, pack_id=pack_id
             )
             if match:
                 card, concept = match
@@ -206,16 +215,6 @@ class StudentCopilotService:
                 concept_id = concept.id
                 concept_title = concept.title
                 card_explanation = card.explanation
-            else:
-                pairs = await self.weak.get_weak_concepts_for_student(
-                    school_id=school_id, student_id=student_id
-                )
-                for concept, _meta in pairs:
-                    if concept.slug == concept_slug:
-                        pack_id = concept.pack_id
-                        concept_id = concept.id
-                        concept_title = concept.title
-                        break
         else:
             ctx = await self.get_study_context(
                 school_id=school_id,
@@ -230,7 +229,7 @@ class StudentCopilotService:
                 concept_title = primary.title
                 concept_slug = primary.slug
                 match = await self.cards.get_approved_by_slug(
-                    school_id=school_id, slug=concept_slug
+                    school_id=school_id, slug=concept_slug, pack_id=pack_id
                 )
                 if match:
                     card_explanation = match[0].explanation
@@ -359,6 +358,9 @@ class StudentCopilotService:
             answer=answer,
             concept_slug=concept_slug,
             concept_title=concept_title,
+            pack_id=pack_id,
+            concept_id=concept_id,
+            source_count=len(chunks),
             citations=citations,
             follow_up_hints=follow_up_hints,
             grounded=bool(chunks or card_explanation),

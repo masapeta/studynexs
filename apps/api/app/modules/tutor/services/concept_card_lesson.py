@@ -66,5 +66,8 @@ def build_lesson_from_concept_card(
         mastery_pct=mastery_pct,
         trigger=trigger,
         mistake_summary=mistake_summary,
+        pack_id=concept.pack_id,
+        concept_id=concept.id,
+        concept_slug=concept.slug,
         steps=steps,
     )

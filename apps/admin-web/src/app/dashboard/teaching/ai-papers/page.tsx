@@ -4,7 +4,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { FileText, CalendarDays, Clock, Sparkles, Save, Check, Printer, KeyRound, Copy } from "lucide-react";
 import { api, fetchProtectedDocumentUrl, getApiErrorMessage } from "@/lib/api";
-import { parseTopicList, AI_INPUT, validateAnswerSheetFile } from "@/lib/ai-input-limits";
+import { parseTopicList, AI_INPUT } from "@/lib/ai-input-limits";
 import { AppSelect } from "@/components/ui/AppSelect";
 import { PageHeaderCard } from "@/components/layout/PageHeaderCard";
 import { formatClassLabel, sortClasses } from "@/lib/format";
@@ -63,6 +63,30 @@ type CopilotReview = {
 };
 
 type CurriculumPack = { id: string; status: string; board: string; book_title?: string | null };
+type ClassRow = { id: string; grade: string; section: string };
+type SubjectRow = { id: string; name: string };
+type RecentPaper = {
+  id: string;
+  title: string;
+  grade: string;
+  subject_name: string;
+  total_marks: number;
+  status: string;
+};
+type AiUsageSummary = {
+  papers_total: number;
+  papers_this_month: number;
+  est_hours_saved: number;
+};
+type AiUsageLogRow = {
+  usage_id: string;
+  generated_by: string;
+  class_label: string;
+  subject: string;
+  credits_used: number;
+  approval_status: string;
+  rejection_reason?: string | null;
+};
 
 function AiPapersPageInner() {
   const { permissions } = useAuth();
@@ -72,10 +96,11 @@ function AiPapersPageInner() {
   const prefill = useRef({
     classId: searchParams.get("class_id") || "",
     subjectId: searchParams.get("subject_id") || "",
+    packId: searchParams.get("pack_id") || "",
   });
 
-  const [classes, setClasses] = useState<any[]>([]);
-  const [subjects, setSubjects] = useState<any[]>([]);
+  const [classes, setClasses] = useState<ClassRow[]>([]);
+  const [subjects, setSubjects] = useState<SubjectRow[]>([]);
   const [classId, setClassId] = useState("");
   const [subjectId, setSubjectId] = useState("");
   const [topics, setTopics] = useState(searchParams.get("topics") || "");
@@ -85,7 +110,9 @@ function AiPapersPageInner() {
   const [generateMode, setGenerateMode] = useState<"full" | "from_bank">("full");
   const [packId, setPackId] = useState("");
   const [packs, setPacks] = useState<CurriculumPack[]>([]);
-  const [useGrounding, setUseGrounding] = useState(false);
+  const [useGrounding, setUseGrounding] = useState(
+    Boolean(searchParams.get("pack_id") || searchParams.get("grounded"))
+  );
   const [copilotReview, setCopilotReview] = useState<CopilotReview | null>(null);
   const [reviewBusy, setReviewBusy] = useState(false);
   const [bankCount, setBankCount] = useState<number | null>(null);
@@ -96,8 +123,8 @@ function AiPapersPageInner() {
   const [error, setError] = useState("");
   const [paper, setPaper] = useState<Paper | null>(null);
   const [showAnswers, setShowAnswers] = useState(false);
-  const [recent, setRecent] = useState<any[]>([]);
-  const [usage, setUsage] = useState<any>(null);
+  const [recent, setRecent] = useState<RecentPaper[]>([]);
+  const [usage, setUsage] = useState<AiUsageSummary | null>(null);
   const [credits, setCredits] = useState<{
     credits_remaining: number;
     monthly_limit: number;
@@ -107,7 +134,7 @@ function AiPapersPageInner() {
     at_hard_limit?: boolean;
     purpose_costs?: Record<string, number>;
   } | null>(null);
-  const [usageLog, setUsageLog] = useState<any[]>([]);
+  const [usageLog, setUsageLog] = useState<AiUsageLogRow[]>([]);
   const [docPreview, setDocPreview] = useState<{ url: string; title: string } | null>(null);
   const openDocRef = useRef(false);
   const isAdmin = permissions?.role === "admin" || permissions?.role === "super_admin";
@@ -115,49 +142,41 @@ function AiPapersPageInner() {
   useEffect(() => {
     api("/api/v1/academic/classes?page_size=100")
       .then((r) => {
-        const items = sortClasses<any>(r.items || r.data || []);
+        const items = sortClasses<ClassRow>((r.items || r.data || []) as ClassRow[]);
         setClasses(items);
         const wanted = prefill.current.classId;
-        const match = wanted && items.find((c: any) => c.id === wanted);
+        const match = wanted && items.find((c) => c.id === wanted);
         if (match) setClassId(match.id);
         else if (items[0]) setClassId(items[0].id);
       })
       .catch((e) => console.error(e));
     loadRecent();
-    api("/api/v1/ai/usage").then(setUsage).catch(() => {});
+    api<AiUsageSummary>("/api/v1/ai/usage").then(setUsage).catch(() => {});
     api("/api/v1/ai/credits").then(setCredits).catch(() => {});
     if (permissions?.role === "admin" || permissions?.role === "super_admin") {
       api("/api/v1/ai/credits/usage-log")
-        .then((r) => setUsageLog(r.items || []))
+        .then((r) => setUsageLog((r.items || []) as AiUsageLogRow[]))
         .catch(() => {});
     }
   }, [permissions?.role]);
 
   useEffect(() => {
-    if (!classId) {
-      setSubjects([]);
-      return;
-    }
+    if (!classId) return;
     api(`/api/v1/academic/subjects?class_id=${classId}`)
       .then((r) => {
-        const items = r.items || r.data || (Array.isArray(r) ? r : []);
+        const items = (r.items || r.data || (Array.isArray(r) ? r : [])) as SubjectRow[];
         setSubjects(items);
         // Consume the subject prefill once; later class changes pick the first subject.
         const wanted = prefill.current.subjectId;
         prefill.current.subjectId = "";
-        const match = wanted && items.find((s: any) => s.id === wanted);
+        const match = wanted && items.find((s) => s.id === wanted);
         setSubjectId(match ? match.id : items[0]?.id || "");
       })
       .catch((e) => console.error(e));
   }, [classId]);
 
   useEffect(() => {
-    if (!classId || !subjectId) {
-      setBankCount(null);
-      setPacks([]);
-      setPackId("");
-      return;
-    }
+    if (!classId || !subjectId) return;
     api(`/api/v1/ai/question-bank/summary?class_id=${classId}&subject_id=${subjectId}`)
       .then((r) => setBankCount(typeof r.count === "number" ? r.count : 0))
       .catch(() => setBankCount(null));
@@ -167,7 +186,10 @@ function AiPapersPageInner() {
           (p: CurriculumPack) => p.status === "approved"
         );
         setPacks(items);
-        setPackId(items[0]?.id || "");
+        const wanted = prefill.current.packId;
+        prefill.current.packId = "";
+        const match = wanted && items.find((p: CurriculumPack) => p.id === wanted);
+        setPackId(match ? match.id : items[0]?.id || "");
       })
       .catch(() => setPacks([]));
   }, [classId, subjectId]);
@@ -186,7 +208,7 @@ function AiPapersPageInner() {
   }
 
   function loadRecent() {
-    api("/api/v1/ai/question-papers")
+    api<RecentPaper[] | { items?: RecentPaper[] }>("/api/v1/ai/question-papers")
       .then((r) => setRecent(Array.isArray(r) ? r : r.items || []))
       .catch(() => {});
   }
@@ -245,7 +267,7 @@ function AiPapersPageInner() {
         generateMode === "from_bank"
           ? "/api/v1/ai/question-papers/generate-from-bank"
           : "/api/v1/ai/question-papers/generate";
-      const res = await api(endpoint, {
+      const res = await api<Paper>(endpoint, {
         method: "POST",
         body: JSON.stringify({
           class_id: classId,
@@ -261,7 +283,7 @@ function AiPapersPageInner() {
       setShowAnswers(false);
       loadRecent();
       api("/api/v1/ai/credits").then(setCredits).catch(() => {});
-      api("/api/v1/ai/usage").then(setUsage).catch(() => {});
+      api<AiUsageSummary>("/api/v1/ai/usage").then(setUsage).catch(() => {});
     } catch (e) {
       setError(getApiErrorMessage(e, "Failed to generate paper. Please try again."));
     } finally {
@@ -309,7 +331,7 @@ function AiPapersPageInner() {
     setSaving(true);
     setError("");
     try {
-      const res = await api(`/api/v1/ai/question-papers/${paper.id}`, {
+      const res = await api<Paper>(`/api/v1/ai/question-papers/${paper.id}`, {
         method: "PUT",
         body: JSON.stringify({
           title: paper.title,
@@ -328,7 +350,7 @@ function AiPapersPageInner() {
   async function submitForApproval() {
     if (!paper) return;
     try {
-      const res = await api(`/api/v1/ai/question-papers/${paper.id}/submit`, { method: "POST" });
+      const res = await api<Paper>(`/api/v1/ai/question-papers/${paper.id}/submit`, { method: "POST" });
       setPaper(res);
       loadRecent();
     } catch (e) {

@@ -472,7 +472,7 @@ async def test_incharge_allowed_for_own_class(
 
 
 @pytest.mark.asyncio
-async def test_file_upload_deferred_requires_curriculum_text(
+async def test_uploaded_curriculum_source_creates_draft_pack(
     client: AsyncClient,
     admin_user: User,
     test_school: School,
@@ -483,7 +483,7 @@ async def test_file_upload_deferred_requires_curriculum_text(
     subject = await _subject(db_session, test_school, test_class)
     token = await get_auth_token(client, "test_admin", "Admin@123")
 
-    missing_text = await client.post(
+    missing_source = await client.post(
         "/api/v1/curriculum/onboarding/propose",
         headers=auth_headers(token),
         json={
@@ -493,9 +493,57 @@ async def test_file_upload_deferred_requires_curriculum_text(
             "board": "SSC",
         },
     )
-    assert missing_text.status_code == 422
+    assert missing_source.status_code == 422
 
-    file_only = await client.post(
+    upload = await client.post(
+        "/api/v1/files/upload",
+        headers=auth_headers(token),
+        files={"file": ("syllabus.pdf", b"%PDF-1.0 syllabus source\n%%EOF", "application/pdf")},
+        data={"category": "document"},
+    )
+    assert upload.status_code == 201, upload.text
+    file_id = upload.json()["data"]["id"]
+
+    async def fake_llm(*_args, **_kwargs):
+        return LLMResult(
+            text=json.dumps(_EXTRACTION_JSON),
+            provider="stub",
+            model="dev-stub",
+            tokens_in=100,
+            tokens_out=200,
+            latency_ms=5,
+        )
+
+    with (
+        patch(
+            "app.modules.curriculum.services.curriculum_extraction_service.extract_text_from_upload",
+            return_value="1. Algebra\nTopic: Linear Equations",
+        ),
+        patch(
+            "app.modules.curriculum.services.curriculum_extraction_service.generate_llm",
+            fake_llm,
+        ),
+    ):
+        file_only = await client.post(
+            "/api/v1/curriculum/onboarding/propose",
+            headers=auth_headers(token),
+            json={
+                "class_id": str(test_class.id),
+                "subject_id": str(subject.id),
+                "academic_year_id": str(academic_year.id),
+                "board": "SSC",
+                "input_type": "syllabus",
+                "file_id": file_id,
+            },
+        )
+
+    assert file_only.status_code == 201, file_only.text
+    data = file_only.json()["data"]
+    assert data["extraction_source"] == "uploaded_document"
+    assert data["pack"]["status"] == "draft"
+    assert data["chapters_proposed"] == 1
+
+    missing_file = await client.post(
         "/api/v1/curriculum/onboarding/propose",
         headers=auth_headers(token),
         json={
@@ -506,7 +554,7 @@ async def test_file_upload_deferred_requires_curriculum_text(
             "file_id": str(uuid.uuid4()),
         },
     )
-    assert file_only.status_code == 422
+    assert missing_file.status_code == 400
 
 
 @pytest.mark.asyncio

@@ -147,20 +147,72 @@ class ConceptCardService:
         return card
 
     async def get_approved_by_slug(
-        self, *, school_id: uuid.UUID, slug: str
+        self, *, school_id: uuid.UUID, slug: str, pack_id: uuid.UUID | None = None
     ) -> tuple[ConceptCard, CurriculumConcept] | None:
         """Lookup approved card by concept slug (tutor retrieval)."""
+        query = (
+            select(ConceptCard, CurriculumConcept)
+            .join(
+                CurriculumConcept,
+                CurriculumConcept.id == ConceptCard.concept_id,
+            )
+            .where(
+                ConceptCard.school_id == school_id,
+                ConceptCard.status == ConceptCardStatus.APPROVED,
+                CurriculumConcept.school_id == school_id,
+                CurriculumConcept.slug == slug,
+            )
+        )
+        if pack_id is not None:
+            query = query.where(
+                ConceptCard.pack_id == pack_id,
+                CurriculumConcept.pack_id == pack_id,
+            )
         row = (
             await self.db.execute(
-                select(ConceptCard, CurriculumConcept)
-                .join(
-                    CurriculumConcept,
-                    CurriculumConcept.id == ConceptCard.concept_id,
-                )
-                .where(
-                    ConceptCard.school_id == school_id,
-                    ConceptCard.status == ConceptCardStatus.APPROVED,
-                    CurriculumConcept.slug == slug,
+                query.order_by(ConceptCard.approved_at.desc().nullslast()).limit(1)
+            )
+        ).first()
+        if row is None:
+            return None
+        return row[0], row[1]
+
+    async def resolve_approved_lesson(
+        self, *, school_id: uuid.UUID, topic: str, pack_id: uuid.UUID | None = None
+    ) -> tuple[ConceptCard, CurriculumConcept] | None:
+        """Map an exam/mastery topic label to an approved card + concept."""
+        needle = topic.strip().lower()
+        if not needle:
+            return None
+        from sqlalchemy import case
+
+        from app.db.models.curriculum_pack import CurriculumTopic
+
+        query = (
+            select(ConceptCard, CurriculumConcept)
+            .join(ConceptCard, ConceptCard.concept_id == CurriculumConcept.id)
+            .join(CurriculumTopic, CurriculumTopic.id == CurriculumConcept.topic_id)
+            .where(
+                ConceptCard.school_id == school_id,
+                ConceptCard.status == ConceptCardStatus.APPROVED,
+                CurriculumConcept.school_id == school_id,
+                CurriculumTopic.school_id == school_id,
+            )
+            .where(
+                (CurriculumTopic.title.ilike(f"%{needle}%"))
+                | (CurriculumConcept.title.ilike(f"%{needle}%"))
+            )
+        )
+        if pack_id is not None:
+            query = query.where(
+                ConceptCard.pack_id == pack_id,
+                CurriculumConcept.pack_id == pack_id,
+            )
+        row = (
+            await self.db.execute(
+                query.order_by(
+                    case((CurriculumConcept.title.ilike(f"%{needle}%"), 0), else_=1),
+                    CurriculumConcept.order_index.desc(),
                 )
                 .limit(1)
             )
@@ -170,35 +222,10 @@ class ConceptCardService:
         return row[0], row[1]
 
     async def resolve_approved_lesson_key(
-        self, *, school_id: uuid.UUID, topic: str
+        self, *, school_id: uuid.UUID, topic: str, pack_id: uuid.UUID | None = None
     ) -> str | None:
         """Map an exam/mastery topic label to an approved concept slug (tutor grounding)."""
-        needle = topic.strip().lower()
-        if not needle:
-            return None
-        from app.db.models.curriculum_pack import CurriculumTopic
-        from sqlalchemy import case
-
-        row = (
-            await self.db.execute(
-                select(CurriculumConcept.slug)
-                .join(ConceptCard, ConceptCard.concept_id == CurriculumConcept.id)
-                .join(CurriculumTopic, CurriculumTopic.id == CurriculumConcept.topic_id)
-                .where(
-                    ConceptCard.school_id == school_id,
-                    ConceptCard.status == ConceptCardStatus.APPROVED,
-                    CurriculumConcept.school_id == school_id,
-                    CurriculumTopic.school_id == school_id,
-                )
-                .where(
-                    (CurriculumTopic.title.ilike(f"%{needle}%"))
-                    | (CurriculumConcept.title.ilike(f"%{needle}%"))
-                )
-                .order_by(
-                    case((CurriculumConcept.title.ilike(f"%{needle}%"), 0), else_=1),
-                    CurriculumConcept.order_index.desc(),
-                )
-                .limit(1)
-            )
-        ).scalar_one_or_none()
-        return row
+        row = await self.resolve_approved_lesson(
+            school_id=school_id, topic=topic, pack_id=pack_id
+        )
+        return row[1].slug if row else None

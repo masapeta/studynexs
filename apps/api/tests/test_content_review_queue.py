@@ -23,7 +23,7 @@ from app.db.models.curriculum_pack import (
     PackStatus,
 )
 from app.db.models.school import School
-from app.db.models.user import User, UserRole
+from app.db.models.user import User
 from app.modules.curriculum.services.content_review_service import ContentReviewService
 from app.modules.knowledge_graph.services.graph_service import KnowledgeGraphService
 from app.modules.tutor.services.tutor_service import get_lesson
@@ -37,8 +37,14 @@ async def _seed_pack_with_concept(
     test_class: Class,
     year: AcademicYear,
     admin: User,
+    suffix: str = "",
 ) -> tuple[CurriculumPack, str]:
-    subject = Subject(school_id=school.id, class_id=test_class.id, name="Maths", code="MTH")
+    subject = Subject(
+        school_id=school.id,
+        class_id=test_class.id,
+        name=f"Maths{suffix}",
+        code=f"MTH{suffix}",
+    )
     db.add(subject)
     await db.flush()
     pack = CurriculumPack(
@@ -72,6 +78,55 @@ async def _seed_pack_with_concept(
         school_id=school.id, pack_id=pack.id
     )
     return pack, "slope"
+
+
+@pytest.mark.asyncio
+async def test_enqueue_concept_gap_by_slug_handles_duplicate_pack_slugs(
+    db_session: AsyncSession,
+    test_school: School,
+    test_class: Class,
+    academic_year: AcademicYear,
+    admin_user: User,
+):
+    """Tutor gap enqueue must not 500 when multiple approved packs share a slug."""
+
+    from app.db.models.knowledge_graph import CurriculumConcept
+
+    await _seed_pack_with_concept(
+        db_session,
+        school=test_school,
+        test_class=test_class,
+        year=academic_year,
+        admin=admin_user,
+        suffix="1",
+    )
+    await _seed_pack_with_concept(
+        db_session,
+        school=test_school,
+        test_class=test_class,
+        year=academic_year,
+        admin=admin_user,
+        suffix="2",
+    )
+    concepts = (
+        await db_session.execute(
+            select(CurriculumConcept).where(
+                CurriculumConcept.school_id == test_school.id,
+                CurriculumConcept.slug == "slope",
+            )
+        )
+    ).scalars().all()
+    assert len(concepts) == 2
+
+    item = await ContentReviewService(db_session).enqueue_concept_gap_by_slug(
+        school_id=test_school.id,
+        slug="slope",
+        created_by=admin_user.id,
+        source=ContentReviewSource.TUTOR_GAP,
+    )
+
+    assert item is not None
+    assert item.concept_id in {concept.id for concept in concepts}
 
 
 @pytest.mark.asyncio

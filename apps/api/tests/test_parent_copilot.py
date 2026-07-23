@@ -112,11 +112,18 @@ async def _seed_parent_copilot(
     store = InMemoryVectorStore()
     embedder = EmbeddingService(provider=StubEmbeddingProvider())
     await RagService(db, embedder=embedder, store=store).index_pack(pack)
+    concept = (
+        await db.execute(
+            select(CurriculumConcept).where(CurriculumConcept.pack_id == pack.id)
+        )
+    ).scalar_one()
 
     return {
         "school": test_school,
         "student": student,
         "parent_user": parent_user,
+        "pack": pack,
+        "concept": concept,
         "embedder": embedder,
         "store": store,
     }
@@ -124,7 +131,14 @@ async def _seed_parent_copilot(
 
 @pytest.mark.asyncio
 async def test_parent_briefing_grounded(
-    db_session, parent_user, student_user, test_school, test_class, academic_year, admin_user, monkeypatch
+    db_session,
+    parent_user,
+    student_user,
+    test_school,
+    test_class,
+    academic_year,
+    admin_user,
+    monkeypatch,
 ):
     ids = await _seed_parent_copilot(
         db_session, parent_user, student_user, test_school, test_class, academic_year, admin_user
@@ -133,8 +147,17 @@ async def test_parent_briefing_grounded(
     async def _fake_llm(*_a, **_k):
         return LLMResult(
             text=json.dumps({
-                "summary": "Your child is building skills in linear equations but needs practice on slope.",
-                "focus_areas": [{"topic": "Linear Equations", "subject_name": "Maths", "mastery_pct": 52}],
+                "summary": (
+                    "Your child is building skills in linear equations but needs practice on "
+                    "slope."
+                ),
+                "focus_areas": [
+                    {
+                        "topic": "Linear Equations",
+                        "subject_name": "Maths",
+                        "mastery_pct": 52,
+                    }
+                ],
                 "home_tips": ["Review one worked example together each evening."],
                 "encouragement": "Steady practice will help.",
             }),
@@ -156,6 +179,8 @@ async def test_parent_briefing_grounded(
     assert out.grounded is True
     assert "linear" in out.summary.lower() or out.focus_areas
     assert out.home_tips
+    assert out.pack_id == ids["pack"].id
+    assert out.source_count > 0
 
 
 @pytest.mark.asyncio
@@ -196,6 +221,7 @@ async def test_parent_ask_api(
     body = res.json()["data"]
     assert body["grounded"] is True
     assert body["answer"]
+    assert body["pack_id"] == str(ids["pack"].id)
 
 
 @pytest.mark.asyncio
@@ -234,4 +260,6 @@ async def test_parent_briefing_api(
         headers=auth_headers(token),
     )
     assert res.status_code == 200
-    assert res.json()["data"]["summary"]
+    body = res.json()["data"]
+    assert body["summary"]
+    assert body["pack_id"] == str(ids["pack"].id)

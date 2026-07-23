@@ -10,11 +10,11 @@ from app.db.models.academic import Subject
 from app.db.models.mastery import StudentTopicMastery
 from app.db.models.misconception import MisconceptionEntry
 from app.db.models.student import Student
+from app.modules.curriculum.services.concept_card_service import ConceptCardService
 from app.modules.knowledge_graph.services.student_weak_concept_service import (
     StudentWeakConceptService,
 )
 from app.modules.tutor.schemas.tutor import TutorLessonOut, TutorRecommendationOut
-from app.modules.curriculum.services.concept_card_service import ConceptCardService
 from app.modules.tutor.services.concept_card_lesson import build_lesson_from_concept_card
 from app.modules.tutor.services.lesson_templates import (
     LESSON_TEMPLATES,
@@ -32,7 +32,12 @@ async def _weak_topics(
 ) -> list[tuple[str, str, float]]:
     rows = (
         await db.execute(
-            select(StudentTopicMastery.topic, Subject.name, StudentTopicMastery.mastery_pct)
+            select(
+                StudentTopicMastery.topic,
+                StudentTopicMastery.topic_display,
+                Subject.name,
+                StudentTopicMastery.mastery_pct,
+            )
             .join(Subject, Subject.id == StudentTopicMastery.subject_id)
             .where(
                 StudentTopicMastery.school_id == school_id,
@@ -43,7 +48,7 @@ async def _weak_topics(
             .limit(8)
         )
     ).all()
-    return [(topic, subject, float(pct)) for topic, subject, pct in rows]
+    return [(display or topic, subject, float(pct)) for topic, display, subject, pct in rows]
 
 
 async def _student_misconceptions(
@@ -79,17 +84,48 @@ async def list_recommendations(
         )
         return name or "From your exam"
 
+    def _rec_from_card(
+        *,
+        card_match,
+        topic: str,
+        subject_name: str,
+        reason: str,
+        mastery_pct: float | None = None,
+    ) -> TutorRecommendationOut:
+        if card_match is not None:
+            _card, concept = card_match
+            return TutorRecommendationOut(
+                lesson_key=concept.slug,
+                topic=topic,
+                subject_name=subject_name,
+                mastery_pct=mastery_pct,
+                reason=reason,
+                pack_id=concept.pack_id,
+                concept_id=concept.id,
+                concept_slug=concept.slug,
+                source="concept_card",
+            )
+        return TutorRecommendationOut(
+            lesson_key=slugify_lesson_key(topic),
+            topic=topic,
+            subject_name=subject_name,
+            mastery_pct=mastery_pct,
+            reason=reason,
+            source="template",
+        )
+
     # Exam mistakes first — same chain as parent briefing and seeded unit test.
     for mc in await _student_misconceptions(db, school_id, student_id):
-        key = await card_svc.resolve_approved_lesson_key(
+        card_match = await card_svc.resolve_approved_lesson(
             school_id=school_id, topic=mc.topic
-        ) or slugify_lesson_key(mc.topic)
+        )
+        key = card_match[1].slug if card_match else slugify_lesson_key(mc.topic)
         if key in seen:
             continue
         seen.add(key)
         recs.append(
-            TutorRecommendationOut(
-                lesson_key=key,
+            _rec_from_card(
+                card_match=card_match,
                 topic=mc.topic,
                 subject_name=await _subject_name_for_misconception(mc),
                 reason=f"Exam mistake: {mc.common_mistake[:120]}",
@@ -97,15 +133,16 @@ async def list_recommendations(
         )
 
     for topic, subject, pct in await _weak_topics(db, school_id, student_id):
-        key = await card_svc.resolve_approved_lesson_key(
+        card_match = await card_svc.resolve_approved_lesson(
             school_id=school_id, topic=topic
-        ) or slugify_lesson_key(topic)
+        )
+        key = card_match[1].slug if card_match else slugify_lesson_key(topic)
         if key in seen:
             continue
         seen.add(key)
         recs.append(
-            TutorRecommendationOut(
-                lesson_key=key,
+            _rec_from_card(
+                card_match=card_match,
                 topic=topic,
                 subject_name=subject,
                 mastery_pct=pct,
@@ -122,7 +159,16 @@ async def list_recommendations(
             continue
         seen.add(key)
         pct = float(meta["mastery_pct"]) if meta and meta.get("mastery_pct") is not None else None
-        reason = f"Weak concept — {pct:.0f}% mastery" if pct is not None else "Weak concept from your graph"
+        reason = (
+            f"Weak concept — {pct:.0f}% mastery"
+            if pct is not None
+            else "Weak concept from your graph"
+        )
+        approved_card = await card_svc.get_approved_by_slug(
+            school_id=school_id,
+            slug=concept.slug,
+            pack_id=concept.pack_id,
+        )
         recs.append(
             TutorRecommendationOut(
                 lesson_key=key,
@@ -130,6 +176,10 @@ async def list_recommendations(
                 subject_name="Curriculum",
                 mastery_pct=pct,
                 reason=reason,
+                pack_id=concept.pack_id,
+                concept_id=concept.id,
+                concept_slug=concept.slug,
+                source="concept_card" if approved_card else "weak_concept",
             )
         )
 
@@ -183,7 +233,10 @@ async def get_lesson(
         pct = None
         subject = "Curriculum"
         for t, s, p in weak:
-            if slugify_lesson_key(t) == lesson_key or slugify_lesson_key(concept.title) == lesson_key:
+            if (
+                slugify_lesson_key(t) == lesson_key
+                or slugify_lesson_key(concept.title) == lesson_key
+            ):
                 pct = p
                 subject = s
                 break

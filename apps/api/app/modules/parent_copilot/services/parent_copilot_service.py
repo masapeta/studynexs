@@ -49,7 +49,8 @@ def _build_briefing_messages(
     curriculum_context: str,
 ) -> list[LLMMessage]:
     system = (
-        f"You are a supportive school advisor for parents of Class {grade} {board} students in India. "
+        f"You are a supportive school advisor for parents of Class {grade} "
+        f"{board} students in India. "
         "Write a brief progress summary using ONLY the data below. Be warm and practical. "
         "Do not invent marks, ranks, or events. Never use the child's name. "
         "Return JSON only."
@@ -178,7 +179,9 @@ class ParentCopilotService:
                 )
             for fb in progress.feedbacks[:3]:
                 excerpt = (fb.narrative or "")[:200]
-                weak_lines.append(f"- Teacher note on {fb.subject_name} / {fb.topic_display}: {excerpt}")
+                weak_lines.append(
+                    f"- Teacher note on {fb.subject_name} / {fb.topic_display}: {excerpt}"
+                )
 
         pairs = await self.weak.get_weak_concepts_for_student(
             school_id=school_id, student_id=student_id
@@ -198,6 +201,8 @@ class ParentCopilotService:
                         subject_name="Curriculum",
                         mastery_pct=float(pct) if pct is not None else None,
                         concept_slug=concept.slug,
+                        pack_id=concept.pack_id,
+                        concept_id=concept.id,
                     )
                 )
 
@@ -218,13 +223,17 @@ class ParentCopilotService:
         focus_areas: list[ParentFocusAreaOut],
         weak_lines: str,
         attendance_pct: float | None,
+        pack_id: uuid.UUID | None = None,
+        concept_id: uuid.UUID | None = None,
+        source_count: int = 0,
     ) -> ParentBriefingOut:
         """Progress-based summary when the LLM is unavailable or returns empty (demo-safe)."""
         if focus_areas:
             topics = ", ".join(f"{f.subject_name} ({f.topic})" for f in focus_areas[:3])
             summary = (
                 f"Your Class {grade} child is strengthening {topics}. "
-                "These topics came from recent assessments — short, regular practice at home helps most."
+                "These topics came from recent assessments — short, regular practice "
+                "at home helps most."
             )
             home_tips = [
                 "Ask your child to walk through one solved example aloud each evening.",
@@ -240,14 +249,23 @@ class ParentCopilotService:
                 "Encourage your child to note one doubt after each Maths period.",
             ]
         if attendance_pct is not None and attendance_pct < 85:
-            summary += f" Attendance is {attendance_pct:.0f}% — being present supports steady progress."
+            summary += (
+                f" Attendance is {attendance_pct:.0f}% — being present supports "
+                "steady progress."
+            )
 
         return ParentBriefingOut(
             student_id=student_id,
             summary=summary,
             focus_areas=focus_areas,
             home_tips=home_tips,
-            encouragement="Steady support at home — even a few minutes daily — makes a visible difference.",
+            encouragement=(
+                "Steady support at home — even a few minutes daily — makes a "
+                "visible difference."
+            ),
+            pack_id=pack_id,
+            concept_id=concept_id,
+            source_count=source_count,
             grounded=bool(focus_areas or weak_lines),
             model="deterministic",
         )
@@ -259,6 +277,9 @@ class ParentCopilotService:
         focus_areas: list[ParentFocusAreaOut],
         weak_lines: str,
         grade: str,
+        pack_id: uuid.UUID | None = None,
+        concept_id: uuid.UUID | None = None,
+        source_count: int = 0,
     ) -> ParentAnswerOut:
         q = question.casefold()
         if focus_areas and ("math" in q or "maths" in q or "week" in q or "summar" in q):
@@ -269,7 +290,8 @@ class ParentCopilotService:
                 "review the class-work notice and ask them to explain one practice problem."
             )
             home_tips = [
-                f"Spend 15 minutes on {primary.topic} — use the textbook examples, not new material.",
+                f"Spend 15 minutes on {primary.topic} — use the textbook examples, "
+                "not new material.",
                 "Celebrate effort on attempted problems, not only correct answers.",
             ]
         elif focus_areas:
@@ -289,6 +311,9 @@ class ParentCopilotService:
         return ParentAnswerOut(
             answer=answer,
             home_tips=home_tips,
+            pack_id=pack_id,
+            concept_id=concept_id,
+            source_count=source_count,
             grounded=bool(focus_areas or weak_lines),
             model="deterministic",
         )
@@ -301,12 +326,12 @@ class ParentCopilotService:
         query: str,
         embedder: EmbeddingService | None,
         store: VectorStore | None,
-    ) -> tuple[str, uuid.UUID | None, uuid.UUID | None]:
+    ) -> tuple[str, uuid.UUID | None, uuid.UUID | None, int]:
         pairs = await self.weak.get_weak_concepts_for_student(
             school_id=school_id, student_id=student_id
         )
         if not pairs:
-            return "", None, None
+            return "", None, None, 0
         concept, _meta = pairs[0]
         rag = RagService(self.db, embedder=embedder, store=store)
         hybrid = HybridRetrievalService(self.db, rag)
@@ -321,7 +346,7 @@ class ParentCopilotService:
                 rerank=True,
             ),
         )
-        return RagSvc.build_context(chunks), concept.pack_id, concept.id
+        return RagSvc.build_context(chunks), concept.pack_id, concept.id, len(chunks)
 
     async def generate_briefing(
         self,
@@ -362,7 +387,7 @@ class ParentCopilotService:
             student_id=student_id,
         )
         primary_query = focus_areas[0].topic if focus_areas else "curriculum topics"
-        curriculum_context, _, _ = await self._curriculum_context(
+        curriculum_context, pack_id, concept_id, source_count = await self._curriculum_context(
             school_id=school_id,
             student_id=student_id,
             query=primary_query,
@@ -419,6 +444,9 @@ class ParentCopilotService:
                 focus_areas=focus_areas,
                 weak_lines=weak_lines,
                 attendance_pct=progress.attendance_pct if progress else None,
+                pack_id=pack_id,
+                concept_id=concept_id,
+                source_count=source_count,
             )
 
         summary = sanitize_llm_plain_text(str(payload.get("summary", "")), max_length=600)
@@ -429,6 +457,9 @@ class ParentCopilotService:
                 focus_areas=focus_areas,
                 weak_lines=weak_lines,
                 attendance_pct=progress.attendance_pct if progress else None,
+                pack_id=pack_id,
+                concept_id=concept_id,
+                source_count=source_count,
             )
 
         tips_raw = payload.get("home_tips") or []
@@ -460,6 +491,9 @@ class ParentCopilotService:
             focus_areas=focus_areas,
             home_tips=home_tips,
             encouragement=encouragement,
+            pack_id=pack_id,
+            concept_id=concept_id,
+            source_count=source_count,
             grounded=bool(curriculum_context or weak_lines),
             model=result.model,
         )
@@ -505,7 +539,7 @@ class ParentCopilotService:
             parent_user_id=user_id,
             student_id=student_id,
         )
-        curriculum_context, _, _ = await self._curriculum_context(
+        curriculum_context, pack_id, concept_id, source_count = await self._curriculum_context(
             school_id=school_id,
             student_id=student_id,
             query=question,
@@ -561,6 +595,9 @@ class ParentCopilotService:
                 focus_areas=focus_areas,
                 weak_lines=weak_lines,
                 grade=grade,
+                pack_id=pack_id,
+                concept_id=concept_id,
+                source_count=source_count,
             )
 
         answer = sanitize_llm_plain_text(str(payload.get("answer", "")), max_length=1000)
@@ -570,6 +607,9 @@ class ParentCopilotService:
                 focus_areas=focus_areas,
                 weak_lines=weak_lines,
                 grade=grade,
+                pack_id=pack_id,
+                concept_id=concept_id,
+                source_count=source_count,
             )
 
         tips_raw = payload.get("home_tips") or []
@@ -582,6 +622,9 @@ class ParentCopilotService:
         return ParentAnswerOut(
             answer=answer,
             home_tips=home_tips,
+            pack_id=pack_id,
+            concept_id=concept_id,
+            source_count=source_count,
             grounded=bool(curriculum_context or weak_lines),
             model=result.model,
         )

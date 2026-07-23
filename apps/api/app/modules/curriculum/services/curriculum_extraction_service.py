@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.ai_usage import AIUsage
+from app.db.models.file import FileCategory
 from app.db.models.school import School
 from app.modules.ai.gateway import LLMMessage, generate_llm, record_usage
 from app.modules.ai.gateway.input_guard import sanitize_prompt_text
@@ -26,7 +27,10 @@ from app.modules.curriculum.schemas.onboarding import (
 )
 from app.modules.curriculum.schemas.pack import ChapterIn, LearningOutcomeIn, PackCreate, TopicIn
 from app.modules.curriculum.services.pack_audit import PackAuditEventType, record_pack_audit_event
-from app.modules.curriculum.services.pack_service import PackError, PackService
+from app.modules.curriculum.services.pack_service import PackService
+from app.modules.files.services.document_ocr import extract_text_from_upload
+from app.modules.files.services.file_service import FileService
+from app.modules.files.services.file_validation import max_upload_bytes, read_file_bytes_bounded
 
 logger = structlog.get_logger()
 
@@ -130,6 +134,50 @@ class CurriculumExtractionService:
             )
         return cleaned[:_MAX_SOURCE_CHARS], "text"
 
+    async def _resolve_curriculum_source(
+        self,
+        *,
+        school_id: uuid.UUID,
+        request: OnboardingProposeRequest,
+    ) -> tuple[str, str]:
+        raw_text = (request.curriculum_text or "").strip()
+        source = "text"
+
+        if not raw_text and request.file_id is not None:
+            record = await FileService(self.db).get_file(request.file_id, school_id=school_id)
+            if record is None:
+                raise CurriculumExtractionError("Uploaded curriculum source not found")
+            if record.category != FileCategory.DOCUMENT:
+                raise CurriculumExtractionError(
+                    "Only document uploads can be used as curriculum sources"
+                )
+            try:
+                file_data = read_file_bytes_bounded(
+                    record.storage_path,
+                    size_bytes=record.size_bytes,
+                    max_bytes=max_upload_bytes(FileCategory.DOCUMENT),
+                )
+            except ValueError as exc:
+                raise CurriculumExtractionError(str(exc)) from exc
+            raw_text = extract_text_from_upload(
+                file_data=file_data,
+                content_type=record.content_type,
+            ).strip()
+            source = "uploaded_document"
+
+        cleaned = sanitize_prompt_text(
+            raw_text,
+            max_length=_MAX_SOURCE_CHARS,
+            field_name="curriculum_source",
+            reject_injection=False,
+        )
+        if not cleaned:
+            raise CurriculumExtractionError(
+                "No extractable curriculum source — upload a text-based PDF/image "
+                "or paste a chapter list, syllabus, or TOC"
+            )
+        return cleaned[:_MAX_SOURCE_CHARS], source
+
     async def _call_llm(
         self,
         *,
@@ -176,7 +224,10 @@ class CurriculumExtractionService:
             parsed = _ExtractionResult.model_validate(raw)
         except (json.JSONDecodeError, ValidationError) as exc:
             logger.warning("curriculum_extraction_parse_failed", error=str(exc))
-            parsed = _ExtractionResult(chapters=[], low_confidence_notes=["LLM output parse failed"])
+            parsed = _ExtractionResult(
+                chapters=[],
+                low_confidence_notes=["LLM output parse failed"],
+            )
         return parsed, credits_used
 
     async def propose_draft_pack(
@@ -187,7 +238,10 @@ class CurriculumExtractionService:
         role: str,
         request: OnboardingProposeRequest,
     ) -> OnboardingProposeResponse:
-        source_text, extraction_source = await self._resolve_source_text(request=request)
+        source_text, extraction_source = await self._resolve_curriculum_source(
+            school_id=school_id,
+            request=request,
+        )
         pack = await self.packs.create_pack(
             school_id,
             PackCreate(

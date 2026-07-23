@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Sparkles, ArrowRight } from "lucide-react";
+import { Sparkles, ArrowRight, UploadCloud } from "lucide-react";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { AppSelect } from "@/components/ui/AppSelect";
@@ -17,6 +17,7 @@ type AcademicYear = { id: string; name: string; is_active?: boolean };
 type ClassRow = { id: string; grade: string; section: string };
 type SubjectRow = { id: string; name: string };
 type TeachingAssignment = { class_id: string; subject_id: string };
+type UploadedSource = { id: string; filename: string; content_type: string; size_bytes: number };
 
 const EMPTY_IDS: string[] = [];
 const EMPTY_TEACHING_ASSIGNMENTS: TeachingAssignment[] = [];
@@ -43,6 +44,16 @@ function curriculumBuilderHref(classId: string, subjectId: string, packId: strin
     pack_id: packId,
   });
   return `${TEACHING.curriculum}?${q.toString()}`;
+}
+
+function downstreamHref(path: string, classId: string, subjectId: string, packId: string) {
+  const q = new URLSearchParams({
+    class_id: classId,
+    subject_id: subjectId,
+    pack_id: packId,
+    grounded: "1",
+  });
+  return `${path}?${q.toString()}`;
 }
 
 export default function CurriculumOnboardingPage() {
@@ -72,7 +83,10 @@ export default function CurriculumOnboardingPage() {
   const [edition, setEdition] = useState("");
   const [inputType, setInputType] = useState("chapter_list");
   const [curriculumText, setCurriculumText] = useState("");
+  const [sourceFile, setSourceFile] = useState<File | null>(null);
+  const [uploadedSource, setUploadedSource] = useState<UploadedSource | null>(null);
   const [busy, setBusy] = useState(false);
+  const [uploadBusy, setUploadBusy] = useState(false);
   const [error, setError] = useState("");
   const [packId, setPackId] = useState<string | null>(requestedPackId);
   const [proposalNote, setProposalNote] = useState("");
@@ -162,6 +176,30 @@ export default function CurriculumOnboardingPage() {
       .catch(() => {});
   }, [selectedClassId]);
 
+  async function uploadSourceFile() {
+    if (!sourceFile) {
+      setError("Choose a syllabus, TOC, or curriculum-source PDF/image first.");
+      return;
+    }
+    setUploadBusy(true);
+    setError("");
+    try {
+      const form = new FormData();
+      form.append("file", sourceFile);
+      form.append("category", "document");
+      const r = await api<{ data: UploadedSource }>("/api/v1/files/upload", {
+        method: "POST",
+        body: form,
+      });
+      setUploadedSource({ ...r.data, filename: sourceFile.name });
+    } catch (e) {
+      setUploadedSource(null);
+      setError(getApiErrorMessage(e, "Could not upload this curriculum source."));
+    } finally {
+      setUploadBusy(false);
+    }
+  }
+
   async function proposeDraft() {
     if (!canEditDraft) {
       setError("You need a subject assignment or class incharge role to create curriculum drafts.");
@@ -171,8 +209,8 @@ export default function CurriculumOnboardingPage() {
       setError("Select class, subject, and academic year.");
       return;
     }
-    if (!curriculumText.trim()) {
-      setError("Paste a chapter list, syllabus outline, or table of contents.");
+    if (!curriculumText.trim() && !uploadedSource?.id) {
+      setError("Paste text or upload a syllabus / table of contents source.");
       return;
     }
     setBusy(true);
@@ -196,7 +234,8 @@ export default function CurriculumOnboardingPage() {
           publisher: publisher || undefined,
           edition: edition || undefined,
           input_type: inputType,
-          curriculum_text: curriculumText,
+          curriculum_text: curriculumText.trim() || undefined,
+          file_id: uploadedSource?.id || undefined,
         }),
       });
       setPackId(r.data.pack.id);
@@ -358,7 +397,7 @@ export default function CurriculumOnboardingPage() {
         <section className="sn-workspace-zone" style={{ display: "grid", gap: 14 }}>
           <h2 style={{ fontSize: 15, margin: 0 }}>Curriculum input for {contextLabel || "selected class"}</h2>
           <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: 0 }}>
-            Paste a chapter list, syllabus outline, or table of contents. StudyNexs stores structured metadata only — not copyrighted textbook text. File upload is coming later; paste text for now.
+            Paste a chapter list, syllabus outline, or table of contents — or upload a small syllabus/TOC PDF or image. StudyNexs stores structured curriculum metadata, not a textbook warehouse.
           </p>
           <label>
             Input type
@@ -381,8 +420,43 @@ export default function CurriculumOnboardingPage() {
               style={{ ...inputStyle, minHeight: 200, fontFamily: "inherit" }}
               value={curriculumText}
               onChange={(e) => setCurriculumText(e.target.value)}
+              placeholder="Paste syllabus, chapter list, or table of contents here."
             />
           </label>
+          <div style={{ display: "grid", gap: 8 }}>
+            <label>
+              Curriculum source file
+              <input
+                className="form-input"
+                type="file"
+                accept="application/pdf,image/png,image/jpeg,image/webp"
+                onChange={(e) => {
+                  setSourceFile(e.target.files?.[0] || null);
+                  setUploadedSource(null);
+                }}
+              />
+            </label>
+            <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>
+              Use this for a syllabus PDF, table of contents, or curriculum outline. Full textbook warehousing is out of scope.
+            </p>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                className="sn-btn sn-btn--ghost"
+                style={btn}
+                disabled={!sourceFile || uploadBusy}
+                onClick={() => void uploadSourceFile()}
+              >
+                <UploadCloud size={14} style={{ marginRight: 6 }} />
+                {uploadBusy ? "Uploading…" : "Upload source"}
+              </button>
+              {uploadedSource ? (
+                <span role="status" style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+                  Source uploaded: {uploadedSource.filename}
+                </span>
+              ) : null}
+            </div>
+          </div>
           <div style={{ display: "flex", gap: 10 }}>
             <button type="button" className="sn-btn sn-btn--ghost" style={btn} onClick={() => setStep(1)}>
               Back
@@ -462,7 +536,9 @@ export default function CurriculumOnboardingPage() {
                 className="sn-btn sn-btn--primary"
                 style={btn}
                 disabled={!canApprovePack}
-                onClick={() => router.push(TEACHING.aiPapers)}
+                onClick={() =>
+                  router.push(downstreamHref(TEACHING.aiPapers, selectedClassId, selectedSubjectId, packId))
+                }
               >
                 Use in question papers
               </button>
@@ -475,13 +551,21 @@ export default function CurriculumOnboardingPage() {
         <section className="sn-workspace-zone" style={{ marginTop: 16, display: "grid", gap: 12 }}>
           <AcademicIntelligenceBanner packId={packId} canRetry={canEditThisPack} />
           <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: 0 }}>
-            Lesson plans and question papers on the teaching hub now use this approved pack when you select it for {contextLabel}.
+            Prove the onboarding loop by generating a lesson plan and question paper from this same approved pack for {contextLabel}.
           </p>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Link href={TEACHING.lessonPlans} className="sn-btn sn-btn--ghost" style={btn}>
+            <Link
+              href={downstreamHref(TEACHING.lessonPlans, selectedClassId, selectedSubjectId, packId)}
+              className="sn-btn sn-btn--ghost"
+              style={btn}
+            >
               Lesson plans
             </Link>
-            <Link href={TEACHING.aiPapers} className="sn-btn sn-btn--ghost" style={btn}>
+            <Link
+              href={downstreamHref(TEACHING.aiPapers, selectedClassId, selectedSubjectId, packId)}
+              className="sn-btn sn-btn--ghost"
+              style={btn}
+            >
               Question papers
             </Link>
           </div>

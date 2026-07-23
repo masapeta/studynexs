@@ -30,7 +30,7 @@ from app.modules.knowledge_graph.services.graph_service import KnowledgeGraphSer
 from app.modules.knowledge_graph.services.student_weak_concept_service import (
     StudentWeakConceptService,
 )
-from app.modules.tutor.schemas.copilot import CopilotAskIn
+from app.modules.tutor.schemas.copilot import CopilotAnswerOut, CopilotAskIn
 from app.modules.tutor.services.student_copilot_service import StudentCopilotService
 from tests.conftest import access_token_for, auth_headers
 
@@ -153,6 +153,7 @@ async def test_study_context_lists_weak_concepts(db_session):
     assert ctx.weak_concepts
     assert ctx.primary_concept_slug == "slope"
     assert ctx.grounded is True
+    assert ctx.weak_concepts[0].pack_id == ids["pack"].id
 
 
 @pytest.mark.asyncio
@@ -185,6 +186,9 @@ async def test_ask_grounded_answer(db_session, monkeypatch):
     assert out.grounded is True
     assert "slope" in out.answer.lower()
     assert out.concept_slug == "slope"
+    assert out.pack_id == ids["pack"].id
+    assert out.concept_id == ids["concept"].id
+    assert out.source_count > 0
 
 
 @pytest.mark.asyncio
@@ -199,6 +203,40 @@ async def test_study_context_api(client: AsyncClient, db_session):
     body = res.json()["data"]
     assert body["primary_concept_slug"] == "slope"
     assert len(body["weak_concepts"]) >= 1
+    assert body["weak_concepts"][0]["pack_id"] == str(ids["pack"].id)
+
+
+@pytest.mark.asyncio
+async def test_student_copilot_ask_api_uses_current_user_id(
+    client: AsyncClient, db_session, monkeypatch
+):
+    ids = await _seed_copilot(db_session)
+    token = access_token_for(ids["student_user"])
+    seen = {}
+
+    async def _fake_ask(self, *, user_id, **kwargs):
+        seen["user_id"] = user_id
+        return CopilotAnswerOut(
+            answer="Slope is rise over run.",
+            concept_slug="slope",
+            pack_id=ids["pack"].id,
+            concept_id=ids["concept"].id,
+            source_count=1,
+            grounded=True,
+        )
+
+    monkeypatch.setattr(StudentCopilotService, "ask", _fake_ask)
+
+    res = await client.post(
+        f"/api/v1/tutor/students/{ids['student'].id}/ask",
+        headers=auth_headers(token),
+        json={"question": "What is slope?", "concept_slug": "slope"},
+    )
+
+    assert res.status_code == 200, res.text
+    assert seen["user_id"] == ids["student_user"].id
+    body = res.json()["data"]
+    assert body["pack_id"] == str(ids["pack"].id)
 
 
 @pytest.mark.asyncio
@@ -210,3 +248,24 @@ async def test_recommendations_prioritize_graph_weak_concepts(db_session):
         db_session, school_id=ids["school"].id, student_id=ids["student"].id
     )
     assert recs[0].lesson_key == "slope"
+    assert recs[0].source == "concept_card"
+    assert recs[0].pack_id == ids["pack"].id
+    assert recs[0].concept_id == ids["concept"].id
+
+
+@pytest.mark.asyncio
+async def test_tutor_lesson_exposes_concept_card_pack(db_session):
+    ids = await _seed_copilot(db_session)
+    from app.modules.tutor.services.tutor_service import get_lesson
+
+    lesson = await get_lesson(
+        db_session,
+        school_id=ids["school"].id,
+        student_id=ids["student"].id,
+        lesson_key="slope",
+    )
+    assert lesson is not None
+    assert lesson.trigger == "concept_card"
+    assert lesson.pack_id == ids["pack"].id
+    assert lesson.concept_id == ids["concept"].id
+    assert lesson.concept_slug == "slope"

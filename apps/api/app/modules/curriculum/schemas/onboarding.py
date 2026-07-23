@@ -30,11 +30,12 @@ class OnboardingProposeRequest(BaseModel):
     edition: Optional[str] = Field(None, max_length=50)
     input_type: CurriculumInputType = CurriculumInputType.CHAPTER_LIST
     curriculum_text: Optional[str] = Field(None, max_length=50000)
+    file_id: Optional[uuid.UUID] = None
 
     @model_validator(mode="after")
-    def require_curriculum_text(self) -> "OnboardingProposeRequest":
-        if not (self.curriculum_text or "").strip():
-            raise ValueError("Provide curriculum_text for AI extraction")
+    def require_curriculum_source(self) -> "OnboardingProposeRequest":
+        if not (self.curriculum_text or "").strip() and self.file_id is None:
+            raise ValueError("Provide curriculum_text or file_id for AI extraction")
         return self
 
 

@@ -34,6 +34,9 @@ class CopilotAnswerOut(BaseModel):
     answer: str
     concept_slug: Optional[str] = None
     concept_title: Optional[str] = None
+    pack_id: Optional[uuid.UUID] = None
+    concept_id: Optional[uuid.UUID] = None
+    source_count: int = 0
     citations: list[int] = Field(default_factory=list)
     follow_up_hints: list[str] = Field(default_factory=list)
     grounded: bool = False
