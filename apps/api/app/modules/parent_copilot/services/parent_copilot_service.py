@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from dataclasses import dataclass
 
 import structlog
 from sqlalchemy import select
@@ -38,6 +39,64 @@ from app.modules.portal.services.portal_service import parent_child_progress
 logger = structlog.get_logger()
 
 _WEAK_THRESHOLD = 70.0
+
+
+@dataclass(frozen=True)
+class ParentEvidence:
+    """Internal certification metadata for parent-facing guidance.
+
+    Parent UI renders this as plain-language "why" copy; runtime proofs use the
+    identifiers to verify same-pack grounding without exposing raw ledger jargon.
+    """
+
+    curriculum_context: str = ""
+    pack_id: uuid.UUID | None = None
+    concept_id: uuid.UUID | None = None
+    concept_slug: str | None = None
+    concept_title: str | None = None
+    mastery_topic: str | None = None
+    mastery_pct: float | None = None
+    source_count: int = 0
+
+
+def _has_certified_parent_evidence(evidence: ParentEvidence) -> bool:
+    return bool(evidence.pack_id and evidence.concept_id and evidence.source_count > 0)
+
+
+def _parent_evidence_reason(
+    *, focus_areas: list[ParentFocusAreaOut], evidence: ParentEvidence
+) -> str:
+    primary = focus_areas[0] if focus_areas else None
+    topic = evidence.mastery_topic or evidence.concept_title or (primary.topic if primary else "")
+    subject = (
+        primary.subject_name
+        if primary and primary.subject_name != "Curriculum"
+        else "this subject"
+    )
+    if evidence.mastery_pct is not None and topic:
+        return (
+            f"Based on your child's recent {subject} assessment, mastery is "
+            f"{evidence.mastery_pct:.0f}% on {topic}, below the learning target."
+        )
+    if topic:
+        return (
+            f"Based on your child's recent learning evidence, {topic} is the current "
+            "focus area."
+        )
+    return "Based on your child's latest learning evidence in StudyNexs."
+
+
+def _parent_evidence_summary(evidence: ParentEvidence) -> str:
+    if _has_certified_parent_evidence(evidence):
+        return (
+            "Verified from approved school curriculum and recent learning evidence "
+            f"({evidence.source_count} source"
+            f"{'s' if evidence.source_count != 1 else ''})."
+        )
+    return (
+        "Progress evidence is available, but approved curriculum grounding was not "
+        "verified for this response."
+    )
 
 
 def _build_briefing_messages(
@@ -139,6 +198,7 @@ class ParentCopilotService:
                     topic=topic,
                     subject_name=subject_name,
                     mastery_pct=None,
+                    evidence_reason="Recent assessment misconception",
                 )
             )
         return focus, lines
@@ -175,6 +235,7 @@ class ParentCopilotService:
                         topic=wt.topic_display,
                         subject_name=wt.subject_name,
                         mastery_pct=wt.mastery_pct,
+                        evidence_reason="Mastery below target from recent assessments",
                     )
                 )
             for fb in progress.feedbacks[:3]:
@@ -186,15 +247,30 @@ class ParentCopilotService:
         pairs = await self.weak.get_weak_concepts_for_student(
             school_id=school_id, student_id=student_id
         )
-        concept_slugs: dict[str, str] = {}
         for concept, meta in pairs[:6]:
             pct = meta.get("mastery_pct") if meta else None
+            mastery_topic = str(meta.get("topic") or concept.title) if meta else concept.title
             weak_lines.append(
                 f"- Concept gap: {concept.title} ({pct:.0f}% mastery)" if pct is not None
                 else f"- Concept gap: {concept.title}"
             )
-            concept_slugs[concept.title.casefold()] = concept.slug
-            if not any(f.topic == concept.title for f in focus):
+            existing = next(
+                (
+                    item
+                    for item in focus
+                    if item.topic.casefold() in {concept.title.casefold(), mastery_topic.casefold()}
+                ),
+                None,
+            )
+            if existing:
+                existing.concept_slug = existing.concept_slug or concept.slug
+                existing.pack_id = existing.pack_id or concept.pack_id
+                existing.concept_id = existing.concept_id or concept.id
+                if existing.mastery_pct is None and pct is not None:
+                    existing.mastery_pct = float(pct)
+                if not existing.evidence_reason:
+                    existing.evidence_reason = "Mapped to approved curriculum evidence"
+            else:
                 focus.append(
                     ParentFocusAreaOut(
                         topic=concept.title,
@@ -203,6 +279,7 @@ class ParentCopilotService:
                         concept_slug=concept.slug,
                         pack_id=concept.pack_id,
                         concept_id=concept.id,
+                        evidence_reason="Mapped to approved curriculum evidence",
                     )
                 )
 
@@ -223,9 +300,7 @@ class ParentCopilotService:
         focus_areas: list[ParentFocusAreaOut],
         weak_lines: str,
         attendance_pct: float | None,
-        pack_id: uuid.UUID | None = None,
-        concept_id: uuid.UUID | None = None,
-        source_count: int = 0,
+        evidence: ParentEvidence,
     ) -> ParentBriefingOut:
         """Progress-based summary when the LLM is unavailable or returns empty (demo-safe)."""
         if focus_areas:
@@ -263,10 +338,17 @@ class ParentCopilotService:
                 "Steady support at home — even a few minutes daily — makes a "
                 "visible difference."
             ),
-            pack_id=pack_id,
-            concept_id=concept_id,
-            source_count=source_count,
-            grounded=bool(focus_areas or weak_lines),
+            pack_id=evidence.pack_id,
+            concept_id=evidence.concept_id,
+            concept_slug=evidence.concept_slug,
+            mastery_topic=evidence.mastery_topic,
+            source_count=evidence.source_count,
+            grounded=_has_certified_parent_evidence(evidence),
+            fallback=True,
+            evidence_reason=_parent_evidence_reason(
+                focus_areas=focus_areas, evidence=evidence
+            ),
+            evidence_summary=_parent_evidence_summary(evidence),
             model="deterministic",
         )
 
@@ -277,9 +359,7 @@ class ParentCopilotService:
         focus_areas: list[ParentFocusAreaOut],
         weak_lines: str,
         grade: str,
-        pack_id: uuid.UUID | None = None,
-        concept_id: uuid.UUID | None = None,
-        source_count: int = 0,
+        evidence: ParentEvidence,
     ) -> ParentAnswerOut:
         q = question.casefold()
         if focus_areas and ("math" in q or "maths" in q or "week" in q or "summar" in q):
@@ -311,10 +391,17 @@ class ParentCopilotService:
         return ParentAnswerOut(
             answer=answer,
             home_tips=home_tips,
-            pack_id=pack_id,
-            concept_id=concept_id,
-            source_count=source_count,
-            grounded=bool(focus_areas or weak_lines),
+            pack_id=evidence.pack_id,
+            concept_id=evidence.concept_id,
+            concept_slug=evidence.concept_slug,
+            mastery_topic=evidence.mastery_topic,
+            source_count=evidence.source_count,
+            grounded=_has_certified_parent_evidence(evidence),
+            fallback=True,
+            evidence_reason=_parent_evidence_reason(
+                focus_areas=focus_areas, evidence=evidence
+            ),
+            evidence_summary=_parent_evidence_summary(evidence),
             model="deterministic",
         )
 
@@ -326,13 +413,13 @@ class ParentCopilotService:
         query: str,
         embedder: EmbeddingService | None,
         store: VectorStore | None,
-    ) -> tuple[str, uuid.UUID | None, uuid.UUID | None, int]:
+    ) -> ParentEvidence:
         pairs = await self.weak.get_weak_concepts_for_student(
             school_id=school_id, student_id=student_id
         )
         if not pairs:
-            return "", None, None, 0
-        concept, _meta = pairs[0]
+            return ParentEvidence()
+        concept, meta = pairs[0]
         rag = RagService(self.db, embedder=embedder, store=store)
         hybrid = HybridRetrievalService(self.db, rag)
         chunks = await hybrid.retrieve_hybrid(
@@ -346,7 +433,22 @@ class ParentCopilotService:
                 rerank=True,
             ),
         )
-        return RagSvc.build_context(chunks), concept.pack_id, concept.id, len(chunks)
+        mastery_pct = None
+        mastery_topic = concept.title
+        if meta:
+            mastery_topic = str(meta.get("topic") or concept.title)
+            if meta.get("mastery_pct") is not None:
+                mastery_pct = float(meta["mastery_pct"])
+        return ParentEvidence(
+            curriculum_context=RagSvc.build_context(chunks),
+            pack_id=concept.pack_id,
+            concept_id=concept.id,
+            concept_slug=concept.slug,
+            concept_title=concept.title,
+            mastery_topic=mastery_topic,
+            mastery_pct=mastery_pct,
+            source_count=len(chunks),
+        )
 
     async def generate_briefing(
         self,
@@ -387,7 +489,7 @@ class ParentCopilotService:
             student_id=student_id,
         )
         primary_query = focus_areas[0].topic if focus_areas else "curriculum topics"
-        curriculum_context, pack_id, concept_id, source_count = await self._curriculum_context(
+        evidence = await self._curriculum_context(
             school_id=school_id,
             student_id=student_id,
             query=primary_query,
@@ -400,7 +502,7 @@ class ParentCopilotService:
             grade=grade,
             weak_lines=weak_lines,
             feedback_lines=feedback_lines,
-            curriculum_context=curriculum_context,
+            curriculum_context=evidence.curriculum_context,
         )
 
         purpose_tag = "parent_briefing"
@@ -444,9 +546,7 @@ class ParentCopilotService:
                 focus_areas=focus_areas,
                 weak_lines=weak_lines,
                 attendance_pct=progress.attendance_pct if progress else None,
-                pack_id=pack_id,
-                concept_id=concept_id,
-                source_count=source_count,
+                evidence=evidence,
             )
 
         summary = sanitize_llm_plain_text(str(payload.get("summary", "")), max_length=600)
@@ -457,9 +557,7 @@ class ParentCopilotService:
                 focus_areas=focus_areas,
                 weak_lines=weak_lines,
                 attendance_pct=progress.attendance_pct if progress else None,
-                pack_id=pack_id,
-                concept_id=concept_id,
-                source_count=source_count,
+                evidence=evidence,
             )
 
         tips_raw = payload.get("home_tips") or []
@@ -491,10 +589,17 @@ class ParentCopilotService:
             focus_areas=focus_areas,
             home_tips=home_tips,
             encouragement=encouragement,
-            pack_id=pack_id,
-            concept_id=concept_id,
-            source_count=source_count,
-            grounded=bool(curriculum_context or weak_lines),
+            pack_id=evidence.pack_id,
+            concept_id=evidence.concept_id,
+            concept_slug=evidence.concept_slug,
+            mastery_topic=evidence.mastery_topic,
+            source_count=evidence.source_count,
+            grounded=_has_certified_parent_evidence(evidence),
+            fallback=False,
+            evidence_reason=_parent_evidence_reason(
+                focus_areas=focus_areas, evidence=evidence
+            ),
+            evidence_summary=_parent_evidence_summary(evidence),
             model=result.model,
         )
 
@@ -539,7 +644,7 @@ class ParentCopilotService:
             parent_user_id=user_id,
             student_id=student_id,
         )
-        curriculum_context, pack_id, concept_id, source_count = await self._curriculum_context(
+        evidence = await self._curriculum_context(
             school_id=school_id,
             student_id=student_id,
             query=question,
@@ -552,7 +657,7 @@ class ParentCopilotService:
             grade=grade,
             question=question,
             weak_lines=weak_lines,
-            curriculum_context=curriculum_context,
+            curriculum_context=evidence.curriculum_context,
         )
 
         purpose_tag = "parent_ask"
@@ -595,9 +700,7 @@ class ParentCopilotService:
                 focus_areas=focus_areas,
                 weak_lines=weak_lines,
                 grade=grade,
-                pack_id=pack_id,
-                concept_id=concept_id,
-                source_count=source_count,
+                evidence=evidence,
             )
 
         answer = sanitize_llm_plain_text(str(payload.get("answer", "")), max_length=1000)
@@ -607,9 +710,7 @@ class ParentCopilotService:
                 focus_areas=focus_areas,
                 weak_lines=weak_lines,
                 grade=grade,
-                pack_id=pack_id,
-                concept_id=concept_id,
-                source_count=source_count,
+                evidence=evidence,
             )
 
         tips_raw = payload.get("home_tips") or []
@@ -622,9 +723,16 @@ class ParentCopilotService:
         return ParentAnswerOut(
             answer=answer,
             home_tips=home_tips,
-            pack_id=pack_id,
-            concept_id=concept_id,
-            source_count=source_count,
-            grounded=bool(curriculum_context or weak_lines),
+            pack_id=evidence.pack_id,
+            concept_id=evidence.concept_id,
+            concept_slug=evidence.concept_slug,
+            mastery_topic=evidence.mastery_topic,
+            source_count=evidence.source_count,
+            grounded=_has_certified_parent_evidence(evidence),
+            fallback=False,
+            evidence_reason=_parent_evidence_reason(
+                focus_areas=focus_areas, evidence=evidence
+            ),
+            evidence_summary=_parent_evidence_summary(evidence),
             model=result.model,
         )

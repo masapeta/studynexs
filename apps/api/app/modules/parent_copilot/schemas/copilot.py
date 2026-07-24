@@ -13,6 +13,7 @@ class ParentFocusAreaOut(BaseModel):
     concept_slug: str | None = None
     pack_id: uuid.UUID | None = None
     concept_id: uuid.UUID | None = None
+    evidence_reason: str = ""
 
 
 class ParentBriefingOut(BaseModel):
@@ -23,8 +24,13 @@ class ParentBriefingOut(BaseModel):
     encouragement: str = ""
     pack_id: uuid.UUID | None = None
     concept_id: uuid.UUID | None = None
+    concept_slug: str | None = None
+    mastery_topic: str | None = None
     source_count: int = 0
     grounded: bool = False
+    fallback: bool = False
+    evidence_reason: str = ""
+    evidence_summary: str = ""
     model: str | None = None
 
 
@@ -37,6 +43,11 @@ class ParentAnswerOut(BaseModel):
     home_tips: list[str] = Field(default_factory=list)
     pack_id: uuid.UUID | None = None
     concept_id: uuid.UUID | None = None
+    concept_slug: str | None = None
+    mastery_topic: str | None = None
     source_count: int = 0
     grounded: bool = False
+    fallback: bool = False
+    evidence_reason: str = ""
+    evidence_summary: str = ""
     model: str | None = None

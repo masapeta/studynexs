@@ -8,6 +8,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 
+from app.core.security import hash_password
 from app.db.models.academic import Subject
 from app.db.models.curriculum_pack import (
     CurriculumChapter,
@@ -19,7 +20,7 @@ from app.db.models.knowledge_graph import CurriculumConcept
 from app.db.models.mastery import MasteryTrend, StudentTopicMastery
 from app.db.models.school import School
 from app.db.models.student import Student
-from app.db.models.user import User
+from app.db.models.user import User, UserRole
 from app.modules.ai.embeddings import EmbeddingService
 from app.modules.ai.embeddings.stub_provider import StubEmbeddingProvider
 from app.modules.ai.gateway import LLMResult
@@ -177,10 +178,16 @@ async def test_parent_briefing_grounded(
         credits_charged=0,
     )
     assert out.grounded is True
+    assert out.fallback is False
     assert "linear" in out.summary.lower() or out.focus_areas
     assert out.home_tips
     assert out.pack_id == ids["pack"].id
+    assert out.concept_id == ids["concept"].id
+    assert out.concept_slug == ids["concept"].slug
+    assert out.mastery_topic == "Linear Equations"
     assert out.source_count > 0
+    assert out.evidence_reason
+    assert "approved school curriculum" in out.evidence_summary.lower()
 
 
 @pytest.mark.asyncio
@@ -219,9 +226,17 @@ async def test_parent_ask_api(
     )
     assert res.status_code == 200
     body = res.json()["data"]
-    assert body["grounded"] is True
+    # API-level unit test does not inject the in-memory vector store used above;
+    # runtime certification verifies source_count > 0 against the real RAG store.
+    assert body["grounded"] is False
+    assert body["fallback"] is False
     assert body["answer"]
     assert body["pack_id"] == str(ids["pack"].id)
+    assert body["concept_id"] == str(ids["concept"].id)
+    assert body["concept_slug"] == ids["concept"].slug
+    assert body["mastery_topic"] == "Linear Equations"
+    assert body["source_count"] == 0
+    assert body["evidence_reason"]
 
 
 @pytest.mark.asyncio
@@ -263,3 +278,98 @@ async def test_parent_briefing_api(
     body = res.json()["data"]
     assert body["summary"]
     assert body["pack_id"] == str(ids["pack"].id)
+    assert body["concept_id"] == str(ids["concept"].id)
+    assert body["fallback"] is False
+    assert body["evidence_summary"]
+
+
+@pytest.mark.asyncio
+async def test_parent_copilot_denies_unlinked_child(
+    client: AsyncClient,
+    db_session,
+    parent_user,
+    student_user,
+    test_school,
+    test_class,
+    academic_year,
+    admin_user,
+    monkeypatch,
+):
+    await _seed_parent_copilot(
+        db_session, parent_user, student_user, test_school, test_class, academic_year, admin_user
+    )
+    other_user = User(
+        school_id=test_school.id,
+        username="other_student",
+        mobile="+919876543299",
+        full_name="Other Student",
+        role=UserRole.STUDENT,
+        password_hash=hash_password("Student@123"),
+        is_active=True,
+    )
+    db_session.add(other_user)
+    await db_session.flush()
+    other_student = Student(
+        school_id=test_school.id,
+        user_id=other_user.id,
+        class_id=test_class.id,
+        admission_no="ADM002",
+        roll_no="2",
+    )
+    db_session.add(other_student)
+    await db_session.flush()
+
+    async def _fake_llm(*_a, **_k):
+        return LLMResult(
+            text=json.dumps({"answer": "No access", "home_tips": []}),
+            model="stub",
+            provider="stub",
+        )
+
+    monkeypatch.setattr(_COPILOT_LLM, _fake_llm)
+    token = access_token_for(parent_user)
+    brief = await client.get(
+        f"/api/v1/parent-copilot/students/{other_student.id}/briefing",
+        headers=auth_headers(token),
+    )
+    ask = await client.post(
+        f"/api/v1/parent-copilot/students/{other_student.id}/ask",
+        json={"question": "How can I help?"},
+        headers=auth_headers(token),
+    )
+    assert brief.status_code == 403
+    assert ask.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_parent_briefing_marks_deterministic_fallback(
+    db_session,
+    parent_user,
+    student_user,
+    test_school,
+    test_class,
+    academic_year,
+    admin_user,
+    monkeypatch,
+):
+    ids = await _seed_parent_copilot(
+        db_session, parent_user, student_user, test_school, test_class, academic_year, admin_user
+    )
+
+    async def _bad_llm(*_a, **_k):
+        return LLMResult(text="not json", model="stub", provider="stub")
+
+    monkeypatch.setattr(_COPILOT_LLM, _bad_llm)
+    out = await ParentCopilotService(db_session).generate_briefing(
+        school_id=ids["school"].id,
+        student_id=ids["student"].id,
+        user_id=parent_user.id,
+        role="parent",
+        embedder=ids["embedder"],
+        store=ids["store"],
+        credits_charged=0,
+    )
+    assert out.grounded is True
+    assert out.fallback is True
+    assert out.pack_id == ids["pack"].id
+    assert out.concept_id == ids["concept"].id
