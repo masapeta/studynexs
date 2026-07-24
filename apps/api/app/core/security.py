@@ -8,11 +8,12 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
-from jose import JWTError, jwt
+import jwt
 
 from app.core.config import get_settings
 
 settings = get_settings()
+JWTError = jwt.PyJWTError
 
 
 # ── Password Hashing ────────────────────────────────────────────────────────

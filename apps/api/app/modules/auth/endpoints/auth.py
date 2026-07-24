@@ -7,7 +7,6 @@ from __future__ import annotations
 import redis.asyncio as redis
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.api_route import CommitOnSuccessRoute
@@ -21,7 +20,7 @@ from app.core.dependencies import (
     get_redis,
 )
 from app.core.pii import mask_mobile
-from app.core.security import decode_token
+from app.core.security import JWTError, decode_token
 from app.core.tenant import resolve_auth_school_id, validate_tenant_school_match
 from app.modules.auth.cookie_util import clear_refresh_cookie, set_refresh_cookie
 from app.modules.auth.schemas.auth import (

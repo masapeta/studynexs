@@ -12,14 +12,13 @@ import redis.asyncio as redis
 import structlog
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.core.security import decode_token
+from app.core.security import JWTError, decode_token
 from app.core.tenant import validate_tenant_school_match
 
 settings = get_settings()
