@@ -350,3 +350,90 @@ async def test_tutor_lesson_exposes_concept_card_pack(db_session):
     assert lesson.pack_id == ids["pack"].id
     assert lesson.concept_id == ids["concept"].id
     assert lesson.concept_slug == "slope"
+
+
+@pytest.mark.asyncio
+async def test_tutor_lesson_prefers_student_evidence_when_duplicate_slug_exists(db_session):
+    ids = await _seed_copilot(db_session)
+    teacher_id = ids["pack"].created_by
+
+    newer_pack = CurriculumPack(
+        school_id=ids["school"].id,
+        class_id=ids["pack"].class_id,
+        subject_id=ids["pack"].subject_id,
+        academic_year_id=ids["pack"].academic_year_id,
+        board="SSC",
+        created_by=teacher_id,
+        status=PackStatus.APPROVED,
+        approved_by=teacher_id,
+        approved_at=datetime.now(timezone.utc),
+        version=2,
+    )
+    db_session.add(newer_pack)
+    await db_session.flush()
+    chapter = CurriculumChapter(
+        school_id=ids["school"].id,
+        pack_id=newer_pack.id,
+        number="1",
+        title="Duplicate Algebra",
+        order_index=0,
+    )
+    db_session.add(chapter)
+    await db_session.flush()
+    topic = CurriculumTopic(
+        school_id=ids["school"].id,
+        chapter_id=chapter.id,
+        title="Linear Equations",
+        concepts=["slope"],
+        order_index=0,
+    )
+    db_session.add(topic)
+    await db_session.flush()
+    await KnowledgeGraphService(db_session).build_spine_from_pack(
+        school_id=ids["school"].id,
+        pack_id=newer_pack.id,
+    )
+    newer_concept = (
+        await db_session.execute(
+            select(CurriculumConcept).where(
+                CurriculumConcept.pack_id == newer_pack.id,
+                CurriculumConcept.slug == "slope",
+            )
+        )
+    ).scalar_one()
+    db_session.add(
+        ConceptCard(
+            school_id=ids["school"].id,
+            pack_id=newer_pack.id,
+            concept_id=newer_concept.id,
+            title="Newer Slope",
+            explanation="This newer card must not override the student's evidence chain.",
+            status=ConceptCardStatus.APPROVED,
+            created_by=teacher_id,
+            approved_by=teacher_id,
+            approved_at=datetime.now(timezone.utc),
+        )
+    )
+    await db_session.flush()
+
+    from app.modules.tutor.services.tutor_service import get_lesson, list_recommendations
+
+    recs = await list_recommendations(
+        db_session, school_id=ids["school"].id, student_id=ids["student"].id
+    )
+    assert recs[0].lesson_key == "slope"
+    assert recs[0].pack_id == ids["pack"].id
+    assert recs[0].concept_id == ids["concept"].id
+
+    lesson = await get_lesson(
+        db_session,
+        school_id=ids["school"].id,
+        student_id=ids["student"].id,
+        lesson_key="slope",
+    )
+
+    assert lesson is not None
+    assert lesson.trigger == "concept_card"
+    assert lesson.pack_id == ids["pack"].id
+    assert lesson.concept_id == ids["concept"].id
+    assert lesson.concept_slug == "slope"

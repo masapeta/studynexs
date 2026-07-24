@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from app.db.models.academic import AcademicYear, Class, Subject
 from app.db.models.curriculum_pack import (
@@ -24,7 +24,7 @@ from app.modules.knowledge_graph.services.student_weak_concept_service import (
 )
 
 
-async def _seed(db, *, mastery_pct=55.0):
+async def _seed(db, *, mastery_pct=55.0, concepts: list[str] | None = None):
     school = School(
         name="T", code="T", tenant_slug="t", board="SSC",
         contact_email="a@t.com", contact_phone="+910000000000", is_active=True,
@@ -77,7 +77,7 @@ async def _seed(db, *, mastery_pct=55.0):
     await db.flush()
     topic = CurriculumTopic(
         school_id=school.id, chapter_id=chapter.id, title="Linear Equations",
-        concepts=["slope"], order_index=0,
+        concepts=concepts or ["slope"], order_index=0,
     )
     db.add(topic)
     await db.flush()
@@ -158,3 +158,23 @@ async def test_get_weak_concepts_for_student(db_session):
     )
     assert len(weak) == 1
     assert weak[0][0].slug == "slope"
+
+
+@pytest.mark.asyncio
+async def test_get_weak_concepts_for_student_has_deterministic_primary(db_session):
+    ids = await _seed(db_session, mastery_pct=50.0, concepts=["zeta", "alpha"])
+    svc = StudentWeakConceptService(db_session)
+    await svc.sync_from_ledger(
+        school_id=ids["school"].id,
+        class_id=ids["cls"].id,
+        subject_id=ids["subject"].id,
+        academic_year_id=ids["ay"].id,
+        ledger_rows=ids["ledger"],
+    )
+    weak = await svc.get_weak_concepts_for_student(
+        school_id=ids["school"].id,
+        student_id=ids["student"].id,
+        subject_id=ids["subject"].id,
+    )
+
+    assert [concept.slug for concept, _meta in weak] == ["zeta", "alpha"]

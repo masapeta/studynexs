@@ -7,6 +7,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.academic import Subject
+from app.db.models.concept_card import ConceptCard, ConceptCardStatus
+from app.db.models.knowledge_graph import CurriculumConcept
 from app.db.models.mastery import StudentTopicMastery
 from app.db.models.misconception import MisconceptionEntry
 from app.db.models.student import Student
@@ -66,6 +68,92 @@ async def _student_misconceptions(
     return list(result.scalars().all())
 
 
+async def _student_weak_concept_card_for_lesson(
+    db: AsyncSession,
+    *,
+    school_id: uuid.UUID,
+    student_id: uuid.UUID,
+    lesson_key: str,
+) -> tuple[ConceptCard, CurriculumConcept, dict | None] | None:
+    """Resolve a lesson slug through the student's own weak-concept evidence first.
+
+    Multiple approved CurriculumPacks can legitimately contain the same concept
+    slug (for example, repeated rehearsal packs). A school-wide slug lookup can
+    therefore choose a different pack than the daily plan. The student lesson
+    must preserve the daily-plan evidence chain, so prefer the matching
+    student-specific weak concept and its approved ConceptCard before falling
+    back to global/template resolution.
+    """
+    for concept, meta in await StudentWeakConceptService(db).get_weak_concepts_for_student(
+        school_id=school_id, student_id=student_id
+    ):
+        if concept.slug != lesson_key:
+            continue
+        card = (
+            await db.execute(
+                select(ConceptCard).where(
+                    ConceptCard.school_id == school_id,
+                    ConceptCard.concept_id == concept.id,
+                    ConceptCard.status == ConceptCardStatus.APPROVED,
+                )
+            )
+        ).scalar_one_or_none()
+        if card is not None:
+            return card, concept, meta
+    return None
+
+
+async def _student_weak_concept_card_for_topic(
+    db: AsyncSession,
+    *,
+    school_id: uuid.UUID,
+    student_id: uuid.UUID,
+    topic: str,
+) -> tuple[ConceptCard, CurriculumConcept, dict | None] | None:
+    """Resolve an exam/mastery topic through the student's current weak evidence."""
+    topic_key = topic.strip().casefold()
+    if not topic_key:
+        return None
+    for concept, meta in await StudentWeakConceptService(db).get_weak_concepts_for_student(
+        school_id=school_id, student_id=student_id
+    ):
+        mastery_topic = str((meta or {}).get("topic") or "").strip().casefold()
+        if mastery_topic != topic_key and topic_key not in concept.title.strip().casefold():
+            continue
+        card = (
+            await db.execute(
+                select(ConceptCard).where(
+                    ConceptCard.school_id == school_id,
+                    ConceptCard.concept_id == concept.id,
+                    ConceptCard.status == ConceptCardStatus.APPROVED,
+                )
+            )
+        ).scalar_one_or_none()
+        if card is not None:
+            return card, concept, meta
+    return None
+
+
+async def _subject_name_from_weak_meta(
+    db: AsyncSession, *, school_id: uuid.UUID, meta: dict | None
+) -> str:
+    subject_id = (meta or {}).get("subject_id")
+    if not subject_id:
+        return "Curriculum"
+    try:
+        subject_uuid = uuid.UUID(str(subject_id))
+    except (TypeError, ValueError):
+        return "Curriculum"
+    return (
+        await db.scalar(
+            select(Subject.name).where(
+                Subject.id == subject_uuid,
+                Subject.school_id == school_id,
+            )
+        )
+    ) or "Curriculum"
+
+
 async def list_recommendations(
     db: AsyncSession, *, school_id: uuid.UUID, student_id: uuid.UUID
 ) -> list[TutorRecommendationOut]:
@@ -116,8 +204,13 @@ async def list_recommendations(
 
     # Exam mistakes first — same chain as parent briefing and seeded unit test.
     for mc in await _student_misconceptions(db, school_id, student_id):
-        card_match = await card_svc.resolve_approved_lesson(
-            school_id=school_id, topic=mc.topic
+        student_match = await _student_weak_concept_card_for_topic(
+            db, school_id=school_id, student_id=student_id, topic=mc.topic
+        )
+        card_match = (
+            (student_match[0], student_match[1])
+            if student_match is not None
+            else await card_svc.resolve_approved_lesson(school_id=school_id, topic=mc.topic)
         )
         key = card_match[1].slug if card_match else slugify_lesson_key(mc.topic)
         if key in seen:
@@ -133,8 +226,13 @@ async def list_recommendations(
         )
 
     for topic, subject, pct in await _weak_topics(db, school_id, student_id):
-        card_match = await card_svc.resolve_approved_lesson(
-            school_id=school_id, topic=topic
+        student_match = await _student_weak_concept_card_for_topic(
+            db, school_id=school_id, student_id=student_id, topic=topic
+        )
+        card_match = (
+            (student_match[0], student_match[1])
+            if student_match is not None
+            else await card_svc.resolve_approved_lesson(school_id=school_id, topic=topic)
         )
         key = card_match[1].slug if card_match else slugify_lesson_key(topic)
         if key in seen:
@@ -210,6 +308,27 @@ async def get_lesson(
     ).scalar_one_or_none()
     if not student:
         return None
+
+    student_card_match = await _student_weak_concept_card_for_lesson(
+        db,
+        school_id=school_id,
+        student_id=student_id,
+        lesson_key=lesson_key,
+    )
+    if student_card_match is not None:
+        card, concept, meta = student_card_match
+        mastery_pct = None
+        if meta and meta.get("mastery_pct") is not None:
+            mastery_pct = float(meta["mastery_pct"])
+        return build_lesson_from_concept_card(
+            card=card,
+            concept=concept,
+            subject_name=await _subject_name_from_weak_meta(
+                db, school_id=school_id, meta=meta
+            ),
+            mastery_pct=mastery_pct,
+            trigger="concept_card",
+        )
 
     card_match = await ConceptCardService(db).get_approved_by_slug(
         school_id=school_id, slug=lesson_key

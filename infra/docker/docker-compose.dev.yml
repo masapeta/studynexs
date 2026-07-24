@@ -69,6 +69,31 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   # ── Nginx (API Gateway) ─────────────────────────────────────
+  worker:
+    image: studynexs-platform/api:dev
+    build:
+      context: ../../apps/api
+      dockerfile: Dockerfile
+    container_name: studynexs-worker
+    env_file:
+      - ../../apps/api/.env
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - POSTGRES_HOST=postgres
+      - REDIS_URL=redis://redis:6379/0
+      - QDRANT_HOST=qdrant
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ../../apps/api:/app
+    healthcheck:
+      disable: true
+    command: arq app.core.jobs.worker.WorkerSettings
+
   nginx:
     image: nginx:alpine
     container_name: studynexs-nginx

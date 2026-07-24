@@ -210,7 +210,7 @@ class StudentWeakConceptService:
             ).scalars().all()
         )
         by_id = {c.id: c for c in concepts}
-        out: list[tuple[CurriculumConcept, dict | None]] = []
+        out: list[tuple[CurriculumConcept, dict | None, KgEdge]] = []
         for edge in rows:
             concept = by_id.get(edge.to_id)
             if concept is None:
@@ -219,5 +219,25 @@ class StudentWeakConceptService:
                 meta = edge.metadata_ or {}
                 if meta.get("subject_id") and meta["subject_id"] != str(subject_id):
                     continue
-            out.append((concept, edge.metadata_))
-        return out
+            out.append((concept, edge.metadata_, edge))
+
+        def _sort_key(item: tuple[CurriculumConcept, dict | None, KgEdge]) -> tuple:
+            concept, meta, edge = item
+            mastery = 100.0
+            if meta and meta.get("mastery_pct") is not None:
+                try:
+                    mastery = float(meta["mastery_pct"])
+                except (TypeError, ValueError):
+                    mastery = 100.0
+            created_at = edge.created_at.timestamp() if edge.created_at else 0.0
+            topic = str((meta or {}).get("topic") or "").strip().casefold()
+            return (
+                mastery,
+                -created_at,
+                concept.order_index,
+                topic,
+                concept.title.strip().casefold(),
+                str(concept.id),
+            )
+
+        return [(concept, meta) for concept, meta, _edge in sorted(out, key=_sort_key)]
