@@ -5,12 +5,14 @@ import re
 import uuid
 from datetime import date
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.core.staff_permissions import StaffScope
-from app.db.models.academic import Class
+from app.db.models.academic import Class, Subject, TeacherSubjectMapping
 from app.db.models.attendance import Attendance, AttendanceStatus
+from app.db.models.mastery import FlagSeverity, FlagStatus, MasteryFlag, StudentTopicMastery
 from app.db.models.question_paper import _INCHARGE_REVIEW_STATUSES, QuestionPaper
 from app.db.models.student import Student
 from app.db.models.user import User, UserRole
@@ -19,6 +21,8 @@ from app.modules.dashboard.schemas.dashboard import (
     DashboardSummaryOut,
     InchargeClassSummaryOut,
     NoticeBriefOut,
+    PrincipalInterventionEvidenceOut,
+    PrincipalInterventionOut,
     QuickActionOut,
 )
 from app.modules.dashboard.services.teacher_home_service import TeacherHomeService
@@ -142,6 +146,7 @@ class DashboardService:
             expenses_this_month=expenses_month,
             class_performance=class_perf,
             pending_qp_approvals=pending_qp or 0,
+            principal_interventions=await self._principal_interventions(school_id),
             quick_actions=[
                 QuickActionOut(label="Add Student", href="/dashboard/students"),
                 QuickActionOut(label="Mark Attendance", href="/dashboard/attendance"),
@@ -149,6 +154,175 @@ class DashboardService:
             ],
             notices=await self._notices_brief(school_id, scope),
         )
+
+    async def _principal_interventions(
+        self, school_id: uuid.UUID, *, limit: int = 3
+    ) -> list[PrincipalInterventionOut]:
+        """Evidence-backed academic interventions for the principal decision workspace.
+
+        This consumes the certified Learning Intelligence flag ledger and links to the
+        existing mastery evidence-chain endpoint for full lineage. It intentionally does
+        not invent scores or surface generic KPI noise: no actionable human follow-up
+        means no intervention card.
+        """
+        StudentUser = aliased(User)
+        SubjectTeacher = aliased(User)
+        ClassIncharge = aliased(User)
+
+        rows = (
+            await self.db.execute(
+                select(
+                    MasteryFlag,
+                    StudentUser.full_name.label("student_name"),
+                    Class.grade,
+                    Class.section,
+                    Subject.name.label("subject_name"),
+                    SubjectTeacher.full_name.label("teacher_name"),
+                    ClassIncharge.full_name.label("incharge_name"),
+                    StudentTopicMastery.mastery_pct,
+                    StudentTopicMastery.class_avg_pct,
+                    StudentTopicMastery.assessments_count,
+                )
+                .join(Student, Student.id == MasteryFlag.student_id)
+                .join(StudentUser, StudentUser.id == Student.user_id)
+                .join(Class, Class.id == MasteryFlag.class_id)
+                .join(Subject, Subject.id == MasteryFlag.subject_id)
+                .outerjoin(
+                    TeacherSubjectMapping,
+                    and_(
+                        TeacherSubjectMapping.school_id == school_id,
+                        TeacherSubjectMapping.class_id == MasteryFlag.class_id,
+                        TeacherSubjectMapping.subject_id == MasteryFlag.subject_id,
+                        TeacherSubjectMapping.is_primary.is_(True),
+                    ),
+                )
+                .outerjoin(SubjectTeacher, SubjectTeacher.id == TeacherSubjectMapping.teacher_id)
+                .outerjoin(ClassIncharge, ClassIncharge.id == Class.class_incharge_id)
+                .outerjoin(
+                    StudentTopicMastery,
+                    and_(
+                        StudentTopicMastery.school_id == school_id,
+                        StudentTopicMastery.student_id == MasteryFlag.student_id,
+                        StudentTopicMastery.subject_id == MasteryFlag.subject_id,
+                        StudentTopicMastery.academic_year_id == MasteryFlag.academic_year_id,
+                        StudentTopicMastery.topic == MasteryFlag.topic,
+                    ),
+                )
+                .where(
+                    MasteryFlag.school_id == school_id,
+                    MasteryFlag.status.in_(
+                        [
+                            FlagStatus.PENDING_REVIEW,
+                            FlagStatus.APPROVED,
+                            FlagStatus.NOTIFIED,
+                        ]
+                    ),
+                )
+                .order_by(
+                    case((MasteryFlag.severity == FlagSeverity.HIGH, 0), else_=1),
+                    case((MasteryFlag.status == FlagStatus.PENDING_REVIEW, 0), else_=1),
+                    MasteryFlag.created_at.desc(),
+                )
+                .limit(limit)
+            )
+        ).all()
+
+        interventions: list[PrincipalInterventionOut] = []
+        seen_flag_ids: set[uuid.UUID] = set()
+        for (
+            flag,
+            student_name,
+            grade,
+            section,
+            subject_name,
+            teacher_name,
+            incharge_name,
+            mastery_pct,
+            class_avg_pct,
+            assessments_count,
+        ) in rows:
+            if flag.id in seen_flag_ids:
+                continue
+            seen_flag_ids.add(flag.id)
+            class_label = f"{grade} - {section}"
+            owner = teacher_name or incharge_name or "Class incharge"
+            mastery_value = float(mastery_pct) if mastery_pct is not None else None
+            class_avg_value = float(class_avg_pct) if class_avg_pct is not None else None
+            severity = "high" if flag.severity == FlagSeverity.HIGH else "medium"
+            issue = f"{class_label} {subject_name}: {flag.topic_display} needs intervention"
+            if mastery_value is not None:
+                why = (
+                    f"{student_name} is at {mastery_value:.0f}% mastery"
+                    f" on {flag.topic_display}."
+                )
+            else:
+                why = f"{student_name} has a teacher-review flag for {flag.topic_display}."
+
+            evidence: list[PrincipalInterventionEvidenceOut] = []
+            if mastery_value is not None:
+                evidence.append(
+                    PrincipalInterventionEvidenceOut(
+                        label="Mastery",
+                        value=f"{mastery_value:.0f}%",
+                    )
+                )
+            if class_avg_value is not None:
+                evidence.append(
+                    PrincipalInterventionEvidenceOut(
+                        label="Class average",
+                        value=f"{class_avg_value:.0f}%",
+                    )
+                )
+            if assessments_count:
+                evidence.append(
+                    PrincipalInterventionEvidenceOut(
+                        label="Assessment evidence",
+                        value=f"{assessments_count} assessment"
+                        f"{'' if int(assessments_count) == 1 else 's'}",
+                    )
+                )
+            evidence.append(
+                PrincipalInterventionEvidenceOut(
+                    label="Teacher review",
+                    value=flag.status.value.replace("_", " "),
+                    href=f"/dashboard/teaching/mastery?flag_id={flag.id}",
+                )
+            )
+            if flag.notified_at:
+                evidence.append(
+                    PrincipalInterventionEvidenceOut(
+                        label="Parent signal",
+                        value="Parent notified",
+                    )
+                )
+            if flag.reasons:
+                evidence.append(
+                    PrincipalInterventionEvidenceOut(
+                        label="Flag reason",
+                        value=", ".join(str(reason).replace("_", " ") for reason in flag.reasons),
+                    )
+                )
+
+            interventions.append(
+                PrincipalInterventionOut(
+                    id=f"mastery_flag:{flag.id}",
+                    severity=severity,
+                    issue=issue,
+                    why_it_matters=why,
+                    affected_scope=f"{class_label} · {subject_name} · {student_name}",
+                    owner=owner,
+                    recommended_intervention=(
+                        f"Meet {owner} this week to review {flag.topic_display} outcomes "
+                        "and agree a human-led remediation plan."
+                    ),
+                    status=flag.status.value,
+                    href=f"/dashboard/teaching/mastery?flag_id={flag.id}",
+                    evidence_chain_href=f"/api/v1/mastery/flags/{flag.id}/evidence-chain",
+                    evidence=evidence,
+                )
+            )
+
+        return interventions
 
     async def _school_attendance_state(
         self, school_id: uuid.UUID, on_date: date
@@ -296,4 +470,3 @@ class DashboardService:
             ],
             notices=await self._notices_brief(school_id, scope),
         )
-

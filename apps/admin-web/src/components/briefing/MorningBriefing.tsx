@@ -52,6 +52,23 @@ export type BriefingSummary = {
     priority: string;
     created_at?: string;
   }[];
+  principal_interventions?: {
+    id: string;
+    severity: "high" | "medium";
+    issue: string;
+    why_it_matters: string;
+    affected_scope: string;
+    owner: string;
+    recommended_intervention: string;
+    status: string;
+    href: string;
+    evidence_chain_href: string;
+    evidence: {
+      label: string;
+      value: string;
+      href?: string | null;
+    }[];
+  }[];
 };
 
 export type FeeStats = {
@@ -138,6 +155,7 @@ export function MorningBriefing({
       (n, c) => n + (c.pending_qp_approvals || 0),
       0
     );
+  const principalInterventions = summary.principal_interventions ?? [];
   const lowAttClasses = (summary.incharge_classes ?? []).filter(
     (c) => (c.attendance_percent ?? 100) < 85
   );
@@ -386,6 +404,76 @@ export function MorningBriefing({
             </div>
           </div>
         </div>
+      )}
+
+      {isAdmin && (
+        <section
+          className="briefing-glass-chip briefing-card briefing-panel"
+          data-testid="principal-intervention-center"
+          aria-labelledby="principal-intervention-title"
+          style={{ marginTop: 14 }}
+        >
+          <div className="briefing-panel-head">
+            <div>
+              <h3 id="principal-intervention-title">Intervention Center</h3>
+              <p className="briefing-muted-text" style={{ margin: "4px 0 0" }}>
+                Evidence-backed priorities for human follow-up — not a reporting dashboard.
+              </p>
+            </div>
+            <Link href={TEACHING.mastery} className="briefing-link briefing-panel-action">
+              Open mastery
+            </Link>
+          </div>
+
+          {principalInterventions.length === 0 ? (
+            <p className="briefing-exec-all-clear" data-testid="principal-intervention-empty">
+              No evidence-backed academic interventions right now.
+            </p>
+          ) : (
+            <div
+              className="briefing-exec-priority-list"
+              data-testid="principal-intervention-list"
+            >
+              {principalInterventions.map((item, index) => (
+                <Link
+                  key={item.id}
+                  href={item.href}
+                  data-testid="principal-intervention-card"
+                  className={`briefing-exec-priority-item briefing-exec-priority-item--${
+                    item.severity === "high" ? "coral" : "brass"
+                  }${index === 0 ? " briefing-exec-priority-item--primary" : ""}`}
+                  style={{ alignItems: "flex-start" }}
+                >
+                  <span className="briefing-exec-priority-dot" aria-hidden />
+                  <div className="briefing-exec-priority-copy" style={{ gap: 6 }}>
+                    <strong>{item.issue}</strong>
+                    <span>{item.why_it_matters}</span>
+                    <span>
+                      <b>Owner:</b> {item.owner}
+                    </span>
+                    <span>
+                      <b>Recommended human intervention:</b>{" "}
+                      {item.recommended_intervention}
+                    </span>
+                    {item.evidence.length > 0 && (
+                      <span>
+                        <b>Evidence:</b>{" "}
+                        {item.evidence
+                          .slice(0, 4)
+                          .map((e) => `${e.label}: ${e.value}`)
+                          .join(" · ")}
+                      </span>
+                    )}
+                  </div>
+                  <span className="briefing-exec-priority-action">
+                    Review evidence
+                    <ChevronRight size={14} aria-hidden />
+                  </span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
       )}
 
       {isAdmin && (

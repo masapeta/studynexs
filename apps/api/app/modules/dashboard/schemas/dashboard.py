@@ -45,6 +45,26 @@ class InchargeClassSummaryOut(BaseModel):
     pending_qp_approvals: int = 0
 
 
+class PrincipalInterventionEvidenceOut(BaseModel):
+    label: str
+    value: str
+    href: str | None = None
+
+
+class PrincipalInterventionOut(BaseModel):
+    id: str
+    severity: Literal["high", "medium"]
+    issue: str
+    why_it_matters: str
+    affected_scope: str
+    owner: str
+    recommended_intervention: str
+    status: str
+    href: str
+    evidence_chain_href: str
+    evidence: list[PrincipalInterventionEvidenceOut] = Field(default_factory=list)
+
+
 class DashboardSummaryOut(BaseModel):
     persona: Literal["admin", "class_incharge", "teacher"]
     subtitle: str
@@ -67,6 +87,8 @@ class DashboardSummaryOut(BaseModel):
     # Subject teacher
     teaching_assignments: list[TeachingAssignmentOut] = Field(default_factory=list)
     my_draft_papers: int = 0
+    # Principal / admin decision workspace
+    principal_interventions: list[PrincipalInterventionOut] = Field(default_factory=list)
     # Shared
     quick_actions: list[QuickActionOut] = Field(default_factory=list)
     notices: list[NoticeBriefOut] = Field(default_factory=list)

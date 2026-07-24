@@ -40,7 +40,7 @@ The percentages below are product-coverage estimates, not engineering effort est
 | Curriculum Intelligence | 100% | Curriculum source, draft extraction, HITL review, approval, KG, RAG, readiness, same-pack grounding. |
 | Teaching Intelligence | 80% | Teacher hub, grounded lesson plans, grounded question papers, class/subject scoping. Learning materials are present but not yet a complete polished journey. |
 | Assessment Authoring Intelligence | 80% | AI question papers, citations, review/approval surfaces, exam creation path. Needs stronger cohesive authoring-to-exam UX. |
-| Principal Intelligence | 70% | Dashboard, Academic Intelligence Ready, grounding evidence, certified Principal walkthrough. Weekly operating rhythm is not complete. |
+| Principal Intelligence | 80% | Dashboard, Academic Intelligence Ready, grounding evidence, certified Principal walkthrough, and Intervention Center are runtime/browser-proven against the same academic evidence chain. Follow-up assignment history and broader operating rhythm remain incomplete. |
 | Admissions Intelligence | 65% | Candidate pipeline, stages, document extraction, admission pages. Full admission-to-enrollment journey needs cohesion. |
 | Student Records Intelligence | 65% | Student lists, profiles, guardians, class assignment. Longitudinal history and progression are partial. |
 | Assessment Evaluation Intelligence | 80% | Answer-sheet upload, OCR/vision, grounded AI suggestions, HITL approval, marks propagation, recovery checks, browser evidence strip, and deterministic evidence ledger are runtime/browser proven. |
@@ -110,7 +110,8 @@ The percentages below are product-coverage estimates, not engineering effort est
 | Principal | Principal dashboard | Already implemented | Yes | High | Dashboard services | Certified. |
 | Principal | Academic readiness visibility | Already implemented | Yes | High | Curriculum intelligence status | Certified. |
 | Principal | Grounding evidence visibility | Already implemented | Yes | High | KG/RAG sources | Certified. |
-| Principal | Weekly operating rhythm | Partially implemented | Yes | Medium | Teacher activity, mastery, operations | Needed for long-term school use. |
+| Principal | Intervention Center | Already implemented | Yes | High | Learning Intelligence, Student Intelligence, Parent Intelligence, dashboard services | Runtime/browser-proven as an evidence-backed decision workspace with issue, why, owner, evidence, and recommended human intervention. |
+| Principal | Weekly operating rhythm | Partially implemented | Yes | Medium | Intervention Center, teacher activity, mastery, operations | Follow-up assignment history and broader weekly cadence are not implemented. |
 | Operations | Attendance | Partially implemented | Medium | Medium | Academic classes, students | Exists but not central certified path. |
 | Operations | Timetable | Partially implemented | Medium | Medium | Classes, teachers | Exists as a school-ops surface. |
 | Operations | Notices | Partially implemented | Medium | Medium | Communications | Useful for parent/student/admin lifecycle. |
@@ -139,7 +140,7 @@ These are gaps against the Product Blueprint, not approved tasks.
 - Broader assessment UX polish beyond the proven evidence-chain review path.
 - Student practice/remediation depth beyond the certified daily plan and Tutor lesson.
 - Parent messaging / communication journey beyond the certified learning brief.
-- Principal weekly operating rhythm.
+- Principal follow-up assignment history beyond the certified Intervention Center.
 - Management/trustee executive operating view.
 - Alumni lifecycle.
 - Unified operations intelligence across attendance, timetable, transport, library, events, notices, staff, finance, and academics.
@@ -157,7 +158,7 @@ These capabilities exist but should be treated carefully in executive demonstrat
 | Assessment evaluation | Runtime and browser proof now cover upload, OCR/vision, grounded AI suggestions, teacher approval, marks, mastery, and evidence ledger. | Wider UX polish and operational hardening can be considered only after ARM authorization. |
 | Student practice depth | Daily plan, concept-card Tutor lesson, and grounded Student Copilot are certified; broader practice/remediation loops are not complete. | Student can complete practice/remediation activities beyond guided Tutor learning, if ARM authorizes that scope. |
 | Parent communication | Certified learning brief and Parent Copilot exist; messaging/chat/notification workflows are not implemented. | Parent communication becomes teacher-controlled beyond the learning brief, if ARM authorizes that scope. |
-| Principal operating rhythm | Principal can see readiness and dashboard data. | Principal can run a weekly academic review from StudyNexs without manual report assembly. |
+| Principal operating rhythm | Principal can see readiness, dashboard data, and certified academic interventions with evidence lineage. | Principal can run a weekly academic review from StudyNexs without manual report assembly and track follow-up status over time. |
 | Operations modules | Many modules exist separately. | Admin staff can run daily school operations through one understandable flow. |
 | Finance | Fees/receipts/expenses/payroll exist in parts. | Management can understand financial position and actions without spreadsheet reconstruction. |
 | Alumni | Only foundations through student records exist. | Graduated student history becomes a durable alumni record. |
@@ -171,7 +172,7 @@ These capabilities exist but should be treated carefully in executive demonstrat
 | Curriculum Intelligence | Strong | Safe to present as the center of the product. |
 | Teaching Intelligence | Strong | Safe to present through Principal + Teacher flow. |
 | Assessment Authoring | Strong / Medium | Safe to present question-paper generation; avoid overpromising full exam-cycle polish. |
-| Principal Intelligence | Medium / Strong | Safe to present readiness and dashboard; frame weekly rhythm as emerging. |
+| Principal Intelligence | Strong / Medium | Safe to present the certified Intervention Center as an evidence-backed decision workspace; do not present follow-up assignment history or full operating cadence as implemented. |
 | Assessment Evaluation | Strong / Medium | Safe to present as a traceable academic evidence chain; keep the live walkthrough focused on the proven teacher review path. |
 | Learning Intelligence | Strong / Medium | Safe to present as a deterministic assessment-to-learning evidence chain with teacher review controls; do not present it as a complete student-success product yet. |
 | Student Intelligence | Strong / Medium | Safe to present the certified daily learning plan, evidence topic, Tutor lesson, and grounded Student Copilot path; do not present a full practice engine. |
@@ -198,19 +199,18 @@ Recently completed vertical:
   - Completed the student-facing next-learning chain with a deterministic daily plan, source mastery topic, concept-card Tutor lesson, grounded Student Copilot answer, runtime proof, browser proof, and cross-student RBAC verification.
 - Parent Intelligence
   - Completed the parent-facing learning brief with linked-child isolation, parent-friendly explainability, home support guidance, grounded Parent Copilot briefing/ask, runtime proof, and browser proof against the same Student Intelligence evidence.
+- Principal Intelligence
+  - Completed the principal-facing Intervention Center with evidence-backed intervention cards, owner/action context, runtime lineage proof, browser proof, and no-fallback validation against the certified academic evidence chain.
 
 Candidate focus areas pending pilot evidence and ARM authorization:
 
-1. Principal Intelligence
-   - Hypothesis: Principal weekly rhythm becomes compelling once enough academic signals exist across teacher, assessment, mastery, and intervention paths.
-
-2. School Operations Intelligence
+1. School Operations Intelligence
    - Hypothesis: Operational modules become more valuable when connected to the academic operating rhythm rather than shown as isolated ERP features.
 
-3. Finance Intelligence
+2. Finance Intelligence
    - Hypothesis: Finance becomes leadership-critical after operational usage is real and schools ask for management-grade visibility.
 
-4. Alumni Intelligence
+3. Alumni Intelligence
    - Hypothesis: Alumni belongs after the student lifecycle and year-to-year progression are mature.
 
 These are hypotheses only. They must be validated through pilot evidence, internal review, and explicit ARM authorization before becoming implementation scope.
