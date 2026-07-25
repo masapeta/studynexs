@@ -5,13 +5,17 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.responses import Response
 
-from app.modules.ai.telemetry import bind_ai_context, reset_ai_context
 from app.core.otel import current_trace_id
+from app.modules.ai.telemetry import bind_ai_context, reset_ai_context
 
 
 class AITelemetryMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        request_id = request.headers.get("X-Request-ID") or request.headers.get("X-Correlation-ID")
+        request_id = (
+            getattr(request.state, "request_id", None)
+            or request.headers.get("X-Request-ID")
+            or request.headers.get("X-Correlation-ID")
+        )
         bind_ai_context(
             request_id=request_id,
             endpoint=f"{request.method} {request.url.path}",

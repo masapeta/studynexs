@@ -32,3 +32,6 @@ async def test_metrics_returns_prometheus_text(client: AsyncClient):
     resp = await client.get("/metrics")
     assert resp.status_code == 200
     assert resp.headers["content-type"].startswith("text/plain")
+    assert "studynexs_platform_uptime_seconds" in resp.text
+    assert "studynexs_http_requests_total" in resp.text
+    assert "studynexs_ai_llm_requests_total" in resp.text

@@ -137,6 +137,7 @@ def create_app() -> FastAPI:
     @app.get("/metrics", tags=["system"])
     async def prometheus_metrics(request: Request):
         """Prometheus scrape endpoint — LLM counters, latency histograms, fallback rates."""
+        from app.core.platform_metrics import job_status_prometheus_text, platform_metrics
         from app.modules.ai.telemetry import ai_metrics
 
         token = settings.METRICS_TOKEN
@@ -148,10 +149,12 @@ def create_app() -> FastAPI:
             if auth != f"Bearer {token}" and header != token:
                 raise HTTPException(status_code=401, detail="Unauthorized")
 
-        return PlainTextResponse(
-            ai_metrics.prometheus_text(),
-            media_type="text/plain; version=0.0.4; charset=utf-8",
-        )
+        text = platform_metrics.prometheus_text()
+        if settings.ENVIRONMENT != Environment.TESTING:
+            text += "\n" + await job_status_prometheus_text()
+        text += "\n" + ai_metrics.prometheus_text()
+
+        return PlainTextResponse(text, media_type="text/plain; version=0.0.4; charset=utf-8")
 
     # ── Exception handlers ───────────────────────────────────────
     from sqlalchemy.exc import IntegrityError

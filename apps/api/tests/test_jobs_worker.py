@@ -8,10 +8,14 @@ These guard two bugs that made async jobs (answer-sheet evaluation) silently nev
 """
 
 import sys
+import uuid
+from types import SimpleNamespace
 
 import pytest
 
 from app.core.jobs import worker
+from app.core.platform_metrics import platform_metrics
+from app.db.models.job import JobStatus
 
 
 @pytest.mark.asyncio
@@ -54,5 +58,55 @@ async def test_run_job_retries_when_row_not_yet_committed(monkeypatch):
 
     monkeypatch.setattr(worker, "async_session_factory", lambda: _NoRowSession())
 
+    before = platform_metrics.snapshot()["jobs_by_status"].get("retry_not_found", 0)
     with pytest.raises(Retry):
         await worker.run_job({}, "00000000-0000-0000-0000-000000000000")
+    after = platform_metrics.snapshot()["jobs_by_status"].get("retry_not_found", 0)
+    assert after >= before + 1
+
+
+@pytest.mark.asyncio
+async def test_run_job_records_success_metrics(monkeypatch):
+    job = SimpleNamespace(
+        id=uuid.uuid4(),
+        type="h6_test",
+        params={},
+        school_id=None,
+        created_by=None,
+        status=JobStatus.QUEUED,
+        result=None,
+        error=None,
+        updated_at=None,
+    )
+
+    class _JobSession:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def execute(self, *_a, **_k):
+            class _R:
+                def scalar_one_or_none(self_inner):
+                    return job
+
+            return _R()
+
+        async def commit(self):
+            return None
+
+    async def handler(params, _session):
+        assert params["_job_id"] == str(job.id)
+        return {"ok": True}
+
+    monkeypatch.setitem(worker.JOB_HANDLERS, "h6_test", handler)
+    monkeypatch.setattr(worker, "async_session_factory", lambda: _JobSession())
+
+    before = platform_metrics.snapshot()["jobs_by_status"].get(JobStatus.DONE.value, 0)
+    await worker.run_job({}, str(job.id))
+    after = platform_metrics.snapshot()["jobs_by_status"].get(JobStatus.DONE.value, 0)
+
+    assert job.status == JobStatus.DONE
+    assert job.result == {"ok": True}
+    assert after >= before + 1

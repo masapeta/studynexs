@@ -11,6 +11,7 @@ match the `task` passed to `queue.enqueue(...)`.
 
 from __future__ import annotations
 
+import time
 import uuid
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
@@ -21,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import async_session_factory
 from app.core.jobs.queue import get_redis_settings
+from app.core.platform_metrics import platform_metrics
 from app.db.models.job import Job, JobStatus
 
 logger = structlog.get_logger()
@@ -42,6 +44,7 @@ def job_task(name: str):
 
 async def run_job(ctx, job_id: str):
     """Generic Arq entrypoint: load the Job, dispatch to its handler, persist result."""
+    start = time.perf_counter()
     async with async_session_factory() as session:
         result = await session.execute(select(Job).where(Job.id == uuid.UUID(job_id)))
         job = result.scalar_one_or_none()
@@ -53,6 +56,7 @@ async def run_job(ctx, job_id: str):
             from arq import Retry
 
             logger.info("job_not_found_yet_retrying", job_id=job_id)
+            platform_metrics.record_job_event(task="unknown", status="retry_not_found")
             raise Retry(defer=2)
 
         handler = JOB_HANDLERS.get(job.type)
@@ -60,11 +64,31 @@ async def run_job(ctx, job_id: str):
             job.status = JobStatus.FAILED
             job.error = f"No handler registered for job type: {job.type}"
             await session.commit()
-            logger.warning("job_no_handler", job_id=job_id, task=job.type)
+            duration_ms = round((time.perf_counter() - start) * 1000, 2)
+            platform_metrics.record_job_event(
+                task=job.type,
+                status=JobStatus.FAILED.value,
+                duration_ms=duration_ms,
+            )
+            logger.warning(
+                "job_no_handler",
+                job_id=job_id,
+                task=job.type,
+                school_id=str(job.school_id) if job.school_id else None,
+                duration_ms=duration_ms,
+            )
             return
 
         job.status = JobStatus.RUNNING
         await session.commit()
+        platform_metrics.record_job_event(task=job.type, status=JobStatus.RUNNING.value)
+        logger.info(
+            "job_started",
+            job_id=job_id,
+            task=job.type,
+            school_id=str(job.school_id) if job.school_id else None,
+            created_by=str(job.created_by) if job.created_by else None,
+        )
 
         try:
             params = dict(job.params or {})
@@ -75,9 +99,35 @@ async def run_job(ctx, job_id: str):
         except Exception as exc:  # noqa: BLE001 — record any failure on the row
             job.status = JobStatus.FAILED
             job.error = str(exc)[:2000]
-            logger.exception("job_failed", job_id=job_id, task=job.type)
+            duration_ms = round((time.perf_counter() - start) * 1000, 2)
+            platform_metrics.record_job_event(
+                task=job.type,
+                status=JobStatus.FAILED.value,
+                duration_ms=duration_ms,
+            )
+            logger.exception(
+                "job_failed",
+                job_id=job_id,
+                task=job.type,
+                school_id=str(job.school_id) if job.school_id else None,
+                duration_ms=duration_ms,
+            )
         finally:
             job.updated_at = datetime.now(timezone.utc)
+            if job.status == JobStatus.DONE:
+                duration_ms = round((time.perf_counter() - start) * 1000, 2)
+                platform_metrics.record_job_event(
+                    task=job.type,
+                    status=JobStatus.DONE.value,
+                    duration_ms=duration_ms,
+                )
+                logger.info(
+                    "job_done",
+                    job_id=job_id,
+                    task=job.type,
+                    school_id=str(job.school_id) if job.school_id else None,
+                    duration_ms=duration_ms,
+                )
             await session.commit()
 
 

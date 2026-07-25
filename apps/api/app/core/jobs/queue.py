@@ -11,6 +11,7 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.platform_metrics import platform_metrics
 from app.db.models.job import Job, JobStatus
 
 settings = get_settings()
@@ -64,5 +65,12 @@ async def enqueue(
     pool = await get_arq_pool()
     # Dispatch through the generic entrypoint; job.type selects the handler.
     await pool.enqueue_job("run_job", str(job.id))
-    logger.info("job_enqueued", job_id=str(job.id), task=task)
+    platform_metrics.record_job_event(task=task, status=JobStatus.QUEUED.value)
+    logger.info(
+        "job_enqueued",
+        job_id=str(job.id),
+        task=task,
+        school_id=str(school_id) if school_id else None,
+        created_by=str(created_by) if created_by else None,
+    )
     return job
