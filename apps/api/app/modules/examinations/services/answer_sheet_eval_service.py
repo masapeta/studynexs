@@ -21,6 +21,7 @@ from app.db.models.answer_sheet_evaluation import (
 from app.db.models.examination import Exam, ExamMark
 from app.db.models.question_paper import QuestionPaper
 from app.db.models.school import School
+from app.db.models.student import Student
 from app.modules.ai.gateway.base import LLMResult
 from app.modules.ai.services.ai_credits import (
     assert_credits_for_charge,
@@ -173,6 +174,15 @@ class AnswerSheetEvalService:
         await scope.students_in_class(exam.class_id, [student_id])
         await check_ai_credits(
             self.db, school, user_id=created_by, role=role, purpose_tag="exam_evaluation"
+        )
+        await self.db.execute(
+            select(Student.id)
+            .where(
+                Student.id == student_id,
+                Student.school_id == school_id,
+                Student.class_id == exam.class_id,
+            )
+            .with_for_update()
         )
 
         existing = (
@@ -679,7 +689,16 @@ class AnswerSheetEvalService:
         data: EvaluationApprove,
         approved_by: uuid.UUID,
     ) -> AnswerSheetEvaluation:
-        row = await self.get_evaluation(school_id, evaluation_id)
+        row = (
+            await self.db.execute(
+                select(AnswerSheetEvaluation)
+                .where(
+                    AnswerSheetEvaluation.id == evaluation_id,
+                    AnswerSheetEvaluation.school_id == school_id,
+                )
+                .with_for_update()
+            )
+        ).scalar_one_or_none()
         if not row:
             raise EvalError("Evaluation not found")
         if row.status != EVAL_STATUS_SUGGESTED:

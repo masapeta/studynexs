@@ -18,8 +18,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
-from app.core.config import get_settings
+from app.core.config import Environment, get_settings
 from app.db.models.academic import AcademicYear, Class, Subject
+from app.db.models.answer_sheet_evaluation import EVAL_STATUS_SUGGESTED, AnswerSheetEvaluation
 from app.db.models.attendance import Attendance, AttendanceStatus
 from app.db.models.base import Base
 from app.db.models.examination import Exam, ExamMark, ExamType
@@ -33,12 +34,20 @@ from app.db.models.fee import (
     ReceiptCounter,
     StudentFeeRecord,
 )
+from app.db.models.job import Job, JobStatus
+from app.db.models.misconception import MisconceptionEntry
+from app.db.models.question_paper import PaperStatus, QuestionPaper
 from app.db.models.school import School
 from app.db.models.student import Student
 from app.db.models.user import User, UserRole
 from app.modules.attendance.schemas.attendance import AttendanceEntry
 from app.modules.attendance.services.attendance_service import AttendanceService
+from app.modules.examinations.schemas.evaluation import EvaluationApprove
 from app.modules.examinations.schemas.exam import MarkEntry
+from app.modules.examinations.services.answer_sheet_eval_service import (
+    AnswerSheetEvalService,
+    EvalError,
+)
 from app.modules.examinations.services.exam_service import ExamService
 from app.modules.fees.services.fee_service import FeeService
 from app.modules.school.schemas.school import AcademicYearCreate
@@ -104,7 +113,8 @@ async def _seed(engine) -> dict:
         await s.commit()
         return {
             "school_id": school.id, "class_id": cls.id, "student_id": stu.id,
-            "teacher_id": teach.id, "exam_id": exam.id, "fee_record_id": fee_rec.id,
+            "teacher_id": teach.id, "subject_id": subject.id, "exam_id": exam.id,
+            "fee_record_id": fee_rec.id,
         }
 
 
@@ -146,6 +156,229 @@ async def test_exam_marks_concurrent_save_one_row(engine):
         n = await s.scalar(select(func.count()).select_from(ExamMark).where(
             ExamMark.exam_id == ids["exam_id"], ExamMark.student_id == ids["student_id"]))
     assert n == 1
+
+
+async def _seed_suggested_evaluation(engine) -> dict:
+    ids = await _seed(engine)
+    async with _sm(engine)() as s:
+        paper = QuestionPaper(
+            school_id=ids["school_id"],
+            class_id=ids["class_id"],
+            subject_id=ids["subject_id"],
+            created_by=ids["teacher_id"],
+            title="Concurrency Paper",
+            board="SSC",
+            grade="1",
+            subject_name="Maths",
+            total_marks=Decimal("2"),
+            duration_minutes=30,
+            topics=["Arithmetic"],
+            sections=[
+                {
+                    "title": "A",
+                    "questions": [
+                        {
+                            "number": "1",
+                            "text": "What is 2+2?",
+                            "marks": 2,
+                            "type": "short",
+                            "answer_key": "4",
+                        }
+                    ],
+                }
+            ],
+            status=PaperStatus.APPROVED,
+            grounded=True,
+        )
+        s.add(paper)
+        await s.flush()
+
+        exam = await s.get(Exam, ids["exam_id"])
+        exam.source_paper_id = paper.id
+        exam.total_marks = Decimal("2")
+        exam.question_schema = [{"no": "1", "max_marks": 2, "topic": "Arithmetic"}]
+
+        evaluation = AnswerSheetEvaluation(
+            school_id=ids["school_id"],
+            exam_id=ids["exam_id"],
+            student_id=ids["student_id"],
+            created_by=ids["teacher_id"],
+            status=EVAL_STATUS_SUGGESTED,
+            input_answers={"1": "5"},
+            ai_suggestions={
+                "1": {
+                    "marks_suggested": 0,
+                    "max_marks": 2,
+                    "feedback": "Incorrect arithmetic answer",
+                    "confidence": 0.9,
+                    "student_answer": "5",
+                    "topic": "Arithmetic",
+                    "grounded": True,
+                    "grounding_sources": [{"ref_id": "h4-source"}],
+                    "citations": [1],
+                }
+            },
+        )
+        s.add(evaluation)
+        await s.commit()
+        ids["evaluation_id"] = evaluation.id
+    return ids
+
+
+async def _seed_evaluation_target(engine) -> dict:
+    ids = await _seed(engine)
+    async with _sm(engine)() as s:
+        paper = QuestionPaper(
+            school_id=ids["school_id"],
+            class_id=ids["class_id"],
+            subject_id=ids["subject_id"],
+            created_by=ids["teacher_id"],
+            title="Concurrency Create Paper",
+            board="SSC",
+            grade="1",
+            subject_name="Maths",
+            total_marks=Decimal("2"),
+            duration_minutes=30,
+            topics=["Arithmetic"],
+            sections=[
+                {
+                    "title": "A",
+                    "questions": [
+                        {
+                            "number": "1",
+                            "text": "What is 2+2?",
+                            "marks": 2,
+                            "type": "short",
+                            "answer_key": "4",
+                        }
+                    ],
+                }
+            ],
+            status=PaperStatus.APPROVED,
+            grounded=True,
+        )
+        s.add(paper)
+        await s.flush()
+
+        exam = await s.get(Exam, ids["exam_id"])
+        exam.source_paper_id = paper.id
+        exam.total_marks = Decimal("2")
+        exam.question_schema = [{"no": "1", "max_marks": 2, "topic": "Arithmetic"}]
+        await s.commit()
+    return ids
+
+
+@pytest.mark.asyncio
+async def test_evaluation_create_concurrent_only_one_processing_row(engine, monkeypatch):
+    ids = await _seed_evaluation_target(engine)
+
+    from app.core.jobs import queue as queue_mod
+    from app.modules.examinations.services import answer_sheet_eval_service as eval_mod
+
+    monkeypatch.setattr(eval_mod.settings, "ENVIRONMENT", Environment.DEVELOPMENT)
+
+    async def fake_check_ai_credits(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(eval_mod, "check_ai_credits", fake_check_ai_credits)
+
+    async def fake_enqueue(db, *, task, params, school_id=None, created_by=None):
+        job = Job(
+            type=task,
+            params=params,
+            school_id=school_id,
+            created_by=created_by,
+            status=JobStatus.QUEUED,
+        )
+        db.add(job)
+        await db.flush()
+        return job
+
+    monkeypatch.setattr(queue_mod, "enqueue", fake_enqueue)
+
+    async def create_once():
+        async with _sm(engine)() as s:
+            school = await s.get(School, ids["school_id"])
+            service = AnswerSheetEvalService(s)
+            try:
+                await service.create_and_evaluate(
+                    school_id=ids["school_id"],
+                    exam_id=ids["exam_id"],
+                    student_id=ids["student_id"],
+                    created_by=ids["teacher_id"],
+                    role="teacher",
+                    school=school,
+                    student_answers={"1": "4"},
+                )
+                await s.commit()
+                return "success"
+            except EvalError as exc:
+                await s.rollback()
+                return str(exc)
+
+    results = await asyncio.gather(*(create_once() for _ in range(8)))
+    assert results.count("success") == 1
+    assert results.count("Evaluation already in progress for this student") == 7
+
+    async with _sm(engine)() as s:
+        evaluation_count = await s.scalar(
+            select(func.count()).select_from(AnswerSheetEvaluation).where(
+                AnswerSheetEvaluation.school_id == ids["school_id"],
+                AnswerSheetEvaluation.exam_id == ids["exam_id"],
+                AnswerSheetEvaluation.student_id == ids["student_id"],
+            )
+        )
+        job_count = await s.scalar(
+            select(func.count()).select_from(Job).where(Job.school_id == ids["school_id"])
+        )
+    assert evaluation_count == 1
+    assert job_count == 1
+
+
+@pytest.mark.asyncio
+async def test_evaluation_approve_concurrent_only_one_transition(engine):
+    ids = await _seed_suggested_evaluation(engine)
+
+    async def approve_once():
+        async with _sm(engine)() as s:
+            service = AnswerSheetEvalService(s)
+            try:
+                await service.approve(
+                    school_id=ids["school_id"],
+                    evaluation_id=ids["evaluation_id"],
+                    data=EvaluationApprove(),
+                    approved_by=ids["teacher_id"],
+                )
+                await s.commit()
+                return "success"
+            except EvalError as exc:
+                await s.rollback()
+                return str(exc)
+
+    results = await asyncio.gather(*(approve_once() for _ in range(8)))
+    assert results.count("success") == 1
+    assert results.count("Only suggested evaluations can be approved") == 7
+
+    async with _sm(engine)() as s:
+        mark_count = await s.scalar(
+            select(func.count()).select_from(ExamMark).where(
+                ExamMark.exam_id == ids["exam_id"],
+                ExamMark.student_id == ids["student_id"],
+            )
+        )
+        misconception_count = await s.scalar(
+            select(func.count()).select_from(MisconceptionEntry).where(
+                MisconceptionEntry.school_id == ids["school_id"],
+            )
+        )
+        misconception_occurrences = await s.scalar(
+            select(func.coalesce(func.sum(MisconceptionEntry.occurrence_count), 0)).where(
+                MisconceptionEntry.school_id == ids["school_id"],
+            )
+        )
+    assert mark_count == 1
+    assert misconception_count == 1
+    assert misconception_occurrences == 1
 
 
 @pytest.mark.asyncio
