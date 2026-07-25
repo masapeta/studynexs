@@ -51,6 +51,8 @@ alembic/versions/__pycache__/
 uploads/
 memory_samples.jsonl
 apps/api/scripts/seed_credentials.json
+ops-artifacts/
+*.dump
 
 # ── Local agent & editor settings ──
 .claude/settings.local.json
@@ -63,4 +65,3 @@ infra/inventory/
 docs/ui-audit/
 REPOSITORY_STATE_AUDIT.md
 docs/product/batch1-ui-demo/99-error.png
-

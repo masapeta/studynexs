@@ -1,4 +1,51 @@
 groups:
+  - name: studynexs_platform
+    rules:
+      - alert: StudyNexsAPIDown
+        expr: up{job="studynexs-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "StudyNexs API metrics target is down"
+          description: "Prometheus cannot scrape the StudyNexs API /metrics endpoint."
+
+      - alert: StudyNexsHTTP5xxHigh
+        expr: sum(rate(studynexs_http_requests_total{status_class="5xx"}[5m])) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "StudyNexs API is returning 5xx responses"
+          description: "One or more API routes have returned 5xx responses for 5 minutes."
+
+      - alert: StudyNexsJobStatusScrapeError
+        expr: studynexs_job_status_scrape_error > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "StudyNexs job status metrics cannot be scraped"
+          description: "The API could not read job status from the database while rendering /metrics."
+
+      - alert: StudyNexsFailedJobBacklog
+        expr: studynexs_job_status_current{status="failed"} > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "StudyNexs has failed background jobs"
+          description: "Failed jobs are present for task {{ $labels.task }}."
+
+      - alert: StudyNexsStaleJobBacklog
+        expr: studynexs_job_status_oldest_age_seconds{status=~"queued|running"} > 1800
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "StudyNexs has stale queued/running background jobs"
+          description: "Oldest {{ $labels.status }} job for {{ $labels.task }} is older than 30 minutes."
+
   - name: studynexs_ai
     rules:
       - alert: AI_LLM_ErrorRateHigh

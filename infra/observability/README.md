@@ -78,11 +78,19 @@ Panels: request rate, error rate, fallback usage, token throughput, p95 latency 
 
 Defined in `prometheus-alerts.yml`:
 
+- `StudyNexsAPIDown` — API `/metrics` target unavailable
+- `StudyNexsHTTP5xxHigh` — sustained 5xx responses
+- `StudyNexsJobStatusScrapeError` — job status metrics could not read DB state
+- `StudyNexsFailedJobBacklog` — failed jobs require operator review
+- `StudyNexsStaleJobBacklog` — queued/running jobs older than 30 minutes
 - `AI_LLM_ErrorRateHigh` — >10% errors for 5m
 - `AI_LLM_FallbackSpike` — fallback provider active
 - `AI_LLM_LatencyP95High` — p95 > 30s
 
 Wire Alertmanager in production (PagerDuty, Slack, email).
+
+Operational response is documented in
+`docs/runbooks/production-operations.md`.
 
 ## Production notes
 
