@@ -114,7 +114,7 @@ class UnitInterpretationReasoner:
         evidence: dict[str, Any] = {
             "raw_answer": raw,
             "parsed_answer": parsed,
-            "allowed_units": allowed_units,
+            "allowed_units": sorted(allowed_units),
         }
         if parsed is None:
             return AcademicReasoningResult(
@@ -127,13 +127,15 @@ class UnitInterpretationReasoner:
                 review_signals=("unit_parse_failed",),
             )
 
+        tolerance = _numeric_tolerance(context)
         candidate_matches = [_parse_unit_value(candidate) for candidate in candidates]
         candidate_matches = [candidate for candidate in candidate_matches if candidate is not None]
         evidence["candidate_values"] = candidate_matches
+        evidence["tolerance"] = str(tolerance) if tolerance is not None else None
 
         unit_allowed = not allowed_units or parsed["unit"] in allowed_units
         matched = any(
-            candidate["value"] == parsed["value"] and candidate["unit"] == parsed["unit"]
+            _unit_values_match(parsed, candidate, tolerance)
             for candidate in candidate_matches
         )
 
@@ -157,7 +159,11 @@ class UnitInterpretationReasoner:
             capability="units",
             explanation=explanation,
             interpreted_value=f"{parsed['value']} {parsed['unit']}",
-            matched_value=_first_matching_unit_value(parsed, candidate_matches),
+            matched_value=_first_matching_unit_value(
+                parsed,
+                candidate_matches,
+                tolerance=tolerance,
+            ),
             evidence=evidence,
         )
 
@@ -176,6 +182,7 @@ class ScientificNotationReasoner:
         parsed = _parse_number(raw)
         context = _reasoning_context(answer)
         candidates = _candidate_answers(context)
+        tolerance = _numeric_tolerance(context)
         candidate_values = [_parse_number(candidate) for candidate in candidates]
         candidate_values = [value for value in candidate_values if value is not None]
 
@@ -183,6 +190,7 @@ class ScientificNotationReasoner:
             "raw_answer": raw,
             "parsed_answer": str(parsed) if parsed is not None else None,
             "candidate_values": [str(value) for value in candidate_values],
+            "tolerance": str(tolerance) if tolerance is not None else None,
         }
         if parsed is None:
             return AcademicReasoningResult(
@@ -195,7 +203,7 @@ class ScientificNotationReasoner:
                 review_signals=("scientific_notation_parse_failed",),
             )
 
-        matched = _decimal_match(parsed, candidate_values)
+        matched = _decimal_match(parsed, candidate_values, tolerance=tolerance)
         if matched:
             result = "equivalent"
             explanation = "The scientific notation is equivalent to the deterministic context."
@@ -213,7 +221,11 @@ class ScientificNotationReasoner:
             capability="scientific_notation",
             explanation=explanation,
             interpreted_value=str(parsed.normalize()),
-            matched_value=_first_matching_decimal(parsed, candidate_values),
+            matched_value=_first_matching_decimal(
+                parsed,
+                candidate_values,
+                tolerance=tolerance,
+            ),
             evidence=evidence,
         )
 
@@ -232,6 +244,7 @@ class NumericEquivalenceReasoner:
         parsed = _parse_number(raw)
         context = _reasoning_context(answer)
         candidates = _candidate_answers(context)
+        tolerance = _numeric_tolerance(context)
         candidate_values = [_parse_number(candidate) for candidate in candidates]
         candidate_values = [value for value in candidate_values if value is not None]
 
@@ -239,6 +252,7 @@ class NumericEquivalenceReasoner:
             "raw_answer": raw,
             "parsed_answer": str(parsed) if parsed is not None else None,
             "candidate_values": [str(value) for value in candidate_values],
+            "tolerance": str(tolerance) if tolerance is not None else None,
         }
         if parsed is None:
             return AcademicReasoningResult(
@@ -251,7 +265,7 @@ class NumericEquivalenceReasoner:
                 review_signals=("numeric_parse_failed",),
             )
 
-        matched = _decimal_match(parsed, candidate_values)
+        matched = _decimal_match(parsed, candidate_values, tolerance=tolerance)
         if matched:
             result = "equivalent"
             explanation = "The numeric answer is equivalent to the deterministic context."
@@ -269,7 +283,11 @@ class NumericEquivalenceReasoner:
             capability="numeric_equivalence",
             explanation=explanation,
             interpreted_value=str(parsed.normalize()),
-            matched_value=_first_matching_decimal(parsed, candidate_values),
+            matched_value=_first_matching_decimal(
+                parsed,
+                candidate_values,
+                tolerance=tolerance,
+            ),
             evidence=evidence,
         )
 
@@ -408,7 +426,7 @@ def _allowed_units(context: dict[str, Any]) -> set[str]:
 
 def _parse_unit_value(value: str) -> dict[str, Any] | None:
     match = re.fullmatch(
-        r"\s*(?P<number>[-+]?(?:\d+(?:\.\d+)?|\d+/\d+))\s*(?P<unit>[A-Za-z]+)\s*",
+        r"\s*(?P<number>[-+]?[\d\s.,/%eExX×^¼½¾⅓⅔⅛⅜⅝⅞]+?)\s*(?P<unit>[A-Za-z]+)\s*",
         value,
     )
     if not match:
@@ -416,13 +434,24 @@ def _parse_unit_value(value: str) -> dict[str, Any] | None:
     number = _parse_number(match.group("number"))
     if number is None:
         return None
-    return {"value": str(number.normalize()), "unit": _normalize_unit(match.group("unit"))}
+    unit = _normalize_unit(match.group("unit"))
+    canonical = _canonical_unit_value(number, unit)
+    return {
+        "value": _display_decimal(number),
+        "unit": unit,
+        "canonical_value": _display_decimal(canonical[0]) if canonical else None,
+        "dimension": canonical[1] if canonical else None,
+    }
 
 
 def _parse_number(value: str) -> Decimal | None:
     stripped = value.strip().replace(",", "")
     if not stripped:
         return None
+
+    if stripped.endswith("%"):
+        percent = _decimal(stripped[:-1])
+        return percent / Decimal(100) if percent is not None else None
 
     mixed_fraction = _parse_mixed_fraction(stripped)
     if mixed_fraction is not None:
@@ -499,13 +528,52 @@ def _decimal(value: str) -> Decimal | None:
         return None
 
 
-def _decimal_match(value: Decimal, candidates: list[Decimal]) -> bool:
-    return any(value == candidate for candidate in candidates)
+def _display_decimal(value: Decimal) -> str:
+    normalized = value.normalize()
+    if normalized == normalized.to_integral():
+        return str(normalized.quantize(Decimal(1)))
+    return format(normalized, "f").rstrip("0").rstrip(".")
 
 
-def _first_matching_decimal(value: Decimal, candidates: list[Decimal]) -> str | None:
+def _numeric_tolerance(context: dict[str, Any]) -> Decimal | None:
+    for key in ("numeric_tolerance", "tolerance"):
+        value = context.get(key)
+        if value is None:
+            continue
+        tolerance = _decimal(str(value))
+        if tolerance is not None and tolerance >= 0:
+            return tolerance
+    return None
+
+
+def _decimal_match(
+    value: Decimal,
+    candidates: list[Decimal],
+    *,
+    tolerance: Decimal | None = None,
+) -> bool:
+    return any(_decimals_equal(value, candidate, tolerance=tolerance) for candidate in candidates)
+
+
+def _decimals_equal(
+    value: Decimal,
+    candidate: Decimal,
+    *,
+    tolerance: Decimal | None = None,
+) -> bool:
+    if tolerance is None:
+        return value == candidate
+    return abs(value - candidate) <= tolerance
+
+
+def _first_matching_decimal(
+    value: Decimal,
+    candidates: list[Decimal],
+    *,
+    tolerance: Decimal | None = None,
+) -> str | None:
     for candidate in candidates:
-        if value == candidate:
+        if _decimals_equal(value, candidate, tolerance=tolerance):
             return str(candidate.normalize())
     return None
 
@@ -513,11 +581,40 @@ def _first_matching_decimal(value: Decimal, candidates: list[Decimal]) -> str | 
 def _first_matching_unit_value(
     value: dict[str, Any],
     candidates: list[dict[str, Any]],
+    *,
+    tolerance: Decimal | None = None,
 ) -> str | None:
     for candidate in candidates:
-        if candidate["value"] == value["value"] and candidate["unit"] == value["unit"]:
+        if _unit_values_match(value, candidate, tolerance):
             return f"{candidate['value']} {candidate['unit']}"
     return None
+
+
+def _unit_values_match(
+    value: dict[str, Any],
+    candidate: dict[str, Any],
+    tolerance: Decimal | None,
+) -> bool:
+    parsed_value = _decimal(str(value.get("value")))
+    candidate_value = _decimal(str(candidate.get("value")))
+    if (
+        parsed_value is not None
+        and candidate_value is not None
+        and value.get("unit") == candidate.get("unit")
+        and _decimals_equal(parsed_value, candidate_value, tolerance=tolerance)
+    ):
+        return True
+
+    if value.get("dimension") and value.get("dimension") == candidate.get("dimension"):
+        canonical_value = _decimal(str(value.get("canonical_value")))
+        canonical_candidate = _decimal(str(candidate.get("canonical_value")))
+        if canonical_value is not None and canonical_candidate is not None:
+            return _decimals_equal(
+                canonical_value,
+                canonical_candidate,
+                tolerance=tolerance,
+            )
+    return False
 
 
 def _looks_like_scientific_notation(value: str) -> bool:
@@ -588,3 +685,36 @@ _UNICODE_FRACTIONS: dict[str, Decimal] = {
     "\u215d": Decimal(5) / Decimal(8),
     "\u215e": Decimal(7) / Decimal(8),
 }
+
+
+_UNIT_CONVERSIONS: dict[str, tuple[str, Decimal]] = {
+    "mm": ("length", Decimal("0.001")),
+    "millimetre": ("length", Decimal("0.001")),
+    "millimeter": ("length", Decimal("0.001")),
+    "cm": ("length", Decimal("0.01")),
+    "centimetre": ("length", Decimal("0.01")),
+    "centimeter": ("length", Decimal("0.01")),
+    "m": ("length", Decimal("1")),
+    "metre": ("length", Decimal("1")),
+    "meter": ("length", Decimal("1")),
+    "km": ("length", Decimal("1000")),
+    "kilometre": ("length", Decimal("1000")),
+    "kilometer": ("length", Decimal("1000")),
+    "mg": ("mass", Decimal("0.001")),
+    "g": ("mass", Decimal("1")),
+    "gram": ("mass", Decimal("1")),
+    "kg": ("mass", Decimal("1000")),
+    "kilogram": ("mass", Decimal("1000")),
+    "ml": ("volume", Decimal("0.001")),
+    "l": ("volume", Decimal("1")),
+    "litre": ("volume", Decimal("1")),
+    "liter": ("volume", Decimal("1")),
+}
+
+
+def _canonical_unit_value(value: Decimal, unit: str) -> tuple[Decimal, str] | None:
+    conversion = _UNIT_CONVERSIONS.get(unit)
+    if conversion is None:
+        return None
+    dimension, factor = conversion
+    return value * factor, dimension

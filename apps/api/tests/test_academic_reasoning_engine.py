@@ -87,6 +87,19 @@ def test_numeric_equivalence_reasoner_reports_not_equivalent_without_scoring():
     assert "marks" not in result.model_dump()
 
 
+def test_numeric_equivalence_reasoner_matches_percent_and_tolerance():
+    answer = _understood_answer(
+        "50%",
+        reasoning_context={"answer_key": "0.5", "numeric_tolerance": "0"},
+    )
+
+    result = AcademicReasoningEngine().reason(answer)
+
+    assert result.reasoning_type == "numeric_equivalence"
+    assert result.result == "equivalent"
+    assert result.interpreted_value == "0.5"
+
+
 def test_scientific_notation_reasoner_matches_equivalent_value():
     answer = _understood_answer(
         "1.2 x 10^3",
@@ -115,6 +128,19 @@ def test_unit_interpretation_reasoner_matches_value_and_unit():
     assert result.result == "matched"
     assert result.interpreted_value == "12 cm"
     assert result.matched_value == "12 cm"
+
+
+def test_unit_interpretation_reasoner_matches_equivalent_supported_units():
+    answer = _understood_answer(
+        "1 m",
+        reasoning_context={"answer_key": "100 cm"},
+    )
+
+    result = AcademicReasoningEngine().reason(answer)
+
+    assert result.reasoning_type == "unit_interpretation"
+    assert result.result == "matched"
+    assert result.matched_value == "100 cm"
 
 
 def test_unit_interpretation_reasoner_reports_unit_mismatch():

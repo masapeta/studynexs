@@ -13,6 +13,7 @@ from app.db.models.academic import AcademicYear, Class, Subject
 from app.db.models.answer_sheet_evaluation import EVAL_STATUS_PROCESSING, AnswerSheetEvaluation
 from app.db.models.curriculum_pack import CurriculumPack, PackStatus
 from app.db.models.examination import Exam, ExamMark, ExamType
+from app.db.models.question_bank import QuestionBankItem, RubricBankItem
 from app.db.models.question_paper import PaperStatus, QuestionPaper
 from app.db.models.school import School
 from app.db.models.student import Student
@@ -162,6 +163,31 @@ async def _seed_eval_fixture(db: AsyncSession):
     }
 
 
+async def _update_q1_rubric(
+    db: AsyncSession,
+    *,
+    paper: QuestionPaper,
+    answer_key: str,
+    acceptable_answers: list[str] | None = None,
+) -> None:
+    rubric = (
+        await db.execute(
+            select(RubricBankItem)
+            .join(
+                QuestionBankItem,
+                RubricBankItem.question_bank_item_id == QuestionBankItem.id,
+            )
+            .where(
+                QuestionBankItem.source_paper_id == paper.id,
+                QuestionBankItem.question_number == "1",
+            )
+        )
+    ).scalar_one()
+    rubric.answer_key = answer_key
+    rubric.acceptable_answers = acceptable_answers
+    await db.flush()
+
+
 def test_grade_objective_mcq():
     marks, feedback, conf = grade_objective(
         q_type="mcq",
@@ -182,6 +208,74 @@ def test_grade_objective_wrong():
         max_marks=2,
     )
     assert marks == 0
+
+
+@pytest.mark.asyncio
+async def test_aei_v1_math_normalization_flag_off_preserves_exact_match(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch,
+):
+    fx = await _seed_eval_fixture(db_session)
+    await _update_q1_rubric(db_session, paper=fx["paper"], answer_key="0.5")
+    monkeypatch.setattr(
+        "app.modules.examinations.services.answer_sheet_eval_service"
+        ".settings.AEI_V1_MATH_NORMALIZATION_ENABLED",
+        False,
+    )
+
+    token = access_token_for(fx["incharge"])
+    resp = await client.post(
+        f"/api/v1/exams/{fx['exam'].id}/evaluations",
+        headers=auth_headers(token),
+        json={
+            "student_id": str(fx["student"].id),
+            "student_answers": {"1": "1/2", "2": "B", "3": "plants use sunlight"},
+        },
+    )
+
+    assert resp.status_code == 201, resp.text
+    suggestion = resp.json()["data"]["ai_suggestions"]["1"]
+    assert float(suggestion["marks_suggested"]) == 0
+    assert suggestion["method"] == "objective"
+    assert "normalized_answer" not in suggestion
+
+
+@pytest.mark.asyncio
+async def test_aei_v1_math_normalization_flag_on_matches_equivalent_answer(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch,
+):
+    fx = await _seed_eval_fixture(db_session)
+    await _update_q1_rubric(
+        db_session,
+        paper=fx["paper"],
+        answer_key="0.5",
+        acceptable_answers=["1/2", "50%", "½"],
+    )
+    monkeypatch.setattr(
+        "app.modules.examinations.services.answer_sheet_eval_service"
+        ".settings.AEI_V1_MATH_NORMALIZATION_ENABLED",
+        True,
+    )
+
+    token = access_token_for(fx["incharge"])
+    resp = await client.post(
+        f"/api/v1/exams/{fx['exam'].id}/evaluations",
+        headers=auth_headers(token),
+        json={
+            "student_id": str(fx["student"].id),
+            "student_answers": {"1": "1/2", "2": "B", "3": "plants use sunlight"},
+        },
+    )
+
+    assert resp.status_code == 201, resp.text
+    suggestion = resp.json()["data"]["ai_suggestions"]["1"]
+    assert float(suggestion["marks_suggested"]) == 2
+    assert suggestion["method"] == "aei_v1_math_normalization"
+    assert suggestion["normalized_answer"] == "0.5"
+    assert suggestion["manual_review_required"] is False
 
 
 def test_grade_subjective_partial():

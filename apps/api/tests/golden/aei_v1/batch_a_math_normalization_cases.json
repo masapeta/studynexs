@@ -1,0 +1,132 @@
+{
+  "version": "aei-v1-batch-a-math-normalization",
+  "cases": [
+    {
+      "id": "aei_math_fraction_decimal_001",
+      "subject": "mathematics",
+      "capability": "numeric_equivalence",
+      "input": {
+        "question_type": "short",
+        "raw_answer": "1/2"
+      },
+      "rubric": {
+        "answer_key": "0.5",
+        "acceptable_answers": ["50%", "½"],
+        "max_marks": 2
+      },
+      "expected": {
+        "marks": 2,
+        "manual_review_required": false,
+        "normalized_answer": "0.5"
+      }
+    },
+    {
+      "id": "aei_math_mixed_number_001",
+      "subject": "mathematics",
+      "capability": "numeric_equivalence",
+      "input": {
+        "question_type": "short",
+        "raw_answer": "5½"
+      },
+      "rubric": {
+        "answer_key": "5.5",
+        "acceptable_answers": ["11/2"],
+        "max_marks": 2
+      },
+      "expected": {
+        "marks": 2,
+        "manual_review_required": false,
+        "normalized_answer": "5.5"
+      }
+    },
+    {
+      "id": "aei_math_tolerance_001",
+      "subject": "mathematics",
+      "capability": "tolerance",
+      "input": {
+        "question_type": "short",
+        "raw_answer": "9.81"
+      },
+      "rubric": {
+        "answer_key": "9.8",
+        "numeric_tolerance": "0.02",
+        "max_marks": 1
+      },
+      "expected": {
+        "marks": 1,
+        "manual_review_required": false,
+        "matched_acceptable_answer": "9.8"
+      }
+    },
+    {
+      "id": "aei_math_scientific_notation_001",
+      "subject": "mathematics",
+      "capability": "scientific_notation",
+      "input": {
+        "question_type": "short",
+        "raw_answer": "1.2 x 10^3"
+      },
+      "rubric": {
+        "answer_key": "1200",
+        "max_marks": 1
+      },
+      "expected": {
+        "marks": 1,
+        "manual_review_required": false,
+        "normalized_answer": "1.2E+3"
+      }
+    },
+    {
+      "id": "aei_math_units_001",
+      "subject": "mathematics",
+      "capability": "units",
+      "input": {
+        "question_type": "short",
+        "raw_answer": "1 m"
+      },
+      "rubric": {
+        "answer_key": "100 cm",
+        "max_marks": 1
+      },
+      "expected": {
+        "marks": 1,
+        "manual_review_required": false,
+        "matched_acceptable_answer": "100 cm"
+      }
+    },
+    {
+      "id": "aei_math_missing_unit_review_001",
+      "subject": "mathematics",
+      "capability": "units",
+      "input": {
+        "question_type": "short",
+        "raw_answer": "5"
+      },
+      "rubric": {
+        "answer_key": "5 m",
+        "max_marks": 1
+      },
+      "expected": {
+        "marks": 0,
+        "manual_review_required": true
+      }
+    },
+    {
+      "id": "aei_math_blank_answer_review_001",
+      "subject": "mathematics",
+      "capability": "numeric_equivalence",
+      "input": {
+        "question_type": "short",
+        "raw_answer": ""
+      },
+      "rubric": {
+        "answer_key": "0.5",
+        "max_marks": 1
+      },
+      "expected": {
+        "marks": 0,
+        "manual_review_required": true
+      }
+    }
+  ]
+}

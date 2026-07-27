@@ -233,6 +233,9 @@ class Settings(BaseSettings):
     # Wave 2 compares AEI output against existing production suggestions for internal
     # validation only. It is also disabled by default and remains user-invisible.
     AEI_SHADOW_MODE_ENABLED: bool = False
+    # AEI v1.0 Batch A.
+    # Maths normalization/equivalence is runtime-gated and disabled by default.
+    AEI_V1_MATH_NORMALIZATION_ENABLED: bool = False
     # Educational Understanding Intelligence (EUI) Phase 1 Sprint 1.
     # Passive identity resolution only; disabled by default and user-invisible.
     EUI_IDENTITY_PASSIVE_ENABLED: bool = False

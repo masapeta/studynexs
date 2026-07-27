@@ -44,6 +44,9 @@ from app.modules.examinations.schemas.exam import MarkEntry
 from app.modules.examinations.services.aei_passive_integration import (
     observe_answer_sheet_evaluation,
 )
+from app.modules.examinations.services.aei_v1_math_normalization import (
+    evaluate_math_normalization,
+)
 from app.modules.examinations.services.answer_sheet_vision import (
     extract_answers_from_image,
     is_image_mime,
@@ -544,6 +547,17 @@ class AnswerSheetEvalService:
         rubrics = await fetch_rubrics_for_paper(
             self.db, school_id=school_id, paper_id=exam.source_paper_id
         )
+        subject_name = None
+        if settings.AEI_V1_MATH_NORMALIZATION_ENABLED:
+            paper = (
+                await self.db.execute(
+                    select(QuestionPaper).where(
+                        QuestionPaper.id == exam.source_paper_id,
+                        QuestionPaper.school_id == school_id,
+                    )
+                )
+            ).scalar_one_or_none()
+            subject_name = paper.subject_name if paper and paper.subject_name else None
         suggestions: dict[str, dict] = {}
         subjective_items: list[SubjectiveItem] = []
         subjective_meta: dict[str, dict] = {}
@@ -559,23 +573,50 @@ class AnswerSheetEvalService:
             topic = q.get("topic") or exam.topic
 
             if self._is_objective(q_type, answer_key):
-                marks, feedback, confidence = grade_objective(
-                    q_type=q_type,
-                    student_answer=student_answer,
-                    answer_key=answer_key,
-                    max_marks=max_marks,
-                    options=options,
+                math_result = (
+                    evaluate_math_normalization(
+                        subject=subject_name,
+                        q_type=q_type,
+                        student_answer=student_answer,
+                        answer_key=answer_key,
+                        max_marks=max_marks,
+                        rubric=rubric,
+                        question=q,
+                    )
+                    if settings.AEI_V1_MATH_NORMALIZATION_ENABLED
+                    else None
                 )
-                suggestions[qno] = self._make_suggestion(
-                    marks=marks,
-                    max_marks=max_marks,
-                    feedback=feedback,
-                    confidence=confidence,
-                    student_answer=student_answer,
-                    topic=topic,
-                    method="objective",
-                    misconception_hint=self._misconception_hint(rubric, marks, max_marks),
-                )
+                if math_result is not None:
+                    suggestion = self._make_suggestion(
+                        marks=math_result.marks,
+                        max_marks=max_marks,
+                        feedback=math_result.feedback,
+                        confidence=math_result.confidence,
+                        student_answer=student_answer,
+                        topic=topic,
+                        method=math_result.method,
+                        misconception_hint=math_result.misconception_hint,
+                    )
+                    suggestion.update(math_result.metadata)
+                    suggestions[qno] = suggestion
+                else:
+                    marks, feedback, confidence = grade_objective(
+                        q_type=q_type,
+                        student_answer=student_answer,
+                        answer_key=answer_key,
+                        max_marks=max_marks,
+                        options=options,
+                    )
+                    suggestions[qno] = self._make_suggestion(
+                        marks=marks,
+                        max_marks=max_marks,
+                        feedback=feedback,
+                        confidence=confidence,
+                        student_answer=student_answer,
+                        topic=topic,
+                        method="objective",
+                        misconception_hint=self._misconception_hint(rubric, marks, max_marks),
+                    )
             else:
                 subjective_items.append(
                     SubjectiveItem(
