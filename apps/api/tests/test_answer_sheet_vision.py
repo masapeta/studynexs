@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.modules.ai.gateway.base import LLMImage, LLMMessage, LLMResult
+from app.modules.ai.gateway.base import LLMResult
 from app.modules.examinations.services import answer_sheet_vision as vision
 
 

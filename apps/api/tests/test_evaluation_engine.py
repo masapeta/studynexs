@@ -106,9 +106,9 @@ async def test_engine_clamps_overaward_to_max(monkeypatch):
     out, _ = await evaluate_subjective([item], board="SSC", grade="10", subject="Maths")
 
     s = out["1"]
-    assert s["marks_suggested"] == 3.0                       # sum 10 clamped to max 3
-    assert s["confidence"] == 1.0                            # clamped to [0, 1]
-    assert all(c["max_points"] <= 3 for c in s["criteria"])  # each criterion bounded to question max
+    assert s["marks_suggested"] == 3.0
+    assert s["confidence"] == 1.0
+    assert all(c["max_points"] <= 3 for c in s["criteria"])
 
 
 @pytest.mark.asyncio
@@ -132,8 +132,20 @@ async def test_engine_returns_only_covered_questions(monkeypatch):
     ]}
     monkeypatch.setattr(_ENGINE_LLM, _fake_llm(payload))
     items = [
-        SubjectiveItem(number="1", question_text="q1", answer_key="k", max_marks=2, student_answer="a"),
-        SubjectiveItem(number="2", question_text="q2", answer_key="k", max_marks=2, student_answer="b"),
+        SubjectiveItem(
+            number="1",
+            question_text="q1",
+            answer_key="k",
+            max_marks=2,
+            student_answer="a",
+        ),
+        SubjectiveItem(
+            number="2",
+            question_text="q2",
+            answer_key="k",
+            max_marks=2,
+            student_answer="b",
+        ),
     ]
     out, _ = await evaluate_subjective(items, board="SSC", grade="10", subject="Maths")
     assert set(out) == {"1"}

@@ -4,7 +4,7 @@
 - **Artifact:** Implementation authorization contract
 - **Classification:** Runtime implementation contract
 - **Status:** Accepted
-- **Implementation:** Authorized for Batch E only
+- **Implementation:** Authorized for Batch F only
 - **Date:** 2026-07-28
 - **Owner:** Avinash Reddy Masapeta (ARM)
 - **Architecture baseline:** [`../../architecture/AEI.md`](../../architecture/AEI.md)
@@ -19,7 +19,7 @@
 This document is the accepted implementation authorization contract for AEI
 v1.0 batch-by-batch implementation.
 
-ARM accepts the contract and authorizes Batch E only.
+ARM accepts the contract and authorizes Batch F only.
 
 Batch A has been implemented, certified, reviewed, committed, tagged, and
 published.
@@ -31,6 +31,9 @@ Batch C has been implemented, certified, reviewed, committed, tagged, and
 published.
 
 Batch D has been implemented, certified, reviewed, committed, tagged, and
+published.
+
+Batch E has been implemented, certified, reviewed, committed, tagged, and
 published.
 
 Later batches require separate ARM continuation after the prior batch is
@@ -91,7 +94,7 @@ continues the program.
 
 ## 4. Authorized batch sequence
 
-This contract defines the full AEI v1.0 batch sequence, but only Batch E is
+This contract defines the full AEI v1.0 batch sequence, but only Batch F is
 authorized to begin now.
 
 The approved AEI v1.0 sequence is:
@@ -115,8 +118,8 @@ Authorization state:
 | Batch B - Confidence, manual review, and teacher override | Published / certified |
 | Batch C - Evidence ledger and approved evidence propagation | Published / certified |
 | Batch D - Language and OCR assist support boundary | Published / certified |
-| Batch E - Visual and science assist support boundary | Authorized |
-| Batch F - AEI v1.0 certification | Not authorized until separately continued |
+| Batch E - Visual and science assist support boundary | Published / certified |
+| Batch F - AEI v1.0 certification | Authorized |
 
 ---
 
@@ -524,19 +527,19 @@ This contract does not authorize:
 ARM review result:
 
 ```text
-Accepted - authorize AEI v1.0 Batch E only.
+Accepted - authorize AEI v1.0 Batch F only.
 ```
 
 This acceptance authorizes:
 
 ```text
-AEI v1.0 Batch E - Visual and science assist support boundary
+AEI v1.0 Batch F - AEI v1.0 certification
 ```
 
 This acceptance does not authorize:
 
 ```text
-Batch F or any out-of-scope behavior
+Out-of-scope behavior or post-certification product expansion
 ```
 
-Batch E implementation may begin within this contract only.
+Batch F certification may begin within this contract only.
