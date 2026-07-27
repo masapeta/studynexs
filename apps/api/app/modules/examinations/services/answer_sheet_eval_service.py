@@ -47,6 +47,10 @@ from app.modules.examinations.services.aei_passive_integration import (
 from app.modules.examinations.services.aei_v1_math_normalization import (
     evaluate_math_normalization,
 )
+from app.modules.examinations.services.aei_v1_review_policy import (
+    apply_review_policy_metadata,
+    normalize_teacher_overrides_for_review_policy,
+)
 from app.modules.examinations.services.answer_sheet_vision import (
     extract_answers_from_image,
     is_image_mime,
@@ -647,6 +651,9 @@ class AnswerSheetEvalService:
             )
             suggestions.update(subj_suggestions)
 
+        if settings.AEI_V1_REVIEW_POLICY_ENABLED:
+            suggestions = apply_review_policy_metadata(suggestions)
+
         return suggestions, subjective_results
 
     @staticmethod
@@ -809,9 +816,22 @@ class AnswerSheetEvalService:
         scope = TenantScope(self.db, school_id)
         exam = await scope.exam(row.exam_id)
 
+        approved_at = datetime.now(timezone.utc)
+        teacher_overrides = data.teacher_overrides or {}
+        if settings.AEI_V1_REVIEW_POLICY_ENABLED:
+            try:
+                teacher_overrides = normalize_teacher_overrides_for_review_policy(
+                    suggestions=row.ai_suggestions,
+                    teacher_overrides=teacher_overrides,
+                    reviewer_identifier=str(approved_by),
+                    review_timestamp=approved_at,
+                )
+            except ValueError as exc:
+                raise EvalError(str(exc)) from exc
+
         question_marks: dict[str, float] = {}
         for qno, suggestion in row.ai_suggestions.items():
-            override = (data.teacher_overrides or {}).get(qno) or {}
+            override = teacher_overrides.get(qno) or {}
             marks = override.get("marks")
             if marks is None:
                 marks = suggestion.get("marks_suggested", 0)
@@ -821,11 +841,11 @@ class AnswerSheetEvalService:
                 raise EvalError(f"Marks for Q{qno} outside 0..{max_m}")
             question_marks[qno] = marks_f
 
-        row.teacher_overrides = data.teacher_overrides or None
+        row.teacher_overrides = teacher_overrides or None
         row.correction_summary = data.correction_summary or row.correction_summary
         row.status = EVAL_STATUS_APPROVED
         row.approved_by = approved_by
-        row.approved_at = datetime.now(timezone.utc)
+        row.approved_at = approved_at
 
         exam_service = ExamService(self.db)
         feedback_lines = [

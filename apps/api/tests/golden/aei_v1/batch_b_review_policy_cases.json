@@ -1,0 +1,93 @@
+{
+  "version": "aei-v1-batch-b-review-policy",
+  "cases": [
+    {
+      "id": "aei_review_policy_high_confidence_supported_001",
+      "input": {
+        "suggestion": {
+          "marks_suggested": 2,
+          "max_marks": 2,
+          "feedback": "Correct.",
+          "confidence": 0.98,
+          "method": "objective"
+        }
+      },
+      "expected": {
+        "manual_review_required": false,
+        "capability_mode": "supported",
+        "confidence_reason": "Confidence meets the teacher-review threshold."
+      }
+    },
+    {
+      "id": "aei_review_policy_low_confidence_001",
+      "input": {
+        "suggestion": {
+          "marks_suggested": 1,
+          "max_marks": 3,
+          "feedback": "Partial match.",
+          "confidence": 0.55,
+          "method": "heuristic_fallback"
+        }
+      },
+      "expected": {
+        "manual_review_required": true,
+        "capability_mode": "manual_review",
+        "confidence_reason": "Confidence is below the teacher-review threshold."
+      }
+    },
+    {
+      "id": "aei_review_policy_existing_manual_review_001",
+      "input": {
+        "suggestion": {
+          "marks_suggested": 0,
+          "max_marks": 1,
+          "feedback": "Teacher review required.",
+          "confidence": 0.35,
+          "manual_review_required": true,
+          "manual_review_reason": "Unit parse failed.",
+          "method": "aei_v1_math_normalization"
+        }
+      },
+      "expected": {
+        "manual_review_required": true,
+        "capability_mode": "manual_review",
+        "manual_review_reason": "Unit parse failed."
+      }
+    },
+    {
+      "id": "aei_review_policy_high_confidence_existing_manual_review_001",
+      "input": {
+        "suggestion": {
+          "marks_suggested": 0,
+          "max_marks": 1,
+          "feedback": "Teacher review required.",
+          "confidence": 0.9,
+          "manual_review_required": true,
+          "manual_review_reason": "Capability requires teacher confirmation.",
+          "method": "aei_v1_math_normalization"
+        }
+      },
+      "expected": {
+        "manual_review_required": true,
+        "capability_mode": "manual_review",
+        "manual_review_reason": "Capability requires teacher confirmation.",
+        "confidence_reason": "Confidence meets the threshold; teacher review is required by policy."
+      }
+    },
+    {
+      "id": "aei_review_policy_missing_confidence_001",
+      "input": {
+        "suggestion": {
+          "marks_suggested": 0,
+          "max_marks": 1,
+          "feedback": "Review manually.",
+          "method": "unknown"
+        }
+      },
+      "expected": {
+        "manual_review_required": true,
+        "capability_mode": "manual_review"
+      }
+    }
+  ]
+}

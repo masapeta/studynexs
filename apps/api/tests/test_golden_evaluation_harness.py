@@ -5,11 +5,17 @@ from app.modules.examinations.services.aei_v1_math_normalization import (
     AEI_MATH_EVALUATION_METHOD,
     evaluate_math_normalization,
 )
+from app.modules.examinations.services.aei_v1_review_policy import (
+    apply_review_policy_metadata,
+)
 from app.modules.examinations.services.subject_capability_registry import SubjectCapabilityRegistry
 
 GOLDEN_CASES_PATH = Path(__file__).parent / "golden" / "aei_v1" / "pilot_trust_cases.json"
 BATCH_A_MATH_CASES_PATH = (
     Path(__file__).parent / "golden" / "aei_v1" / "batch_a_math_normalization_cases.json"
+)
+BATCH_B_REVIEW_CASES_PATH = (
+    Path(__file__).parent / "golden" / "aei_v1" / "batch_b_review_policy_cases.json"
 )
 
 
@@ -20,6 +26,11 @@ def _load_golden_cases() -> dict:
 
 def _load_batch_a_math_cases() -> dict:
     with BATCH_A_MATH_CASES_PATH.open("r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def _load_batch_b_review_cases() -> dict:
+    with BATCH_B_REVIEW_CASES_PATH.open("r", encoding="utf-8") as handle:
         return json.load(handle)
 
 
@@ -105,3 +116,25 @@ def test_batch_a_math_normalization_golden_cases_execute_deterministically():
                 result.metadata["matched_acceptable_answer"]
                 == case["expected"]["matched_acceptable_answer"]
             )
+
+
+def test_batch_b_review_policy_golden_cases_execute_deterministically():
+    data = _load_batch_b_review_cases()
+
+    assert data["version"] == "aei-v1-batch-b-review-policy"
+    case_ids: set[str] = set()
+    for case in data["cases"]:
+        assert case["id"] not in case_ids
+        case_ids.add(case["id"])
+
+        suggestion = dict(case["input"]["suggestion"])
+        enriched = apply_review_policy_metadata({"1": suggestion})["1"]
+        expected = case["expected"]
+
+        assert enriched["manual_review_required"] is expected["manual_review_required"]
+        assert enriched["capability_mode"] == expected["capability_mode"]
+        if "confidence_reason" in expected:
+            assert enriched["confidence_reason"] == expected["confidence_reason"]
+        if "manual_review_reason" in expected:
+            assert enriched["manual_review_reason"] == expected["manual_review_reason"]
+        assert enriched["aei_v1_review_policy"]["batch"] == "B"

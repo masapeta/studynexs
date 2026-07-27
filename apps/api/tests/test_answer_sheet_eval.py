@@ -278,6 +278,89 @@ async def test_aei_v1_math_normalization_flag_on_matches_equivalent_answer(
     assert suggestion["manual_review_required"] is False
 
 
+@pytest.mark.asyncio
+async def test_aei_v1_review_policy_flag_on_adds_review_metadata(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch,
+):
+    fx = await _seed_eval_fixture(db_session)
+    monkeypatch.setattr(
+        "app.modules.examinations.services.answer_sheet_eval_service"
+        ".settings.AEI_V1_REVIEW_POLICY_ENABLED",
+        True,
+    )
+
+    token = access_token_for(fx["incharge"])
+    resp = await client.post(
+        f"/api/v1/exams/{fx['exam'].id}/evaluations",
+        headers=auth_headers(token),
+        json={
+            "student_id": str(fx["student"].id),
+            "student_answers": {"1": "4", "2": "B", "3": "plants use sunlight"},
+        },
+    )
+
+    assert resp.status_code == 201, resp.text
+    suggestion = resp.json()["data"]["ai_suggestions"]["1"]
+    assert suggestion["manual_review_required"] is False
+    assert suggestion["manual_review_reason"] is None
+    assert suggestion["capability_mode"] == "supported"
+    assert suggestion["confidence_reason"] == "Confidence meets the teacher-review threshold."
+    assert suggestion["aei_v1_review_policy"]["batch"] == "B"
+
+
+@pytest.mark.asyncio
+async def test_aei_v1_review_policy_requires_override_reason_when_enabled(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch,
+):
+    fx = await _seed_eval_fixture(db_session)
+    monkeypatch.setattr(
+        "app.modules.examinations.services.answer_sheet_eval_service"
+        ".settings.AEI_V1_REVIEW_POLICY_ENABLED",
+        True,
+    )
+
+    token = access_token_for(fx["incharge"])
+    resp = await client.post(
+        f"/api/v1/exams/{fx['exam'].id}/evaluations",
+        headers=auth_headers(token),
+        json={
+            "student_id": str(fx["student"].id),
+            "student_answers": {"1": "4", "2": "B", "3": "plants use sunlight"},
+        },
+    )
+    assert resp.status_code == 201, resp.text
+    eval_id = resp.json()["data"]["id"]
+
+    missing_reason = await client.post(
+        f"/api/v1/exams/evaluations/{eval_id}/approve",
+        headers=auth_headers(token),
+        json={"teacher_overrides": {"1": {"marks": 1}}},
+    )
+    assert missing_reason.status_code == 400
+    assert "requires a non-empty reason" in missing_reason.text
+
+    approved = await client.post(
+        f"/api/v1/exams/evaluations/{eval_id}/approve",
+        headers=auth_headers(token),
+        json={
+            "teacher_overrides": {
+                "1": {"marks": 1, "reason": "Teacher reviewed working."}
+            }
+        },
+    )
+    assert approved.status_code == 200, approved.text
+    override = approved.json()["data"]["teacher_overrides"]["1"]
+    audit = override["aei_v1_override_audit"]
+    assert audit["batch"] == "B"
+    assert audit["override_applied"] is True
+    assert audit["original_marks_suggested"] == 2
+    assert audit["final_marks"] == 1
+
+
 def test_grade_subjective_partial():
     marks, feedback, _ = grade_subjective_heuristic(
         student_answer="plants make food using sunlight",
