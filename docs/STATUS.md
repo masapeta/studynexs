@@ -72,6 +72,7 @@ canonical roadmap names are:
 | AEI v1.0 Batch B - Review policy metadata | Complete / certified / published |
 | AEI v1.0 Batch C - Evidence ledger metadata | Complete / certified / published |
 | AEI v1.0 Batch D - Language/OCR assist metadata | Complete / certified / published |
+| AEI v1.0 Batch E - Visual/science assist metadata | Complete / certified / published |
 | EUI v1 architecture | Frozen / accepted |
 | EUI Runtime Roadmap v1 | Accepted planning baseline |
 | Phase 0 - Engineering Preparation | Complete / certified / published |
@@ -94,6 +95,7 @@ canonical roadmap names are:
 | Batch B - Review Policy Metadata | Published / certified | `d40c31e4df29a4942e48431c90b756611949ef86` | `aei-v1-batch-b-review-policy-certified` | Default-off confidence/manual-review metadata and teacher override audit foundation |
 | Batch C - Evidence Ledger Metadata | Published / certified | `9f3589e1d98825a2abc15244879ef1b8329a6064` | `aei-v1-batch-c-evidence-ledger-certified` | Default-off approved-evidence ledger metadata and teacher-approved source-of-truth contract |
 | Batch D - Language/OCR Assist Metadata | Published / certified | `d33ff6d9d49d140353a848ccffe0f222e6d8ac2c` | `aei-v1-batch-d-language-ocr-assist-certified` | Default-off language/script/code-mixed and OCR assist metadata with teacher-review boundaries |
+| Batch E - Visual/Science Assist Metadata | Published / certified | `b393e83e7e0eb24c9992f28e3c6b963cdcc4586f` | `aei-v1-batch-e-visual-science-assist-certified` | Default-off visual/science assist and checklist metadata with teacher-review boundaries |
 
 Batch A adds production-seam Maths normalization behind
 `AEI_V1_MATH_NORMALIZATION_ENABLED=false` by default.
@@ -166,6 +168,26 @@ visual/science assist, UI changes, API changes, schema changes, public OCR
 claims, marks changes, evidence-ledger behavior changes, teacher-review routing
 changes, or parent/student visibility changes.
 
+Batch E adds visual/science assist metadata behind
+`AEI_V1_VISUAL_SCIENCE_ASSIST_ENABLED=false` by default.
+
+Supported Batch E behavior:
+
+- chemistry reaction-balancing assist metadata;
+- chemical-symbol and physics formula-recognition assist metadata;
+- chemistry structure manual-review posture;
+- biology diagram checklist metadata;
+- geography map checklist metadata;
+- checklist-only evidence summaries when deterministic checklist context exists;
+- no autonomous visual/science grading;
+- no autonomous marks from checklist-only evidence.
+
+Batch E does not authorize or implement a new OCR/vision engine, LLM inference,
+pixel-perfect visual grading, full chemistry structure grading, graph/map
+automatic marks, UI changes, API changes, schema changes, marks changes,
+evidence-ledger behavior changes, teacher-review routing changes, or
+parent/student visibility changes.
+
 ---
 
 ## Published EUI runtime milestones
@@ -191,25 +213,25 @@ changes, or parent/student visibility changes.
 The latest completed artifact is:
 
 ```text
-AEI v1.0 Batch D - Language/OCR Assist Metadata
+AEI v1.0 Batch E - Visual/Science Assist Metadata
 ```
 
-AEI v1.0 Batch D is published and certified as a default-off language/OCR assist
-metadata foundation. It enriches existing answer-suggestion metadata only when
-`AEI_V1_LANGUAGE_OCR_ASSIST_ENABLED=true`.
+AEI v1.0 Batch E is published and certified as a default-off visual/science
+assist metadata foundation. It enriches existing answer-suggestion metadata only
+when `AEI_V1_VISUAL_SCIENCE_ASSIST_ENABLED=true`.
 
 When the flag is disabled, existing suggestion and approval behavior remains the
 production path. No schema, API route, UI, marks, teacher-review routing,
-persistence, OCR engine, LLM inference, visual/science, or parent/student
-visibility changes were introduced.
+persistence, OCR/vision engine, LLM inference, visual grading, science grading,
+or parent/student visibility changes were introduced.
 
 Next gated milestone:
 
 ```text
-AEI v1.0 Batch E - Visual and science assist support boundary
+AEI v1.0 Batch F - AEI v1.0 certification
 ```
 
-Batch E is not authorized until ARM explicitly issues the next implementation
+Batch F is not authorized until ARM explicitly issues the next implementation
 authorization.
 
 EUI Phase 7 remains closed at Phase 7E. Phase 7F source adoption is deferred
@@ -255,8 +277,8 @@ remain out of scope:
 - AEI behavior changes beyond the published default-off Batch A Maths
   normalization foundation, Batch B review-policy metadata foundation, Batch C
   approved-evidence ledger metadata foundation, and Batch D language/OCR assist
-  metadata foundation;
-- AEI v1.0 Batch E or later batches without separate ARM authorization;
+  metadata foundation, and Batch E visual/science assist metadata foundation;
+- AEI v1.0 Batch F or later batches without separate ARM authorization;
 - AEI source-of-truth switching to EUI;
 - EUI contract changes outside accepted design;
 - product capability claim changes;
@@ -282,10 +304,11 @@ Source-Readiness Trial foundation, a published AEI v1.0 Batch A Maths
 Normalization foundation, and a published AEI v1.0 Batch B Review Policy
 Metadata foundation, a published AEI v1.0 Batch C Evidence Ledger Metadata
 foundation, and a published AEI v1.0 Batch D Language/OCR Assist Metadata
+foundation, and a published AEI v1.0 Batch E Visual/Science Assist Metadata
 foundation. Phase 7 is closed at 7E. Phase 7F source adoption is deferred
-future scope. AEI v1.0 Batch E is the next product-facing engineering gate, but
-it is not authorized until ARM issues a separate implementation authorization
-contract.
+future scope. AEI v1.0 Batch F certification is the next product-facing
+engineering gate, but it is not authorized until ARM issues a separate
+implementation authorization contract.
 
 ---
 
@@ -294,29 +317,30 @@ contract.
 Latest published runtime phase:
 
 ```text
-AEI v1.0 Batch D - Language/OCR Assist Metadata
+AEI v1.0 Batch E - Visual/Science Assist Metadata
 ```
 
 Historical artifact label:
 
 ```text
-AEI v1.0 Batch D Language/OCR Assist Metadata Foundation
+AEI v1.0 Batch E Visual/Science Assist Metadata Foundation
 ```
 
 Certified evidence:
 
-- Focused Batch D Ruff: PASS
-- Focused Batch D + Golden Harness tests: 14 passed
-- Full AEI/OCR regression slice: 67 passed
+- Focused Batch E Ruff: PASS
+- Focused Batch E + Golden Harness tests: 16 passed
+- Answer-sheet integration regression: 23 passed
+- Full AEI/OCR/visual-science regression slice: 78 passed
 - API import: PASS
 - git diff --check: PASS
-- `AEI_V1_LANGUAGE_OCR_ASSIST_ENABLED` defaults to false: PASS
+- `AEI_V1_VISUAL_SCIENCE_ASSIST_ENABLED` defaults to false: PASS
 - Flag-off legacy suggestion/approval behavior: PASS
-- No schema/API/UI/marks/OCR-engine/LLM/visual-science changes: PASS
+- No schema/API/UI/marks/OCR-vision-engine/LLM/autonomous-visual-science changes: PASS
 
 Certification report:
 
-[`product/aei-v1/AEI_V1_BATCH_D_LANGUAGE_OCR_ASSIST_CERTIFICATION_REPORT.md`](./product/aei-v1/AEI_V1_BATCH_D_LANGUAGE_OCR_ASSIST_CERTIFICATION_REPORT.md)
+[`product/aei-v1/AEI_V1_BATCH_E_VISUAL_SCIENCE_ASSIST_CERTIFICATION_REPORT.md`](./product/aei-v1/AEI_V1_BATCH_E_VISUAL_SCIENCE_ASSIST_CERTIFICATION_REPORT.md)
 
 ---
 
