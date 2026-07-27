@@ -67,6 +67,7 @@ export default function EvaluateExamPage() {
   const [sheetFile, setSheetFile] = useState<File | null>(null);
   const [activeEval, setActiveEval] = useState<any>(null);
   const [overrides, setOverrides] = useState<Record<string, string>>({});
+  const [overrideReasons, setOverrideReasons] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [approving, setApproving] = useState(false);
@@ -147,11 +148,8 @@ export default function EvaluateExamPage() {
       }
       setActiveEval(row);
       setEvaluations((evs) => [row, ...evs.filter((e: any) => e.id !== row.id)]);
-      const ov: Record<string, string> = {};
-      Object.entries(row.ai_suggestions || {}).forEach(([qno, s]: [string, any]) => {
-        ov[qno] = String(s.marks_suggested);
-      });
-      setOverrides(ov);
+      setOverrides(buildOverrideMarks(row));
+      setOverrideReasons(buildOverrideReasons(row));
     } catch (e) {
       setError(getApiErrorMessage(e, "Evaluation failed"));
     } finally {
@@ -161,21 +159,36 @@ export default function EvaluateExamPage() {
 
   async function approveEvaluation() {
     if (!activeEval) return;
-    setApproving(true);
     setError("");
-    try {
-      const teacher_overrides: Record<string, { marks: number; reason?: string }> = {};
-      Object.entries(overrides).forEach(([qno, marks]) => {
-        const suggested = activeEval.ai_suggestions?.[qno]?.marks_suggested;
-        if (Number(marks) !== Number(suggested)) {
-          teacher_overrides[qno] = { marks: Number(marks), reason: "Teacher adjustment" };
+    const teacher_overrides: Record<string, { marks: number; reason?: string }> = {};
+    const missingReasons: string[] = [];
+
+    Object.entries(overrides).forEach(([qno, marks]) => {
+      const suggested = activeEval.ai_suggestions?.[qno]?.marks_suggested;
+      if (hasChangedMarks(suggested, marks)) {
+        const reason = (overrideReasons[qno] || "").trim();
+        if (!reason) {
+          missingReasons.push(qno);
+          return;
         }
-      });
+        teacher_overrides[qno] = { marks: Number(marks), reason };
+      }
+    });
+
+    if (missingReasons.length > 0) {
+      setError(`Add a reason for each changed mark before approving: ${formatQuestionList(missingReasons)}.`);
+      return;
+    }
+
+    setApproving(true);
+    try {
       const res = await api(`/api/v1/exams/evaluations/${activeEval.id}/approve`, {
         method: "POST",
         body: JSON.stringify({ teacher_overrides }),
       });
       setActiveEval(res.data);
+      setOverrides(buildOverrideMarks(res.data));
+      setOverrideReasons(buildOverrideReasons(res.data));
       setEvaluations((evs) => evs.map((e) => (e.id === res.data.id ? res.data : e)));
       alert("Marks approved. Weak topics updated in mastery; misconceptions saved to library.");
     } catch (e) {
@@ -188,12 +201,8 @@ export default function EvaluateExamPage() {
   function loadEval(ev: any) {
     setActiveEval(ev);
     setSelectedStudent(ev.student_id);
-    const ov: Record<string, string> = {};
-    Object.entries(ev.ai_suggestions || {}).forEach(([qno, s]: [string, any]) => {
-      const override = ev.teacher_overrides?.[qno]?.marks;
-      ov[qno] = String(override ?? s.marks_suggested);
-    });
-    setOverrides(ov);
+    setOverrides(buildOverrideMarks(ev));
+    setOverrideReasons(buildOverrideReasons(ev));
   }
 
   const studentName = (id: string) =>
@@ -344,6 +353,13 @@ export default function EvaluateExamPage() {
                 <tbody>
                   {Object.entries(activeEval.ai_suggestions || {}).map(([qno, raw]: [string, any]) => {
                     const s = raw as EvalSuggestion;
+                    const finalMarks = overrides[qno] ?? String(s.marks_suggested);
+                    const finalMarksChanged = hasChangedMarks(s.marks_suggested, finalMarks);
+                    const savedReason = savedOverrideReason(activeEval, qno);
+                    const savedOverrideChanged =
+                      activeEval.status === "approved" &&
+                      hasSavedOverride(activeEval, qno) &&
+                      hasChangedMarks(s.marks_suggested, activeEval.teacher_overrides?.[qno]?.marks);
                     return (
                     <tr key={qno}>
                       <td>{qno}</td>
@@ -356,16 +372,43 @@ export default function EvaluateExamPage() {
                         )}
                       </td>
                       <td>
-                        <input
-                          type="number"
-                          min={0}
-                          max={s.max_marks}
-                          step={0.5}
-                          value={overrides[qno] ?? String(s.marks_suggested)}
-                          onChange={(e) => setOverrides({ ...overrides, [qno]: e.target.value })}
-                          style={{ width: 72 }}
-                          disabled={activeEval.status === "approved"}
-                        />
+                        <div style={{ display: "grid", gap: 6, minWidth: 160 }}>
+                          <input
+                            type="number"
+                            min={0}
+                            max={s.max_marks}
+                            step={0.5}
+                            value={finalMarks}
+                            onChange={(e) => setOverrides({ ...overrides, [qno]: e.target.value })}
+                            style={{ width: 72 }}
+                            disabled={activeEval.status === "approved"}
+                          />
+                          {activeEval.status !== "approved" && finalMarksChanged && (
+                            <label style={{ display: "grid", gap: 4, fontSize: 12, color: "var(--text-muted)" }}>
+                              <span>Reason for change</span>
+                              <textarea
+                                className="form-input"
+                                value={overrideReasons[qno] || ""}
+                                onChange={(e) =>
+                                  setOverrideReasons({
+                                    ...overrideReasons,
+                                    [qno]: clampText(e.target.value, OVERRIDE_REASON_MAX_LENGTH),
+                                  })
+                                }
+                                maxLength={OVERRIDE_REASON_MAX_LENGTH}
+                                placeholder="Example: Accepted alternate method"
+                                rows={2}
+                                style={{ width: "100%", resize: "vertical" }}
+                              />
+                            </label>
+                          )}
+                          {savedOverrideChanged && (
+                            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                              <strong style={{ color: "var(--text-primary)" }}>Override reason:</strong>{" "}
+                              {savedReason || "Reason not recorded."}
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td style={{ fontSize: 13, maxWidth: 420 }}>
                         {s.feedback}
@@ -535,6 +578,7 @@ function shortId(value: string) {
 }
 
 const btn: React.CSSProperties = { width: "auto", padding: "8px 18px", borderRadius: "var(--radius-full)", fontSize: 13 };
+const OVERRIDE_REASON_MAX_LENGTH = 240;
 
 type EvalSuggestion = AeiSuggestionLike & {
   marks_suggested: number;
@@ -551,6 +595,47 @@ type EvalSuggestion = AeiSuggestionLike & {
   }>;
   missing_concepts?: string[];
 };
+
+type EvaluationWithOverrides = {
+  ai_suggestions?: Record<string, { marks_suggested?: unknown }>;
+  teacher_overrides?: Record<string, { marks?: unknown; reason?: unknown }>;
+};
+
+function buildOverrideMarks(evaluation: EvaluationWithOverrides | null | undefined): Record<string, string> {
+  const marks: Record<string, string> = {};
+  Object.entries(evaluation?.ai_suggestions || {}).forEach(([qno, raw]) => {
+    const override = evaluation?.teacher_overrides?.[qno]?.marks;
+    marks[qno] = String(override ?? raw.marks_suggested);
+  });
+  return marks;
+}
+
+function buildOverrideReasons(evaluation: EvaluationWithOverrides | null | undefined): Record<string, string> {
+  const reasons: Record<string, string> = {};
+  Object.entries(evaluation?.teacher_overrides || {}).forEach(([qno, override]) => {
+    if (typeof override?.reason === "string") {
+      reasons[qno] = override.reason;
+    }
+  });
+  return reasons;
+}
+
+function hasChangedMarks(suggested: unknown, finalMarks: unknown): boolean {
+  return Number(finalMarks) !== Number(suggested);
+}
+
+function hasSavedOverride(evaluation: EvaluationWithOverrides | null | undefined, qno: string): boolean {
+  return Boolean(evaluation?.teacher_overrides && Object.prototype.hasOwnProperty.call(evaluation.teacher_overrides, qno));
+}
+
+function savedOverrideReason(evaluation: EvaluationWithOverrides | null | undefined, qno: string): string {
+  const reason = evaluation?.teacher_overrides?.[qno]?.reason;
+  return typeof reason === "string" ? reason.trim() : "";
+}
+
+function formatQuestionList(qnos: string[]): string {
+  return qnos.map((qno) => `Q${qno}`).join(", ");
+}
 
 function methodLabel(method?: string): string {
   switch (method) {
