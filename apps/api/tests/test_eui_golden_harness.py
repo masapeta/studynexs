@@ -9,6 +9,10 @@ from pathlib import Path
 import pytest
 
 from app.modules.eui.schemas.educational_context import EducationalContextReference
+from app.modules.eui.schemas.educational_graph import (
+    EducationalGraphReference,
+    EducationalGraphRelationshipReference,
+)
 from app.modules.eui.schemas.educational_identity import (
     EducationalIdentity,
     EducationalIdentityProvenance,
@@ -16,6 +20,9 @@ from app.modules.eui.schemas.educational_identity import (
 from app.modules.eui.schemas.knowledge_acquisition import KnowledgeAcquisitionInputReference
 from app.modules.eui.schemas.platform_capability import PlatformCapabilityLookupRequest
 from app.modules.eui.services.educational_context_resolver import EducationalContextResolver
+from app.modules.eui.services.educational_graph_resolver import (
+    EducationalGraphProposalResolver,
+)
 from app.modules.eui.services.educational_identity_id import stable_identity_id
 from app.modules.eui.services.knowledge_acquisition_builder import (
     KnowledgeAcquisitionCandidateBuilder,
@@ -120,6 +127,61 @@ def test_eui_kai_golden_harness_cases_are_deterministic():
         assert candidate.capability_mode == expected["capability_mode"], case["id"]
         assert candidate.capability_matched is expected["capability_matched"], case["id"]
         assert candidate.authoritative is False, case["id"]
+
+
+def test_eui_ekg_golden_harness_cases_are_deterministic():
+    payload = json.loads(
+        (GOLDEN_DIR / "ekg_relationship_proposal_cases.json").read_text(encoding="utf-8")
+    )
+
+    assert payload["version"] == "eui-ekg-proposal-golden-v1"
+    assert payload["authorization"] == "EUI-PH5-EKG-AUTH-001"
+    case_ids = [case["id"] for case in payload["cases"]]
+    assert len(case_ids) == len(set(case_ids))
+
+    tenant_id = uuid.UUID(payload["tenant_id"])
+    resolver = EducationalGraphProposalResolver()
+    kai_builder = KnowledgeAcquisitionCandidateBuilder()
+    proposal_ids: set[str] = set()
+    for case in payload["cases"]:
+        reference_payload = case["reference"]
+        candidate = None
+        if "kai_candidate_input" in reference_payload:
+            candidate = kai_builder.build(
+                KnowledgeAcquisitionInputReference(
+                    tenant_id=tenant_id,
+                    **reference_payload["kai_candidate_input"],
+                )
+            )
+        reference = EducationalGraphRelationshipReference(
+            tenant_id=tenant_id,
+            educational_identity=_identity_from_case(
+                tenant_id,
+                reference_payload.get("identity"),
+            ),
+            educational_identity_id=reference_payload.get("educational_identity_id"),
+            kai_candidate=candidate,
+            candidate_target_references=tuple(
+                EducationalGraphReference(**target)
+                for target in reference_payload.get("candidate_target_references", ())
+            ),
+        )
+        proposal = resolver.propose(reference)
+        proposal_again = resolver.propose(reference)
+        expected = case["expected"]
+
+        assert proposal.id == proposal_again.id, case["id"]
+        proposal_ids.add(proposal.id)
+        assert proposal.relationship_category == expected["relationship_category"], case["id"]
+        assert proposal.status == expected["status"], case["id"]
+        assert proposal.authority_posture == expected["authority_posture"], case["id"]
+        assert proposal.to_reference.reference_type == expected["to_reference_type"], case["id"]
+        assert proposal.to_reference.id == expected.get("to_reference_id"), case["id"]
+        assert proposal.to_reference.node_type == expected.get("to_node_type"), case["id"]
+        assert len(proposal.ambiguities) == expected["ambiguity_count"], case["id"]
+        assert proposal.authoritative is False, case["id"]
+
+    assert len(proposal_ids) == len(payload["cases"])
 
 
 def _identity_from_case(

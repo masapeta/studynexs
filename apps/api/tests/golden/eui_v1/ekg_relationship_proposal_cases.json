@@ -1,0 +1,144 @@
+{
+  "version": "eui-ekg-proposal-golden-v1",
+  "authorization": "EUI-PH5-EKG-AUTH-001",
+  "tenant_id": "11111111-1111-4111-8111-111111111111",
+  "cases": [
+    {
+      "id": "ekg_identity_existing_concept_001",
+      "reference": {
+        "identity": {
+          "id": "ei://cbse/ncf2023/2024/g6/science/ch05/concept08",
+          "board": "CBSE",
+          "curriculum": "NCF2023",
+          "curriculum_version": "2024",
+          "grade": "6",
+          "subject": "Science",
+          "chapter": "Motion and Measurement of Distances",
+          "topic": "Standard Units",
+          "concepts": ["SI Units"],
+          "metadata": {
+            "concept_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+          }
+        }
+      },
+      "expected": {
+        "relationship_category": "identity_link",
+        "status": "proposed",
+        "authority_posture": "candidate",
+        "to_reference_type": "kg_node",
+        "to_node_type": "concept",
+        "to_reference_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "ambiguity_count": 0
+      }
+    },
+    {
+      "id": "ekg_kai_candidate_to_identity_001",
+      "reference": {
+        "kai_candidate_input": {
+          "source_type": "pdf",
+          "artifact_type": "worksheet",
+          "supplied_extracted_text": "Motion worksheet question text",
+          "educational_identity_id": "ei://cbse/ncf2023/g6/science/ch05",
+          "educational_context_summary": {
+            "board": "CBSE",
+            "grade": "6",
+            "subject": "Science"
+          }
+        }
+      },
+      "expected": {
+        "relationship_category": "candidate_evidence",
+        "status": "proposed",
+        "authority_posture": "candidate",
+        "to_reference_type": "educational_identity",
+        "to_reference_id": "ei://cbse/ncf2023/g6/science/ch05",
+        "ambiguity_count": 0
+      }
+    },
+    {
+      "id": "ekg_ambiguous_targets_001",
+      "reference": {
+        "educational_identity_id": "ei://cbse/ncf2023/g6/science/ch05",
+        "candidate_target_references": [
+          {
+            "reference_type": "kg_node",
+            "id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+            "node_type": "concept",
+            "label": "Standard Units"
+          },
+          {
+            "reference_type": "kg_node",
+            "id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+            "node_type": "concept",
+            "label": "SI Units"
+          }
+        ]
+      },
+      "expected": {
+        "relationship_category": "identity_link",
+        "status": "ambiguous",
+        "authority_posture": "ambiguous",
+        "to_reference_type": "unknown",
+        "ambiguity_count": 1
+      }
+    },
+    {
+      "id": "ekg_missing_graph_target_001",
+      "reference": {
+        "educational_identity_id": "ei://cbse/ncf2023/g6/science/ch05"
+      },
+      "expected": {
+        "relationship_category": "identity_link",
+        "status": "missing_target",
+        "authority_posture": "needs_review",
+        "to_reference_type": "unknown",
+        "ambiguity_count": 1
+      }
+    },
+    {
+      "id": "ekg_unsupported_kai_candidate_001",
+      "reference": {
+        "kai_candidate_input": {
+          "source_type": "image",
+          "artifact_type": "diagram",
+          "supplied_extracted_text": "untrusted image content"
+        }
+      },
+      "expected": {
+        "relationship_category": "candidate_evidence",
+        "status": "unsupported",
+        "authority_posture": "unsupported",
+        "to_reference_type": "unknown",
+        "ambiguity_count": 0
+      }
+    },
+    {
+      "id": "ekg_cross_board_similar_chapter_001",
+      "reference": {
+        "identity": {
+          "id": "ei://icse/2024/g6/science/ch05/concept08",
+          "board": "ICSE",
+          "curriculum": "ICSE",
+          "curriculum_version": "2024",
+          "grade": "6",
+          "subject": "Science",
+          "chapter": "Motion and Measurement of Distances",
+          "topic": "Standard Units",
+          "concepts": ["SI Units"],
+          "metadata": {
+            "concept_id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd"
+          }
+        }
+      },
+      "expected": {
+        "relationship_category": "identity_link",
+        "status": "proposed",
+        "authority_posture": "candidate",
+        "to_reference_type": "kg_node",
+        "to_node_type": "concept",
+        "to_reference_id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+        "ambiguity_count": 0
+      }
+    }
+  ]
+}

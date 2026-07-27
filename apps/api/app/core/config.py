@@ -246,6 +246,10 @@ class Settings(BaseSettings):
     # Passive Knowledge Acquisition Intelligence candidate generation only;
     # disabled by default and user-invisible.
     EUI_KAI_PASSIVE_ENABLED: bool = False
+    # Educational Understanding Intelligence (EUI) Phase 5.
+    # Passive Educational Knowledge Graph relationship proposal only; disabled
+    # by default and user-invisible.
+    EUI_EKG_EXPANSION_ENABLED: bool = False
 
     # ── Derived Properties ───────────────────────────────────────
     @property
