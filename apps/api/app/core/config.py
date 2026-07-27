@@ -242,6 +242,10 @@ class Settings(BaseSettings):
     # Educational Understanding Intelligence (EUI) Phase 1 Sprint 3.
     # Passive Platform Capability Registry lookup only; disabled by default and internal.
     EUI_PLATFORM_CAPABILITY_REGISTRY_ENABLED: bool = False
+    # Educational Understanding Intelligence (EUI) Phase 4.
+    # Passive Knowledge Acquisition Intelligence candidate generation only;
+    # disabled by default and user-invisible.
+    EUI_KAI_PASSIVE_ENABLED: bool = False
 
     # ── Derived Properties ───────────────────────────────────────
     @property

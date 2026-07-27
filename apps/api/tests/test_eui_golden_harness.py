@@ -1,4 +1,4 @@
-"""EUI Golden Harness — Educational Identity deterministic ID cases."""
+"""EUI Golden Harness - Educational Identity deterministic ID cases."""
 
 from __future__ import annotations
 
@@ -13,9 +13,13 @@ from app.modules.eui.schemas.educational_identity import (
     EducationalIdentity,
     EducationalIdentityProvenance,
 )
+from app.modules.eui.schemas.knowledge_acquisition import KnowledgeAcquisitionInputReference
 from app.modules.eui.schemas.platform_capability import PlatformCapabilityLookupRequest
 from app.modules.eui.services.educational_context_resolver import EducationalContextResolver
 from app.modules.eui.services.educational_identity_id import stable_identity_id
+from app.modules.eui.services.knowledge_acquisition_builder import (
+    KnowledgeAcquisitionCandidateBuilder,
+)
 from app.modules.eui.services.platform_capability_lookup import PlatformCapabilityLookupService
 
 GOLDEN_DIR = Path(__file__).parent / "golden" / "eui_v1"
@@ -89,6 +93,33 @@ def test_eui_platform_capability_golden_harness_cases_are_deterministic():
         assert result.mode == expected["mode"], case["id"]
         assert result.matched is expected["matched"], case["id"]
         assert result.conflict is expected["conflict"], case["id"]
+
+
+def test_eui_kai_golden_harness_cases_are_deterministic():
+    payload = json.loads((GOLDEN_DIR / "kai_candidate_cases.json").read_text(encoding="utf-8"))
+
+    assert payload["version"] == "eui-kai-candidate-golden-v1"
+    assert payload["authorization"] == "EUI-PH4-KAI-AUTH-001"
+    case_ids = [case["id"] for case in payload["cases"]]
+    assert len(case_ids) == len(set(case_ids))
+
+    tenant_id = uuid.UUID(payload["tenant_id"])
+    builder = KnowledgeAcquisitionCandidateBuilder()
+    for case in payload["cases"]:
+        candidate = builder.build(
+            KnowledgeAcquisitionInputReference(
+                tenant_id=tenant_id,
+                **case["input"],
+            )
+        )
+        expected = case["expected"]
+
+        assert candidate.source_admission_status == expected["source_admission_status"], case["id"]
+        assert candidate.extraction_status == expected["extraction_status"], case["id"]
+        assert candidate.review_status == expected["review_status"], case["id"]
+        assert candidate.capability_mode == expected["capability_mode"], case["id"]
+        assert candidate.capability_matched is expected["capability_matched"], case["id"]
+        assert candidate.authoritative is False, case["id"]
 
 
 def _identity_from_case(

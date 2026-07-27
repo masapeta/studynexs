@@ -1,0 +1,175 @@
+{
+  "version": "eui-kai-candidate-golden-v1",
+  "authorization": "EUI-PH4-KAI-AUTH-001",
+  "tenant_id": "11111111-1111-4111-8111-111111111111",
+  "cases": [
+    {
+      "id": "kai_pdf_worksheet_candidate_001",
+      "input": {
+        "source_type": "pdf",
+        "artifact_type": "worksheet",
+        "source_reference": "worksheet-motion.pdf",
+        "supplied_extracted_text": "Motion worksheet question text",
+        "educational_identity_id": "ei://cbse/ncf2023/g6/science/ch05",
+        "educational_context_summary": {
+          "board": "CBSE",
+          "curriculum": "NCF2023",
+          "grade": "6",
+          "subject": "Science"
+        }
+      },
+      "expected": {
+        "source_admission_status": "admitted",
+        "extraction_status": "supplied",
+        "review_status": "candidate",
+        "capability_mode": null,
+        "capability_matched": false
+      }
+    },
+    {
+      "id": "kai_ocr_hindi_printed_supported_001",
+      "input": {
+        "source_type": "ocr_text",
+        "artifact_type": "worksheet",
+        "supplied_extracted_text": "स्पष्ट मुद्रित पाठ",
+        "detected_language": "Hindi",
+        "detected_script": "Devanagari",
+        "educational_identity_id": "ei://cbse/ncf2023/g6/hindi/ch01",
+        "educational_context_summary": {
+          "language": "Hindi"
+        },
+        "capability_domain": "language",
+        "capability_key": "printed_ocr",
+        "metadata": {
+          "capability_input_type": "printed_text"
+        }
+      },
+      "expected": {
+        "source_admission_status": "admitted",
+        "extraction_status": "supplied",
+        "review_status": "candidate",
+        "capability_mode": "supported",
+        "capability_matched": true
+      }
+    },
+    {
+      "id": "kai_handwriting_hindi_assist_001",
+      "input": {
+        "source_type": "ocr_text",
+        "artifact_type": "worksheet",
+        "supplied_extracted_text": "हस्तलिखित पाठ",
+        "detected_language": "Hindi",
+        "detected_script": "Devanagari",
+        "educational_identity_id": "ei://cbse/ncf2023/g6/hindi/ch01",
+        "educational_context_summary": {
+          "language": "Hindi"
+        },
+        "capability_domain": "language",
+        "capability_key": "handwriting_ocr",
+        "metadata": {
+          "capability_input_type": "handwriting"
+        }
+      },
+      "expected": {
+        "source_admission_status": "admitted",
+        "extraction_status": "supplied",
+        "review_status": "needs_review",
+        "capability_mode": "assist",
+        "capability_matched": true
+      }
+    },
+    {
+      "id": "kai_answer_key_candidate_001",
+      "input": {
+        "source_type": "answer_key",
+        "artifact_type": "answer_key",
+        "supplied_extracted_text": "1. Standard unit is metre.",
+        "educational_identity_id": "ei://cbse/ncf2023/g6/science/ch05",
+        "educational_context_summary": {
+          "board": "CBSE",
+          "grade": "6",
+          "subject": "Science"
+        }
+      },
+      "expected": {
+        "source_admission_status": "admitted",
+        "extraction_status": "supplied",
+        "review_status": "candidate",
+        "capability_mode": null,
+        "capability_matched": false
+      }
+    },
+    {
+      "id": "kai_teacher_note_ambiguous_001",
+      "input": {
+        "source_type": "teacher_note",
+        "artifact_type": "note",
+        "supplied_extracted_text": "Use local examples tomorrow."
+      },
+      "expected": {
+        "source_admission_status": "admitted",
+        "extraction_status": "supplied",
+        "review_status": "ambiguous",
+        "capability_mode": null,
+        "capability_matched": false
+      }
+    },
+    {
+      "id": "kai_lesson_plan_candidate_001",
+      "input": {
+        "source_type": "lesson_plan",
+        "artifact_type": "lesson_plan",
+        "supplied_extracted_text": "Activity: measure classroom objects.",
+        "educational_identity_id": "ei://cbse/ncf2023/g6/science/ch05",
+        "educational_context_summary": {
+          "board": "CBSE",
+          "grade": "6",
+          "subject": "Science"
+        }
+      },
+      "expected": {
+        "source_admission_status": "admitted",
+        "extraction_status": "supplied",
+        "review_status": "candidate",
+        "capability_mode": null,
+        "capability_matched": false
+      }
+    },
+    {
+      "id": "kai_unsupported_image_source_001",
+      "input": {
+        "source_type": "image",
+        "artifact_type": "diagram",
+        "supplied_extracted_text": "untrusted image content"
+      },
+      "expected": {
+        "source_admission_status": "unsupported",
+        "extraction_status": "unsupported",
+        "review_status": "unsupported",
+        "capability_mode": null,
+        "capability_matched": false
+      }
+    },
+    {
+      "id": "kai_student_work_not_admitted_001",
+      "input": {
+        "source_type": "student_work",
+        "artifact_type": "answer_sheet",
+        "supplied_extracted_text": "student answer text",
+        "educational_identity_id": "ei://cbse/ncf2023/g6/science/ch05",
+        "educational_context_summary": {
+          "board": "CBSE",
+          "grade": "6",
+          "subject": "Science"
+        }
+      },
+      "expected": {
+        "source_admission_status": "needs_review",
+        "extraction_status": "partial",
+        "review_status": "needs_review",
+        "capability_mode": null,
+        "capability_matched": false
+      }
+    }
+  ]
+}

@@ -4,12 +4,13 @@
 - **Phase:** Phase 4 - Knowledge Acquisition Intelligence
 - **Roadmap mapping:** Knowledge Acquisition Intelligence runtime phase
 - **Classification:** Design brief
-- **Status:** Draft for ARM review
+- **Status:** Accepted
 - **Implementation:** Not authorized
 - **Date:** 2026-07-27
 - **Architecture baseline:** [`../../../architecture/eui/KNOWLEDGE_ACQUISITION_INTELLIGENCE.md`](../../../architecture/eui/KNOWLEDGE_ACQUISITION_INTELLIGENCE.md)
 - **Runtime roadmap baseline:** [`../EUI_RUNTIME_IMPLEMENTATION_ROADMAP.md`](../EUI_RUNTIME_IMPLEMENTATION_ROADMAP.md)
 - **Depends on:** Phase 1 - Educational Identity; Phase 2 - Educational Context Engine; Phase 3 - Platform Capability Registry
+- **ARM review:** Accepted with source-admission and provider-boundary clarifications incorporated
 
 ---
 
@@ -251,9 +252,44 @@ handwriting styles, languages, scans, or degraded images.
 Unsupported or low-confidence inputs should resolve to candidate-only,
 manual-review, or unsupported posture.
 
+### Source admission boundary
+
+Not every educational input is safe to acquire in the first KAI runtime
+implementation.
+
+The initial implementation authorization should explicitly define which source
+types are admitted. Inputs outside that source list must resolve to
+`unsupported` or `needs_review`, not silently enter the acquisition pipeline.
+
+Student work is especially sensitive. Although KAI architecture eventually
+includes student work as an input channel, the first implementation should not
+ingest student work unless the implementation contract explicitly authorizes it
+with tenant isolation, PII minimization, retention, and review safeguards.
+
 ---
 
-## 9. Capability Registry interaction
+## 9. Provider boundary
+
+KAI is a governance and candidate-contract layer before it is an extraction
+provider layer.
+
+The first implementation should not introduce new OCR, LLM, ASR, layout parser,
+or external AI-provider integrations unless the implementation authorization
+contract explicitly permits them.
+
+Allowed early approaches may include:
+
+- manually supplied extracted text;
+- deterministic metadata classification;
+- stubbed extraction evidence for Golden Harness cases;
+- read-only references to already-existing artifact metadata.
+
+This keeps Phase 4 focused on safe candidate posture rather than provider
+quality claims.
+
+---
+
+## 10. Capability Registry interaction
 
 KAI should use the Platform Capability Registry to describe acquisition posture.
 
@@ -276,7 +312,7 @@ If the registry has no matching entry, KAI must not assume support.
 
 ---
 
-## 10. Review posture
+## 11. Review posture
 
 KAI candidate outputs should support a small review posture model.
 
@@ -296,13 +332,15 @@ authority.
 
 ---
 
-## 11. Explicit non-goals
+## 12. Explicit non-goals
 
 Phase 4 is deliberately not attempting to:
 
 - implement full OCR;
+- integrate a new OCR provider;
 - implement handwriting OCR quality improvements;
 - implement LLM-based understanding;
+- integrate ASR or voice transcription;
 - implement KAI persistence;
 - implement EKG writes;
 - update CurriculumPacks;
@@ -322,7 +360,7 @@ feature rollout.
 
 ---
 
-## 12. Runtime posture
+## 13. Runtime posture
 
 If later authorized, the first KAI implementation should be:
 
@@ -341,7 +379,7 @@ unless a later authorization explicitly permits it.
 
 ---
 
-## 13. Feature flag strategy
+## 14. Feature flag strategy
 
 If passive KAI runtime observation is implemented later, expected flag:
 
@@ -363,7 +401,7 @@ authorization contract.
 
 ---
 
-## 14. Observability
+## 15. Observability
 
 KAI observability should be operational, not product analytics.
 
@@ -401,7 +439,7 @@ Logs and metrics must not include:
 
 ---
 
-## 15. Testing strategy
+## 16. Testing strategy
 
 Future implementation should include focused tests and Golden Harness cases.
 
@@ -431,6 +469,7 @@ Golden cases should cover:
 - unsupported image/diagram posture;
 - ambiguous worksheet extraction;
 - missing identity/context fallback.
+- source-admission rejection for unauthorized input types.
 
 ### Regression verification
 
@@ -446,12 +485,13 @@ Before certification, validation should demonstrate:
 
 ---
 
-## 16. Certification criteria
+## 17. Certification criteria
 
 Phase 4 should be accepted only if certification can truthfully state:
 
 - KAI candidate contracts exist as authorized;
 - KAI outputs candidates, not authoritative knowledge;
+- source admission boundaries are enforced;
 - provenance and trust signals remain separate;
 - unsupported and low-confidence inputs are handled safely;
 - capability posture is not upgraded;
@@ -459,6 +499,8 @@ Phase 4 should be accepted only if certification can truthfully state:
 - no consumer depends on KAI output;
 - no schema/API/UI changes were introduced unless separately authorized;
 - no AEI behavior changed;
+- no new OCR/LLM/ASR provider integration was introduced unless separately
+  authorized;
 - Golden Harness KAI cases pass;
 - observability evidence exists if passive runtime is introduced;
 - rollback is verified;
@@ -467,7 +509,7 @@ Phase 4 should be accepted only if certification can truthfully state:
 
 ---
 
-## 17. Relationship to later phases
+## 18. Relationship to later phases
 
 KAI prepares for later phases but does not perform them.
 
@@ -481,9 +523,9 @@ KAI prepares for later phases but does not perform them.
 
 ---
 
-## 18. ARM review gate
+## 19. ARM review gate
 
-This design brief is a review artifact only.
+This design brief has been accepted by ARM as the Phase 4 KAI design baseline.
 
 It does not authorize:
 
