@@ -25,6 +25,9 @@ from app.modules.eui.schemas.educational_identity import (
 )
 from app.modules.eui.schemas.knowledge_acquisition import KnowledgeAcquisitionInputReference
 from app.modules.eui.schemas.platform_capability import PlatformCapabilityLookupRequest
+from app.modules.eui.services.aei_consumer_migration import (
+    AEIConsumerMigrationAdapter,
+)
 from app.modules.eui.services.educational_context_resolver import EducationalContextResolver
 from app.modules.eui.services.educational_graph_resolver import (
     EducationalGraphProposalResolver,
@@ -243,6 +246,50 @@ def test_eui_trust_report_golden_harness_cases_are_deterministic():
     assert len(report_ids) == len(payload["cases"])
 
 
+def test_eui_aei_consumer_migration_golden_harness_cases_are_deterministic():
+    payload = json.loads(
+        (GOLDEN_DIR / "aei_consumer_migration_cases.json").read_text(encoding="utf-8")
+    )
+
+    assert payload["version"] == "eui-aei-consumer-migration-golden-v1"
+    assert payload["authorization"] == "EUI-PH7A-AEI-DUAL-READ-AUTH-001"
+    case_ids = [case["id"] for case in payload["cases"]]
+    assert len(case_ids) == len(set(case_ids))
+
+    tenant_id = uuid.UUID(payload["tenant_id"])
+    adapter = AEIConsumerMigrationAdapter()
+    comparison_ids: set[str] = set()
+    for case in payload["cases"]:
+        comparison = adapter.build_comparison(
+            tenant_id=tenant_id,
+            subject_type=case["subject_type"],
+            subject_ref=case["subject_ref"],
+            legacy_summary=case["legacy_summary"],
+            eui_summary=case["eui_summary"],
+        )
+        comparison_again = adapter.build_comparison(
+            tenant_id=tenant_id,
+            subject_type=case["subject_type"],
+            subject_ref=case["subject_ref"],
+            legacy_summary=case["legacy_summary"],
+            eui_summary=case["eui_summary"],
+        )
+        expected = case["expected"]
+
+        assert comparison.id == comparison_again.id, case["id"]
+        assert comparison.id.startswith("eui-aei-migration://"), case["id"]
+        comparison_ids.add(comparison.id)
+        assert sorted(comparison.difference_types) == sorted(
+            expected["difference_types"]
+        ), case["id"]
+        assert comparison.has_blockers is expected["has_blockers"], case["id"]
+        assert _migration_capture_status(comparison) == expected["status"], case["id"]
+        assert comparison.authoritative is False, case["id"]
+        assert comparison.source_switch_active is False, case["id"]
+
+    assert len(comparison_ids) == len(payload["cases"])
+
+
 def _trust_report_from_case(
     case: dict,
     *,
@@ -279,6 +326,14 @@ def _trust_report_from_case(
         )
         return trust_builder.build_for_ekg_proposal(proposal)
     raise AssertionError(f"Unknown Trust Report golden kind: {kind}")
+
+
+def _migration_capture_status(comparison) -> str:  # noqa: ANN001
+    if any(difference.difference_type == "unsafe" for difference in comparison.differences):
+        return "unsafe_difference"
+    if comparison.difference_types != ("equivalent",):
+        return "diverged"
+    return "completed"
 
 
 def _educational_context_from_case(

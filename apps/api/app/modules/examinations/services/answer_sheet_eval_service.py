@@ -31,6 +31,11 @@ from app.modules.ai.services.ai_credits import (
 from app.modules.ai.services.assessment_grounding import ground_for_evaluation, resolve_citations
 from app.modules.ai.services.evaluation_engine import SubjectiveItem, evaluate_subjective
 from app.modules.ai.services.question_bank_service import fetch_rubrics_for_paper
+from app.modules.eui.services.aei_consumer_migration import (
+    observe_aei_consumer_migration,
+    summarize_aei_passive_capture,
+    summarize_legacy_evaluation,
+)
 from app.modules.examinations.schemas.evaluation import EvaluationApprove
 from app.modules.examinations.schemas.exam import MarkEntry
 from app.modules.examinations.services.aei_passive_integration import (
@@ -271,10 +276,11 @@ class AnswerSheetEvalService:
                 school_id=row.school_id,
                 student_answers=answers,
             )
-            await observe_answer_sheet_evaluation(
+            passive_capture = await observe_answer_sheet_evaluation(
                 enabled=(
                     settings.AEI_PASSIVE_INTEGRATION_ENABLED
                     or settings.AEI_SHADOW_MODE_ENABLED
+                    or settings.EUI_CONSUMER_AEI_DUAL_READ_ENABLED
                 ),
                 shadow_enabled=settings.AEI_SHADOW_MODE_ENABLED,
                 db=self.db,
@@ -284,6 +290,15 @@ class AnswerSheetEvalService:
                 student_id=row.student_id,
                 student_answers=answers,
                 suggestions=suggestions,
+            )
+            observe_aei_consumer_migration(
+                enabled=settings.EUI_CONSUMER_AEI_DUAL_READ_ENABLED,
+                tenant_id=row.school_id,
+                subject_type="answer_sheet_evaluation",
+                subject_ref=f"answer_sheet_evaluation:{row.id}",
+                legacy_summary=summarize_legacy_evaluation(suggestions),
+                eui_summary=summarize_aei_passive_capture(passive_capture),
+                source_enabled=settings.EUI_CONSUMER_AEI_SOURCE_ENABLED,
             )
             row.ai_suggestions = suggestions
             row.correction_summary = _build_summary(suggestions)

@@ -253,6 +253,11 @@ class Settings(BaseSettings):
     # Educational Understanding Intelligence (EUI) Phase 6.
     # Passive Trust Report generation only; disabled by default and user-invisible.
     EUI_TRUST_REPORT_ENABLED: bool = False
+    # Educational Understanding Intelligence (EUI) Phase 7A.
+    # Passive AEI consumer dual-read comparison only; disabled by default and
+    # internal. The source flag is intentionally inert in Phase 7A.
+    EUI_CONSUMER_AEI_DUAL_READ_ENABLED: bool = False
+    EUI_CONSUMER_AEI_SOURCE_ENABLED: bool = False
 
     # ── Derived Properties ───────────────────────────────────────
     @property
