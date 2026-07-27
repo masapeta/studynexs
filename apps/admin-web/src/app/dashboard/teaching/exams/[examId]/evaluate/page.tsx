@@ -8,6 +8,13 @@ import { AppSelect } from "@/components/ui/AppSelect";
 import { PageHeaderCard } from "@/components/layout/PageHeaderCard";
 import { AppFileInput } from "@/components/ui/AppFileInput";
 import { TEACHING } from "@/lib/dashboard-routes";
+import {
+  buildAeiEvaluationTrustSummary,
+  buildAeiEvidenceRows,
+  buildAeiSuggestionTrustBadges,
+  type AeiBadgeTone,
+  type AeiSuggestionLike,
+} from "@/lib/aei-evaluation-display";
 import { AI_INPUT, clampText, validateAnswerSheetFile } from "@/lib/ai-input-limits";
 
 async function uploadAnswerSheet(file: File): Promise<string> {
@@ -331,6 +338,7 @@ export default function EvaluateExamPage() {
                 </div>
               )}
               <EvaluationEvidenceStrip evaluation={activeEval} />
+              <AeiEvaluationTrustSummaryPanel suggestions={activeEval.ai_suggestions || {}} />
               <table className="data-table">
                 <thead><tr><th>Q</th><th>AI marks</th><th>Final marks</th><th>Feedback & rubric</th></tr></thead>
                 <tbody>
@@ -361,6 +369,7 @@ export default function EvaluateExamPage() {
                       </td>
                       <td style={{ fontSize: 13, maxWidth: 420 }}>
                         {s.feedback}
+                        <AeiSuggestionTrustMetadata suggestion={s} />
                         <RubricBreakdown suggestion={s} />
                       </td>
                     </tr>
@@ -381,6 +390,92 @@ export default function EvaluateExamPage() {
         </div>
       </div>
     </>
+  );
+}
+
+function AeiEvaluationTrustSummaryPanel({
+  suggestions,
+}: {
+  suggestions: Record<string, unknown>;
+}) {
+  const summary = buildAeiEvaluationTrustSummary(suggestions);
+  if (summary.totalQuestions === 0) return null;
+
+  const hasAei = summary.questionsWithAeiMetadata > 0;
+  return (
+    <div
+      style={{
+        display: "grid",
+        gap: 10,
+        padding: 12,
+        marginBottom: 16,
+        borderRadius: 12,
+        border: "1px solid var(--border)",
+        background: "rgba(92, 124, 250, 0.08)",
+        fontSize: 12,
+        color: "var(--text-muted)",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+        <strong style={{ color: "var(--text-primary)" }}>Teacher review guidance</strong>
+        <span>
+          AI suggestions are draft only. Final marks are published after teacher approval.
+        </span>
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <span style={trustChipStyle("neutral")}>{summary.totalQuestions} suggestion{summary.totalQuestions === 1 ? "" : "s"}</span>
+        {hasAei ? (
+          <>
+            <span style={trustChipStyle("success")}>{summary.deterministicSupported} supported</span>
+            <span style={trustChipStyle(summary.manualReviewRequired ? "warning" : "neutral")}>
+              {summary.manualReviewRequired} need teacher review
+            </span>
+            <span style={trustChipStyle(summary.lowConfidence ? "warning" : "neutral")}>
+              {summary.lowConfidence} low confidence
+            </span>
+            <span style={trustChipStyle(summary.assistOrChecklist ? "warning" : "neutral")}>
+              {summary.assistOrChecklist} assist/checklist
+            </span>
+            <span style={trustChipStyle("neutral")}>
+              {summary.questionsWithConfidence} with confidence
+            </span>
+          </>
+        ) : (
+          <span style={trustChipStyle("neutral")}>
+            Legacy suggestion format - review and approve before publishing
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AeiSuggestionTrustMetadata({ suggestion }: { suggestion: EvalSuggestion }) {
+  const badges = buildAeiSuggestionTrustBadges(suggestion);
+  const evidenceRows = buildAeiEvidenceRows(suggestion);
+  if (badges.length === 0 && evidenceRows.length === 0) return null;
+
+  return (
+    <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
+      {badges.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {badges.map((badge) => (
+            <span key={`${badge.label}:${badge.tone}`} style={trustChipStyle(badge.tone)} title={badge.title}>
+              {badge.label}
+            </span>
+          ))}
+        </div>
+      )}
+      {evidenceRows.length > 0 && (
+        <div style={{ display: "grid", gap: 3, color: "var(--text-muted)" }}>
+          {evidenceRows.map((row) => (
+            <div key={`${row.label}:${row.value}`}>
+              <strong style={{ color: "var(--text-primary)" }}>{row.label}:</strong> {row.value}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -441,7 +536,7 @@ function shortId(value: string) {
 
 const btn: React.CSSProperties = { width: "auto", padding: "8px 18px", borderRadius: "var(--radius-full)", fontSize: 13 };
 
-type EvalSuggestion = {
+type EvalSuggestion = AeiSuggestionLike & {
   marks_suggested: number;
   max_marks: number;
   feedback: string;
@@ -526,6 +621,35 @@ const metaChip: React.CSSProperties = {
   fontSize: 11,
   color: "var(--text-muted)",
 };
+
+function trustChipStyle(tone: AeiBadgeTone): React.CSSProperties {
+  const toneStyles: Record<AeiBadgeTone, React.CSSProperties> = {
+    neutral: {
+      color: "var(--text-muted)",
+      borderColor: "var(--border)",
+      background: "rgba(255, 255, 255, 0.02)",
+    },
+    success: {
+      color: "var(--success, #2f9e44)",
+      borderColor: "rgba(47, 158, 68, 0.45)",
+      background: "rgba(47, 158, 68, 0.08)",
+    },
+    warning: {
+      color: "var(--warning, #f59f00)",
+      borderColor: "rgba(245, 159, 0, 0.45)",
+      background: "rgba(245, 159, 0, 0.08)",
+    },
+    danger: {
+      color: "var(--danger, #e03131)",
+      borderColor: "rgba(224, 49, 49, 0.45)",
+      background: "rgba(224, 49, 49, 0.08)",
+    },
+  };
+  return {
+    ...metaChip,
+    ...toneStyles[tone],
+  };
+}
 
 const rubricTh: React.CSSProperties = {
   textAlign: "left",
