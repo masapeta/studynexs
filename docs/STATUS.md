@@ -56,7 +56,8 @@ canonical roadmap names are:
 | Phase 3 | Platform Capability Registry | Phase 1 Sprint 3 |
 | Phase 4 | Knowledge Acquisition Intelligence | Phase 4 KAI Candidate Foundation |
 | Phase 5 | Educational Knowledge Graph Expansion | Phase 5 EKG Proposal Foundation |
-| Phase 6 | Trust Framework | Next design gate |
+| Phase 6 | Trust Framework | Phase 6 Trust Report Foundation |
+| Phase 7 | Consumer Migration | Next design gate |
 
 ---
 
@@ -74,7 +75,8 @@ canonical roadmap names are:
 | Phase 3 - Platform Capability Registry | Complete / certified / published |
 | Phase 4 - Knowledge Acquisition Intelligence | Candidate foundation complete / certified / published |
 | Phase 5 - Educational Knowledge Graph Expansion | Proposal foundation complete / certified / published |
-| Phase 6 - Trust Framework | Design brief next / implementation not authorized |
+| Phase 6 - Trust Framework | Trust Report foundation complete / certified / published |
+| Phase 7 - Consumer Migration | Design brief next / implementation not authorized |
 | Runtime consumer migration | Not authorized |
 
 ---
@@ -88,6 +90,7 @@ canonical roadmap names are:
 | Phase 3 - Platform Capability Registry | Published / certified | `5f3babf007fcbaba7a8a33ec316e80b974d8df7b` | `eui-runtime-phase1-sprint3-platform-capability-registry-certified` | Phase 1 Sprint 3 |
 | Phase 4 - Knowledge Acquisition Intelligence | Published / certified | `165c796e9bac6a6fc29226ed186b79664d0d5b5c` | `eui-runtime-phase4-kai-candidate-foundation-certified` | Phase 4 KAI Candidate Foundation |
 | Phase 5 - Educational Knowledge Graph Expansion | Published / certified | `91a84f5fce1bb0acf4a5231593b0e1715e1baef8` | `eui-runtime-phase5-ekg-proposal-foundation-certified` | Phase 5 EKG Proposal Foundation |
+| Phase 6 - Trust Framework | Published / certified | `0a5a5dd0a8b7054ede5d86f7b610328505b195f5` | `eui-runtime-phase6-trust-report-foundation-certified` | Phase 6 Trust Report Foundation |
 
 ---
 
@@ -96,13 +99,14 @@ canonical roadmap names are:
 The next review artifact is:
 
 ```text
-EUI Runtime Phase 6 - Trust Framework Design Brief
+EUI Runtime Phase 7 - Consumer Migration Design Brief
 ```
 
-Phase 6 implementation is not authorized.
+Phase 7 implementation is not authorized.
 
-The next engineering step is to draft the Phase 6 design brief for ARM review.
-No Phase 6 implementation may begin until ARM accepts the design brief and
+The next engineering step is to draft the Phase 7 Consumer Migration design
+brief for ARM review. No consumer migration implementation may begin until ARM
+accepts the design brief and
 separately authorizes an implementation contract.
 
 ---
@@ -116,7 +120,8 @@ remain out of scope:
   foundation;
 - additional Knowledge Acquisition Intelligence behavior beyond the published
   candidate foundation;
-- Trust Framework implementation;
+- additional Trust Framework behavior beyond the published Trust Report
+  foundation;
 - schema changes;
 - API changes;
 - UI changes;
@@ -136,9 +141,10 @@ StudyNexs has a frozen AEI/EUI architecture, a published Phase 1 Educational
 Identity runtime foundation, a published Phase 2 Educational Context passive
 runtime foundation, a published Phase 3 Platform Capability Registry passive
 runtime foundation, and a published Phase 4 Knowledge Acquisition Intelligence
-candidate foundation, and a published Phase 5 Educational Knowledge Graph
-proposal foundation. The next gated milestone is the Phase 6 Trust Framework
-design brief; implementation is not authorized.
+candidate foundation, a published Phase 5 Educational Knowledge Graph proposal
+foundation, and a published Phase 6 Trust Framework Trust Report foundation.
+The next gated milestone is the Phase 7 Consumer Migration design brief;
+implementation is not authorized.
 
 ---
 
@@ -147,29 +153,32 @@ design brief; implementation is not authorized.
 Latest published runtime phase:
 
 ```text
-EUI Runtime Phase 5 - Educational Knowledge Graph Expansion
+EUI Runtime Phase 6 - Trust Framework
 ```
 
 Historical artifact label:
 
 ```text
-Phase 5 EKG Proposal Foundation
+Phase 6 Trust Report Foundation
 ```
 
 Certified evidence:
 
-- Focused EUI Ruff: PASS
-- Phase 5 EKG tests: 20 passed
-- Phase 1/2/3/4/5 EUI regression: 85 passed
+- Focused Trust Framework Ruff: PASS
+- Phase 6 Trust Framework tests: 23 passed
+- Phase 1/2/3/4/5/6 EUI regression: 103 passed
 - Existing Knowledge Graph regression: 18 passed
 - AEI / evaluation regression slice: 43 passed
 - API import: PASS
 - git diff --check: PASS
-- Phase 5 write-scan: PASS, no write patterns found in new EKG proposal files
+- Phase 6 LLM/provider-call scan: PASS, no provider call patterns found in
+  Trust Framework files
+- Phase 6 write-scan: PASS, no persistence/write patterns found in Trust
+  Framework files
 
 Certification report:
 
-[`product/eui-runtime/phase-5/EUI_PHASE_5_EDUCATIONAL_KNOWLEDGE_GRAPH_EXPANSION_CERTIFICATION_REPORT.md`](./product/eui-runtime/phase-5/EUI_PHASE_5_EDUCATIONAL_KNOWLEDGE_GRAPH_EXPANSION_CERTIFICATION_REPORT.md)
+[`product/eui-runtime/phase-6/EUI_PHASE_6_TRUST_FRAMEWORK_CERTIFICATION_REPORT.md`](./product/eui-runtime/phase-6/EUI_PHASE_6_TRUST_FRAMEWORK_CERTIFICATION_REPORT.md)
 
 ---
 
