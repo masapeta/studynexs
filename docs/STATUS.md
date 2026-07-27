@@ -76,6 +76,7 @@ canonical roadmap names are:
 | AEI v1.0 Certification | Complete / certified / published |
 | AEI v1.0 Teacher Evaluation UX-A - Trust metadata display | Complete / certified / published |
 | AEI v1.0 Teacher Evaluation UX-B - Override reason workflow | Complete / certified / published |
+| AEI v1.0 Teacher Evaluation UX-C - Evidence and approved-decision panel | Complete / certified / published |
 | EUI v1 architecture | Frozen / accepted |
 | EUI Runtime Roadmap v1 | Accepted planning baseline |
 | Phase 0 - Engineering Preparation | Complete / certified / published |
@@ -215,6 +216,7 @@ or expanded public product claims.
 |---|---|---|---|---|
 | UX-A - Review-table trust metadata display | Published / certified | `a391fb2bd659957223a7a631471096a8e3b0ba6b` | `aei-v1-teacher-evaluation-ux-a-trust-display-certified` | Display-only teacher review guidance, confidence/capability/manual-review badges, and safe AEI metadata evidence rows on the existing teacher evaluation page |
 | UX-B - Override reason workflow | Published / certified | `c8ea8997f0aca8adb2fb1667cd25bff5500dd4a3` | `aei-v1-teacher-evaluation-ux-b-override-reasons-certified` | Teacher-authored override reason capture and saved override reason display on the existing teacher evaluation page |
+| UX-C - Evidence and approved-decision panel | Published / certified | `8c01e59111857750473133edfed0314103e7a3c8` | `aei-v1-teacher-evaluation-ux-c-evidence-decision-certified` | Teacher-facing evidence posture panel and approved-decision summary on the existing teacher evaluation page |
 
 UX-A turns certified AEI v1.0 suggestion metadata into teacher-visible trust
 signals on the existing answer-sheet evaluation review page.
@@ -264,6 +266,33 @@ UX-B certification caveat:
 - UX-B helper-level lint debt introduced during implementation was removed
   before certification.
 
+UX-C upgrades the existing evidence strip into a teacher-facing evidence and
+approval posture panel.
+
+Supported UX-C behavior:
+
+- draft AI suggestions are visibly distinct from teacher-approved evidence;
+- approved evaluations communicate that teacher decisions are the downstream
+  source of truth when existing metadata supports it;
+- CurriculumPack, question paper, grounded/citation status, and source-of-truth
+  signals are easier to inspect;
+- approved-decision summary can show original AI marks versus final teacher
+  marks, override status, override reason, and manual-review notes;
+- legacy or missing detailed evidence metadata renders safely;
+- UX-A trust display and UX-B override reason workflow remain intact;
+- no backend, marks, approval endpoint, teacher-review routing,
+  evidence-ledger generation, source-switching, schema, API, feature-flag
+  enablement, or parent/student visibility changes.
+
+UX-C certification caveat:
+
+- dedicated browser proof was not executed in this session;
+- admin-web production build and TypeScript validation passed;
+- focused page lint remains blocked by pre-existing evaluation-page lint debt
+  outside the UX-C display slice;
+- UX-C reads existing evidence metadata only and does not alter evidence
+  generation or persistence.
+
 ---
 
 ## Published EUI runtime milestones
@@ -289,26 +318,26 @@ UX-B certification caveat:
 The latest completed artifact is:
 
 ```text
-AEI v1.0 Teacher Evaluation UX-B - Override reason workflow
+AEI v1.0 Teacher Evaluation UX-C - Evidence and approved-decision panel
 ```
 
-AEI v1.0 Teacher Evaluation UX-B is published and certified as the second
+AEI v1.0 Teacher Evaluation UX-C is published and certified as the third
 post-certification, product-facing teacher evaluation experience slice.
 
-UX-B captures teacher-authored override reasons when final marks differ from
-AI-suggested marks. It preserves the existing approval payload shape and does
-not change marks calculation, approval authority, teacher-review routing,
-backend behavior, schema, API, evidence-ledger behavior, feature-flag
-enablement, source-of-truth posture, or parent/student visibility.
+UX-C makes evidence posture and approved teacher decisions clearer on the
+existing teacher evaluation review page. It reads existing evidence metadata
+only and does not change marks calculation, approval authority, teacher-review
+routing, backend behavior, schema, API, evidence-ledger generation,
+feature-flag enablement, source-of-truth posture, or parent/student visibility.
 
 Next gated milestone:
 
 ```text
-AEI v1.0 Teacher Evaluation UX-C - Evidence and approved-decision panel
+AEI v1.0 Teacher Evaluation UX-D - Supported-scope assist panels
 ```
 
 No further post-certification AEI product-facing implementation, feature-flag
-enablement, UI work beyond published UX-B, public capability claim expansion,
+enablement, UI work beyond published UX-C, public capability claim expansion,
 or product launch-readiness work is authorized until ARM explicitly issues the
 next implementation authorization.
 
@@ -347,8 +376,8 @@ remain out of scope:
   foundation;
 - schema changes;
 - API changes;
-- UI changes beyond the published AEI v1.0 Teacher Evaluation UX-B override
-  reason workflow slice;
+- UI changes beyond the published AEI v1.0 Teacher Evaluation UX-C evidence
+  and approved-decision panel slice;
 - consumer migration beyond the published Phase 7E AEI internal
   source-readiness trial foundation;
 - Phase 7F source adoption unless ARM reopens it under the documented reopen
@@ -359,7 +388,7 @@ remain out of scope:
   metadata foundation, and Batch E visual/science assist metadata foundation;
 - AEI v1.0 feature-flag enablement, source switching, or product-facing behavior
   changes without separate ARM authorization;
-- AEI v1.0 Teacher Evaluation UX-C or later UX batches without separate ARM
+- AEI v1.0 Teacher Evaluation UX-D or later UX batches without separate ARM
   authorization;
 - post-certification AEI expansion without separate ARM authorization;
 - AEI source-of-truth switching to EUI;
@@ -390,12 +419,15 @@ foundation, and a published AEI v1.0 Batch D Language/OCR Assist Metadata
 foundation, and a published AEI v1.0 Batch E Visual/Science Assist Metadata
 foundation, a published AEI v1.0 Certification baseline, and a published AEI
 v1.0 Teacher Evaluation UX-A Trust Metadata Display baseline, and a published
-AEI v1.0 Teacher Evaluation UX-B Override Reason Workflow baseline. Phase 7 is
-closed at 7E. Phase 7F source adoption is deferred future scope. AEI v1.0 is
-certified for the declared supported scope, UX-A is the first product-facing
-display slice, and UX-B is the teacher-authored override reason workflow slice.
-Further teacher-evaluation UX batches, feature-flag rollout, source switching,
-and public capability claim expansion require separate ARM authorization.
+AEI v1.0 Teacher Evaluation UX-B Override Reason Workflow baseline, and a
+published AEI v1.0 Teacher Evaluation UX-C Evidence and Approved-Decision Panel
+baseline. Phase 7 is closed at 7E. Phase 7F source adoption is deferred future
+scope. AEI v1.0 is certified for the declared supported scope, UX-A is the first
+product-facing display slice, UX-B is the teacher-authored override reason
+workflow slice, and UX-C is the teacher-facing evidence posture and approved
+decision panel slice. Further teacher-evaluation UX batches, feature-flag
+rollout, source switching, and public capability claim expansion require
+separate ARM authorization.
 
 ---
 
@@ -404,13 +436,13 @@ and public capability claim expansion require separate ARM authorization.
 Latest published runtime phase:
 
 ```text
-AEI v1.0 Teacher Evaluation UX-B - Override reason workflow
+AEI v1.0 Teacher Evaluation UX-C - Evidence and approved-decision panel
 ```
 
 Historical artifact label:
 
 ```text
-AEI v1.0 Teacher Evaluation Override Reason Workflow
+AEI v1.0 Teacher Evaluation Evidence and Approved-Decision Panel
 ```
 
 Certified evidence:
@@ -418,16 +450,19 @@ Certified evidence:
 - Admin-web production build and TypeScript validation: PASS
 - git diff --check: PASS
 - Existing teacher evaluation page compiles in production build: PASS
-- Frontend-only override reason workflow implementation: PASS
-- Existing approval payload shape preserved: PASS
-- No backend/API/schema/marks/approval/evidence-ledger/source-switch changes: PASS
+- Frontend-only evidence posture and approved-decision panel implementation:
+  PASS
+- Existing evidence metadata consumed read-only: PASS
+- UX-A trust display and UX-B override reason workflow preserved: PASS
+- No backend/API/schema/marks/approval/evidence-ledger generation/source-switch
+  changes: PASS
 - Dedicated browser proof: NOT EXECUTED; recorded certification caveat
 - Focused page lint: BLOCKED by pre-existing evaluation-page lint debt outside
-  UX-B scope; UX-B helper-level lint debt was removed before certification
+  UX-C scope
 
 Certification report:
 
-[`product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_B_CERTIFICATION_REPORT.md`](./product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_B_CERTIFICATION_REPORT.md)
+[`product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_C_CERTIFICATION_REPORT.md`](./product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_C_CERTIFICATION_REPORT.md)
 
 Supported scope matrix:
 
