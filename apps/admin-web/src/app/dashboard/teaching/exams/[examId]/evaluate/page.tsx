@@ -346,7 +346,7 @@ export default function EvaluateExamPage() {
                   {activeEval.correction_summary}
                 </div>
               )}
-              <EvaluationEvidenceStrip evaluation={activeEval} />
+              <EvaluationEvidencePanel evaluation={activeEval} />
               <AeiEvaluationTrustSummaryPanel suggestions={activeEval.ai_suggestions || {}} />
               <table className="data-table">
                 <thead><tr><th>Q</th><th>AI marks</th><th>Final marks</th><th>Feedback & rubric</th></tr></thead>
@@ -527,14 +527,37 @@ type EvaluationEvidence = {
     curriculum_pack_id?: unknown;
     question_paper_id?: unknown;
     citation_ids?: unknown;
+    evaluation_status?: unknown;
+    teacher_approved_by?: unknown;
+    teacher_approved_at?: unknown;
+    question_paper_grounded?: unknown;
+    evaluation_grounded?: unknown;
+    aei_v1_approved_evidence?: unknown;
   };
+  status?: string | null;
+  ai_suggestions?: Record<string, unknown> | null;
+  teacher_overrides?: Record<string, unknown> | null;
+  approved_by?: string | null;
+  approved_at?: string | null;
   curriculum_pack_id?: string | null;
   question_paper_id?: string | null;
   citation_ids?: string[] | null;
+  question_paper_grounded?: boolean | null;
   evaluation_grounded?: boolean | null;
 };
 
-function EvaluationEvidenceStrip({ evaluation }: { evaluation: EvaluationEvidence }) {
+type EvidenceDecisionRow = {
+  questionNo: string;
+  aiMarks: string;
+  finalMarks: string;
+  maxMarks: string;
+  overrideApplied: boolean;
+  overrideReason: string;
+  manualReviewRequired: boolean;
+  manualReviewReason: string;
+};
+
+function EvaluationEvidencePanel({ evaluation }: { evaluation: EvaluationEvidence }) {
   const ledger = evaluation.evidence_ledger || {};
   const packId =
     evaluation.curriculum_pack_id ||
@@ -545,16 +568,39 @@ function EvaluationEvidenceStrip({ evaluation }: { evaluation: EvaluationEvidenc
   const citations =
     evaluation.citation_ids ||
     (Array.isArray(ledger.citation_ids) ? ledger.citation_ids.map(String) : []);
-  if (!packId && !paperId) return null;
+  const approvedEvidence = asRecord(ledger.aei_v1_approved_evidence);
+  const downstreamContract = asRecord(approvedEvidence?.downstream_contract);
+  const approvedEvidenceAvailable = approvedEvidence?.approved_evidence === true;
+  const approvedForDownstream =
+    approvedEvidence?.approved_for_downstream === true || approvedEvidenceAvailable;
+  const isApproved = evaluation.status === "approved" || ledger.evaluation_status === "approved";
+  const questionPaperGrounded =
+    evaluation.question_paper_grounded === true || ledger.question_paper_grounded === true;
+  const evaluationGrounded =
+    evaluation.evaluation_grounded === true || ledger.evaluation_grounded === true;
+  const decisionRows = buildEvidenceDecisionRows(evaluation, approvedEvidence);
+  if (!packId && !paperId && !approvedEvidence && !isApproved) return null;
 
-  const grounded = evaluation.evaluation_grounded === true;
+  const postureTone: AeiBadgeTone = isApproved ? "success" : "warning";
+  const postureLabel = isApproved
+    ? approvedEvidenceAvailable
+      ? "Teacher-approved evidence"
+      : "Teacher approved"
+    : "Draft AI suggestions";
+  const postureText = isApproved
+    ? approvedForDownstream
+      ? "Teacher decision is the source of truth for downstream learning intelligence."
+      : "Approved marks exist; detailed approved-evidence metadata is not available."
+    : "Not approved for downstream use yet. Teacher approval is required before learning intelligence or parent/student visibility.";
+  const sourceOfTruth =
+    stringValue(downstreamContract?.source_of_truth) ||
+    (approvedEvidenceAvailable ? "teacher_decision" : "");
+
   return (
     <div
       style={{
-        display: "flex",
-        flexWrap: "wrap",
-        gap: 8,
-        alignItems: "center",
+        display: "grid",
+        gap: 10,
         padding: 12,
         marginBottom: 16,
         borderRadius: 12,
@@ -564,17 +610,145 @@ function EvaluationEvidenceStrip({ evaluation }: { evaluation: EvaluationEvidenc
         color: "var(--text-muted)",
       }}
     >
-      <strong style={{ color: "var(--text-primary)" }}>Evidence chain</strong>
-      {packId && <span style={metaChip}>CurriculumPack {shortId(packId)}</span>}
-      {paperId && <span style={metaChip}>Question paper {shortId(paperId)}</span>}
-      <span style={metaChip}>{grounded ? "Grounded evaluation" : "Needs citation review"}</span>
-      <span style={metaChip}>{citations.length} citation{citations.length === 1 ? "" : "s"}</span>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+        <strong style={{ color: "var(--text-primary)" }}>Evidence and approval posture</strong>
+        <span style={trustChipStyle(postureTone)}>{postureLabel}</span>
+      </div>
+      <div>{postureText}</div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {packId && <span style={metaChip}>CurriculumPack {shortId(packId)}</span>}
+        {paperId && <span style={metaChip}>Question paper {shortId(paperId)}</span>}
+        <span style={trustChipStyle(questionPaperGrounded ? "success" : "warning")}>
+          {questionPaperGrounded ? "Question paper grounded" : "Question paper grounding unclear"}
+        </span>
+        <span style={trustChipStyle(evaluationGrounded ? "success" : "warning")}>
+          {evaluationGrounded ? "Grounded evaluation" : "Needs citation review"}
+        </span>
+        <span style={metaChip}>{citations.length} citation{citations.length === 1 ? "" : "s"}</span>
+        {sourceOfTruth && <span style={trustChipStyle("success")}>Source: {sourceOfTruth}</span>}
+        {approvedEvidence?.raw_student_answer_excluded === true && (
+          <span style={metaChip}>Raw answer excluded from approved evidence</span>
+        )}
+      </div>
+      {decisionRows.length > 0 && (
+        <div style={{ display: "grid", gap: 6 }}>
+          <strong style={{ color: "var(--text-primary)" }}>Approved decision summary</strong>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <thead>
+              <tr>
+                <th style={rubricTh}>Q</th>
+                <th style={rubricTh}>AI suggestion</th>
+                <th style={rubricTh}>Teacher final</th>
+                <th style={rubricTh}>Decision evidence</th>
+              </tr>
+            </thead>
+            <tbody>
+              {decisionRows.map((row) => (
+                <tr key={row.questionNo}>
+                  <td style={rubricTd}>{row.questionNo}</td>
+                  <td style={rubricTd}>{row.aiMarks} / {row.maxMarks}</td>
+                  <td style={rubricTd}>{row.finalMarks} / {row.maxMarks}</td>
+                  <td style={rubricTd}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      <span style={trustChipStyle(row.overrideApplied ? "warning" : "success")}>
+                        {row.overrideApplied ? "Teacher override" : "Suggestion accepted"}
+                      </span>
+                      {row.manualReviewRequired && <span style={trustChipStyle("warning")}>Manual review was required</span>}
+                    </div>
+                    {row.overrideApplied && (
+                      <div style={{ marginTop: 4 }}>
+                        <strong style={{ color: "var(--text-primary)" }}>Reason:</strong>{" "}
+                        {row.overrideReason || "Reason not recorded."}
+                      </div>
+                    )}
+                    {row.manualReviewReason && (
+                      <div style={{ marginTop: 4 }}>
+                        <strong style={{ color: "var(--text-primary)" }}>Review note:</strong> {row.manualReviewReason}
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
 
 function shortId(value: string) {
   return String(value).slice(0, 8);
+}
+
+type UnknownRecord = Record<string, unknown>;
+
+function asRecord(value: unknown): UnknownRecord | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as UnknownRecord) : null;
+}
+
+function stringValue(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function displayValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "—";
+  if (typeof value === "number") return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(2)));
+  return String(value);
+}
+
+function buildEvidenceDecisionRows(
+  evaluation: EvaluationEvidence,
+  approvedEvidence: UnknownRecord | null,
+): EvidenceDecisionRow[] {
+  const approvedQuestions = asRecord(approvedEvidence?.questions);
+  if (approvedQuestions && Object.keys(approvedQuestions).length > 0) {
+    return Object.entries(approvedQuestions)
+      .sort(sortQuestionEntries)
+      .map(([questionNo, raw]) => {
+        const question = asRecord(raw);
+        const original = asRecord(question?.original_suggestion);
+        const finalDecision = asRecord(question?.final_teacher_decision);
+        const maxMarks = displayValue(finalDecision?.max_marks ?? original?.max_marks);
+        return {
+          questionNo,
+          aiMarks: displayValue(original?.marks_suggested),
+          finalMarks: displayValue(finalDecision?.final_marks),
+          maxMarks,
+          overrideApplied: finalDecision?.override_applied === true,
+          overrideReason: stringValue(finalDecision?.override_reason),
+          manualReviewRequired:
+            finalDecision?.manual_review_was_required === true ||
+            original?.manual_review_required === true,
+          manualReviewReason: stringValue(original?.manual_review_reason),
+        };
+      });
+  }
+
+  if (evaluation.status !== "approved") return [];
+
+  return Object.entries(evaluation.ai_suggestions || {})
+    .sort(sortQuestionEntries)
+    .map(([questionNo, raw]) => {
+      const suggestion = asRecord(raw);
+      const override = asRecord(evaluation.teacher_overrides?.[questionNo]);
+      const suggestedMarks = suggestion?.marks_suggested;
+      const finalMarks = override?.marks ?? suggestedMarks;
+      return {
+        questionNo,
+        aiMarks: displayValue(suggestedMarks),
+        finalMarks: displayValue(finalMarks),
+        maxMarks: displayValue(suggestion?.max_marks),
+        overrideApplied: hasChangedMarks(suggestedMarks, finalMarks),
+        overrideReason: stringValue(override?.reason),
+        manualReviewRequired: suggestion?.manual_review_required === true,
+        manualReviewReason: stringValue(suggestion?.manual_review_reason),
+      };
+    });
+}
+
+function sortQuestionEntries([left]: [string, unknown], [right]: [string, unknown]) {
+  return left.localeCompare(right, undefined, { numeric: true, sensitivity: "base" });
 }
 
 const btn: React.CSSProperties = { width: "auto", padding: "8px 18px", borderRadius: "var(--radius-full)", fontSize: 13 };
@@ -621,7 +795,10 @@ function buildOverrideReasons(evaluation: EvaluationWithOverrides | null | undef
 }
 
 function hasChangedMarks(suggested: unknown, finalMarks: unknown): boolean {
-  return Number(finalMarks) !== Number(suggested);
+  const suggestedNumber = Number(suggested);
+  const finalNumber = Number(finalMarks);
+  if (!Number.isFinite(suggestedNumber) || !Number.isFinite(finalNumber)) return false;
+  return finalNumber !== suggestedNumber;
 }
 
 function hasSavedOverride(evaluation: EvaluationWithOverrides | null | undefined, qno: string): boolean {
