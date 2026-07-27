@@ -9,6 +9,10 @@ from types import SimpleNamespace
 
 import pytest
 
+from app.modules.eui.schemas.aei_consumer_migration import (
+    AEIConsumerMigrationComparison,
+    AEIConsumerMigrationDifference,
+)
 from app.modules.eui.schemas.educational_context import (
     EducationalContext,
     EducationalContextAmbiguity,
@@ -31,6 +35,9 @@ from app.modules.eui.services.aei_consumer_migration import (
 )
 from app.modules.eui.services.aei_consumer_migration_evidence import (
     AEIConsumerMigrationEvidenceBinder,
+)
+from app.modules.eui.services.aei_divergence_readiness import (
+    AEIDivergenceReadinessReviewService,
 )
 from app.modules.eui.services.educational_context_resolver import EducationalContextResolver
 from app.modules.eui.services.educational_graph_resolver import (
@@ -360,6 +367,55 @@ async def test_eui_aei_rich_evidence_golden_harness_cases_are_deterministic():
     assert len(bundle_ids) == len(payload["cases"])
 
 
+def test_eui_aei_divergence_readiness_golden_harness_cases_are_deterministic():
+    payload = json.loads(
+        (GOLDEN_DIR / "aei_divergence_readiness_cases.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert payload["version"] == "eui-aei-divergence-readiness-golden-v1"
+    assert payload["authorization"] == "EUI-PH7C-AEI-DIVERGENCE-READINESS-AUTH-001"
+    case_ids = [case["id"] for case in payload["cases"]]
+    assert len(case_ids) == len(set(case_ids))
+
+    tenant_id = uuid.UUID(payload["tenant_id"])
+    service = AEIDivergenceReadinessReviewService()
+    scorecard_ids: set[str] = set()
+    for case in payload["cases"]:
+        comparisons = tuple(
+            _readiness_comparison_from_case(tenant_id, comparison)
+            for comparison in case["comparisons"]
+        )
+        scorecard = service.review(
+            tenant_id=tenant_id,
+            subject_type=case["subject_type"],
+            scope_ref=case["scope_ref"],
+            comparisons=comparisons,
+        )
+        scorecard_again = service.review(
+            tenant_id=tenant_id,
+            subject_type=case["subject_type"],
+            scope_ref=case["scope_ref"],
+            comparisons=comparisons,
+        )
+        expected = case["expected"]
+
+        assert scorecard.id == scorecard_again.id, case["id"]
+        assert scorecard.id.startswith("eui-aei-readiness://"), case["id"]
+        scorecard_ids.add(scorecard.id)
+        assert scorecard.review_posture == expected["review_posture"], case["id"]
+        assert scorecard.eligible is expected["eligible"], case["id"]
+        assert sorted(scorecard.blocker_categories) == sorted(
+            expected["blocker_categories"]
+        ), case["id"]
+        assert scorecard.authoritative is False, case["id"]
+        assert scorecard.internal_only is True, case["id"]
+        assert scorecard.source_switch_active is False, case["id"]
+
+    assert len(scorecard_ids) == len(payload["cases"])
+
+
 def _trust_report_from_case(
     case: dict,
     *,
@@ -477,4 +533,37 @@ def _exam_from_case(payload: dict | None):
         exam_type=SimpleNamespace(value=exam_type) if exam_type else None,
         topic=payload.get("topic"),
         source_paper_id=None,
+    )
+
+
+def _readiness_comparison_from_case(
+    tenant_id: uuid.UUID,
+    payload: dict,
+) -> AEIConsumerMigrationComparison:
+    complete_evidence = payload.get("complete_evidence", True)
+    trust_visibility = payload.get("trust_consumer_visibility", "internal_only")
+    capability_mode = payload.get("capability_mode")
+    difference_type = payload["difference_type"]
+    return AEIConsumerMigrationComparison(
+        id=payload["id"],
+        tenant_id=tenant_id,
+        subject_type="answer_sheet_evaluation",
+        subject_ref=payload["id"].rsplit("/", 1)[-1],
+        eui_summary={
+            "available": complete_evidence,
+            "rich_evidence_available": complete_evidence,
+            "query_budget": {"per_question_db_traversal": False},
+        },
+        differences=(
+            AEIConsumerMigrationDifference(
+                difference_type=difference_type,
+                reason=f"{difference_type}_golden_case",
+                blocker=difference_type in {"product_impacting", "unsafe"},
+            ),
+        ),
+        eui_identity_present=complete_evidence,
+        eui_context_present=complete_evidence,
+        capability_mode=capability_mode if complete_evidence else None,
+        trust_posture="trusted" if complete_evidence else None,
+        trust_consumer_visibility=trust_visibility if complete_evidence else None,
     )

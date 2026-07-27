@@ -1,0 +1,176 @@
+{
+  "version": "eui-aei-divergence-readiness-golden-v1",
+  "authorization": "EUI-PH7C-AEI-DIVERGENCE-READINESS-AUTH-001",
+  "tenant_id": "11111111-1111-4111-8111-111111111111",
+  "cases": [
+    {
+      "id": "aei_readiness_eligible_001",
+      "subject_type": "answer_sheet_evaluation",
+      "scope_ref": "answer_sheet_evaluation:readiness-eligible",
+      "comparisons": [
+        {
+          "id": "eui-aei-migration://answer-sheet-evaluation/readiness-eligible-a",
+          "difference_type": "equivalent",
+          "complete_evidence": true,
+          "capability_mode": "supported",
+          "trust_consumer_visibility": "internal_only"
+        },
+        {
+          "id": "eui-aei-migration://answer-sheet-evaluation/readiness-eligible-b",
+          "difference_type": "eui_richer",
+          "complete_evidence": true,
+          "capability_mode": "supported",
+          "trust_consumer_visibility": "internal_only"
+        }
+      ],
+      "expected": {
+        "review_posture": "eligible",
+        "eligible": true,
+        "blocker_categories": []
+      }
+    },
+    {
+      "id": "aei_readiness_insufficient_window_001",
+      "subject_type": "answer_sheet_evaluation",
+      "scope_ref": "answer_sheet_evaluation:readiness-insufficient-window",
+      "comparisons": [
+        {
+          "id": "eui-aei-migration://answer-sheet-evaluation/readiness-single",
+          "difference_type": "equivalent",
+          "complete_evidence": true,
+          "capability_mode": "supported",
+          "trust_consumer_visibility": "internal_only"
+        }
+      ],
+      "expected": {
+        "review_posture": "needs_more_evidence",
+        "eligible": false,
+        "blocker_categories": []
+      }
+    },
+    {
+      "id": "aei_readiness_missing_eui_001",
+      "subject_type": "answer_sheet_evaluation",
+      "scope_ref": "answer_sheet_evaluation:readiness-missing-eui",
+      "comparisons": [
+        {
+          "id": "eui-aei-migration://answer-sheet-evaluation/readiness-missing-a",
+          "difference_type": "eui_missing",
+          "complete_evidence": false
+        },
+        {
+          "id": "eui-aei-migration://answer-sheet-evaluation/readiness-missing-b",
+          "difference_type": "eui_missing",
+          "complete_evidence": false
+        }
+      ],
+      "expected": {
+        "review_posture": "needs_capability_work",
+        "eligible": false,
+        "blocker_categories": []
+      }
+    },
+    {
+      "id": "aei_readiness_product_impacting_001",
+      "subject_type": "answer_sheet_evaluation",
+      "scope_ref": "answer_sheet_evaluation:readiness-product-impacting",
+      "comparisons": [
+        {
+          "id": "eui-aei-migration://answer-sheet-evaluation/readiness-product-a",
+          "difference_type": "product_impacting",
+          "complete_evidence": true,
+          "capability_mode": "supported",
+          "trust_consumer_visibility": "internal_only"
+        },
+        {
+          "id": "eui-aei-migration://answer-sheet-evaluation/readiness-product-b",
+          "difference_type": "equivalent",
+          "complete_evidence": true,
+          "capability_mode": "supported",
+          "trust_consumer_visibility": "internal_only"
+        }
+      ],
+      "expected": {
+        "review_posture": "blocked_product_impacting",
+        "eligible": false,
+        "blocker_categories": ["blocked_product_impacting"]
+      }
+    },
+    {
+      "id": "aei_readiness_unsafe_001",
+      "subject_type": "answer_sheet_evaluation",
+      "scope_ref": "answer_sheet_evaluation:readiness-unsafe",
+      "comparisons": [
+        {
+          "id": "eui-aei-migration://answer-sheet-evaluation/readiness-unsafe-a",
+          "difference_type": "unsafe",
+          "complete_evidence": true,
+          "capability_mode": "supported",
+          "trust_consumer_visibility": "internal_only"
+        },
+        {
+          "id": "eui-aei-migration://answer-sheet-evaluation/readiness-unsafe-b",
+          "difference_type": "eui_missing",
+          "complete_evidence": false
+        }
+      ],
+      "expected": {
+        "review_posture": "blocked_unsafe",
+        "eligible": false,
+        "blocker_categories": ["blocked_unsafe"]
+      }
+    },
+    {
+      "id": "aei_readiness_manual_review_capability_001",
+      "subject_type": "answer_sheet_evaluation",
+      "scope_ref": "answer_sheet_evaluation:readiness-manual-review-capability",
+      "comparisons": [
+        {
+          "id": "eui-aei-migration://answer-sheet-evaluation/readiness-manual-a",
+          "difference_type": "equivalent",
+          "complete_evidence": true,
+          "capability_mode": "manual_review",
+          "trust_consumer_visibility": "internal_only"
+        },
+        {
+          "id": "eui-aei-migration://answer-sheet-evaluation/readiness-manual-b",
+          "difference_type": "equivalent",
+          "complete_evidence": true,
+          "capability_mode": "manual_review",
+          "trust_consumer_visibility": "internal_only"
+        }
+      ],
+      "expected": {
+        "review_posture": "needs_capability_work",
+        "eligible": false,
+        "blocker_categories": []
+      }
+    },
+    {
+      "id": "aei_readiness_unsafe_trust_visibility_001",
+      "subject_type": "answer_sheet_evaluation",
+      "scope_ref": "answer_sheet_evaluation:readiness-unsafe-trust",
+      "comparisons": [
+        {
+          "id": "eui-aei-migration://answer-sheet-evaluation/readiness-trust-a",
+          "difference_type": "equivalent",
+          "complete_evidence": true,
+          "capability_mode": "supported",
+          "trust_consumer_visibility": "teacher_safe"
+        },
+        {
+          "id": "eui-aei-migration://answer-sheet-evaluation/readiness-trust-b",
+          "difference_type": "equivalent",
+          "complete_evidence": true,
+          "capability_mode": "supported",
+          "trust_consumer_visibility": "internal_only"
+        }
+      ],
+      "expected": {
+        "review_posture": "blocked_unsafe",
+        "eligible": false,
+        "blocker_categories": ["blocked_unsafe"]
+      }
+    }
+  ]
+}
