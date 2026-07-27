@@ -272,7 +272,11 @@ class AnswerSheetEvalService:
                 student_answers=answers,
             )
             await observe_answer_sheet_evaluation(
-                enabled=settings.AEI_PASSIVE_INTEGRATION_ENABLED,
+                enabled=(
+                    settings.AEI_PASSIVE_INTEGRATION_ENABLED
+                    or settings.AEI_SHADOW_MODE_ENABLED
+                ),
+                shadow_enabled=settings.AEI_SHADOW_MODE_ENABLED,
                 db=self.db,
                 evaluation_id=row.id,
                 school_id=row.school_id,

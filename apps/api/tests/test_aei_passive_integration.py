@@ -88,9 +88,68 @@ async def test_aei_passive_observer_captures_complete_pipeline_when_enabled(
     assert "decision" in first.policy_decision
     assert first.teacher_review_decision["review_status"] == "PENDING"
     assert first.teacher_review_decision["policy_decision"] == first.policy_decision
+    assert capture.shadow_comparison is None
     snapshot = metrics.snapshot()
     assert snapshot["jobs_by_status"]["invoked"] == 1
     assert snapshot["jobs_by_status"]["completed"] == 1
+
+
+@pytest.mark.asyncio
+async def test_aei_shadow_mode_adds_internal_comparison_when_enabled(
+    db_session,
+    monkeypatch,
+):
+    fx = await _seed_eval_fixture(db_session)
+    metrics = PlatformMetricsRegistry()
+    monkeypatch.setattr(passive, "platform_metrics", metrics)
+
+    capture = await observe_answer_sheet_evaluation(
+        enabled=True,
+        shadow_enabled=True,
+        db=db_session,
+        evaluation_id=uuid.uuid4(),
+        school_id=fx["school"].id,
+        exam=fx["exam"],
+        student_id=fx["student"].id,
+        student_answers=_student_answers(),
+        suggestions=_suggestions(),
+    )
+
+    assert capture is not None
+    assert capture.shadow_comparison is not None
+    assert capture.shadow_comparison.question_count == 3
+    assert len(capture.shadow_comparison.comparisons) == 3
+    first = capture.shadow_comparison.comparisons[0]
+    assert first.question_no == "1"
+    assert first.production_method == "objective"
+    assert first.aei_decision in {"supported", "manual_review", "unsupported"}
+    snapshot = metrics.snapshot()
+    assert snapshot["jobs_by_status"]["invoked"] == 2
+    assert snapshot["jobs_by_status"]["completed"] == 2
+
+
+def test_aei_shadow_comparison_classifies_manual_review_delta():
+    comparison = passive._compare_shadow_question(
+        question_no="7",
+        suggestion={
+            "method": "objective",
+            "confidence": 0.98,
+            "marks_suggested": 2,
+            "max_marks": 2,
+        },
+        policy_decision={
+            "decision": "manual_review",
+            "manual_review_required": True,
+            "supported_capability": True,
+            "reason": "Capability is checklist-only.",
+            "capability_mode": "checklist",
+        },
+    )
+
+    assert comparison.comparison_status == "difference"
+    assert "manual_review_signal_delta" in comparison.difference_categories
+    assert comparison.production_review_signal is False
+    assert comparison.aei_manual_review_required is True
 
 
 @pytest.mark.asyncio
@@ -124,7 +183,10 @@ async def test_aei_passive_observer_isolates_exceptions(db_session, monkeypatch)
 
 
 @pytest.mark.asyncio
-async def test_eval_outputs_identical_with_aei_passive_enabled(db_session, monkeypatch):
+async def test_eval_outputs_identical_with_aei_passive_and_shadow_enabled(
+    db_session,
+    monkeypatch,
+):
     fx = await _seed_eval_fixture(db_session)
 
     async def _llm_unavailable(*_args, **_kwargs):
@@ -144,6 +206,7 @@ async def test_eval_outputs_identical_with_aei_passive_enabled(db_session, monke
     await db_session.flush()
 
     monkeypatch.setattr(eval_mod.settings, "AEI_PASSIVE_INTEGRATION_ENABLED", False)
+    monkeypatch.setattr(eval_mod.settings, "AEI_SHADOW_MODE_ENABLED", False)
     disabled = await service.execute_evaluation(row.id, role="class_incharge")
     disabled_snapshot = {
         "status": disabled.status,
@@ -158,7 +221,8 @@ async def test_eval_outputs_identical_with_aei_passive_enabled(db_session, monke
     row.error_message = None
     await db_session.flush()
 
-    monkeypatch.setattr(eval_mod.settings, "AEI_PASSIVE_INTEGRATION_ENABLED", True)
+    monkeypatch.setattr(eval_mod.settings, "AEI_PASSIVE_INTEGRATION_ENABLED", False)
+    monkeypatch.setattr(eval_mod.settings, "AEI_SHADOW_MODE_ENABLED", True)
     enabled = await service.execute_evaluation(row.id, role="class_incharge")
     enabled_snapshot = {
         "status": enabled.status,
@@ -169,3 +233,4 @@ async def test_eval_outputs_identical_with_aei_passive_enabled(db_session, monke
 
     assert enabled_snapshot == disabled_snapshot
     assert len(aei_passive_capture_registry.snapshot()) == 1
+    assert aei_passive_capture_registry.snapshot()[0].shadow_comparison is not None

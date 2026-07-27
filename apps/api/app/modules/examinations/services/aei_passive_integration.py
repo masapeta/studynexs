@@ -38,7 +38,39 @@ from app.modules.examinations.services.teacher_review import create_teacher_revi
 logger = structlog.get_logger()
 
 AEI_PASSIVE_METRIC_TASK = "aei_passive_integration"
+AEI_SHADOW_METRIC_TASK = "aei_shadow_mode"
 DEFAULT_CAPTURE_LIMIT = 100
+SHADOW_CONFIDENCE_THRESHOLD = 0.75
+
+
+@dataclass(frozen=True)
+class AEIShadowQuestionComparison:
+    """One question's Wave 2 production-vs-AEI comparison."""
+
+    question_no: str
+    comparison_status: str
+    difference_categories: tuple[str, ...]
+    production_method: str
+    production_confidence: float | None
+    production_review_signal: bool
+    production_marks_suggested: float | None
+    production_max_marks: float | None
+    aei_decision: str
+    aei_manual_review_required: bool
+    aei_supported_capability: bool
+    metadata: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class AEIShadowEvaluationComparison:
+    """Bounded Wave 2 shadow comparison summary for one evaluation."""
+
+    question_count: int
+    agreement_count: int
+    difference_count: int
+    unsupported_capability_count: int
+    manual_review_delta_count: int
+    comparisons: tuple[AEIShadowQuestionComparison, ...]
 
 
 @dataclass(frozen=True)
@@ -63,6 +95,7 @@ class AEIPassiveEvaluationCapture:
     question_count: int
     duration_ms: float
     questions: tuple[AEIPassiveQuestionCapture, ...]
+    shadow_comparison: AEIShadowEvaluationComparison | None = None
 
 
 class AEIPassiveCaptureRegistry:
@@ -98,14 +131,17 @@ async def observe_answer_sheet_evaluation(
     student_id: UUID,
     student_answers: dict[str, str],
     suggestions: dict[str, dict],
+    shadow_enabled: bool = False,
 ) -> AEIPassiveEvaluationCapture | None:
     """Run AEI passively and isolate all AEI failures from production evaluation."""
 
-    if not enabled:
+    if not enabled and not shadow_enabled:
         return None
 
     started = time.perf_counter()
     platform_metrics.record_job_event(task=AEI_PASSIVE_METRIC_TASK, status="invoked")
+    if shadow_enabled:
+        platform_metrics.record_job_event(task=AEI_SHADOW_METRIC_TASK, status="invoked")
     try:
         capture = await _build_passive_capture(
             db=db,
@@ -116,6 +152,7 @@ async def observe_answer_sheet_evaluation(
             student_answers=dict(student_answers),
             suggestions={key: dict(value) for key, value in suggestions.items()},
             started=started,
+            shadow_enabled=shadow_enabled,
         )
         aei_passive_capture_registry.record(capture)
         platform_metrics.record_job_event(
@@ -123,6 +160,17 @@ async def observe_answer_sheet_evaluation(
             status="completed",
             duration_ms=capture.duration_ms,
         )
+        if shadow_enabled and capture.shadow_comparison is not None:
+            platform_metrics.record_job_event(
+                task=AEI_SHADOW_METRIC_TASK,
+                status="completed",
+                duration_ms=capture.duration_ms,
+            )
+            if capture.shadow_comparison.difference_count:
+                platform_metrics.record_job_event(
+                    task=AEI_SHADOW_METRIC_TASK,
+                    status="difference",
+                )
         logger.info(
             "aei_passive_integration_completed",
             evaluation_id=str(evaluation_id),
@@ -131,6 +179,12 @@ async def observe_answer_sheet_evaluation(
             student_id=str(student_id),
             question_count=capture.question_count,
             duration_ms=round(capture.duration_ms, 2),
+            shadow_enabled=shadow_enabled,
+            shadow_difference_count=(
+                capture.shadow_comparison.difference_count
+                if capture.shadow_comparison is not None
+                else None
+            ),
         )
         return capture
     except Exception:
@@ -140,6 +194,12 @@ async def observe_answer_sheet_evaluation(
             status="failed",
             duration_ms=duration_ms,
         )
+        if shadow_enabled:
+            platform_metrics.record_job_event(
+                task=AEI_SHADOW_METRIC_TASK,
+                status="failed",
+                duration_ms=duration_ms,
+            )
         logger.exception(
             "aei_passive_integration_failed",
             evaluation_id=str(evaluation_id),
@@ -161,6 +221,7 @@ async def _build_passive_capture(
     student_answers: dict[str, str],
     suggestions: dict[str, dict],
     started: float,
+    shadow_enabled: bool = False,
 ) -> AEIPassiveEvaluationCapture:
     paper = await _question_paper(db, school_id=school_id, exam=exam)
     rubrics = await fetch_rubrics_for_paper(
@@ -173,6 +234,7 @@ async def _build_passive_capture(
     policy_engine = EvaluationPolicyEngine()
 
     captures: list[AEIPassiveQuestionCapture] = []
+    shadow_comparisons: list[AEIShadowQuestionComparison] = []
     for question in exam.question_schema or []:
         question_no = str(question["no"])
         rubric = rubrics.get(question_no, {})
@@ -212,6 +274,14 @@ async def _build_passive_capture(
                 teacher_review_decision=teacher_review_decision.model_dump(mode="json"),
             )
         )
+        if shadow_enabled:
+            shadow_comparisons.append(
+                _compare_shadow_question(
+                    question_no=question_no,
+                    suggestion=suggestion,
+                    policy_decision=policy_decision.model_dump(mode="json"),
+                )
+            )
 
     return AEIPassiveEvaluationCapture(
         evaluation_id=str(evaluation_id),
@@ -221,6 +291,11 @@ async def _build_passive_capture(
         question_count=len(captures),
         duration_ms=(time.perf_counter() - started) * 1000,
         questions=tuple(captures),
+        shadow_comparison=(
+            _summarize_shadow_comparisons(shadow_comparisons)
+            if shadow_enabled
+            else None
+        ),
     )
 
 
@@ -289,3 +364,107 @@ def _reasoning_context(rubric: dict[str, Any]) -> dict[str, Any]:
         if key in rubric:
             context[key] = rubric[key]
     return context
+
+
+def _compare_shadow_question(
+    *,
+    question_no: str,
+    suggestion: dict[str, Any],
+    policy_decision: dict[str, Any],
+) -> AEIShadowQuestionComparison:
+    production_method = str(suggestion.get("method") or "unknown")
+    production_confidence = _optional_float(suggestion.get("confidence"))
+    production_review_signal = _production_review_signal(
+        method=production_method,
+        confidence=production_confidence,
+    )
+    aei_decision = str(policy_decision.get("decision") or "unknown")
+    aei_manual_review_required = bool(policy_decision.get("manual_review_required"))
+    aei_supported_capability = bool(policy_decision.get("supported_capability"))
+    categories = _difference_categories(
+        production_method=production_method,
+        production_confidence=production_confidence,
+        production_review_signal=production_review_signal,
+        aei_decision=aei_decision,
+        aei_manual_review_required=aei_manual_review_required,
+        aei_supported_capability=aei_supported_capability,
+    )
+    comparison_status = "agreement" if not categories else "difference"
+    return AEIShadowQuestionComparison(
+        question_no=question_no,
+        comparison_status=comparison_status,
+        difference_categories=categories,
+        production_method=production_method,
+        production_confidence=production_confidence,
+        production_review_signal=production_review_signal,
+        production_marks_suggested=_optional_float(suggestion.get("marks_suggested")),
+        production_max_marks=_optional_float(suggestion.get("max_marks")),
+        aei_decision=aei_decision,
+        aei_manual_review_required=aei_manual_review_required,
+        aei_supported_capability=aei_supported_capability,
+        metadata={
+            "policy_reason": policy_decision.get("reason"),
+            "policy_capability_mode": policy_decision.get("capability_mode"),
+        },
+    )
+
+
+def _summarize_shadow_comparisons(
+    comparisons: list[AEIShadowQuestionComparison],
+) -> AEIShadowEvaluationComparison:
+    agreement_count = sum(
+        1 for comparison in comparisons if comparison.comparison_status == "agreement"
+    )
+    difference_count = len(comparisons) - agreement_count
+    unsupported_capability_count = sum(
+        1 for comparison in comparisons if not comparison.aei_supported_capability
+    )
+    manual_review_delta_count = sum(
+        1
+        for comparison in comparisons
+        if "manual_review_signal_delta" in comparison.difference_categories
+    )
+    return AEIShadowEvaluationComparison(
+        question_count=len(comparisons),
+        agreement_count=agreement_count,
+        difference_count=difference_count,
+        unsupported_capability_count=unsupported_capability_count,
+        manual_review_delta_count=manual_review_delta_count,
+        comparisons=tuple(comparisons),
+    )
+
+
+def _difference_categories(
+    *,
+    production_method: str,
+    production_confidence: float | None,
+    production_review_signal: bool,
+    aei_decision: str,
+    aei_manual_review_required: bool,
+    aei_supported_capability: bool,
+) -> tuple[str, ...]:
+    categories: list[str] = []
+    if not aei_supported_capability or aei_decision == "unsupported":
+        categories.append("capability_unsupported")
+    if production_review_signal != aei_manual_review_required:
+        categories.append("manual_review_signal_delta")
+        if production_method == "heuristic_fallback":
+            categories.append("production_heuristic_fallback")
+        if (
+            production_confidence is not None
+            and production_confidence < SHADOW_CONFIDENCE_THRESHOLD
+        ):
+            categories.append("production_low_confidence")
+    return tuple(categories)
+
+
+def _production_review_signal(*, method: str, confidence: float | None) -> bool:
+    if method == "heuristic_fallback":
+        return True
+    return confidence is not None and confidence < SHADOW_CONFIDENCE_THRESHOLD
+
+
+def _optional_float(value: Any) -> float | None:
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return float(value)
+    return None

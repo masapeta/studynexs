@@ -230,6 +230,9 @@ class Settings(BaseSettings):
     # Wave 1 is passive only: AEI observes evaluation requests without affecting marks,
     # gradebook, mastery, teacher-visible behavior, or persistence.
     AEI_PASSIVE_INTEGRATION_ENABLED: bool = False
+    # Wave 2 compares AEI output against existing production suggestions for internal
+    # validation only. It is also disabled by default and remains user-invisible.
+    AEI_SHADOW_MODE_ENABLED: bool = False
 
     # ── Derived Properties ───────────────────────────────────────
     @property
