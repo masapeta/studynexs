@@ -1,7 +1,7 @@
 # StudyNexs — Master Status
 
 > **Owner:** Avinash Reddy Masapeta (ARM)
-> **As of:** 2026-07-27
+> **As of:** 2026-07-28
 > **Status role:** Current project anchor for architecture, runtime milestones, and next engineering gate.
 
 ---
@@ -57,7 +57,7 @@ canonical roadmap names are:
 | Phase 4 | Knowledge Acquisition Intelligence | Phase 4 KAI Candidate Foundation |
 | Phase 5 | Educational Knowledge Graph Expansion | Phase 5 EKG Proposal Foundation |
 | Phase 6 | Trust Framework | Phase 6 Trust Report Foundation |
-| Phase 7 | Consumer Migration | Phase 7A AEI Consumer Dual-Read Foundation |
+| Phase 7 | Consumer Migration | Phase 7A AEI Consumer Dual-Read Foundation; Phase 7B AEI Rich EUI Evidence Binding |
 
 ---
 
@@ -76,8 +76,8 @@ canonical roadmap names are:
 | Phase 4 - Knowledge Acquisition Intelligence | Candidate foundation complete / certified / published |
 | Phase 5 - Educational Knowledge Graph Expansion | Proposal foundation complete / certified / published |
 | Phase 6 - Trust Framework | Trust Report foundation complete / certified / published |
-| Phase 7 - Consumer Migration | Phase 7A AEI passive dual-read foundation complete / certified / published |
-| Runtime consumer migration | AEI passive dual-read only published; further migration not authorized |
+| Phase 7 - Consumer Migration | Phase 7B AEI rich EUI evidence binding complete / certified / published |
+| Runtime consumer migration | AEI passive dual-read with rich internal EUI evidence published; source-of-truth switch not authorized |
 
 ---
 
@@ -92,6 +92,7 @@ canonical roadmap names are:
 | Phase 5 - Educational Knowledge Graph Expansion | Published / certified | `91a84f5fce1bb0acf4a5231593b0e1715e1baef8` | `eui-runtime-phase5-ekg-proposal-foundation-certified` | Phase 5 EKG Proposal Foundation |
 | Phase 6 - Trust Framework | Published / certified | `0a5a5dd0a8b7054ede5d86f7b610328505b195f5` | `eui-runtime-phase6-trust-report-foundation-certified` | Phase 6 Trust Report Foundation |
 | Phase 7A - AEI Consumer Migration | Published / certified | `c30bb2479e615d50aea97ae03bd3b6816d93c26b` | `eui-runtime-phase7a-aei-consumer-dual-read-certified` | Phase 7A AEI Consumer Dual-Read Foundation |
+| Phase 7B - AEI Rich EUI Evidence Binding | Published / certified | `f279f8a04e82d66133cf9178676c8af51b9aeb54` | `eui-runtime-phase7b-aei-rich-evidence-binding-certified` | Phase 7B AEI Rich EUI Evidence Binding |
 
 ---
 
@@ -100,14 +101,23 @@ canonical roadmap names are:
 The latest completed artifact is:
 
 ```text
-EUI Runtime Phase 7A - AEI Consumer Migration: Passive Dual-Read
+EUI Runtime Phase 7B - AEI Rich EUI Evidence Binding
 ```
 
-Phase 7A is published and certified as passive dual-read only.
+Phase 7B is published and certified as passive rich EUI evidence binding for
+AEI consumer migration. It enriches the existing Phase 7A internal comparison
+with Educational Context, capability posture, and Trust Report evidence without
+changing AEI or production evaluation behavior.
 
 No EUI source-of-truth switch is authorized. No additional consumer migration
 implementation may begin until ARM accepts a future design/authorization
 contract for the next migration slice.
+
+Next gated milestone:
+
+```text
+EUI Runtime Phase 7C - AEI Divergence Review and Source-Readiness Design
+```
 
 ---
 
@@ -125,8 +135,8 @@ remain out of scope:
 - schema changes;
 - API changes;
 - UI changes;
-- consumer migration beyond the published Phase 7A AEI passive dual-read
-  foundation;
+- consumer migration beyond the published Phase 7B AEI rich internal evidence
+  binding foundation;
 - AEI behavior changes;
 - AEI source-of-truth switching to EUI;
 - EUI contract changes outside accepted design;
@@ -144,9 +154,10 @@ Identity runtime foundation, a published Phase 2 Educational Context passive
 runtime foundation, a published Phase 3 Platform Capability Registry passive
 runtime foundation, and a published Phase 4 Knowledge Acquisition Intelligence
 candidate foundation, a published Phase 5 Educational Knowledge Graph proposal
-foundation, a published Phase 6 Trust Framework Trust Report foundation, and a
-published Phase 7A AEI Consumer Migration passive dual-read foundation. Further
-consumer migration, including any EUI source-of-truth switch, is not authorized.
+foundation, a published Phase 6 Trust Framework Trust Report foundation, a
+published Phase 7A AEI Consumer Migration passive dual-read foundation, and a
+published Phase 7B AEI Rich EUI Evidence Binding foundation. Further consumer
+migration, including any EUI source-of-truth switch, is not authorized.
 
 ---
 
@@ -155,32 +166,35 @@ consumer migration, including any EUI source-of-truth switch, is not authorized.
 Latest published runtime phase:
 
 ```text
-EUI Runtime Phase 7A - AEI Consumer Migration
+EUI Runtime Phase 7B - AEI Rich EUI Evidence Binding
 ```
 
 Historical artifact label:
 
 ```text
-Phase 7A AEI Consumer Dual-Read Foundation
+Phase 7B AEI Rich EUI Evidence Binding
 ```
 
 Certified evidence:
 
-- Focused Phase 7A Ruff: PASS
-- Focused Phase 7A tests: 21 passed
-- AEI / evaluation regression slice: 44 passed
-- EUI Trust / Golden regression slice: 24 passed
+- Focused Phase 7B Ruff: PASS
+- Focused Phase 7B model / binder / Golden Harness tests: 20 passed
+- AEI passive integration tests: 7 passed
+- Answer-sheet evaluation regression slice: 13 passed
+- Evaluation / Trust regression slice: 22 passed
 - API import: PASS
 - git diff --check: PASS
-- Phase 7A LLM/provider-call scan: PASS, no provider call patterns found in
-  AEI consumer migration files
-- Phase 7A write-scan: PASS, no persistence/write patterns found in AEI
-  consumer migration files
-- Phase 7A UI/API/Trust-display scan: PASS, no user-facing exposure found
+- Phase 7B LLM/provider-call scan: PASS, no provider call patterns found in
+  AEI rich evidence binding files
+- Phase 7B write-scan: PASS, no persistence/write patterns found in AEI rich
+  evidence binding files
+- Phase 7B UI/API/Trust-display scan: PASS, no user-facing exposure found
+- Source flag remains inert: PASS
+- Rich evidence flag defaults OFF: PASS
 
 Certification report:
 
-[`product/eui-runtime/phase-7/EUI_PHASE_7A_AEI_CONSUMER_MIGRATION_CERTIFICATION_REPORT.md`](./product/eui-runtime/phase-7/EUI_PHASE_7A_AEI_CONSUMER_MIGRATION_CERTIFICATION_REPORT.md)
+[`product/eui-runtime/phase-7/EUI_PHASE_7B_AEI_RICH_EUI_EVIDENCE_BINDING_CERTIFICATION_REPORT.md`](./product/eui-runtime/phase-7/EUI_PHASE_7B_AEI_RICH_EUI_EVIDENCE_BINDING_CERTIFICATION_REPORT.md)
 
 ---
 
