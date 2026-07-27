@@ -1,0 +1,170 @@
+{
+  "version": "eui-context-golden-v1",
+  "authorization": "EUI-PH1-SP2-AUTH-001",
+  "cases": [
+    {
+      "id": "eui_context_cbse_g6_science_unit_test",
+      "school_id": "11111111-1111-4111-8111-111111111111",
+      "identity": {
+        "id": "ei://cbse/ncf2023/2024/g6/science/ch05/topic-measuring-length",
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "curriculum_version": "2024",
+        "grade": "Grade 6",
+        "subject": "Science",
+        "chapter": "Motion and Measurement of Distances",
+        "topic": "Measuring Length",
+        "concepts": ["Standard Units", "SI Units"],
+        "metadata": {
+          "pack_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "entity_type": "topic"
+        }
+      },
+      "reference": {
+        "assessment_mode": "unit_test",
+        "language_medium": "English"
+      },
+      "expected": {
+        "resolution_status": "resolved",
+        "grade": "Grade 6",
+        "subject": "Science",
+        "assessment_mode": "unit_test",
+        "language_medium": "English",
+        "conflict_count": 0,
+        "ambiguity_count": 0
+      }
+    },
+    {
+      "id": "eui_context_icse_g8_physics_homework",
+      "school_id": "22222222-2222-4222-8222-222222222222",
+      "identity": {
+        "id": "ei://icse/council-curriculum/2026/g8/physics/ch03/lo-explain-balanced-and-unbalanced-forces",
+        "board": "ICSE",
+        "curriculum": "Council Curriculum",
+        "curriculum_version": "2026",
+        "grade": "Class 8",
+        "subject": "Physics",
+        "chapter": "Force and Pressure",
+        "learning_objectives": ["Explain balanced and unbalanced forces"],
+        "metadata": {
+          "pack_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+          "entity_type": "learning_outcome"
+        }
+      },
+      "reference": {
+        "assessment_mode": "homework",
+        "evidence_posture": "passive"
+      },
+      "expected": {
+        "resolution_status": "resolved",
+        "grade": "Class 8",
+        "subject": "Physics",
+        "assessment_mode": "homework",
+        "evidence_posture": "passive",
+        "conflict_count": 0,
+        "ambiguity_count": 0
+      }
+    },
+    {
+      "id": "eui_context_state_telugu_medium",
+      "school_id": "33333333-3333-4333-8333-333333333333",
+      "identity": {
+        "id": "ei://ap-state-board/state-telugu-reader/2025/g7/telugu/ch02",
+        "board": "AP State Board",
+        "curriculum": "State Telugu Reader",
+        "curriculum_version": "2025",
+        "grade": "Standard 7",
+        "subject": "Telugu",
+        "chapter": "Language and Expression",
+        "language": "Telugu",
+        "metadata": {
+          "pack_id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+          "entity_type": "chapter"
+        }
+      },
+      "reference": {
+        "assessment_mode": "practice",
+        "language_medium": "Telugu"
+      },
+      "expected": {
+        "resolution_status": "resolved",
+        "grade": "Standard 7",
+        "subject": "Telugu",
+        "assessment_mode": "practice",
+        "language_medium": "Telugu",
+        "conflict_count": 0,
+        "ambiguity_count": 0
+      }
+    },
+    {
+      "id": "eui_context_precedence_conflict_grade",
+      "school_id": "44444444-4444-4444-8444-444444444444",
+      "identity": {
+        "id": "ei://cbse/ncf2023/2024/g6/science/ch05",
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "curriculum_version": "2024",
+        "grade": "Grade 6",
+        "subject": "Science",
+        "chapter": "Motion and Measurement of Distances",
+        "metadata": {
+          "pack_id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+          "entity_type": "chapter"
+        }
+      },
+      "reference": {
+        "grade": "Grade 7",
+        "assessment_mode": "term_exam"
+      },
+      "expected": {
+        "resolution_status": "resolved_with_conflicts",
+        "grade": "Grade 6",
+        "subject": "Science",
+        "assessment_mode": "term_exam",
+        "conflict_count": 1,
+        "ambiguity_count": 0
+      }
+    },
+    {
+      "id": "eui_context_same_identity_different_assessment_mode",
+      "school_id": "55555555-5555-4555-8555-555555555555",
+      "identity": {
+        "id": "ei://cbse/ncert/2024-25/g10/mathematics/ch04/topic-nature-of-roots",
+        "board": "CBSE",
+        "curriculum": "NCERT",
+        "curriculum_version": "2024-25",
+        "grade": "Grade 10",
+        "subject": "Mathematics",
+        "chapter": "Quadratic Equations",
+        "topic": "Nature of Roots",
+        "metadata": {
+          "pack_id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+          "entity_type": "topic"
+        }
+      },
+      "reference": {
+        "assessment_mode": "board_style_assessment"
+      },
+      "expected": {
+        "resolution_status": "resolved",
+        "grade": "Grade 10",
+        "subject": "Mathematics",
+        "assessment_mode": "board_style_assessment",
+        "conflict_count": 0,
+        "ambiguity_count": 0
+      }
+    },
+    {
+      "id": "eui_context_ambiguous_grade_section_reference",
+      "school_id": "66666666-6666-4666-8666-666666666666",
+      "reference": {
+        "candidate_context_ids": ["ctx-g6-a", "ctx-g6-b"]
+      },
+      "expected": {
+        "resolution_status": "ambiguous",
+        "conflict_count": 0,
+        "ambiguity_count": 1
+      }
+    }
+  ]
+}

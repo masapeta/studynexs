@@ -236,6 +236,9 @@ class Settings(BaseSettings):
     # Educational Understanding Intelligence (EUI) Phase 1 Sprint 1.
     # Passive identity resolution only; disabled by default and user-invisible.
     EUI_IDENTITY_PASSIVE_ENABLED: bool = False
+    # Educational Understanding Intelligence (EUI) Phase 1 Sprint 2.
+    # Passive context resolution only; disabled by default and user-invisible.
+    EUI_CONTEXT_PASSIVE_ENABLED: bool = False
 
     # ── Derived Properties ───────────────────────────────────────
     @property
