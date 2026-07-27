@@ -1,0 +1,109 @@
+{
+  "version": "eui-aei-rich-evidence-golden-v1",
+  "authorization": "EUI-PH7B-AEI-RICH-EVIDENCE-AUTH-001",
+  "tenant_id": "11111111-1111-4111-8111-111111111111",
+  "cases": [
+    {
+      "id": "aei_rich_evidence_math_supported_001",
+      "subject_type": "answer_sheet_evaluation",
+      "subject_ref": "answer_sheet_evaluation:rich-math-supported",
+      "exam": {
+        "exam_type": "unit_test"
+      },
+      "question_paper": {
+        "pack_id": null,
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "curriculum_version": "2026",
+        "grade": "10",
+        "subject_name": "Mathematics",
+        "topics": ["Algebra"],
+        "language_medium": "English",
+        "candidate_context_ids": []
+      },
+      "expected": {
+        "status": "partial",
+        "context_status": "resolved",
+        "capability_mode": "supported",
+        "capability_matched": true,
+        "missing_evidence": ["identity"],
+        "ambiguous_evidence": [],
+        "trust_consumer_visibility": "internal_only"
+      }
+    },
+    {
+      "id": "aei_rich_evidence_chemistry_assist_001",
+      "subject_type": "answer_sheet_evaluation",
+      "subject_ref": "answer_sheet_evaluation:rich-chemistry-assist",
+      "exam": {
+        "exam_type": "unit_test"
+      },
+      "question_paper": {
+        "pack_id": null,
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "curriculum_version": "2026",
+        "grade": "10",
+        "subject_name": "Chemistry",
+        "topics": ["Chemical Reactions"],
+        "language_medium": "English",
+        "candidate_context_ids": []
+      },
+      "expected": {
+        "status": "partial",
+        "context_status": "resolved",
+        "capability_mode": "assist",
+        "capability_matched": true,
+        "missing_evidence": ["identity"],
+        "ambiguous_evidence": [],
+        "trust_consumer_visibility": "internal_only"
+      }
+    },
+    {
+      "id": "aei_rich_evidence_context_ambiguous_001",
+      "subject_type": "answer_sheet_evaluation",
+      "subject_ref": "answer_sheet_evaluation:rich-context-ambiguous",
+      "exam": {
+        "exam_type": "assignment"
+      },
+      "question_paper": {
+        "pack_id": null,
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "curriculum_version": "2026",
+        "grade": "10",
+        "subject_name": "Mathematics",
+        "topics": ["Geometry"],
+        "language_medium": "English",
+        "candidate_context_ids": ["ctx://geometry/a", "ctx://geometry/b"]
+      },
+      "expected": {
+        "status": "partial",
+        "context_status": "ambiguous",
+        "capability_mode": "supported",
+        "capability_matched": true,
+        "missing_evidence": ["identity"],
+        "ambiguous_evidence": ["context"],
+        "trust_consumer_visibility": "internal_only"
+      }
+    },
+    {
+      "id": "aei_rich_evidence_missing_context_001",
+      "subject_type": "answer_sheet_evaluation",
+      "subject_ref": "answer_sheet_evaluation:rich-missing-context",
+      "exam": {
+        "exam_type": null
+      },
+      "question_paper": null,
+      "expected": {
+        "status": "partial",
+        "context_status": "resolved",
+        "capability_mode": "unsupported",
+        "capability_matched": false,
+        "missing_evidence": ["capability", "identity"],
+        "ambiguous_evidence": [],
+        "trust_consumer_visibility": "internal_only"
+      }
+    }
+  ]
+}

@@ -255,8 +255,10 @@ class Settings(BaseSettings):
     EUI_TRUST_REPORT_ENABLED: bool = False
     # Educational Understanding Intelligence (EUI) Phase 7A.
     # Passive AEI consumer dual-read comparison only; disabled by default and
-    # internal. The source flag is intentionally inert in Phase 7A.
+    # internal. The rich-evidence flag only enriches internal comparison
+    # evidence. The source flag is intentionally inert in Phase 7A/7B.
     EUI_CONSUMER_AEI_DUAL_READ_ENABLED: bool = False
+    EUI_CONSUMER_AEI_RICH_EVIDENCE_ENABLED: bool = False
     EUI_CONSUMER_AEI_SOURCE_ENABLED: bool = False
 
     # ── Derived Properties ───────────────────────────────────────

@@ -12,6 +12,7 @@ from app.modules.eui.schemas.aei_consumer_migration import (
     AEIConsumerMigrationCapture,
     AEIConsumerMigrationComparison,
     AEIConsumerMigrationDifference,
+    AEIConsumerMigrationEvidenceBundle,
 )
 
 
@@ -19,6 +20,7 @@ def test_phase_7a_feature_flags_default_off():
     settings = Settings()
 
     assert settings.EUI_CONSUMER_AEI_DUAL_READ_ENABLED is False
+    assert settings.EUI_CONSUMER_AEI_RICH_EVIDENCE_ENABLED is False
     assert settings.EUI_CONSUMER_AEI_SOURCE_ENABLED is False
 
 
@@ -95,4 +97,38 @@ def test_capture_is_serializable_and_bounded_to_internal_status():
             subject_ref="answer_sheet_evaluation:123",
             status="teacher_visible",  # type: ignore[arg-type]
             duration_ms=0.1,
+        )
+
+
+def test_rich_evidence_bundle_is_strict_non_authoritative_and_serializable():
+    tenant_id = uuid.uuid4()
+    bundle = AEIConsumerMigrationEvidenceBundle(
+        tenant_id=tenant_id,
+        subject_type="answer_sheet_evaluation",
+        subject_ref="answer_sheet_evaluation:123",
+        status="partial",
+        missing_evidence=("identity",),
+        query_budget={"per_question_db_traversal": False},
+    )
+
+    dumped = bundle.model_dump(mode="json")
+    assert dumped["tenant_id"] == str(tenant_id)
+    assert bundle.authoritative is False
+    assert bundle.query_budget["per_question_db_traversal"] is False
+
+    with pytest.raises(ValidationError):
+        AEIConsumerMigrationEvidenceBundle(
+            tenant_id=tenant_id,
+            subject_type="answer_sheet_evaluation",
+            subject_ref="answer_sheet_evaluation:123",
+            status="teacher_visible",  # type: ignore[arg-type]
+        )
+
+    with pytest.raises(ValidationError):
+        AEIConsumerMigrationEvidenceBundle(
+            tenant_id=tenant_id,
+            subject_type="answer_sheet_evaluation",
+            subject_ref="answer_sheet_evaluation:123",
+            status="partial",
+            raw_input="sensitive",  # type: ignore[call-arg]
         )

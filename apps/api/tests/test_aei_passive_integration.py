@@ -267,6 +267,7 @@ async def test_eval_outputs_identical_with_eui_aei_dual_read_and_source_flag_ena
     monkeypatch.setattr(eval_mod.settings, "AEI_PASSIVE_INTEGRATION_ENABLED", False)
     monkeypatch.setattr(eval_mod.settings, "AEI_SHADOW_MODE_ENABLED", False)
     monkeypatch.setattr(eval_mod.settings, "EUI_CONSUMER_AEI_DUAL_READ_ENABLED", False)
+    monkeypatch.setattr(eval_mod.settings, "EUI_CONSUMER_AEI_RICH_EVIDENCE_ENABLED", False)
     monkeypatch.setattr(eval_mod.settings, "EUI_CONSUMER_AEI_SOURCE_ENABLED", False)
     disabled = await service.execute_evaluation(row.id, role="class_incharge")
     disabled_snapshot = {
@@ -285,6 +286,7 @@ async def test_eval_outputs_identical_with_eui_aei_dual_read_and_source_flag_ena
     monkeypatch.setattr(eval_mod.settings, "AEI_PASSIVE_INTEGRATION_ENABLED", False)
     monkeypatch.setattr(eval_mod.settings, "AEI_SHADOW_MODE_ENABLED", False)
     monkeypatch.setattr(eval_mod.settings, "EUI_CONSUMER_AEI_DUAL_READ_ENABLED", True)
+    monkeypatch.setattr(eval_mod.settings, "EUI_CONSUMER_AEI_RICH_EVIDENCE_ENABLED", True)
     monkeypatch.setattr(eval_mod.settings, "EUI_CONSUMER_AEI_SOURCE_ENABLED", True)
     enabled = await service.execute_evaluation(row.id, role="class_incharge")
     enabled_snapshot = {
@@ -302,3 +304,7 @@ async def test_eval_outputs_identical_with_eui_aei_dual_read_and_source_flag_ena
     assert comparison.source_flag_enabled is True
     assert comparison.source_switch_active is False
     assert comparison.authoritative is False
+    assert comparison.eui_context_present is True
+    assert comparison.trust_report_ref is not None
+    assert comparison.trust_consumer_visibility == "internal_only"
+    assert comparison.eui_summary["rich_evidence_status"] in {"partial", "resolved"}

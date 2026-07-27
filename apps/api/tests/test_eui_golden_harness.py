@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import uuid
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -27,6 +28,9 @@ from app.modules.eui.schemas.knowledge_acquisition import KnowledgeAcquisitionIn
 from app.modules.eui.schemas.platform_capability import PlatformCapabilityLookupRequest
 from app.modules.eui.services.aei_consumer_migration import (
     AEIConsumerMigrationAdapter,
+)
+from app.modules.eui.services.aei_consumer_migration_evidence import (
+    AEIConsumerMigrationEvidenceBinder,
 )
 from app.modules.eui.services.educational_context_resolver import EducationalContextResolver
 from app.modules.eui.services.educational_graph_resolver import (
@@ -290,6 +294,72 @@ def test_eui_aei_consumer_migration_golden_harness_cases_are_deterministic():
     assert len(comparison_ids) == len(payload["cases"])
 
 
+@pytest.mark.asyncio
+async def test_eui_aei_rich_evidence_golden_harness_cases_are_deterministic():
+    payload = json.loads(
+        (GOLDEN_DIR / "aei_rich_evidence_binding_cases.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert payload["version"] == "eui-aei-rich-evidence-golden-v1"
+    assert payload["authorization"] == "EUI-PH7B-AEI-RICH-EVIDENCE-AUTH-001"
+    case_ids = [case["id"] for case in payload["cases"]]
+    assert len(case_ids) == len(set(case_ids))
+
+    tenant_id = uuid.UUID(payload["tenant_id"])
+    binder = AEIConsumerMigrationEvidenceBinder()
+    bundle_ids: set[tuple[str, str, str]] = set()
+    for case in payload["cases"]:
+        result = await binder.bind(
+            enabled=True,
+            db=None,
+            tenant_id=tenant_id,
+            subject_type=case["subject_type"],
+            subject_ref=case["subject_ref"],
+            artifact_id=uuid.uuid5(uuid.NAMESPACE_URL, case["subject_ref"]),
+            exam=_exam_from_case(case.get("exam")),
+            question_paper=_paper_from_case(case.get("question_paper")),
+        )
+        result_again = await binder.bind(
+            enabled=True,
+            db=None,
+            tenant_id=tenant_id,
+            subject_type=case["subject_type"],
+            subject_ref=case["subject_ref"],
+            artifact_id=uuid.uuid5(uuid.NAMESPACE_URL, case["subject_ref"]),
+            exam=_exam_from_case(case.get("exam")),
+            question_paper=_paper_from_case(case.get("question_paper")),
+        )
+        assert result is not None, case["id"]
+        assert result_again is not None, case["id"]
+        bundle = result.bundle
+        bundle_again = result_again.bundle
+        expected = case["expected"]
+
+        assert bundle.status == expected["status"], case["id"]
+        assert bundle.context_status == expected["context_status"], case["id"]
+        assert bundle.capability_mode == expected["capability_mode"], case["id"]
+        assert bundle.capability_matched is expected["capability_matched"], case["id"]
+        assert sorted(bundle.missing_evidence) == sorted(
+            expected["missing_evidence"]
+        ), case["id"]
+        assert sorted(bundle.ambiguous_evidence) == sorted(
+            expected["ambiguous_evidence"]
+        ), case["id"]
+        assert bundle.trust_consumer_visibility == expected[
+            "trust_consumer_visibility"
+        ], case["id"]
+        assert bundle.authoritative is False, case["id"]
+        assert bundle.query_budget["per_question_db_traversal"] is False, case["id"]
+        assert bundle.model_copy(update={"duration_ms": 0.0}) == bundle_again.model_copy(
+            update={"duration_ms": 0.0}
+        ), case["id"]
+        bundle_ids.add((case["subject_ref"], bundle.status, str(bundle.capability_mode)))
+
+    assert len(bundle_ids) == len(payload["cases"])
+
+
 def _trust_report_from_case(
     case: dict,
     *,
@@ -390,4 +460,21 @@ def _identity_from_case(
             source_version=payload["curriculum_version"],
             resolved_from="golden_case",
         ),
+    )
+
+
+def _paper_from_case(payload: dict | None):
+    if payload is None:
+        return None
+    return SimpleNamespace(**payload)
+
+
+def _exam_from_case(payload: dict | None):
+    if payload is None:
+        return None
+    exam_type = payload.get("exam_type")
+    return SimpleNamespace(
+        exam_type=SimpleNamespace(value=exam_type) if exam_type else None,
+        topic=payload.get("topic"),
+        source_paper_id=None,
     )

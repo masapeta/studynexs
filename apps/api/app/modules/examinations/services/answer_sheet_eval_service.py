@@ -36,6 +36,9 @@ from app.modules.eui.services.aei_consumer_migration import (
     summarize_aei_passive_capture,
     summarize_legacy_evaluation,
 )
+from app.modules.eui.services.aei_consumer_migration_evidence import (
+    bind_aei_consumer_migration_evidence,
+)
 from app.modules.examinations.schemas.evaluation import EvaluationApprove
 from app.modules.examinations.schemas.exam import MarkEntry
 from app.modules.examinations.services.aei_passive_integration import (
@@ -291,13 +294,37 @@ class AnswerSheetEvalService:
                 student_answers=answers,
                 suggestions=suggestions,
             )
+            rich_evidence = await bind_aei_consumer_migration_evidence(
+                enabled=(
+                    settings.EUI_CONSUMER_AEI_DUAL_READ_ENABLED
+                    and settings.EUI_CONSUMER_AEI_RICH_EVIDENCE_ENABLED
+                ),
+                db=self.db,
+                tenant_id=row.school_id,
+                subject_type="answer_sheet_evaluation",
+                subject_ref=f"answer_sheet_evaluation:{row.id}",
+                artifact_id=row.id,
+                exam=exam,
+            )
+            eui_summary = summarize_aei_passive_capture(passive_capture)
+            if rich_evidence is not None:
+                eui_summary.update(rich_evidence.eui_summary)
             observe_aei_consumer_migration(
                 enabled=settings.EUI_CONSUMER_AEI_DUAL_READ_ENABLED,
                 tenant_id=row.school_id,
                 subject_type="answer_sheet_evaluation",
                 subject_ref=f"answer_sheet_evaluation:{row.id}",
                 legacy_summary=summarize_legacy_evaluation(suggestions),
-                eui_summary=summarize_aei_passive_capture(passive_capture),
+                eui_summary=eui_summary,
+                educational_context=(
+                    rich_evidence.educational_context
+                    if rich_evidence is not None
+                    else None
+                ),
+                capability_lookup=(
+                    rich_evidence.capability_lookup if rich_evidence is not None else None
+                ),
+                trust_report=rich_evidence.trust_report if rich_evidence is not None else None,
                 source_enabled=settings.EUI_CONSUMER_AEI_SOURCE_ENABLED,
             )
             row.ai_suggestions = suggestions

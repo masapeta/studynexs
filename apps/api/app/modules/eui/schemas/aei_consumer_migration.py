@@ -39,6 +39,8 @@ AEIConsumerMigrationCaptureStatus = Literal[
     "failed",
 ]
 
+AEIConsumerMigrationEvidenceStatus = Literal["resolved", "partial", "missing", "failed"]
+
 
 class AEIConsumerMigrationDifference(BaseModel):
     """One deterministic internal comparison signal.
@@ -110,3 +112,35 @@ class AEIConsumerMigrationCapture(BaseModel):
     duration_ms: float = Field(ge=0.0)
     comparison: AEIConsumerMigrationComparison | None = None
     error: str | None = None
+
+
+class AEIConsumerMigrationEvidenceBundle(BaseModel):
+    """Internal rich EUI evidence bundle for Phase 7B AEI dual-read.
+
+    The bundle is non-authoritative and intentionally carries bounded metadata
+    only. It must not contain raw answers, OCR text, uploaded content, teacher
+    free text, student/parent names, tenant slugs, or user-visible evidence.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    tenant_id: uuid.UUID
+    subject_type: AEIConsumerMigrationSubjectType
+    subject_ref: str
+    status: AEIConsumerMigrationEvidenceStatus
+    educational_identity_id: str | None = None
+    context_status: str | None = None
+    capability_mode: CapabilityMode | None = None
+    capability_matched: bool | None = None
+    trust_report_ref: str | None = None
+    trust_posture: str | None = None
+    trust_consumer_visibility: str | None = None
+    missing_evidence: tuple[str, ...] = ()
+    ambiguous_evidence: tuple[str, ...] = ()
+    duration_ms: float = Field(default=0.0, ge=0.0)
+    query_budget: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @property
+    def authoritative(self) -> bool:
+        return False

@@ -334,11 +334,17 @@ def classify_migration_differences(
             )
         )
 
-    if _eui_richer(legacy_summary, safe_eui_summary, educational_context, trust_report):
+    if _eui_richer(
+        legacy_summary,
+        safe_eui_summary,
+        educational_context,
+        capability_lookup,
+        trust_report,
+    ):
         differences.append(
             AEIConsumerMigrationDifference(
                 difference_type="eui_richer",
-                reason="eui_has_additional_context_or_trust_evidence",
+                reason="eui_has_additional_context_capability_or_trust_evidence",
                 blocker=False,
                 legacy_signal="limited",
                 eui_signal="richer",
@@ -507,11 +513,14 @@ def _eui_richer(
     legacy_summary: dict[str, Any],
     eui_summary: dict[str, Any],
     educational_context: EducationalContext | None,
+    capability_lookup: PlatformCapabilityLookupResult | None,
     trust_report: TrustReport | None,
 ) -> bool:
-    if not _has_eui_evidence(eui_summary, educational_context, None, trust_report):
+    if not _has_eui_evidence(eui_summary, educational_context, capability_lookup, trust_report):
         return False
     if educational_context is not None and not legacy_summary.get("educational_context_id"):
+        return True
+    if capability_lookup is not None and not legacy_summary.get("capability_mode"):
         return True
     if trust_report is not None and not legacy_summary.get("trust_report_id"):
         return True
