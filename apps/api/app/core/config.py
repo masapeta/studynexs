@@ -185,7 +185,8 @@ class Settings(BaseSettings):
     AI_DEFAULT_PROVIDER: str = "gemini"  # default only; benchmark decides the real one
     AI_DEFAULT_MODEL: str = ""  # empty → factory picks the provider's default model
     AI_FALLBACK_PROVIDER: str = ""  # e.g. ollama — used when primary provider fails
-    AI_VISION_FALLBACK_PROVIDER: str = ""  # answer-sheet OCR; defaults to AI_FALLBACK_PROVIDER or ollama
+    # Answer-sheet OCR fallback; defaults to AI_FALLBACK_PROVIDER or ollama.
+    AI_VISION_FALLBACK_PROVIDER: str = ""
     OLLAMA_BASE_URL: str = ""  # e.g. http://host.docker.internal:11434 (Docker → host Ollama)
     OLLAMA_MODEL: str = "gemma4:cloud"
     OLLAMA_VISION_MODEL: str = ""  # empty → OLLAMA_MODEL (gemma4 supports image input)
@@ -224,6 +225,11 @@ class Settings(BaseSettings):
     AZURE_SPEECH_KEY: str = ""
     AZURE_SPEECH_REGION: str = "centralindia"  # data residency: keep Indian region
     AZURE_SPEECH_VOICE: str = "en-IN-NeerjaExpressiveNeural"
+
+    # Academic Evaluation Intelligence (AEI) controlled runtime integration.
+    # Wave 1 is passive only: AEI observes evaluation requests without affecting marks,
+    # gradebook, mastery, teacher-visible behavior, or persistence.
+    AEI_PASSIVE_INTEGRATION_ENABLED: bool = False
 
     # ── Derived Properties ───────────────────────────────────────
     @property

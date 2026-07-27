@@ -33,6 +33,9 @@ from app.modules.ai.services.evaluation_engine import SubjectiveItem, evaluate_s
 from app.modules.ai.services.question_bank_service import fetch_rubrics_for_paper
 from app.modules.examinations.schemas.evaluation import EvaluationApprove
 from app.modules.examinations.schemas.exam import MarkEntry
+from app.modules.examinations.services.aei_passive_integration import (
+    observe_answer_sheet_evaluation,
+)
 from app.modules.examinations.services.answer_sheet_vision import (
     extract_answers_from_image,
     is_image_mime,
@@ -267,6 +270,16 @@ class AnswerSheetEvalService:
                 exam=exam,
                 school_id=row.school_id,
                 student_answers=answers,
+            )
+            await observe_answer_sheet_evaluation(
+                enabled=settings.AEI_PASSIVE_INTEGRATION_ENABLED,
+                db=self.db,
+                evaluation_id=row.id,
+                school_id=row.school_id,
+                exam=exam,
+                student_id=row.student_id,
+                student_answers=answers,
+                suggestions=suggestions,
             )
             row.ai_suggestions = suggestions
             row.correction_summary = _build_summary(suggestions)
