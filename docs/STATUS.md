@@ -70,6 +70,7 @@ canonical roadmap names are:
 | AEI v1 | Frozen / protected |
 | AEI v1.0 Batch A - Maths normalization | Complete / certified / published |
 | AEI v1.0 Batch B - Review policy metadata | Complete / certified / published |
+| AEI v1.0 Batch C - Evidence ledger metadata | Complete / certified / published |
 | EUI v1 architecture | Frozen / accepted |
 | EUI Runtime Roadmap v1 | Accepted planning baseline |
 | Phase 0 - Engineering Preparation | Complete / certified / published |
@@ -90,6 +91,7 @@ canonical roadmap names are:
 |---|---|---|---|---|
 | Batch A - Maths Normalization | Published / certified | `4343b0542b68cd739162eeb47207299c428b2fd9` | `aei-v1-batch-a-maths-normalization-certified` | Default-off deterministic Maths normalization/equivalence foundation |
 | Batch B - Review Policy Metadata | Published / certified | `d40c31e4df29a4942e48431c90b756611949ef86` | `aei-v1-batch-b-review-policy-certified` | Default-off confidence/manual-review metadata and teacher override audit foundation |
+| Batch C - Evidence Ledger Metadata | Published / certified | `9f3589e1d98825a2abc15244879ef1b8329a6064` | `aei-v1-batch-c-evidence-ledger-certified` | Default-off approved-evidence ledger metadata and teacher-approved source-of-truth contract |
 
 Batch A adds production-seam Maths normalization behind
 `AEI_V1_MATH_NORMALIZATION_ENABLED=false` by default.
@@ -125,6 +127,25 @@ Batch B does not authorize or implement evidence-ledger propagation, language/OC
 assist, visual/science assist, UI changes, API changes, schema changes, or
 parent/student visibility changes.
 
+Batch C adds approved-evidence ledger metadata behind
+`AEI_V1_EVIDENCE_LEDGER_METADATA_ENABLED=false` by default.
+
+Supported Batch C behavior:
+
+- unapproved AI suggestions are explicitly marked as not approved for downstream
+  evidence;
+- teacher-approved evaluations emit sanitized approved-evidence metadata;
+- original AI suggestion metadata remains separate from the final teacher
+  decision;
+- the downstream source of truth is declared as `teacher_decision`;
+- raw student answer keys are excluded from the approved-evidence contract;
+- Golden Harness cases cover approved, overridden, and unapproved evidence
+  scenarios.
+
+Batch C does not authorize or implement language/OCR assist, visual/science
+assist, UI changes, API changes, schema changes, report-card automation, broad
+consumer migration, or parent/student visibility changes.
+
 ---
 
 ## Published EUI runtime milestones
@@ -150,24 +171,25 @@ parent/student visibility changes.
 The latest completed artifact is:
 
 ```text
-AEI v1.0 Batch B - Review Policy Metadata
+AEI v1.0 Batch C - Evidence Ledger Metadata
 ```
 
-AEI v1.0 Batch B is published and certified as a default-off review-policy
-metadata and override-audit foundation. It enriches existing evaluation
-suggestions only when `AEI_V1_REVIEW_POLICY_ENABLED=true`.
+AEI v1.0 Batch C is published and certified as a default-off approved-evidence
+ledger metadata foundation. It enriches existing evaluation evidence-ledger
+responses only when `AEI_V1_EVIDENCE_LEDGER_METADATA_ENABLED=true`.
 
 When the flag is disabled, existing suggestion and approval behavior remains the
-production path. No schema, API, UI, evidence-ledger, language/OCR, visual/science,
-or parent/student visibility changes were introduced.
+production path. No schema, API route, UI, marks, teacher-review routing,
+persistence, language/OCR, visual/science, or parent/student visibility changes
+were introduced.
 
 Next gated milestone:
 
 ```text
-AEI v1.0 Batch C - Evidence ledger and approved evidence propagation
+AEI v1.0 Batch D - Language and OCR assist support boundary
 ```
 
-Batch C is not authorized until ARM explicitly issues the next implementation
+Batch D is not authorized until ARM explicitly issues the next implementation
 authorization.
 
 EUI Phase 7 remains closed at Phase 7E. Phase 7F source adoption is deferred
@@ -211,8 +233,9 @@ remain out of scope:
 - Phase 7F source adoption unless ARM reopens it under the documented reopen
   conditions;
 - AEI behavior changes beyond the published default-off Batch A Maths
-  normalization foundation and Batch B review-policy metadata foundation;
-- AEI v1.0 Batch C or later batches without separate ARM authorization;
+  normalization foundation, Batch B review-policy metadata foundation, and
+  Batch C approved-evidence ledger metadata foundation;
+- AEI v1.0 Batch D or later batches without separate ARM authorization;
 - AEI source-of-truth switching to EUI;
 - EUI contract changes outside accepted design;
 - product capability claim changes;
