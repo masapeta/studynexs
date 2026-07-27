@@ -75,6 +75,7 @@ canonical roadmap names are:
 | AEI v1.0 Batch E - Visual/science assist metadata | Complete / certified / published |
 | AEI v1.0 Certification | Complete / certified / published |
 | AEI v1.0 Teacher Evaluation UX-A - Trust metadata display | Complete / certified / published |
+| AEI v1.0 Teacher Evaluation UX-B - Override reason workflow | Complete / certified / published |
 | EUI v1 architecture | Frozen / accepted |
 | EUI Runtime Roadmap v1 | Accepted planning baseline |
 | Phase 0 - Engineering Preparation | Complete / certified / published |
@@ -213,6 +214,7 @@ or expanded public product claims.
 | Batch | Status | Commit | Tag | Scope |
 |---|---|---|---|---|
 | UX-A - Review-table trust metadata display | Published / certified | `a391fb2bd659957223a7a631471096a8e3b0ba6b` | `aei-v1-teacher-evaluation-ux-a-trust-display-certified` | Display-only teacher review guidance, confidence/capability/manual-review badges, and safe AEI metadata evidence rows on the existing teacher evaluation page |
+| UX-B - Override reason workflow | Published / certified | `c8ea8997f0aca8adb2fb1667cd25bff5500dd4a3` | `aei-v1-teacher-evaluation-ux-b-override-reasons-certified` | Teacher-authored override reason capture and saved override reason display on the existing teacher evaluation page |
 
 UX-A turns certified AEI v1.0 suggestion metadata into teacher-visible trust
 signals on the existing answer-sheet evaluation review page.
@@ -235,6 +237,32 @@ UX-A certification caveat:
 - helper lint passed;
 - focused page lint remains blocked by pre-existing evaluation-page lint debt
   outside the UX-A display-only scope.
+
+UX-B replaces generic override reason submission with teacher-authored override
+reason capture on the existing answer-sheet evaluation review page.
+
+Supported UX-B behavior:
+
+- changed final marks reveal a **Reason for change** input;
+- approval is blocked until each changed mark has a non-empty teacher-authored
+  reason;
+- unchanged marks do not require a reason;
+- approved evaluations display saved override reasons when available;
+- legacy approved overrides without reasons show neutral fallback copy:
+  `Reason not recorded.`;
+- the existing approval payload shape is preserved;
+- no backend, marks, approval endpoint, teacher-review routing,
+  evidence-ledger, source-switching, schema, API, feature-flag enablement, or
+  parent/student visibility changes.
+
+UX-B certification caveat:
+
+- dedicated browser proof was not executed in this session;
+- admin-web production build and TypeScript validation passed;
+- focused page lint remains blocked by pre-existing evaluation-page lint debt
+  outside the UX-B workflow slice;
+- UX-B helper-level lint debt introduced during implementation was removed
+  before certification.
 
 ---
 
@@ -261,25 +289,26 @@ UX-A certification caveat:
 The latest completed artifact is:
 
 ```text
-AEI v1.0 Teacher Evaluation UX-A - Trust metadata display
+AEI v1.0 Teacher Evaluation UX-B - Override reason workflow
 ```
 
-AEI v1.0 Teacher Evaluation UX-A is published and certified as the first
+AEI v1.0 Teacher Evaluation UX-B is published and certified as the second
 post-certification, product-facing teacher evaluation experience slice.
 
-UX-A displays existing AEI suggestion metadata on the existing teacher
-evaluation review page. It does not change marks, approval behavior,
-teacher-review routing, backend behavior, schema, API, evidence-ledger behavior,
-feature-flag enablement, source-of-truth posture, or parent/student visibility.
+UX-B captures teacher-authored override reasons when final marks differ from
+AI-suggested marks. It preserves the existing approval payload shape and does
+not change marks calculation, approval authority, teacher-review routing,
+backend behavior, schema, API, evidence-ledger behavior, feature-flag
+enablement, source-of-truth posture, or parent/student visibility.
 
 Next gated milestone:
 
 ```text
-AEI v1.0 Teacher Evaluation UX-B - Override reason workflow
+AEI v1.0 Teacher Evaluation UX-C - Evidence and approved-decision panel
 ```
 
 No further post-certification AEI product-facing implementation, feature-flag
-enablement, UI work beyond published UX-A, public capability claim expansion,
+enablement, UI work beyond published UX-B, public capability claim expansion,
 or product launch-readiness work is authorized until ARM explicitly issues the
 next implementation authorization.
 
@@ -318,8 +347,8 @@ remain out of scope:
   foundation;
 - schema changes;
 - API changes;
-- UI changes beyond the published AEI v1.0 Teacher Evaluation UX-A display
-  slice;
+- UI changes beyond the published AEI v1.0 Teacher Evaluation UX-B override
+  reason workflow slice;
 - consumer migration beyond the published Phase 7E AEI internal
   source-readiness trial foundation;
 - Phase 7F source adoption unless ARM reopens it under the documented reopen
@@ -330,7 +359,7 @@ remain out of scope:
   metadata foundation, and Batch E visual/science assist metadata foundation;
 - AEI v1.0 feature-flag enablement, source switching, or product-facing behavior
   changes without separate ARM authorization;
-- AEI v1.0 Teacher Evaluation UX-B or later UX batches without separate ARM
+- AEI v1.0 Teacher Evaluation UX-C or later UX batches without separate ARM
   authorization;
 - post-certification AEI expansion without separate ARM authorization;
 - AEI source-of-truth switching to EUI;
@@ -360,12 +389,13 @@ Metadata foundation, a published AEI v1.0 Batch C Evidence Ledger Metadata
 foundation, and a published AEI v1.0 Batch D Language/OCR Assist Metadata
 foundation, and a published AEI v1.0 Batch E Visual/Science Assist Metadata
 foundation, a published AEI v1.0 Certification baseline, and a published AEI
-v1.0 Teacher Evaluation UX-A Trust Metadata Display baseline. Phase 7 is closed
-at 7E. Phase 7F source adoption is deferred future scope. AEI v1.0 is certified
-for the declared supported scope, and UX-A is the first product-facing display
-slice. Further teacher-evaluation UX batches, feature-flag rollout, source
-switching, and public capability claim expansion require separate ARM
-authorization.
+v1.0 Teacher Evaluation UX-A Trust Metadata Display baseline, and a published
+AEI v1.0 Teacher Evaluation UX-B Override Reason Workflow baseline. Phase 7 is
+closed at 7E. Phase 7F source adoption is deferred future scope. AEI v1.0 is
+certified for the declared supported scope, UX-A is the first product-facing
+display slice, and UX-B is the teacher-authored override reason workflow slice.
+Further teacher-evaluation UX batches, feature-flag rollout, source switching,
+and public capability claim expansion require separate ARM authorization.
 
 ---
 
@@ -374,30 +404,30 @@ authorization.
 Latest published runtime phase:
 
 ```text
-AEI v1.0 Teacher Evaluation UX-A - Trust metadata display
+AEI v1.0 Teacher Evaluation UX-B - Override reason workflow
 ```
 
 Historical artifact label:
 
 ```text
-AEI v1.0 Teacher Evaluation Trust Metadata Display
+AEI v1.0 Teacher Evaluation Override Reason Workflow
 ```
 
 Certified evidence:
 
-- UX-A helper lint: PASS
 - Admin-web production build and TypeScript validation: PASS
 - git diff --check: PASS
 - Existing teacher evaluation page compiles in production build: PASS
-- Display-only frontend implementation: PASS
+- Frontend-only override reason workflow implementation: PASS
+- Existing approval payload shape preserved: PASS
 - No backend/API/schema/marks/approval/evidence-ledger/source-switch changes: PASS
 - Dedicated browser proof: NOT EXECUTED; recorded certification caveat
 - Focused page lint: BLOCKED by pre-existing evaluation-page lint debt outside
-  UX-A scope; helper lint is clean
+  UX-B scope; UX-B helper-level lint debt was removed before certification
 
 Certification report:
 
-[`product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_A_CERTIFICATION_REPORT.md`](./product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_A_CERTIFICATION_REPORT.md)
+[`product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_B_CERTIFICATION_REPORT.md`](./product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_B_CERTIFICATION_REPORT.md)
 
 Supported scope matrix:
 
