@@ -5,6 +5,9 @@ from app.modules.examinations.services.aei_v1_evidence_ledger import (
     build_approved_evidence_metadata,
     contains_unsafe_evidence_key,
 )
+from app.modules.examinations.services.aei_v1_language_ocr_assist import (
+    apply_language_ocr_assist_metadata,
+)
 from app.modules.examinations.services.aei_v1_math_normalization import (
     AEI_MATH_EVALUATION_METHOD,
     evaluate_math_normalization,
@@ -23,6 +26,9 @@ BATCH_B_REVIEW_CASES_PATH = (
 )
 BATCH_C_APPROVED_EVIDENCE_CASES_PATH = (
     Path(__file__).parent / "golden" / "aei_v1" / "batch_c_approved_evidence_cases.json"
+)
+BATCH_D_LANGUAGE_OCR_CASES_PATH = (
+    Path(__file__).parent / "golden" / "aei_v1" / "batch_d_language_ocr_assist_cases.json"
 )
 
 
@@ -43,6 +49,11 @@ def _load_batch_b_review_cases() -> dict:
 
 def _load_batch_c_approved_evidence_cases() -> dict:
     with BATCH_C_APPROVED_EVIDENCE_CASES_PATH.open("r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def _load_batch_d_language_ocr_cases() -> dict:
+    with BATCH_D_LANGUAGE_OCR_CASES_PATH.open("r", encoding="utf-8") as handle:
         return json.load(handle)
 
 
@@ -190,3 +201,44 @@ def test_batch_c_approved_evidence_golden_cases_execute_deterministically():
             == expected["source_of_truth"]
         ), case["id"]
         assert contains_unsafe_evidence_key(metadata) is False, case["id"]
+
+
+def test_batch_d_language_ocr_assist_golden_cases_execute_deterministically():
+    data = _load_batch_d_language_ocr_cases()
+
+    assert data["version"] == "aei-v1-batch-d-language-ocr-assist"
+    case_ids: set[str] = set()
+    for case in data["cases"]:
+        assert case["id"] not in case_ids
+        case_ids.add(case["id"])
+
+        case_input = case["input"]
+        enriched = apply_language_ocr_assist_metadata(
+            case_input["suggestions"],
+            subject=case_input["subject"],
+            answer_sources=case_input["answer_sources"],
+            ocr_confidence_by_question=case_input["ocr_confidence_by_question"],
+        )
+        expected = case["expected"]
+        suggestion = next(iter(enriched.values()))
+        assist = suggestion["aei_v1_language_ocr_assist"]
+
+        assert suggestion["answer_language"] == expected["answer_language"], case["id"]
+        assert suggestion["detected_script"] == expected["detected_script"], case["id"]
+        assert suggestion["code_mixed"] is expected["code_mixed"], case["id"]
+        assert (
+            suggestion.get("language_ocr_capability_mode")
+            == expected["language_ocr_capability_mode"]
+        ), case["id"]
+        assert (
+            suggestion["teacher_correction_required"]
+            is expected["teacher_correction_required"]
+        ), case["id"]
+        assert (
+            bool(suggestion.get("manual_review_required"))
+            is expected["manual_review_required"]
+        ), case["id"]
+        assert (
+            assist["autonomous_language_grading"]
+            is expected["autonomous_language_grading"]
+        ), case["id"]

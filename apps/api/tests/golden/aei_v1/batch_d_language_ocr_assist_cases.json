@@ -1,0 +1,199 @@
+{
+  "version": "aei-v1-batch-d-language-ocr-assist",
+  "cases": [
+    {
+      "id": "aei_batch_d_hindi_printed_supported_001",
+      "subject": "Hindi",
+      "capability": "printed_ocr",
+      "input": {
+        "suggestions": {
+          "1": {
+            "marks_suggested": 1,
+            "max_marks": 1,
+            "student_answer": "उत्तर",
+            "confidence": 0.95,
+            "method": "objective"
+          }
+        },
+        "answer_sources": {
+          "1": "printed_ocr"
+        },
+        "ocr_confidence_by_question": {
+          "1": 0.96
+        },
+        "subject": "Hindi"
+      },
+      "expected": {
+        "answer_language": "Hindi",
+        "detected_script": "Devanagari",
+        "code_mixed": false,
+        "language_ocr_capability_mode": "supported",
+        "teacher_correction_required": true,
+        "manual_review_required": true,
+        "autonomous_language_grading": false
+      },
+      "notes": "Even supported printed Hindi OCR remains teacher-reviewed when the subject itself is Hindi."
+    },
+    {
+      "id": "aei_batch_d_hindi_handwriting_assist_001",
+      "subject": "Hindi",
+      "capability": "handwriting_ocr",
+      "input": {
+        "suggestions": {
+          "1": {
+            "marks_suggested": 1,
+            "max_marks": 1,
+            "student_answer": "उत्तर",
+            "confidence": 0.9,
+            "method": "objective"
+          }
+        },
+        "answer_sources": {
+          "1": "ocr_image"
+        },
+        "ocr_confidence_by_question": {},
+        "subject": "Hindi"
+      },
+      "expected": {
+        "answer_language": "Hindi",
+        "detected_script": "Devanagari",
+        "code_mixed": false,
+        "language_ocr_capability_mode": "assist",
+        "teacher_correction_required": true,
+        "manual_review_required": true,
+        "autonomous_language_grading": false
+      },
+      "notes": "Hindi handwriting OCR is assistive with teacher correction required."
+    },
+    {
+      "id": "aei_batch_d_telugu_handwriting_assist_001",
+      "subject": "Telugu",
+      "capability": "handwriting_ocr",
+      "input": {
+        "suggestions": {
+          "1": {
+            "marks_suggested": 1,
+            "max_marks": 1,
+            "student_answer": "ధన్యవాదాలు",
+            "confidence": 0.9,
+            "method": "objective"
+          }
+        },
+        "answer_sources": {
+          "1": "ocr_image"
+        },
+        "ocr_confidence_by_question": {
+          "1": 0.82
+        },
+        "subject": "Telugu"
+      },
+      "expected": {
+        "answer_language": "Telugu",
+        "detected_script": "Telugu",
+        "code_mixed": false,
+        "language_ocr_capability_mode": "assist",
+        "teacher_correction_required": true,
+        "manual_review_required": true,
+        "autonomous_language_grading": false
+      },
+      "notes": "Telugu handwriting OCR is assistive and does not certify marks."
+    },
+    {
+      "id": "aei_batch_d_sanskrit_handwriting_manual_review_001",
+      "subject": "Sanskrit",
+      "capability": "handwriting_ocr",
+      "input": {
+        "suggestions": {
+          "1": {
+            "marks_suggested": 1,
+            "max_marks": 1,
+            "student_answer": "रामः गच्छति",
+            "confidence": 0.9,
+            "method": "objective"
+          }
+        },
+        "answer_sources": {
+          "1": "ocr_image"
+        },
+        "ocr_confidence_by_question": {
+          "1": 0.81
+        },
+        "subject": "Sanskrit"
+      },
+      "expected": {
+        "answer_language": "Sanskrit",
+        "detected_script": "Devanagari",
+        "code_mixed": false,
+        "language_ocr_capability_mode": "manual_review",
+        "teacher_correction_required": true,
+        "manual_review_required": true,
+        "autonomous_language_grading": false
+      },
+      "notes": "Sanskrit handwriting OCR remains manual-review posture."
+    },
+    {
+      "id": "aei_batch_d_tinglish_manual_text_001",
+      "subject": "Mathematics",
+      "capability": "code_mixed_language_metadata",
+      "input": {
+        "suggestions": {
+          "1": {
+            "marks_suggested": 0,
+            "max_marks": 2,
+            "student_answer": "idi ela solve cheyali?",
+            "confidence": 0.8,
+            "method": "heuristic_fallback"
+          }
+        },
+        "answer_sources": {
+          "1": "teacher_text"
+        },
+        "ocr_confidence_by_question": {},
+        "subject": "Mathematics"
+      },
+      "expected": {
+        "answer_language": "Telugu-English",
+        "detected_script": "Latin",
+        "code_mixed": true,
+        "language_ocr_capability_mode": null,
+        "teacher_correction_required": false,
+        "manual_review_required": false,
+        "autonomous_language_grading": false
+      },
+      "notes": "Romanized Telugu-English metadata is assistive context only."
+    },
+    {
+      "id": "aei_batch_d_low_ocr_confidence_review_001",
+      "subject": "Hindi",
+      "capability": "printed_ocr",
+      "input": {
+        "suggestions": {
+          "1": {
+            "marks_suggested": 1,
+            "max_marks": 1,
+            "student_answer": "उत्तर",
+            "confidence": 0.9,
+            "method": "objective"
+          }
+        },
+        "answer_sources": {
+          "1": "printed_ocr"
+        },
+        "ocr_confidence_by_question": {
+          "1": 0.58
+        },
+        "subject": "Hindi"
+      },
+      "expected": {
+        "answer_language": "Hindi",
+        "detected_script": "Devanagari",
+        "code_mixed": false,
+        "language_ocr_capability_mode": "supported",
+        "teacher_correction_required": true,
+        "manual_review_required": true,
+        "autonomous_language_grading": false
+      },
+      "notes": "Low OCR confidence requires teacher correction even when printed OCR capability is supported."
+    }
+  ]
+}

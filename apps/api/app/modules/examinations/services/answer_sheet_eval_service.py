@@ -44,6 +44,11 @@ from app.modules.examinations.schemas.exam import MarkEntry
 from app.modules.examinations.services.aei_passive_integration import (
     observe_answer_sheet_evaluation,
 )
+from app.modules.examinations.services.aei_v1_language_ocr_assist import (
+    ANSWER_SOURCE_OCR_IMAGE,
+    ANSWER_SOURCE_TEACHER_TEXT,
+    apply_language_ocr_assist_metadata,
+)
 from app.modules.examinations.services.aei_v1_math_normalization import (
     evaluate_math_normalization,
 )
@@ -280,11 +285,14 @@ class AnswerSheetEvalService:
 
         vision_result = None
         try:
-            answers, vision_result = await self._resolve_student_answers(row, exam)
+            answers, vision_result, answer_sources = await self._resolve_student_answers(
+                row, exam
+            )
             suggestions, subjective_results = await self._grade_exam(
                 exam=exam,
                 school_id=row.school_id,
                 student_answers=answers,
+                answer_sources=answer_sources,
             )
             passive_capture = await observe_answer_sheet_evaluation(
                 enabled=(
@@ -365,8 +373,13 @@ class AnswerSheetEvalService:
         self,
         row: AnswerSheetEvaluation,
         exam: Exam,
-    ) -> tuple[dict[str, str], object | None]:
+    ) -> tuple[dict[str, str], object | None, dict[str, str]]:
         merged = dict(row.input_answers or {})
+        answer_sources = {
+            str(qno): ANSWER_SOURCE_TEACHER_TEXT
+            for qno, value in merged.items()
+            if str(value).strip()
+        }
         vision_result = None
 
         if row.file_id:
@@ -396,8 +409,9 @@ class AnswerSheetEvalService:
                 for qno, text in extracted.items():
                     if qno not in merged or not str(merged.get(qno, "")).strip():
                         merged[qno] = text
+                        answer_sources[str(qno)] = ANSWER_SOURCE_OCR_IMAGE
 
-        return merged, vision_result
+        return merged, vision_result, answer_sources
 
     async def _record_eval_credits(
         self,
@@ -541,6 +555,7 @@ class AnswerSheetEvalService:
         exam: Exam,
         school_id: uuid.UUID,
         student_answers: dict[str, str],
+        answer_sources: dict[str, str] | None = None,
     ) -> tuple[dict[str, dict], list[LLMResult]]:
         """Grade every question: objective deterministically, subjective via the marking engine.
 
@@ -552,7 +567,10 @@ class AnswerSheetEvalService:
             self.db, school_id=school_id, paper_id=exam.source_paper_id
         )
         subject_name = None
-        if settings.AEI_V1_MATH_NORMALIZATION_ENABLED:
+        if (
+            settings.AEI_V1_MATH_NORMALIZATION_ENABLED
+            or settings.AEI_V1_LANGUAGE_OCR_ASSIST_ENABLED
+        ):
             paper = (
                 await self.db.execute(
                     select(QuestionPaper).where(
@@ -650,6 +668,13 @@ class AnswerSheetEvalService:
                 meta=subjective_meta,
             )
             suggestions.update(subj_suggestions)
+
+        if settings.AEI_V1_LANGUAGE_OCR_ASSIST_ENABLED:
+            suggestions = apply_language_ocr_assist_metadata(
+                suggestions,
+                subject=subject_name,
+                answer_sources=answer_sources or {},
+            )
 
         if settings.AEI_V1_REVIEW_POLICY_ENABLED:
             suggestions = apply_review_policy_metadata(suggestions)

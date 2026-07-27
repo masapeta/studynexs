@@ -4,7 +4,7 @@
 - **Artifact:** Implementation authorization contract
 - **Classification:** Runtime implementation contract
 - **Status:** Accepted
-- **Implementation:** Authorized for Batch C only
+- **Implementation:** Authorized for Batch D only
 - **Date:** 2026-07-28
 - **Owner:** Avinash Reddy Masapeta (ARM)
 - **Architecture baseline:** [`../../architecture/AEI.md`](../../architecture/AEI.md)
@@ -19,12 +19,15 @@
 This document is the accepted implementation authorization contract for AEI
 v1.0 batch-by-batch implementation.
 
-ARM accepts the contract and authorizes Batch C only.
+ARM accepts the contract and authorizes Batch D only.
 
 Batch A has been implemented, certified, reviewed, committed, tagged, and
 published.
 
 Batch B has been implemented, certified, reviewed, committed, tagged, and
+published.
+
+Batch C has been implemented, certified, reviewed, committed, tagged, and
 published.
 
 Later batches require separate ARM continuation after the prior batch is
@@ -85,7 +88,7 @@ continues the program.
 
 ## 4. Authorized batch sequence
 
-This contract defines the full AEI v1.0 batch sequence, but only Batch C is
+This contract defines the full AEI v1.0 batch sequence, but only Batch D is
 authorized to begin now.
 
 The approved AEI v1.0 sequence is:
@@ -107,8 +110,8 @@ Authorization state:
 |---|---|
 | Batch A - Maths normalization and deterministic equivalence | Published / certified |
 | Batch B - Confidence, manual review, and teacher override | Published / certified |
-| Batch C - Evidence ledger and approved evidence propagation | Authorized |
-| Batch D - Language and OCR assist support boundary | Not authorized until separately continued |
+| Batch C - Evidence ledger and approved evidence propagation | Published / certified |
+| Batch D - Language and OCR assist support boundary | Authorized |
 | Batch E - Visual and science assist support boundary | Not authorized until separately continued |
 | Batch F - AEI v1.0 certification | Not authorized until separately continued |
 
@@ -518,19 +521,19 @@ This contract does not authorize:
 ARM review result:
 
 ```text
-Accepted - authorize AEI v1.0 Batch C only.
+Accepted - authorize AEI v1.0 Batch D only.
 ```
 
 This acceptance authorizes:
 
 ```text
-AEI v1.0 Batch C - Evidence ledger and approved evidence propagation
+AEI v1.0 Batch D - Language and OCR assist support boundary
 ```
 
 This acceptance does not authorize:
 
 ```text
-Batch D, Batch E, Batch F, or any out-of-scope behavior
+Batch E, Batch F, or any out-of-scope behavior
 ```
 
-Batch C implementation may begin within this contract only.
+Batch D implementation may begin within this contract only.

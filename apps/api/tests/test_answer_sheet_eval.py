@@ -364,6 +364,73 @@ async def test_aei_v1_review_policy_requires_override_reason_when_enabled(
     assert audit["final_marks"] == 1
 
 
+@pytest.mark.asyncio
+async def test_aei_v1_language_ocr_assist_flag_off_preserves_suggestions(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch,
+):
+    fx = await _seed_eval_fixture(db_session)
+    monkeypatch.setattr(
+        "app.modules.examinations.services.answer_sheet_eval_service"
+        ".settings.AEI_V1_LANGUAGE_OCR_ASSIST_ENABLED",
+        False,
+    )
+
+    token = access_token_for(fx["incharge"])
+    resp = await client.post(
+        f"/api/v1/exams/{fx['exam'].id}/evaluations",
+        headers=auth_headers(token),
+        json={
+            "student_id": str(fx["student"].id),
+            "student_answers": {"1": "4", "2": "B", "3": "plants use sunlight"},
+        },
+    )
+
+    assert resp.status_code == 201, resp.text
+    suggestion = resp.json()["data"]["ai_suggestions"]["1"]
+    assert "aei_v1_language_ocr_assist" not in suggestion
+    assert "answer_language" not in suggestion
+
+
+@pytest.mark.asyncio
+async def test_aei_v1_language_ocr_assist_flag_on_adds_language_review_metadata(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch,
+):
+    fx = await _seed_eval_fixture(db_session)
+    fx["subject"].name = "Hindi"
+    fx["paper"].subject_name = "Hindi"
+    await db_session.flush()
+    monkeypatch.setattr(
+        "app.modules.examinations.services.answer_sheet_eval_service"
+        ".settings.AEI_V1_LANGUAGE_OCR_ASSIST_ENABLED",
+        True,
+    )
+
+    token = access_token_for(fx["incharge"])
+    resp = await client.post(
+        f"/api/v1/exams/{fx['exam'].id}/evaluations",
+        headers=auth_headers(token),
+        json={
+            "student_id": str(fx["student"].id),
+            "student_answers": {"1": "उत्तर", "2": "B", "3": "उत्तर"},
+        },
+    )
+
+    assert resp.status_code == 201, resp.text
+    suggestion = resp.json()["data"]["ai_suggestions"]["1"]
+    assist = suggestion["aei_v1_language_ocr_assist"]
+    assert suggestion["answer_language"] == "Hindi"
+    assert suggestion["detected_script"] == "Devanagari"
+    assert suggestion["answer_input_source"] == "teacher_text"
+    assert suggestion["manual_review_required"] is True
+    assert suggestion["requires_language_teacher_review"] is True
+    assert assist["autonomous_language_grading"] is False
+    assert assist["assist_only"] is True
+
+
 def test_grade_subjective_partial():
     marks, feedback, _ = grade_subjective_heuristic(
         student_answer="plants make food using sunlight",
