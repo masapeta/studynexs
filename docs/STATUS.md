@@ -9,8 +9,8 @@
 ## Executive status
 
 StudyNexs is an AI-first School Operating System with a frozen AEI/EUI
-architecture, a published EUI runtime foundation, and an active AEI v1.0
-product-completion program.
+architecture, a published EUI runtime foundation, and a certified AEI v1.0
+supported-scope baseline.
 
 The current engineering rhythm is:
 
@@ -73,6 +73,7 @@ canonical roadmap names are:
 | AEI v1.0 Batch C - Evidence ledger metadata | Complete / certified / published |
 | AEI v1.0 Batch D - Language/OCR assist metadata | Complete / certified / published |
 | AEI v1.0 Batch E - Visual/science assist metadata | Complete / certified / published |
+| AEI v1.0 Certification | Complete / certified / published |
 | EUI v1 architecture | Frozen / accepted |
 | EUI Runtime Roadmap v1 | Accepted planning baseline |
 | Phase 0 - Engineering Preparation | Complete / certified / published |
@@ -96,6 +97,7 @@ canonical roadmap names are:
 | Batch C - Evidence Ledger Metadata | Published / certified | `9f3589e1d98825a2abc15244879ef1b8329a6064` | `aei-v1-batch-c-evidence-ledger-certified` | Default-off approved-evidence ledger metadata and teacher-approved source-of-truth contract |
 | Batch D - Language/OCR Assist Metadata | Published / certified | `d33ff6d9d49d140353a848ccffe0f222e6d8ac2c` | `aei-v1-batch-d-language-ocr-assist-certified` | Default-off language/script/code-mixed and OCR assist metadata with teacher-review boundaries |
 | Batch E - Visual/Science Assist Metadata | Published / certified | `b393e83e7e0eb24c9992f28e3c6b963cdcc4586f` | `aei-v1-batch-e-visual-science-assist-certified` | Default-off visual/science assist and checklist metadata with teacher-review boundaries |
+| Batch F - AEI v1.0 Certification | Published / certified | `85328ffcb8b3ce131f9ae233f30795e4e95e5113` | `aei-v1-certified` | Supported-scope capability matrix and final AEI v1.0 certification |
 
 Batch A adds production-seam Maths normalization behind
 `AEI_V1_MATH_NORMALIZATION_ENABLED=false` by default.
@@ -188,6 +190,21 @@ automatic marks, UI changes, API changes, schema changes, marks changes,
 evidence-ledger behavior changes, teacher-review routing changes, or
 parent/student visibility changes.
 
+Batch F certifies AEI v1.0 for the declared supported scope.
+
+Certified Batch F artifacts:
+
+- AEI v1.0 Certification Report;
+- AEI v1.0 Supported Scope Capability Matrix;
+- Golden Harness summary with 35 AEI cases;
+- broad AEI/EUI certification regression evidence;
+- rollback and feature-flag posture;
+- explicit non-claims for unsupported/autonomous capabilities.
+
+Batch F does not authorize or implement product behavior changes, feature-flag
+enablement, UI changes, API changes, schema changes, source-of-truth switching,
+or expanded public product claims.
+
 ---
 
 ## Published EUI runtime milestones
@@ -213,26 +230,27 @@ parent/student visibility changes.
 The latest completed artifact is:
 
 ```text
-AEI v1.0 Batch E - Visual/Science Assist Metadata
+AEI v1.0 Certification
 ```
 
-AEI v1.0 Batch E is published and certified as a default-off visual/science
-assist metadata foundation. It enriches existing answer-suggestion metadata only
-when `AEI_V1_VISUAL_SCIENCE_ASSIST_ENABLED=true`.
+AEI v1.0 Batch F is published and certified as the final AEI v1.0
+supported-scope certification baseline.
 
-When the flag is disabled, existing suggestion and approval behavior remains the
-production path. No schema, API route, UI, marks, teacher-review routing,
-persistence, OCR/vision engine, LLM inference, visual grading, science grading,
-or parent/student visibility changes were introduced.
+The certification confirms Batches A-E, the supported-scope capability matrix,
+Golden Harness coverage, rollback posture, and broad AEI/EUI regression evidence.
+No schema, API route, UI, marks, teacher-review routing, persistence, feature-flag
+enablement, source-of-truth switch, or parent/student visibility changes were
+introduced by Batch F.
 
 Next gated milestone:
 
 ```text
-AEI v1.0 Batch F - AEI v1.0 certification
+Post-AEI v1.0 product-facing enablement / teacher evaluation experience
 ```
 
-Batch F is not authorized until ARM explicitly issues the next implementation
-authorization.
+No post-certification AEI product-facing implementation, feature-flag enablement,
+UI work, public capability claim expansion, or product launch-readiness work is
+authorized until ARM explicitly issues the next implementation authorization.
 
 EUI Phase 7 remains closed at Phase 7E. Phase 7F source adoption is deferred
 future scope, not the next active implementation milestone.
@@ -278,7 +296,9 @@ remain out of scope:
   normalization foundation, Batch B review-policy metadata foundation, Batch C
   approved-evidence ledger metadata foundation, and Batch D language/OCR assist
   metadata foundation, and Batch E visual/science assist metadata foundation;
-- AEI v1.0 Batch F or later batches without separate ARM authorization;
+- AEI v1.0 feature-flag enablement, source switching, or product-facing behavior
+  changes without separate ARM authorization;
+- post-certification AEI expansion without separate ARM authorization;
 - AEI source-of-truth switching to EUI;
 - EUI contract changes outside accepted design;
 - product capability claim changes;
@@ -305,10 +325,11 @@ Normalization foundation, and a published AEI v1.0 Batch B Review Policy
 Metadata foundation, a published AEI v1.0 Batch C Evidence Ledger Metadata
 foundation, and a published AEI v1.0 Batch D Language/OCR Assist Metadata
 foundation, and a published AEI v1.0 Batch E Visual/Science Assist Metadata
-foundation. Phase 7 is closed at 7E. Phase 7F source adoption is deferred
-future scope. AEI v1.0 Batch F certification is the next product-facing
-engineering gate, but it is not authorized until ARM issues a separate
-implementation authorization contract.
+foundation, and a published AEI v1.0 Certification baseline. Phase 7 is closed
+at 7E. Phase 7F source adoption is deferred future scope. AEI v1.0 is certified
+for the declared supported scope, but product-facing enablement, feature-flag
+rollout, UI work, and public capability claim expansion require separate ARM
+authorization.
 
 ---
 
@@ -317,30 +338,34 @@ implementation authorization contract.
 Latest published runtime phase:
 
 ```text
-AEI v1.0 Batch E - Visual/Science Assist Metadata
+AEI v1.0 Certification
 ```
 
 Historical artifact label:
 
 ```text
-AEI v1.0 Batch E Visual/Science Assist Metadata Foundation
+AEI v1.0 Supported Scope Certification
 ```
 
 Certified evidence:
 
-- Focused Batch E Ruff: PASS
-- Focused Batch E + Golden Harness tests: 16 passed
-- Answer-sheet integration regression: 23 passed
-- Full AEI/OCR/visual-science regression slice: 78 passed
+- Broad AEI/EUI certification Ruff: PASS
+- Broad AEI/EUI certification regression: 191 passed
+- Test-only lint cleanup regression: 11 passed
+- Golden Harness coverage: 35 AEI cases
 - API import: PASS
 - git diff --check: PASS
-- `AEI_V1_VISUAL_SCIENCE_ASSIST_ENABLED` defaults to false: PASS
-- Flag-off legacy suggestion/approval behavior: PASS
-- No schema/API/UI/marks/OCR-vision-engine/LLM/autonomous-visual-science changes: PASS
+- All AEI v1.0 behavior flags remain default false: PASS
+- Flag-off legacy suggestion/approval behavior preserved: PASS
+- No schema/API/UI/marks/feature-flag-enablement/source-switching changes: PASS
 
 Certification report:
 
-[`product/aei-v1/AEI_V1_BATCH_E_VISUAL_SCIENCE_ASSIST_CERTIFICATION_REPORT.md`](./product/aei-v1/AEI_V1_BATCH_E_VISUAL_SCIENCE_ASSIST_CERTIFICATION_REPORT.md)
+[`product/aei-v1/AEI_V1_CERTIFICATION_REPORT.md`](./product/aei-v1/AEI_V1_CERTIFICATION_REPORT.md)
+
+Supported scope matrix:
+
+[`product/aei-v1/AEI_V1_SUPPORTED_SCOPE_CAPABILITY_MATRIX.md`](./product/aei-v1/AEI_V1_SUPPORTED_SCOPE_CAPABILITY_MATRIX.md)
 
 ---
 
