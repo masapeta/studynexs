@@ -1,0 +1,183 @@
+{
+  "version": "aei-golden-v1",
+  "cases": [
+    {
+      "id": "MATH-EQ-001",
+      "subject": "mathematics",
+      "capability": "numeric_equivalence",
+      "notes": "Fractions, decimals, and mixed numbers should become deterministic equivalence cases when allowed by rubric configuration.",
+      "input": {
+        "raw_answer": "5½",
+        "question_type": "short"
+      },
+      "rubric": {
+        "answer_key": "5.5",
+        "acceptable_answers": ["11/2", "5.5", "5½"],
+        "evaluation_config": {
+          "equivalent_forms": true
+        }
+      },
+      "expected": {
+        "capability_mode": "supported",
+        "reasoning_type": "numeric_equivalence",
+        "manual_review_required": false
+      }
+    },
+    {
+      "id": "MATH-UNIT-001",
+      "subject": "mathematics",
+      "capability": "units",
+      "notes": "Unit handling should be explicit: missing, incorrect, or equivalent units must be visible to the teacher.",
+      "input": {
+        "raw_answer": "12 cm",
+        "question_type": "short"
+      },
+      "rubric": {
+        "answer_key": "12 cm",
+        "evaluation_config": {
+          "units": {
+            "required": true,
+            "allowed": ["cm"]
+          }
+        }
+      },
+      "expected": {
+        "capability_mode": "supported",
+        "reasoning_type": "unit_match",
+        "manual_review_required": false
+      }
+    },
+    {
+      "id": "MATH-SCI-001",
+      "subject": "mathematics",
+      "capability": "scientific_notation",
+      "notes": "Scientific notation should normalize to the same numeric value only when equivalent forms are enabled.",
+      "input": {
+        "raw_answer": "1.2 x 10^3",
+        "question_type": "short"
+      },
+      "rubric": {
+        "answer_key": "1200",
+        "evaluation_config": {
+          "equivalent_forms": true
+        }
+      },
+      "expected": {
+        "capability_mode": "supported",
+        "reasoning_type": "scientific_notation",
+        "manual_review_required": false
+      }
+    },
+    {
+      "id": "CHEM-BAL-001",
+      "subject": "chemistry",
+      "capability": "reaction_balancing",
+      "notes": "Chemistry reaction balancing is assistive in AEI v1 and must require teacher review.",
+      "input": {
+        "raw_answer": "H2 + O2 -> H2O",
+        "question_type": "short"
+      },
+      "rubric": {
+        "answer_key": "2H2 + O2 -> 2H2O"
+      },
+      "expected": {
+        "capability_mode": "assist",
+        "reasoning_type": "reaction_balancing",
+        "manual_review_required": true
+      }
+    },
+    {
+      "id": "BIO-VIS-001",
+      "subject": "biology",
+      "capability": "diagrams",
+      "notes": "Biology diagrams produce checklist observations only; the teacher confirms marks.",
+      "input": {
+        "raw_answer": "[answer-sheet image region]",
+        "question_type": "diagram"
+      },
+      "rubric": {
+        "checklist": ["cell wall", "nucleus", "cytoplasm"]
+      },
+      "expected": {
+        "capability_mode": "checklist",
+        "reasoning_type": "visual_checklist",
+        "manual_review_required": true
+      }
+    },
+    {
+      "id": "GEO-MAP-001",
+      "subject": "geography",
+      "capability": "maps",
+      "notes": "Maps and graphs are checklist-supported only in AEI v1.",
+      "input": {
+        "raw_answer": "[answer-sheet image region]",
+        "question_type": "map"
+      },
+      "rubric": {
+        "checklist": ["state labelled", "capital marked", "legend present"]
+      },
+      "expected": {
+        "capability_mode": "checklist",
+        "reasoning_type": "map_checklist",
+        "manual_review_required": true
+      }
+    },
+    {
+      "id": "HIN-HAND-001",
+      "subject": "hindi",
+      "capability": "handwriting_ocr",
+      "notes": "Hindi handwriting OCR is assistive only and must not be presented as certified grading.",
+      "input": {
+        "raw_answer": "[handwritten Hindi answer image]",
+        "question_type": "long"
+      },
+      "rubric": {
+        "language": "hi",
+        "teacher_review": true
+      },
+      "expected": {
+        "capability_mode": "assist",
+        "reasoning_type": "language_ocr_assist",
+        "manual_review_required": true
+      }
+    },
+    {
+      "id": "TEL-HAND-001",
+      "subject": "telugu",
+      "capability": "handwriting_ocr",
+      "notes": "Telugu handwriting OCR is assistive only and must not be presented as certified grading.",
+      "input": {
+        "raw_answer": "[handwritten Telugu answer image]",
+        "question_type": "long"
+      },
+      "rubric": {
+        "language": "te",
+        "teacher_review": true
+      },
+      "expected": {
+        "capability_mode": "assist",
+        "reasoning_type": "language_ocr_assist",
+        "manual_review_required": true
+      }
+    },
+    {
+      "id": "SAN-HAND-001",
+      "subject": "sanskrit",
+      "capability": "handwriting_ocr",
+      "notes": "Sanskrit handwriting OCR is assistive only and must not be presented as certified grading.",
+      "input": {
+        "raw_answer": "[handwritten Sanskrit answer image]",
+        "question_type": "long"
+      },
+      "rubric": {
+        "language": "sa",
+        "teacher_review": true
+      },
+      "expected": {
+        "capability_mode": "assist",
+        "reasoning_type": "language_ocr_assist",
+        "manual_review_required": true
+      }
+    }
+  ]
+}

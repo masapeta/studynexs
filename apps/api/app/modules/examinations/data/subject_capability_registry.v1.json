@@ -1,0 +1,141 @@
+{
+  "version": "aei-subject-capabilities-v1",
+  "subjects": {
+    "mathematics": {
+      "evaluation": {
+        "numeric_equivalence": {
+          "mode": "supported",
+          "description": "Equivalent numeric forms such as fractions, decimals, and mixed numbers may be evaluated deterministically when rubric configuration allows it."
+        },
+        "units": {
+          "mode": "supported",
+          "description": "Unit presence and simple allowed-unit checks may be evaluated deterministically when rubric configuration defines the expected units."
+        },
+        "tolerance": {
+          "mode": "supported",
+          "description": "Numeric tolerance may be applied when explicitly configured in the rubric."
+        },
+        "scientific_notation": {
+          "mode": "supported",
+          "description": "Scientific notation may be normalized for numeric comparison when rubric configuration allows equivalent forms."
+        },
+        "diagrams": {
+          "mode": "partial",
+          "description": "Mathematical diagrams may be detected or checklist-reviewed, but teacher confirmation remains required."
+        }
+      }
+    },
+    "physics": {
+      "evaluation": {
+        "units": {
+          "mode": "supported",
+          "description": "Physics units may be checked when expected units are configured."
+        },
+        "formula_recognition": {
+          "mode": "assist",
+          "description": "Formula-like answers may be parsed and explained as an assistive signal for teacher review."
+        },
+        "diagrams": {
+          "mode": "checklist",
+          "description": "Circuit and physics diagrams may produce checklist observations for teacher confirmation."
+        },
+        "graphs": {
+          "mode": "checklist",
+          "description": "Graph answers may produce axis, label, and plotting checklist observations for teacher confirmation."
+        }
+      }
+    },
+    "chemistry": {
+      "evaluation": {
+        "reaction_balancing": {
+          "mode": "assist",
+          "description": "Simple reaction-balancing signals may be generated for teacher review."
+        },
+        "chemical_symbols": {
+          "mode": "assist",
+          "description": "Chemical symbols and simple equations may be parsed as assistive evidence."
+        },
+        "structures": {
+          "mode": "manual_review",
+          "description": "Chemical structures require teacher review in AEI v1."
+        }
+      }
+    },
+    "biology": {
+      "evaluation": {
+        "diagrams": {
+          "mode": "checklist",
+          "description": "Biology diagrams may produce checklist observations such as expected labels present or missing."
+        },
+        "labels": {
+          "mode": "assist",
+          "description": "Diagram labels may be detected as assistive evidence for teacher confirmation."
+        }
+      }
+    },
+    "geography": {
+      "evaluation": {
+        "maps": {
+          "mode": "checklist",
+          "description": "Map answers may produce label and region checklist observations for teacher confirmation."
+        },
+        "graphs": {
+          "mode": "checklist",
+          "description": "Graph answers may produce axis, scale, and label checklist observations."
+        },
+        "labels": {
+          "mode": "assist",
+          "description": "Geography labels may be detected as assistive evidence."
+        }
+      }
+    },
+    "hindi": {
+      "evaluation": {
+        "printed_ocr": {
+          "mode": "assist",
+          "description": "Printed Hindi OCR may assist extraction, with teacher confirmation required before marks are certified."
+        },
+        "handwriting_ocr": {
+          "mode": "assist",
+          "description": "Hindi handwriting OCR is assistive only and must route through teacher review."
+        },
+        "grading": {
+          "mode": "manual_review",
+          "description": "Hindi grading remains teacher-reviewed in AEI v1."
+        }
+      }
+    },
+    "telugu": {
+      "evaluation": {
+        "printed_ocr": {
+          "mode": "assist",
+          "description": "Printed Telugu OCR may assist extraction, with teacher confirmation required before marks are certified."
+        },
+        "handwriting_ocr": {
+          "mode": "assist",
+          "description": "Telugu handwriting OCR is assistive only and must route through teacher review."
+        },
+        "grading": {
+          "mode": "manual_review",
+          "description": "Telugu grading remains teacher-reviewed in AEI v1."
+        }
+      }
+    },
+    "sanskrit": {
+      "evaluation": {
+        "printed_ocr": {
+          "mode": "assist",
+          "description": "Printed Sanskrit OCR may assist extraction, with teacher confirmation required before marks are certified."
+        },
+        "handwriting_ocr": {
+          "mode": "assist",
+          "description": "Sanskrit handwriting OCR is assistive only and must route through teacher review."
+        },
+        "grading": {
+          "mode": "manual_review",
+          "description": "Sanskrit grading remains teacher-reviewed in AEI v1."
+        }
+      }
+    }
+  }
+}
