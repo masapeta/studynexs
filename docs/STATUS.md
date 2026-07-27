@@ -9,7 +9,8 @@
 ## Executive status
 
 StudyNexs is an AI-first School Operating System with a frozen AEI/EUI
-architecture and a controlled EUI runtime implementation program.
+architecture, a published EUI runtime foundation, and an active AEI v1.0
+product-completion program.
 
 The current engineering rhythm is:
 
@@ -67,6 +68,7 @@ canonical roadmap names are:
 |---|---|
 | StudyNexs vision | Stable |
 | AEI v1 | Frozen / protected |
+| AEI v1.0 Batch A - Maths normalization | Complete / certified / published |
 | EUI v1 architecture | Frozen / accepted |
 | EUI Runtime Roadmap v1 | Accepted planning baseline |
 | Phase 0 - Engineering Preparation | Complete / certified / published |
@@ -78,6 +80,31 @@ canonical roadmap names are:
 | Phase 6 - Trust Framework | Trust Report foundation complete / certified / published |
 | Phase 7 - Consumer Migration | Closed at Phase 7E; 7F source adoption deferred / future scope |
 | Runtime consumer migration | AEI passive dual-read with rich internal EUI evidence, internal divergence readiness review, narrow internal source-readiness candidate foundation, and internal source-readiness trial foundation published; source-of-truth switch not authorized |
+
+---
+
+## Published AEI v1.0 product-completion milestones
+
+| Batch | Status | Commit | Tag | Scope |
+|---|---|---|---|---|
+| Batch A - Maths Normalization | Published / certified | `4343b0542b68cd739162eeb47207299c428b2fd9` | `aei-v1-batch-a-maths-normalization-certified` | Default-off deterministic Maths normalization/equivalence foundation |
+
+Batch A adds production-seam Maths normalization behind
+`AEI_V1_MATH_NORMALIZATION_ENABLED=false` by default.
+
+Supported Batch A behavior:
+
+- fractions, decimals, mixed numbers, and Unicode fractions;
+- percentages;
+- scientific notation;
+- explicit numeric tolerance;
+- simple same-dimension unit equivalence;
+- acceptable answer variants when already available in rubric data;
+- manual-review metadata for inconclusive supported Maths cases.
+
+Batch A does not authorize or implement Batch B teacher-review routing, evidence
+ledger changes, language/OCR assist, visual/science assist, UI changes, API
+changes, schema changes, or autonomous marks for uncertain cases.
 
 ---
 
@@ -104,25 +131,28 @@ canonical roadmap names are:
 The latest completed artifact is:
 
 ```text
-EUI Runtime Phase 7E - Narrow AEI Source-Readiness Trial
+AEI v1.0 Batch A - Maths Normalization
 ```
 
-Phase 7E is published and certified as an internal narrow AEI source-readiness
-trial foundation. It adds a non-authoritative trial result model and
-deterministic trial service over Phase 7D candidates for the
-`context_metadata_only` scope without changing AEI, evaluation behavior, marks,
-teacher review routing, evidence ledger behavior, API, UI, schema, or
-source-of-truth posture.
+AEI v1.0 Batch A is published and certified as a default-off deterministic
+Maths normalization foundation. It plugs into the existing answer-sheet
+evaluation seam only when `AEI_V1_MATH_NORMALIZATION_ENABLED=true`.
 
-No EUI source-of-truth switch is authorized. Phase 7 is closed at Phase 7E.
-Phase 7F source adoption is deferred future scope, not the next active
-implementation milestone.
+When the flag is disabled, existing objective exact-match behavior remains the
+production path. No schema, API, UI, evidence-ledger, language/OCR,
+visual/science, or Batch B teacher-review routing changes were introduced.
 
 Next gated milestone:
 
 ```text
-Product-facing completion work, unless ARM explicitly reopens source adoption
+AEI v1.0 Batch B - Confidence, manual review, and teacher override
 ```
+
+Batch B is not authorized until ARM explicitly issues the next implementation
+authorization.
+
+EUI Phase 7 remains closed at Phase 7E. Phase 7F source adoption is deferred
+future scope, not the next active implementation milestone.
 
 Phase 7F should be implemented only when source adoption solves a real product
 problem, not because the architecture can support it.
@@ -161,7 +191,9 @@ remain out of scope:
   source-readiness trial foundation;
 - Phase 7F source adoption unless ARM reopens it under the documented reopen
   conditions;
-- AEI behavior changes;
+- AEI behavior changes beyond the published default-off Batch A Maths
+  normalization foundation;
+- AEI v1.0 Batch B or later batches without separate ARM authorization;
 - AEI source-of-truth switching to EUI;
 - EUI contract changes outside accepted design;
 - product capability claim changes;
@@ -176,17 +208,18 @@ remain out of scope:
 StudyNexs has a frozen AEI/EUI architecture, a published Phase 1 Educational
 Identity runtime foundation, a published Phase 2 Educational Context passive
 runtime foundation, a published Phase 3 Platform Capability Registry passive
-runtime foundation, and a published Phase 4 Knowledge Acquisition Intelligence
+runtime foundation, a published Phase 4 Knowledge Acquisition Intelligence
 candidate foundation, a published Phase 5 Educational Knowledge Graph proposal
 foundation, a published Phase 6 Trust Framework Trust Report foundation, a
 published Phase 7A AEI Consumer Migration passive dual-read foundation, a
-published Phase 7B AEI Rich EUI Evidence Binding foundation, and a published
-Phase 7C AEI Divergence Readiness Review foundation, and a published Phase 7D
-Narrow AEI Source-Readiness Candidate foundation, and a published Phase 7E
-Narrow AEI Source-Readiness Trial foundation. Phase 7 is closed at 7E. Phase
-7F source adoption is deferred future scope. Further consumer migration,
-including any EUI source-of-truth switch, is not authorized unless ARM reopens
-source adoption under a separate implementation authorization contract.
+published Phase 7B AEI Rich EUI Evidence Binding foundation, a published Phase
+7C AEI Divergence Readiness Review foundation, a published Phase 7D Narrow AEI
+Source-Readiness Candidate foundation, a published Phase 7E Narrow AEI
+Source-Readiness Trial foundation, and a published AEI v1.0 Batch A Maths
+Normalization foundation. Phase 7 is closed at 7E. Phase 7F source adoption is
+deferred future scope. AEI v1.0 Batch B is the next product-facing engineering
+gate, but it is not authorized until ARM issues a separate implementation
+authorization contract.
 
 ---
 
@@ -195,34 +228,28 @@ source adoption under a separate implementation authorization contract.
 Latest published runtime phase:
 
 ```text
-EUI Runtime Phase 7E - Narrow AEI Source-Readiness Trial
+AEI v1.0 Batch A - Maths Normalization
 ```
 
 Historical artifact label:
 
 ```text
-Phase 7E Narrow AEI Source-Readiness Trial Foundation
+AEI v1.0 Batch A Maths Normalization Foundation
 ```
 
 Certified evidence:
 
-- Focused Phase 7E Ruff: PASS
-- Focused Phase 7E + Golden Harness tests: 21 passed
-- Phase 7A/7B/7C/7D/7E + Trust + AEI/evaluation regression slice: 94 passed
+- Focused Batch A Ruff: PASS
+- Focused Batch A + Golden Harness + answer-sheet regression tests: 40 passed
 - API import: PASS
 - git diff --check: PASS
-- Phase 7E source-switch scan: PASS, no implementation activation found; only
-  the negative model-validation test attempts `source_switch_active=True`
-- Phase 7E LLM/provider-call scan: PASS, no provider call patterns found in
-  AEI source-readiness trial files
-- Phase 7E write-scan: PASS, no persistence/write patterns found in AEI
-  source-readiness trial files
-- Phase 7E API/router exposure scan: PASS, no user-facing exposure found
-- Source flag remains inert: PASS
+- `AEI_V1_MATH_NORMALIZATION_ENABLED` defaults to false: PASS
+- Flag-off legacy exact-match rollback behavior: PASS
+- No schema/API/UI/evidence-ledger changes: PASS
 
 Certification report:
 
-[`product/eui-runtime/phase-7/EUI_PHASE_7E_NARROW_AEI_SOURCE_READINESS_TRIAL_CERTIFICATION_REPORT.md`](./product/eui-runtime/phase-7/EUI_PHASE_7E_NARROW_AEI_SOURCE_READINESS_TRIAL_CERTIFICATION_REPORT.md)
+[`product/aei-v1/AEI_V1_BATCH_A_MATH_NORMALIZATION_CERTIFICATION_REPORT.md`](./product/aei-v1/AEI_V1_BATCH_A_MATH_NORMALIZATION_CERTIFICATION_REPORT.md)
 
 ---
 
