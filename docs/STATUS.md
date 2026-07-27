@@ -55,7 +55,8 @@ canonical roadmap names are:
 | Phase 2 | Educational Context Engine | Phase 1 Sprint 2 |
 | Phase 3 | Platform Capability Registry | Phase 1 Sprint 3 |
 | Phase 4 | Knowledge Acquisition Intelligence | Phase 4 KAI Candidate Foundation |
-| Phase 5 | Educational Knowledge Graph Expansion | Next design gate |
+| Phase 5 | Educational Knowledge Graph Expansion | Phase 5 EKG Proposal Foundation |
+| Phase 6 | Trust Framework | Next design gate |
 
 ---
 
@@ -72,7 +73,8 @@ canonical roadmap names are:
 | Phase 2 - Educational Context Engine | Complete / certified / published |
 | Phase 3 - Platform Capability Registry | Complete / certified / published |
 | Phase 4 - Knowledge Acquisition Intelligence | Candidate foundation complete / certified / published |
-| Phase 5 - Educational Knowledge Graph Expansion | Design brief next / implementation not authorized |
+| Phase 5 - Educational Knowledge Graph Expansion | Proposal foundation complete / certified / published |
+| Phase 6 - Trust Framework | Design brief next / implementation not authorized |
 | Runtime consumer migration | Not authorized |
 
 ---
@@ -85,6 +87,7 @@ canonical roadmap names are:
 | Phase 2 - Educational Context Engine | Published / certified | `a559faeba7389bb583bfdcd64f8119f3811613d6` | `eui-runtime-phase1-sprint2-educational-context-certified` | Phase 1 Sprint 2 |
 | Phase 3 - Platform Capability Registry | Published / certified | `5f3babf007fcbaba7a8a33ec316e80b974d8df7b` | `eui-runtime-phase1-sprint3-platform-capability-registry-certified` | Phase 1 Sprint 3 |
 | Phase 4 - Knowledge Acquisition Intelligence | Published / certified | `165c796e9bac6a6fc29226ed186b79664d0d5b5c` | `eui-runtime-phase4-kai-candidate-foundation-certified` | Phase 4 KAI Candidate Foundation |
+| Phase 5 - Educational Knowledge Graph Expansion | Published / certified | `91a84f5fce1bb0acf4a5231593b0e1715e1baef8` | `eui-runtime-phase5-ekg-proposal-foundation-certified` | Phase 5 EKG Proposal Foundation |
 
 ---
 
@@ -93,13 +96,13 @@ canonical roadmap names are:
 The next review artifact is:
 
 ```text
-EUI Runtime Phase 5 - Educational Knowledge Graph Expansion Design Brief
+EUI Runtime Phase 6 - Trust Framework Design Brief
 ```
 
-Phase 5 implementation is not authorized.
+Phase 6 implementation is not authorized.
 
-The next engineering step is to draft the Phase 5 design brief for ARM review.
-No Phase 5 implementation may begin until ARM accepts the design brief and
+The next engineering step is to draft the Phase 6 design brief for ARM review.
+No Phase 6 implementation may begin until ARM accepts the design brief and
 separately authorizes an implementation contract.
 
 ---
@@ -109,7 +112,8 @@ separately authorizes an implementation contract.
 Until ARM separately authorizes a future implementation contract, the following
 remain out of scope:
 
-- Educational Knowledge Graph expansion;
+- additional Educational Knowledge Graph behavior beyond the published proposal
+  foundation;
 - additional Knowledge Acquisition Intelligence behavior beyond the published
   candidate foundation;
 - Trust Framework implementation;
@@ -132,8 +136,9 @@ StudyNexs has a frozen AEI/EUI architecture, a published Phase 1 Educational
 Identity runtime foundation, a published Phase 2 Educational Context passive
 runtime foundation, a published Phase 3 Platform Capability Registry passive
 runtime foundation, and a published Phase 4 Knowledge Acquisition Intelligence
-candidate foundation. The next gated milestone is the Phase 5 Educational
-Knowledge Graph Expansion design brief; implementation is not authorized.
+candidate foundation, and a published Phase 5 Educational Knowledge Graph
+proposal foundation. The next gated milestone is the Phase 6 Trust Framework
+design brief; implementation is not authorized.
 
 ---
 
@@ -142,29 +147,29 @@ Knowledge Graph Expansion design brief; implementation is not authorized.
 Latest published runtime phase:
 
 ```text
-EUI Runtime Phase 4 - Knowledge Acquisition Intelligence
+EUI Runtime Phase 5 - Educational Knowledge Graph Expansion
 ```
 
 Historical artifact label:
 
 ```text
-Phase 4 KAI Candidate Foundation
+Phase 5 EKG Proposal Foundation
 ```
 
 Certified evidence:
 
 - Focused EUI Ruff: PASS
-- Phase 4 KAI tests: 24 passed
-- Phase 1/2/3 Educational Identity, Context, and Platform Capability Registry
-  regression: 49 passed
-- AEI / evaluation / KG regression slice: 57 passed
+- Phase 5 EKG tests: 20 passed
+- Phase 1/2/3/4/5 EUI regression: 85 passed
+- Existing Knowledge Graph regression: 18 passed
+- AEI / evaluation regression slice: 43 passed
 - API import: PASS
 - git diff --check: PASS
-- EUI DB-write scan: PASS with note for existing non-database `seen.add(key)`
+- Phase 5 write-scan: PASS, no write patterns found in new EKG proposal files
 
 Certification report:
 
-[`product/eui-runtime/phase-4/EUI_PHASE_4_KNOWLEDGE_ACQUISITION_INTELLIGENCE_CERTIFICATION_REPORT.md`](./product/eui-runtime/phase-4/EUI_PHASE_4_KNOWLEDGE_ACQUISITION_INTELLIGENCE_CERTIFICATION_REPORT.md)
+[`product/eui-runtime/phase-5/EUI_PHASE_5_EDUCATIONAL_KNOWLEDGE_GRAPH_EXPANSION_CERTIFICATION_REPORT.md`](./product/eui-runtime/phase-5/EUI_PHASE_5_EDUCATIONAL_KNOWLEDGE_GRAPH_EXPANSION_CERTIFICATION_REPORT.md)
 
 ---
 
