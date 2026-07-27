@@ -69,6 +69,7 @@ canonical roadmap names are:
 | StudyNexs vision | Stable |
 | AEI v1 | Frozen / protected |
 | AEI v1.0 Batch A - Maths normalization | Complete / certified / published |
+| AEI v1.0 Batch B - Review policy metadata | Complete / certified / published |
 | EUI v1 architecture | Frozen / accepted |
 | EUI Runtime Roadmap v1 | Accepted planning baseline |
 | Phase 0 - Engineering Preparation | Complete / certified / published |
@@ -88,6 +89,7 @@ canonical roadmap names are:
 | Batch | Status | Commit | Tag | Scope |
 |---|---|---|---|---|
 | Batch A - Maths Normalization | Published / certified | `4343b0542b68cd739162eeb47207299c428b2fd9` | `aei-v1-batch-a-maths-normalization-certified` | Default-off deterministic Maths normalization/equivalence foundation |
+| Batch B - Review Policy Metadata | Published / certified | `d40c31e4df29a4942e48431c90b756611949ef86` | `aei-v1-batch-b-review-policy-certified` | Default-off confidence/manual-review metadata and teacher override audit foundation |
 
 Batch A adds production-seam Maths normalization behind
 `AEI_V1_MATH_NORMALIZATION_ENABLED=false` by default.
@@ -105,6 +107,23 @@ Supported Batch A behavior:
 Batch A does not authorize or implement Batch B teacher-review routing, evidence
 ledger changes, language/OCR assist, visual/science assist, UI changes, API
 changes, schema changes, or autonomous marks for uncertain cases.
+
+Batch B adds review-policy metadata behind
+`AEI_V1_REVIEW_POLICY_ENABLED=false` by default.
+
+Supported Batch B behavior:
+
+- `manual_review_required`;
+- `manual_review_reason`;
+- `capability_mode`;
+- `confidence_reason`;
+- low-confidence and missing-confidence review metadata;
+- teacher override reason enforcement when the flag is enabled;
+- teacher override audit metadata in the existing `teacher_overrides` payload.
+
+Batch B does not authorize or implement evidence-ledger propagation, language/OCR
+assist, visual/science assist, UI changes, API changes, schema changes, or
+parent/student visibility changes.
 
 ---
 
@@ -131,24 +150,24 @@ changes, schema changes, or autonomous marks for uncertain cases.
 The latest completed artifact is:
 
 ```text
-AEI v1.0 Batch A - Maths Normalization
+AEI v1.0 Batch B - Review Policy Metadata
 ```
 
-AEI v1.0 Batch A is published and certified as a default-off deterministic
-Maths normalization foundation. It plugs into the existing answer-sheet
-evaluation seam only when `AEI_V1_MATH_NORMALIZATION_ENABLED=true`.
+AEI v1.0 Batch B is published and certified as a default-off review-policy
+metadata and override-audit foundation. It enriches existing evaluation
+suggestions only when `AEI_V1_REVIEW_POLICY_ENABLED=true`.
 
-When the flag is disabled, existing objective exact-match behavior remains the
-production path. No schema, API, UI, evidence-ledger, language/OCR,
-visual/science, or Batch B teacher-review routing changes were introduced.
+When the flag is disabled, existing suggestion and approval behavior remains the
+production path. No schema, API, UI, evidence-ledger, language/OCR, visual/science,
+or parent/student visibility changes were introduced.
 
 Next gated milestone:
 
 ```text
-AEI v1.0 Batch B - Confidence, manual review, and teacher override
+AEI v1.0 Batch C - Evidence ledger and approved evidence propagation
 ```
 
-Batch B is not authorized until ARM explicitly issues the next implementation
+Batch C is not authorized until ARM explicitly issues the next implementation
 authorization.
 
 EUI Phase 7 remains closed at Phase 7E. Phase 7F source adoption is deferred
@@ -192,8 +211,8 @@ remain out of scope:
 - Phase 7F source adoption unless ARM reopens it under the documented reopen
   conditions;
 - AEI behavior changes beyond the published default-off Batch A Maths
-  normalization foundation;
-- AEI v1.0 Batch B or later batches without separate ARM authorization;
+  normalization foundation and Batch B review-policy metadata foundation;
+- AEI v1.0 Batch C or later batches without separate ARM authorization;
 - AEI source-of-truth switching to EUI;
 - EUI contract changes outside accepted design;
 - product capability claim changes;
@@ -215,9 +234,10 @@ published Phase 7A AEI Consumer Migration passive dual-read foundation, a
 published Phase 7B AEI Rich EUI Evidence Binding foundation, a published Phase
 7C AEI Divergence Readiness Review foundation, a published Phase 7D Narrow AEI
 Source-Readiness Candidate foundation, a published Phase 7E Narrow AEI
-Source-Readiness Trial foundation, and a published AEI v1.0 Batch A Maths
-Normalization foundation. Phase 7 is closed at 7E. Phase 7F source adoption is
-deferred future scope. AEI v1.0 Batch B is the next product-facing engineering
+Source-Readiness Trial foundation, a published AEI v1.0 Batch A Maths
+Normalization foundation, and a published AEI v1.0 Batch B Review Policy
+Metadata foundation. Phase 7 is closed at 7E. Phase 7F source adoption is
+deferred future scope. AEI v1.0 Batch C is the next product-facing engineering
 gate, but it is not authorized until ARM issues a separate implementation
 authorization contract.
 
@@ -228,28 +248,30 @@ authorization contract.
 Latest published runtime phase:
 
 ```text
-AEI v1.0 Batch A - Maths Normalization
+AEI v1.0 Batch B - Review Policy Metadata
 ```
 
 Historical artifact label:
 
 ```text
-AEI v1.0 Batch A Maths Normalization Foundation
+AEI v1.0 Batch B Review Policy Metadata Foundation
 ```
 
 Certified evidence:
 
-- Focused Batch A Ruff: PASS
-- Focused Batch A + Golden Harness + answer-sheet regression tests: 40 passed
+- Focused Batch B Ruff: PASS
+- Focused Batch B + Golden Harness tests: 14 passed
+- Answer-sheet integration regression: 17 passed
+- Batch A + Batch B AEI/evaluation regression slice: 69 passed
 - API import: PASS
 - git diff --check: PASS
-- `AEI_V1_MATH_NORMALIZATION_ENABLED` defaults to false: PASS
-- Flag-off legacy exact-match rollback behavior: PASS
+- `AEI_V1_REVIEW_POLICY_ENABLED` defaults to false: PASS
+- Flag-off legacy suggestion/approval behavior: PASS
 - No schema/API/UI/evidence-ledger changes: PASS
 
 Certification report:
 
-[`product/aei-v1/AEI_V1_BATCH_A_MATH_NORMALIZATION_CERTIFICATION_REPORT.md`](./product/aei-v1/AEI_V1_BATCH_A_MATH_NORMALIZATION_CERTIFICATION_REPORT.md)
+[`product/aei-v1/AEI_V1_BATCH_B_REVIEW_POLICY_CERTIFICATION_REPORT.md`](./product/aei-v1/AEI_V1_BATCH_B_REVIEW_POLICY_CERTIFICATION_REPORT.md)
 
 ---
 
