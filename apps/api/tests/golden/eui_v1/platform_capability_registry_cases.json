@@ -1,0 +1,169 @@
+{
+  "version": "eui-platform-capability-golden-v1",
+  "authorization": "EUI-PH1-SP3-AUTH-001",
+  "cases": [
+    {
+      "id": "cap_math_numeric_supported_001",
+      "request": {
+        "domain": "mathematics",
+        "capability_key": "numeric_normalization",
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "grade": "10",
+        "subject": "Mathematics"
+      },
+      "expected": {
+        "mode": "supported",
+        "matched": true,
+        "conflict": false
+      }
+    },
+    {
+      "id": "cap_math_units_supported_001",
+      "request": {
+        "domain": "mathematics",
+        "capability_key": "unit_conversion",
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "grade": "10",
+        "subject": "Mathematics"
+      },
+      "expected": {
+        "mode": "supported",
+        "matched": true,
+        "conflict": false
+      }
+    },
+    {
+      "id": "cap_hindi_printed_ocr_supported_001",
+      "request": {
+        "domain": "language",
+        "capability_key": "printed_ocr",
+        "language": "Hindi",
+        "script": "Devanagari",
+        "input_type": "printed_text"
+      },
+      "expected": {
+        "mode": "supported",
+        "matched": true,
+        "conflict": false
+      }
+    },
+    {
+      "id": "cap_hindi_handwriting_ocr_assist_001",
+      "request": {
+        "domain": "language",
+        "capability_key": "handwriting_ocr",
+        "language": "Hindi",
+        "script": "Devanagari",
+        "input_type": "handwriting"
+      },
+      "expected": {
+        "mode": "assist",
+        "matched": true,
+        "conflict": false
+      }
+    },
+    {
+      "id": "cap_telugu_handwriting_ocr_assist_001",
+      "request": {
+        "domain": "language",
+        "capability_key": "handwriting_ocr",
+        "language": "Telugu",
+        "script": "Telugu",
+        "input_type": "handwriting"
+      },
+      "expected": {
+        "mode": "assist",
+        "matched": true,
+        "conflict": false
+      }
+    },
+    {
+      "id": "cap_sanskrit_handwriting_ocr_manual_review_001",
+      "request": {
+        "domain": "language",
+        "capability_key": "handwriting_ocr",
+        "language": "Sanskrit",
+        "script": "Devanagari",
+        "input_type": "handwriting"
+      },
+      "expected": {
+        "mode": "manual_review",
+        "matched": true,
+        "conflict": false
+      }
+    },
+    {
+      "id": "cap_biology_diagram_checklist_001",
+      "request": {
+        "domain": "visual",
+        "capability_key": "biology_diagrams",
+        "subject": "Biology",
+        "input_type": "image",
+        "artifact_type": "answer_sheet"
+      },
+      "expected": {
+        "mode": "checklist",
+        "matched": true,
+        "conflict": false
+      }
+    },
+    {
+      "id": "cap_pixel_perfect_diagram_unsupported_001",
+      "request": {
+        "domain": "visual",
+        "capability_key": "pixel_perfect_diagram_grading",
+        "subject": "Biology",
+        "input_type": "image",
+        "artifact_type": "answer_sheet"
+      },
+      "expected": {
+        "mode": "unsupported",
+        "matched": true,
+        "conflict": false
+      }
+    },
+    {
+      "id": "cap_missing_defaults_unsupported_001",
+      "request": {
+        "domain": "commerce",
+        "capability_key": "ledger_auto_grading",
+        "subject": "Commerce"
+      },
+      "expected": {
+        "mode": "unsupported",
+        "matched": false,
+        "conflict": false
+      }
+    },
+    {
+      "id": "cap_conflict_resolves_lower_claim_001",
+      "request": {
+        "domain": "test",
+        "capability_key": "conflict_resolution_probe",
+        "board": "CBSE",
+        "grade": "8",
+        "subject": "Science"
+      },
+      "expected": {
+        "mode": "manual_review",
+        "matched": true,
+        "conflict": true
+      }
+    },
+    {
+      "id": "cap_aei_numeric_equivalence_compat_001",
+      "request": {
+        "domain": "evaluation",
+        "capability_key": "numeric_equivalence",
+        "subject": "Mathematics"
+      },
+      "expected": {
+        "mode": "supported",
+        "matched": true,
+        "conflict": false
+      }
+    }
+  ]
+}

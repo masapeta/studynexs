@@ -1,0 +1,220 @@
+{
+  "version": "eui-platform-capability-registry-v1",
+  "authorization": "EUI-PH1-SP3-AUTH-001",
+  "declarations": [
+    {
+      "id": "pc://eui/mathematics/numeric_normalization/cbse/ncf2023/g10",
+      "domain": "mathematics",
+      "capability_key": "numeric_normalization",
+      "mode": "supported",
+      "scope": {
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "grade": "10",
+        "subject": "Mathematics"
+      },
+      "review_required": false,
+      "certification_status": "foundation",
+      "scope_statement": "Deterministic numeric normalization for supported CBSE NCF2023 Grade 10 Mathematics scenarios.",
+      "metadata": {
+        "aei_compatible_capability": "numeric_equivalence"
+      }
+    },
+    {
+      "id": "pc://eui/mathematics/unit_conversion/cbse/ncf2023/g10",
+      "domain": "mathematics",
+      "capability_key": "unit_conversion",
+      "mode": "supported",
+      "scope": {
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "grade": "10",
+        "subject": "Mathematics"
+      },
+      "review_required": false,
+      "certification_status": "foundation",
+      "scope_statement": "Deterministic unit conversion where expected units are configured.",
+      "metadata": {
+        "aei_compatible_capability": "units"
+      }
+    },
+    {
+      "id": "pc://eui/evaluation/numeric_equivalence/mathematics",
+      "domain": "evaluation",
+      "capability_key": "numeric_equivalence",
+      "mode": "supported",
+      "scope": {
+        "subject": "Mathematics"
+      },
+      "review_required": false,
+      "certification_status": "foundation",
+      "scope_statement": "Platform representation of AEI Mathematics numeric equivalence posture.",
+      "metadata": {
+        "source_registry": "aei-subject-capabilities-v1"
+      }
+    },
+    {
+      "id": "pc://eui/evaluation/diagrams/mathematics",
+      "domain": "evaluation",
+      "capability_key": "diagrams",
+      "mode": "checklist",
+      "scope": {
+        "subject": "Mathematics"
+      },
+      "review_required": true,
+      "certification_status": "foundation",
+      "scope_statement": "Platform representation of AEI Mathematics diagram checklist posture.",
+      "metadata": {
+        "source_registry": "aei-subject-capabilities-v1",
+        "aei_mode": "partial"
+      }
+    },
+    {
+      "id": "pc://eui/language/printed_ocr/hindi/devanagari",
+      "domain": "language",
+      "capability_key": "printed_ocr",
+      "mode": "supported",
+      "scope": {
+        "language": "Hindi",
+        "script": "Devanagari",
+        "input_type": "printed_text"
+      },
+      "review_required": false,
+      "certification_status": "foundation",
+      "scope_statement": "Clear printed Hindi OCR within documented input quality limits.",
+      "metadata": {
+        "product_claim_boundary": "internal_only"
+      }
+    },
+    {
+      "id": "pc://eui/language/handwriting_ocr/hindi/devanagari",
+      "domain": "language",
+      "capability_key": "handwriting_ocr",
+      "mode": "assist",
+      "scope": {
+        "language": "Hindi",
+        "script": "Devanagari",
+        "input_type": "handwriting"
+      },
+      "review_required": true,
+      "certification_status": "foundation",
+      "scope_statement": "Hindi handwriting OCR assist with teacher correction required.",
+      "metadata": {
+        "product_claim_boundary": "internal_only"
+      }
+    },
+    {
+      "id": "pc://eui/language/handwriting_ocr/telugu",
+      "domain": "language",
+      "capability_key": "handwriting_ocr",
+      "mode": "assist",
+      "scope": {
+        "language": "Telugu",
+        "script": "Telugu",
+        "input_type": "handwriting"
+      },
+      "review_required": true,
+      "certification_status": "foundation",
+      "scope_statement": "Telugu handwriting OCR assist with teacher correction required.",
+      "metadata": {
+        "product_claim_boundary": "internal_only"
+      }
+    },
+    {
+      "id": "pc://eui/language/handwriting_ocr/sanskrit/devanagari",
+      "domain": "language",
+      "capability_key": "handwriting_ocr",
+      "mode": "manual_review",
+      "scope": {
+        "language": "Sanskrit",
+        "script": "Devanagari",
+        "input_type": "handwriting"
+      },
+      "review_required": true,
+      "certification_status": "foundation",
+      "scope_statement": "Sanskrit handwriting OCR remains manual-review posture in this foundation.",
+      "metadata": {
+        "product_claim_boundary": "internal_only"
+      }
+    },
+    {
+      "id": "pc://eui/visual/biology_diagrams/checklist",
+      "domain": "visual",
+      "capability_key": "biology_diagrams",
+      "mode": "checklist",
+      "scope": {
+        "subject": "Biology",
+        "input_type": "image",
+        "artifact_type": "answer_sheet"
+      },
+      "review_required": true,
+      "certification_status": "foundation",
+      "scope_statement": "Biology diagrams can produce checklist observations for teacher confirmation.",
+      "metadata": {
+        "aei_compatible_capability": "diagrams"
+      }
+    },
+    {
+      "id": "pc://eui/visual/pixel_perfect_diagram_grading/unsupported",
+      "domain": "visual",
+      "capability_key": "pixel_perfect_diagram_grading",
+      "mode": "unsupported",
+      "scope": {},
+      "review_required": true,
+      "certification_status": "foundation",
+      "scope_statement": "Pixel-perfect diagram grading is not a supported StudyNexs capability.",
+      "metadata": {
+        "product_claim_boundary": "must_not_claim"
+      }
+    },
+    {
+      "id": "pc://eui/science/reaction_balancing/chemistry",
+      "domain": "science",
+      "capability_key": "reaction_balancing",
+      "mode": "assist",
+      "scope": {
+        "subject": "Chemistry"
+      },
+      "review_required": true,
+      "certification_status": "foundation",
+      "scope_statement": "Simple chemistry reaction balancing remains assistive evidence for teacher review.",
+      "metadata": {
+        "aei_compatible_capability": "reaction_balancing"
+      }
+    },
+    {
+      "id": "pc://eui/test/conflict_resolution_probe/supported",
+      "domain": "test",
+      "capability_key": "conflict_resolution_probe",
+      "mode": "supported",
+      "scope": {
+        "board": "CBSE",
+        "grade": "8",
+        "subject": "Science"
+      },
+      "review_required": false,
+      "certification_status": "foundation",
+      "scope_statement": "Golden Harness conflict probe; internal only.",
+      "metadata": {
+        "test_case": true
+      }
+    },
+    {
+      "id": "pc://eui/test/conflict_resolution_probe/manual_review",
+      "domain": "test",
+      "capability_key": "conflict_resolution_probe",
+      "mode": "manual_review",
+      "scope": {
+        "board": "CBSE",
+        "grade": "8",
+        "subject": "Science"
+      },
+      "review_required": true,
+      "certification_status": "foundation",
+      "scope_statement": "Golden Harness conflict probe; safer same-specificity entry.",
+      "metadata": {
+        "test_case": true
+      }
+    }
+  ]
+}
