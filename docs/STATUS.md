@@ -71,6 +71,7 @@ canonical roadmap names are:
 | AEI v1.0 Batch A - Maths normalization | Complete / certified / published |
 | AEI v1.0 Batch B - Review policy metadata | Complete / certified / published |
 | AEI v1.0 Batch C - Evidence ledger metadata | Complete / certified / published |
+| AEI v1.0 Batch D - Language/OCR assist metadata | Complete / certified / published |
 | EUI v1 architecture | Frozen / accepted |
 | EUI Runtime Roadmap v1 | Accepted planning baseline |
 | Phase 0 - Engineering Preparation | Complete / certified / published |
@@ -92,6 +93,7 @@ canonical roadmap names are:
 | Batch A - Maths Normalization | Published / certified | `4343b0542b68cd739162eeb47207299c428b2fd9` | `aei-v1-batch-a-maths-normalization-certified` | Default-off deterministic Maths normalization/equivalence foundation |
 | Batch B - Review Policy Metadata | Published / certified | `d40c31e4df29a4942e48431c90b756611949ef86` | `aei-v1-batch-b-review-policy-certified` | Default-off confidence/manual-review metadata and teacher override audit foundation |
 | Batch C - Evidence Ledger Metadata | Published / certified | `9f3589e1d98825a2abc15244879ef1b8329a6064` | `aei-v1-batch-c-evidence-ledger-certified` | Default-off approved-evidence ledger metadata and teacher-approved source-of-truth contract |
+| Batch D - Language/OCR Assist Metadata | Published / certified | `d33ff6d9d49d140353a848ccffe0f222e6d8ac2c` | `aei-v1-batch-d-language-ocr-assist-certified` | Default-off language/script/code-mixed and OCR assist metadata with teacher-review boundaries |
 
 Batch A adds production-seam Maths normalization behind
 `AEI_V1_MATH_NORMALIZATION_ENABLED=false` by default.
@@ -146,6 +148,24 @@ Batch C does not authorize or implement language/OCR assist, visual/science
 assist, UI changes, API changes, schema changes, report-card automation, broad
 consumer migration, or parent/student visibility changes.
 
+Batch D adds language/OCR assist metadata behind
+`AEI_V1_LANGUAGE_OCR_ASSIST_ENABLED=false` by default.
+
+Supported Batch D behavior:
+
+- answer language, script, and code-mixed metadata;
+- teacher-entered text versus image/OCR source metadata;
+- Hindi, Telugu, and Sanskrit language-subject review posture;
+- Indic handwriting/OCR assist boundaries through metadata only;
+- low-confidence or missing OCR confidence manual-review metadata;
+- internal Platform Capability Registry posture evidence;
+- no autonomous language grading.
+
+Batch D does not authorize or implement a new OCR engine, LLM inference,
+visual/science assist, UI changes, API changes, schema changes, public OCR
+claims, marks changes, evidence-ledger behavior changes, teacher-review routing
+changes, or parent/student visibility changes.
+
 ---
 
 ## Published EUI runtime milestones
@@ -171,25 +191,25 @@ consumer migration, or parent/student visibility changes.
 The latest completed artifact is:
 
 ```text
-AEI v1.0 Batch C - Evidence Ledger Metadata
+AEI v1.0 Batch D - Language/OCR Assist Metadata
 ```
 
-AEI v1.0 Batch C is published and certified as a default-off approved-evidence
-ledger metadata foundation. It enriches existing evaluation evidence-ledger
-responses only when `AEI_V1_EVIDENCE_LEDGER_METADATA_ENABLED=true`.
+AEI v1.0 Batch D is published and certified as a default-off language/OCR assist
+metadata foundation. It enriches existing answer-suggestion metadata only when
+`AEI_V1_LANGUAGE_OCR_ASSIST_ENABLED=true`.
 
 When the flag is disabled, existing suggestion and approval behavior remains the
 production path. No schema, API route, UI, marks, teacher-review routing,
-persistence, language/OCR, visual/science, or parent/student visibility changes
-were introduced.
+persistence, OCR engine, LLM inference, visual/science, or parent/student
+visibility changes were introduced.
 
 Next gated milestone:
 
 ```text
-AEI v1.0 Batch D - Language and OCR assist support boundary
+AEI v1.0 Batch E - Visual and science assist support boundary
 ```
 
-Batch D is not authorized until ARM explicitly issues the next implementation
+Batch E is not authorized until ARM explicitly issues the next implementation
 authorization.
 
 EUI Phase 7 remains closed at Phase 7E. Phase 7F source adoption is deferred
@@ -233,9 +253,10 @@ remain out of scope:
 - Phase 7F source adoption unless ARM reopens it under the documented reopen
   conditions;
 - AEI behavior changes beyond the published default-off Batch A Maths
-  normalization foundation, Batch B review-policy metadata foundation, and
-  Batch C approved-evidence ledger metadata foundation;
-- AEI v1.0 Batch D or later batches without separate ARM authorization;
+  normalization foundation, Batch B review-policy metadata foundation, Batch C
+  approved-evidence ledger metadata foundation, and Batch D language/OCR assist
+  metadata foundation;
+- AEI v1.0 Batch E or later batches without separate ARM authorization;
 - AEI source-of-truth switching to EUI;
 - EUI contract changes outside accepted design;
 - product capability claim changes;
@@ -259,10 +280,12 @@ published Phase 7B AEI Rich EUI Evidence Binding foundation, a published Phase
 Source-Readiness Candidate foundation, a published Phase 7E Narrow AEI
 Source-Readiness Trial foundation, a published AEI v1.0 Batch A Maths
 Normalization foundation, and a published AEI v1.0 Batch B Review Policy
-Metadata foundation. Phase 7 is closed at 7E. Phase 7F source adoption is
-deferred future scope. AEI v1.0 Batch C is the next product-facing engineering
-gate, but it is not authorized until ARM issues a separate implementation
-authorization contract.
+Metadata foundation, a published AEI v1.0 Batch C Evidence Ledger Metadata
+foundation, and a published AEI v1.0 Batch D Language/OCR Assist Metadata
+foundation. Phase 7 is closed at 7E. Phase 7F source adoption is deferred
+future scope. AEI v1.0 Batch E is the next product-facing engineering gate, but
+it is not authorized until ARM issues a separate implementation authorization
+contract.
 
 ---
 
@@ -271,30 +294,29 @@ authorization contract.
 Latest published runtime phase:
 
 ```text
-AEI v1.0 Batch B - Review Policy Metadata
+AEI v1.0 Batch D - Language/OCR Assist Metadata
 ```
 
 Historical artifact label:
 
 ```text
-AEI v1.0 Batch B Review Policy Metadata Foundation
+AEI v1.0 Batch D Language/OCR Assist Metadata Foundation
 ```
 
 Certified evidence:
 
-- Focused Batch B Ruff: PASS
-- Focused Batch B + Golden Harness tests: 14 passed
-- Answer-sheet integration regression: 17 passed
-- Batch A + Batch B AEI/evaluation regression slice: 69 passed
+- Focused Batch D Ruff: PASS
+- Focused Batch D + Golden Harness tests: 14 passed
+- Full AEI/OCR regression slice: 67 passed
 - API import: PASS
 - git diff --check: PASS
-- `AEI_V1_REVIEW_POLICY_ENABLED` defaults to false: PASS
+- `AEI_V1_LANGUAGE_OCR_ASSIST_ENABLED` defaults to false: PASS
 - Flag-off legacy suggestion/approval behavior: PASS
-- No schema/API/UI/evidence-ledger changes: PASS
+- No schema/API/UI/marks/OCR-engine/LLM/visual-science changes: PASS
 
 Certification report:
 
-[`product/aei-v1/AEI_V1_BATCH_B_REVIEW_POLICY_CERTIFICATION_REPORT.md`](./product/aei-v1/AEI_V1_BATCH_B_REVIEW_POLICY_CERTIFICATION_REPORT.md)
+[`product/aei-v1/AEI_V1_BATCH_D_LANGUAGE_OCR_ASSIST_CERTIFICATION_REPORT.md`](./product/aei-v1/AEI_V1_BATCH_D_LANGUAGE_OCR_ASSIST_CERTIFICATION_REPORT.md)
 
 ---
 
