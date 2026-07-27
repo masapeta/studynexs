@@ -57,7 +57,7 @@ canonical roadmap names are:
 | Phase 4 | Knowledge Acquisition Intelligence | Phase 4 KAI Candidate Foundation |
 | Phase 5 | Educational Knowledge Graph Expansion | Phase 5 EKG Proposal Foundation |
 | Phase 6 | Trust Framework | Phase 6 Trust Report Foundation |
-| Phase 7 | Consumer Migration | Phase 7A AEI Consumer Dual-Read Foundation; Phase 7B AEI Rich EUI Evidence Binding; Phase 7C AEI Divergence Readiness Review; Phase 7D Narrow AEI Source Readiness |
+| Phase 7 | Consumer Migration | Phase 7A AEI Consumer Dual-Read Foundation; Phase 7B AEI Rich EUI Evidence Binding; Phase 7C AEI Divergence Readiness Review; Phase 7D Narrow AEI Source Readiness; Phase 7E Narrow AEI Source-Readiness Trial |
 
 ---
 
@@ -76,8 +76,8 @@ canonical roadmap names are:
 | Phase 4 - Knowledge Acquisition Intelligence | Candidate foundation complete / certified / published |
 | Phase 5 - Educational Knowledge Graph Expansion | Proposal foundation complete / certified / published |
 | Phase 6 - Trust Framework | Trust Report foundation complete / certified / published |
-| Phase 7 - Consumer Migration | Phase 7D narrow AEI source-readiness candidate foundation complete / certified / published |
-| Runtime consumer migration | AEI passive dual-read with rich internal EUI evidence, internal divergence readiness review, and narrow internal source-readiness candidate foundation published; source-of-truth switch not authorized |
+| Phase 7 - Consumer Migration | Phase 7E narrow AEI source-readiness trial foundation complete / certified / published |
+| Runtime consumer migration | AEI passive dual-read with rich internal EUI evidence, internal divergence readiness review, narrow internal source-readiness candidate foundation, and internal source-readiness trial foundation published; source-of-truth switch not authorized |
 
 ---
 
@@ -95,6 +95,7 @@ canonical roadmap names are:
 | Phase 7B - AEI Rich EUI Evidence Binding | Published / certified | `f279f8a04e82d66133cf9178676c8af51b9aeb54` | `eui-runtime-phase7b-aei-rich-evidence-binding-certified` | Phase 7B AEI Rich EUI Evidence Binding |
 | Phase 7C - AEI Divergence Readiness Review | Published / certified | `d9fa9e8d44dab0bd6dc5874fb0ac84f0a7e6ee90` | `eui-runtime-phase7c-aei-divergence-readiness-certified` | Phase 7C AEI Divergence Review and Source Readiness |
 | Phase 7D - Narrow AEI Source Readiness | Published / certified | `696501c270b3db893ea71c31babeb7448967f6a1` | `eui-runtime-phase7d-narrow-aei-source-readiness-certified` | Phase 7D Narrow AEI Source-Readiness Candidate Foundation |
+| Phase 7E - Narrow AEI Source-Readiness Trial | Published / certified | `bf7e06e6f497d1e09234e4ba0a611b479d7ee1d1` | `eui-runtime-phase7e-narrow-aei-source-readiness-trial-certified` | Phase 7E Narrow AEI Source-Readiness Trial Foundation |
 
 ---
 
@@ -103,12 +104,12 @@ canonical roadmap names are:
 The latest completed artifact is:
 
 ```text
-EUI Runtime Phase 7D - Narrow AEI Source Readiness
+EUI Runtime Phase 7E - Narrow AEI Source-Readiness Trial
 ```
 
-Phase 7D is published and certified as an internal narrow AEI source-readiness
-candidate foundation. It adds a non-authoritative candidate model and
-deterministic candidate service over Phase 7C scorecards for the
+Phase 7E is published and certified as an internal narrow AEI source-readiness
+trial foundation. It adds a non-authoritative trial result model and
+deterministic trial service over Phase 7D candidates for the
 `context_metadata_only` scope without changing AEI, evaluation behavior, marks,
 teacher review routing, evidence ledger behavior, API, UI, schema, or
 source-of-truth posture.
@@ -120,10 +121,10 @@ contract for the next migration slice.
 Next gated milestone:
 
 ```text
-EUI Runtime Phase 7E - Narrow AEI Source-Readiness Trial Design
+Pending ARM-defined next migration slice
 ```
 
-Phase 7E is not authorized.
+No Phase 7F or source-of-truth switch work is authorized.
 
 ---
 
@@ -141,8 +142,8 @@ remain out of scope:
 - schema changes;
 - API changes;
 - UI changes;
-- consumer migration beyond the published Phase 7D AEI internal source-readiness
-  candidate foundation;
+- consumer migration beyond the published Phase 7E AEI internal
+  source-readiness trial foundation;
 - AEI behavior changes;
 - AEI source-of-truth switching to EUI;
 - EUI contract changes outside accepted design;
@@ -164,7 +165,8 @@ foundation, a published Phase 6 Trust Framework Trust Report foundation, a
 published Phase 7A AEI Consumer Migration passive dual-read foundation, a
 published Phase 7B AEI Rich EUI Evidence Binding foundation, and a published
 Phase 7C AEI Divergence Readiness Review foundation, and a published Phase 7D
-Narrow AEI Source-Readiness Candidate foundation. Further consumer migration,
+Narrow AEI Source-Readiness Candidate foundation, and a published Phase 7E
+Narrow AEI Source-Readiness Trial foundation. Further consumer migration,
 including any EUI source-of-truth switch, is not authorized.
 
 ---
@@ -174,35 +176,34 @@ including any EUI source-of-truth switch, is not authorized.
 Latest published runtime phase:
 
 ```text
-EUI Runtime Phase 7D - Narrow AEI Source Readiness
+EUI Runtime Phase 7E - Narrow AEI Source-Readiness Trial
 ```
 
 Historical artifact label:
 
 ```text
-Phase 7D Narrow AEI Source-Readiness Candidate Foundation
+Phase 7E Narrow AEI Source-Readiness Trial Foundation
 ```
 
 Certified evidence:
 
-- Focused Phase 7D Ruff: PASS
-- Focused Phase 7D model / service tests: 9 passed
-- EUI Golden Harness: 10 passed
-- Phase 7A/7B/7C/7D + Trust + AEI/evaluation regression slice: 83 passed
+- Focused Phase 7E Ruff: PASS
+- Focused Phase 7E + Golden Harness tests: 21 passed
+- Phase 7A/7B/7C/7D/7E + Trust + AEI/evaluation regression slice: 94 passed
 - API import: PASS
 - git diff --check: PASS
-- Phase 7D source-switch scan: PASS, no source-switch activation patterns found
-  in implementation modules
-- Phase 7D LLM/provider-call scan: PASS, no provider call patterns found in
-  AEI source-readiness candidate files
-- Phase 7D write-scan: PASS, no persistence/write patterns found in AEI
-  source-readiness candidate files
-- Phase 7D API/router exposure scan: PASS, no user-facing exposure found
+- Phase 7E source-switch scan: PASS, no implementation activation found; only
+  the negative model-validation test attempts `source_switch_active=True`
+- Phase 7E LLM/provider-call scan: PASS, no provider call patterns found in
+  AEI source-readiness trial files
+- Phase 7E write-scan: PASS, no persistence/write patterns found in AEI
+  source-readiness trial files
+- Phase 7E API/router exposure scan: PASS, no user-facing exposure found
 - Source flag remains inert: PASS
 
 Certification report:
 
-[`product/eui-runtime/phase-7/EUI_PHASE_7D_NARROW_AEI_SOURCE_READINESS_CERTIFICATION_REPORT.md`](./product/eui-runtime/phase-7/EUI_PHASE_7D_NARROW_AEI_SOURCE_READINESS_CERTIFICATION_REPORT.md)
+[`product/eui-runtime/phase-7/EUI_PHASE_7E_NARROW_AEI_SOURCE_READINESS_TRIAL_CERTIFICATION_REPORT.md`](./product/eui-runtime/phase-7/EUI_PHASE_7E_NARROW_AEI_SOURCE_READINESS_TRIAL_CERTIFICATION_REPORT.md)
 
 ---
 
