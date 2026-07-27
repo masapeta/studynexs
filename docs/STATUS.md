@@ -76,7 +76,7 @@ canonical roadmap names are:
 | Phase 4 - Knowledge Acquisition Intelligence | Candidate foundation complete / certified / published |
 | Phase 5 - Educational Knowledge Graph Expansion | Proposal foundation complete / certified / published |
 | Phase 6 - Trust Framework | Trust Report foundation complete / certified / published |
-| Phase 7 - Consumer Migration | Phase 7E narrow AEI source-readiness trial foundation complete / certified / published |
+| Phase 7 - Consumer Migration | Closed at Phase 7E; 7F source adoption deferred / future scope |
 | Runtime consumer migration | AEI passive dual-read with rich internal EUI evidence, internal divergence readiness review, narrow internal source-readiness candidate foundation, and internal source-readiness trial foundation published; source-of-truth switch not authorized |
 
 ---
@@ -114,17 +114,32 @@ deterministic trial service over Phase 7D candidates for the
 teacher review routing, evidence ledger behavior, API, UI, schema, or
 source-of-truth posture.
 
-No EUI source-of-truth switch is authorized. No additional consumer migration
-implementation may begin until ARM accepts a future design/authorization
-contract for the next migration slice.
+No EUI source-of-truth switch is authorized. Phase 7 is closed at Phase 7E.
+Phase 7F source adoption is deferred future scope, not the next active
+implementation milestone.
 
 Next gated milestone:
 
 ```text
-Pending ARM-defined next migration slice
+Product-facing completion work, unless ARM explicitly reopens source adoption
 ```
 
-No Phase 7F or source-of-truth switch work is authorized.
+Phase 7F should be implemented only when source adoption solves a real product
+problem, not because the architecture can support it.
+
+Deferred artifact:
+
+[`product/eui-runtime/phase-7/EUI_PHASE_7F_NARROW_AEI_SOURCE_ADOPTION_DESIGN_BRIEF.md`](./product/eui-runtime/phase-7/EUI_PHASE_7F_NARROW_AEI_SOURCE_ADOPTION_DESIGN_BRIEF.md)
+
+7F reopen conditions:
+
+- a real product-facing flow needs EUI to become the selected metadata source;
+- legacy AEI metadata starts blocking accuracy, consistency, or
+  maintainability;
+- Phase 7E trial evidence shows stable readiness across real usage;
+- marks, routing, ledger, API, UI, and schema can be proven unchanged;
+- rollback is simple: disable the flag and return to legacy AEI;
+- ARM explicitly authorizes a 7F implementation contract.
 
 ---
 
@@ -144,6 +159,8 @@ remain out of scope:
 - UI changes;
 - consumer migration beyond the published Phase 7E AEI internal
   source-readiness trial foundation;
+- Phase 7F source adoption unless ARM reopens it under the documented reopen
+  conditions;
 - AEI behavior changes;
 - AEI source-of-truth switching to EUI;
 - EUI contract changes outside accepted design;
@@ -166,8 +183,10 @@ published Phase 7A AEI Consumer Migration passive dual-read foundation, a
 published Phase 7B AEI Rich EUI Evidence Binding foundation, and a published
 Phase 7C AEI Divergence Readiness Review foundation, and a published Phase 7D
 Narrow AEI Source-Readiness Candidate foundation, and a published Phase 7E
-Narrow AEI Source-Readiness Trial foundation. Further consumer migration,
-including any EUI source-of-truth switch, is not authorized.
+Narrow AEI Source-Readiness Trial foundation. Phase 7 is closed at 7E. Phase
+7F source adoption is deferred future scope. Further consumer migration,
+including any EUI source-of-truth switch, is not authorized unless ARM reopens
+source adoption under a separate implementation authorization contract.
 
 ---
 
