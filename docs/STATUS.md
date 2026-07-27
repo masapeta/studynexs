@@ -57,7 +57,7 @@ canonical roadmap names are:
 | Phase 4 | Knowledge Acquisition Intelligence | Phase 4 KAI Candidate Foundation |
 | Phase 5 | Educational Knowledge Graph Expansion | Phase 5 EKG Proposal Foundation |
 | Phase 6 | Trust Framework | Phase 6 Trust Report Foundation |
-| Phase 7 | Consumer Migration | Next design gate |
+| Phase 7 | Consumer Migration | Phase 7A AEI Consumer Dual-Read Foundation |
 
 ---
 
@@ -76,8 +76,8 @@ canonical roadmap names are:
 | Phase 4 - Knowledge Acquisition Intelligence | Candidate foundation complete / certified / published |
 | Phase 5 - Educational Knowledge Graph Expansion | Proposal foundation complete / certified / published |
 | Phase 6 - Trust Framework | Trust Report foundation complete / certified / published |
-| Phase 7 - Consumer Migration | Design brief next / implementation not authorized |
-| Runtime consumer migration | Not authorized |
+| Phase 7 - Consumer Migration | Phase 7A AEI passive dual-read foundation complete / certified / published |
+| Runtime consumer migration | AEI passive dual-read only published; further migration not authorized |
 
 ---
 
@@ -91,23 +91,23 @@ canonical roadmap names are:
 | Phase 4 - Knowledge Acquisition Intelligence | Published / certified | `165c796e9bac6a6fc29226ed186b79664d0d5b5c` | `eui-runtime-phase4-kai-candidate-foundation-certified` | Phase 4 KAI Candidate Foundation |
 | Phase 5 - Educational Knowledge Graph Expansion | Published / certified | `91a84f5fce1bb0acf4a5231593b0e1715e1baef8` | `eui-runtime-phase5-ekg-proposal-foundation-certified` | Phase 5 EKG Proposal Foundation |
 | Phase 6 - Trust Framework | Published / certified | `0a5a5dd0a8b7054ede5d86f7b610328505b195f5` | `eui-runtime-phase6-trust-report-foundation-certified` | Phase 6 Trust Report Foundation |
+| Phase 7A - AEI Consumer Migration | Published / certified | `c30bb2479e615d50aea97ae03bd3b6816d93c26b` | `eui-runtime-phase7a-aei-consumer-dual-read-certified` | Phase 7A AEI Consumer Dual-Read Foundation |
 
 ---
 
 ## Current engineering gate
 
-The next review artifact is:
+The latest completed artifact is:
 
 ```text
-EUI Runtime Phase 7 - Consumer Migration Design Brief
+EUI Runtime Phase 7A - AEI Consumer Migration: Passive Dual-Read
 ```
 
-Phase 7 implementation is not authorized.
+Phase 7A is published and certified as passive dual-read only.
 
-The next engineering step is to draft the Phase 7 Consumer Migration design
-brief for ARM review. No consumer migration implementation may begin until ARM
-accepts the design brief and
-separately authorizes an implementation contract.
+No EUI source-of-truth switch is authorized. No additional consumer migration
+implementation may begin until ARM accepts a future design/authorization
+contract for the next migration slice.
 
 ---
 
@@ -125,8 +125,10 @@ remain out of scope:
 - schema changes;
 - API changes;
 - UI changes;
-- consumer migration;
+- consumer migration beyond the published Phase 7A AEI passive dual-read
+  foundation;
 - AEI behavior changes;
+- AEI source-of-truth switching to EUI;
 - EUI contract changes outside accepted design;
 - product capability claim changes;
 - replacement of the AEI Subject Capability Registry;
@@ -142,9 +144,9 @@ Identity runtime foundation, a published Phase 2 Educational Context passive
 runtime foundation, a published Phase 3 Platform Capability Registry passive
 runtime foundation, and a published Phase 4 Knowledge Acquisition Intelligence
 candidate foundation, a published Phase 5 Educational Knowledge Graph proposal
-foundation, and a published Phase 6 Trust Framework Trust Report foundation.
-The next gated milestone is the Phase 7 Consumer Migration design brief;
-implementation is not authorized.
+foundation, a published Phase 6 Trust Framework Trust Report foundation, and a
+published Phase 7A AEI Consumer Migration passive dual-read foundation. Further
+consumer migration, including any EUI source-of-truth switch, is not authorized.
 
 ---
 
@@ -153,32 +155,32 @@ implementation is not authorized.
 Latest published runtime phase:
 
 ```text
-EUI Runtime Phase 6 - Trust Framework
+EUI Runtime Phase 7A - AEI Consumer Migration
 ```
 
 Historical artifact label:
 
 ```text
-Phase 6 Trust Report Foundation
+Phase 7A AEI Consumer Dual-Read Foundation
 ```
 
 Certified evidence:
 
-- Focused Trust Framework Ruff: PASS
-- Phase 6 Trust Framework tests: 23 passed
-- Phase 1/2/3/4/5/6 EUI regression: 103 passed
-- Existing Knowledge Graph regression: 18 passed
-- AEI / evaluation regression slice: 43 passed
+- Focused Phase 7A Ruff: PASS
+- Focused Phase 7A tests: 21 passed
+- AEI / evaluation regression slice: 44 passed
+- EUI Trust / Golden regression slice: 24 passed
 - API import: PASS
 - git diff --check: PASS
-- Phase 6 LLM/provider-call scan: PASS, no provider call patterns found in
-  Trust Framework files
-- Phase 6 write-scan: PASS, no persistence/write patterns found in Trust
-  Framework files
+- Phase 7A LLM/provider-call scan: PASS, no provider call patterns found in
+  AEI consumer migration files
+- Phase 7A write-scan: PASS, no persistence/write patterns found in AEI
+  consumer migration files
+- Phase 7A UI/API/Trust-display scan: PASS, no user-facing exposure found
 
 Certification report:
 
-[`product/eui-runtime/phase-6/EUI_PHASE_6_TRUST_FRAMEWORK_CERTIFICATION_REPORT.md`](./product/eui-runtime/phase-6/EUI_PHASE_6_TRUST_FRAMEWORK_CERTIFICATION_REPORT.md)
+[`product/eui-runtime/phase-7/EUI_PHASE_7A_AEI_CONSUMER_MIGRATION_CERTIFICATION_REPORT.md`](./product/eui-runtime/phase-7/EUI_PHASE_7A_AEI_CONSUMER_MIGRATION_CERTIFICATION_REPORT.md)
 
 ---
 
