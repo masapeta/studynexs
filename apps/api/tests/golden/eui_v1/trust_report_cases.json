@@ -1,0 +1,171 @@
+{
+  "version": "eui-trust-report-golden-v1",
+  "authorization": "EUI-PH6-TRUST-AUTH-001",
+  "tenant_id": "11111111-1111-4111-8111-111111111111",
+  "cases": [
+    {
+      "id": "trust_context_resolved_001",
+      "kind": "educational_context",
+      "input": {
+        "resolution_status": "resolved",
+        "educational_identity_id": "ei://cbse/ncf2023/g6/science/ch05",
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "curriculum_version": "2024",
+        "grade": "6",
+        "subject": "Science",
+        "field_sources": {
+          "grade": "educational_identity",
+          "subject": "educational_identity"
+        },
+        "provenance": {
+          "source": "golden_context",
+          "resolved_from": "educational_identity",
+          "source_id": "ei://cbse/ncf2023/g6/science/ch05",
+          "source_version": "2024"
+        }
+      },
+      "expected": {
+        "subject_type": "educational_context",
+        "overall_posture": "trusted",
+        "review_required": false,
+        "consumer_visibility": "internal_only",
+        "authoritative": false,
+        "provenance_count": 1
+      }
+    },
+    {
+      "id": "trust_context_ambiguous_001",
+      "kind": "educational_context",
+      "input": {
+        "resolution_status": "ambiguous",
+        "educational_identity_id": "ei://cbse/ncf2023/g6/science/ch05",
+        "board": "CBSE",
+        "grade": "6",
+        "subject": "Science",
+        "field_sources": {
+          "grade": "runtime_metadata"
+        },
+        "ambiguities": [
+          {
+            "reason": "multiple_candidate_contexts",
+            "candidates": ["ctx-a", "ctx-b"]
+          }
+        ],
+        "provenance": {
+          "source": "golden_context",
+          "resolved_from": "runtime_metadata"
+        }
+      },
+      "expected": {
+        "subject_type": "educational_context",
+        "overall_posture": "manual_review_required",
+        "review_required": true,
+        "dimension": "understanding_confidence",
+        "dimension_status": "weak",
+        "consumer_visibility": "internal_only",
+        "authoritative": false
+      }
+    },
+    {
+      "id": "trust_capability_supported_001",
+      "kind": "platform_capability_lookup",
+      "request": {
+        "domain": "Mathematics",
+        "capability_key": "Numeric Normalization",
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "grade": "10",
+        "subject": "Mathematics"
+      },
+      "expected": {
+        "subject_type": "platform_capability_lookup",
+        "overall_posture": "trusted",
+        "review_required": false,
+        "capability_mode": "supported",
+        "dimension": "capability_mode",
+        "dimension_status": "strong",
+        "consumer_visibility": "internal_only",
+        "authoritative": false
+      }
+    },
+    {
+      "id": "trust_capability_unsupported_001",
+      "kind": "platform_capability_lookup",
+      "request": {
+        "domain": "commerce",
+        "capability_key": "ledger_auto_grading",
+        "subject": "Commerce"
+      },
+      "expected": {
+        "subject_type": "platform_capability_lookup",
+        "overall_posture": "unsupported",
+        "review_required": true,
+        "capability_mode": "unsupported",
+        "dimension": "capability_mode",
+        "dimension_status": "unsupported",
+        "consumer_visibility": "internal_only",
+        "authoritative": false
+      }
+    },
+    {
+      "id": "trust_kai_low_ocr_001",
+      "kind": "kai_candidate",
+      "input": {
+        "source_type": "ocr_text",
+        "artifact_type": "worksheet",
+        "supplied_extracted_text": "blurred OCR text",
+        "detected_language": "Hindi",
+        "detected_script": "Devanagari",
+        "educational_identity_id": "ei://cbse/ncf2023/g6/hindi/ch01",
+        "educational_context_summary": {
+          "language": "Hindi",
+          "subject": "Hindi"
+        },
+        "capability_domain": "language",
+        "capability_key": "printed_ocr",
+        "input_quality": "poor",
+        "extraction_confidence": 0.42,
+        "language_confidence": 0.58,
+        "metadata": {
+          "capability_input_type": "printed_text"
+        }
+      },
+      "expected": {
+        "subject_type": "kai_candidate",
+        "overall_posture": "manual_review_required",
+        "review_required": true,
+        "dimension": "ocr_confidence",
+        "dimension_status": "weak",
+        "consumer_visibility": "internal_only",
+        "authoritative": false,
+        "provenance_count": 1
+      }
+    },
+    {
+      "id": "trust_ekg_proposal_001",
+      "kind": "ekg_relationship_proposal",
+      "reference": {
+        "educational_identity_id": "ei://cbse/ncf2023/g6/science/ch05",
+        "candidate_target_references": [
+          {
+            "reference_type": "kg_node",
+            "id": "22222222-2222-4222-8222-222222222222",
+            "node_type": "concept",
+            "label": "SI Units"
+          }
+        ]
+      },
+      "expected": {
+        "subject_type": "ekg_relationship_proposal",
+        "overall_posture": "manual_review_required",
+        "review_required": true,
+        "dimension": "human_review_status",
+        "dimension_status": "weak",
+        "consumer_visibility": "internal_only",
+        "authoritative": false,
+        "provenance_count": 1
+      }
+    }
+  ]
+}

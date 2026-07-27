@@ -250,6 +250,9 @@ class Settings(BaseSettings):
     # Passive Educational Knowledge Graph relationship proposal only; disabled
     # by default and user-invisible.
     EUI_EKG_EXPANSION_ENABLED: bool = False
+    # Educational Understanding Intelligence (EUI) Phase 6.
+    # Passive Trust Report generation only; disabled by default and user-invisible.
+    EUI_TRUST_REPORT_ENABLED: bool = False
 
     # ── Derived Properties ───────────────────────────────────────
     @property

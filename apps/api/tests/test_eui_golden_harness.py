@@ -8,7 +8,13 @@ from pathlib import Path
 
 import pytest
 
-from app.modules.eui.schemas.educational_context import EducationalContextReference
+from app.modules.eui.schemas.educational_context import (
+    EducationalContext,
+    EducationalContextAmbiguity,
+    EducationalContextConflict,
+    EducationalContextProvenance,
+    EducationalContextReference,
+)
 from app.modules.eui.schemas.educational_graph import (
     EducationalGraphReference,
     EducationalGraphRelationshipReference,
@@ -28,6 +34,7 @@ from app.modules.eui.services.knowledge_acquisition_builder import (
     KnowledgeAcquisitionCandidateBuilder,
 )
 from app.modules.eui.services.platform_capability_lookup import PlatformCapabilityLookupService
+from app.modules.eui.services.trust_report_builder import TrustReportBuilder
 
 GOLDEN_DIR = Path(__file__).parent / "golden" / "eui_v1"
 
@@ -182,6 +189,123 @@ def test_eui_ekg_golden_harness_cases_are_deterministic():
         assert proposal.authoritative is False, case["id"]
 
     assert len(proposal_ids) == len(payload["cases"])
+
+
+def test_eui_trust_report_golden_harness_cases_are_deterministic():
+    payload = json.loads((GOLDEN_DIR / "trust_report_cases.json").read_text(encoding="utf-8"))
+
+    assert payload["version"] == "eui-trust-report-golden-v1"
+    assert payload["authorization"] == "EUI-PH6-TRUST-AUTH-001"
+    case_ids = [case["id"] for case in payload["cases"]]
+    assert len(case_ids) == len(set(case_ids))
+
+    tenant_id = uuid.UUID(payload["tenant_id"])
+    trust_builder = TrustReportBuilder()
+    kai_builder = KnowledgeAcquisitionCandidateBuilder()
+    capability_service = PlatformCapabilityLookupService()
+    ekg_resolver = EducationalGraphProposalResolver()
+    report_ids: set[str] = set()
+    for case in payload["cases"]:
+        report = _trust_report_from_case(
+            case,
+            tenant_id=tenant_id,
+            trust_builder=trust_builder,
+            kai_builder=kai_builder,
+            capability_service=capability_service,
+            ekg_resolver=ekg_resolver,
+        )
+        report_again = _trust_report_from_case(
+            case,
+            tenant_id=tenant_id,
+            trust_builder=trust_builder,
+            kai_builder=kai_builder,
+            capability_service=capability_service,
+            ekg_resolver=ekg_resolver,
+        )
+        expected = case["expected"]
+
+        assert report.id == report_again.id, case["id"]
+        assert report.id.startswith("trust-report://"), case["id"]
+        report_ids.add(report.id)
+        assert report.subject_type == expected["subject_type"], case["id"]
+        assert report.overall_posture == expected["overall_posture"], case["id"]
+        assert report.review_required is expected["review_required"], case["id"]
+        assert report.consumer_visibility == expected["consumer_visibility"], case["id"]
+        assert report.authoritative is expected["authoritative"], case["id"]
+        if "capability_mode" in expected:
+            assert report.capability_mode == expected["capability_mode"], case["id"]
+        if "dimension" in expected:
+            dimension = report.dimensions[expected["dimension"]]
+            assert dimension.status == expected["dimension_status"], case["id"]
+        if "provenance_count" in expected:
+            assert len(report.provenance_refs) == expected["provenance_count"], case["id"]
+
+    assert len(report_ids) == len(payload["cases"])
+
+
+def _trust_report_from_case(
+    case: dict,
+    *,
+    tenant_id: uuid.UUID,
+    trust_builder: TrustReportBuilder,
+    kai_builder: KnowledgeAcquisitionCandidateBuilder,
+    capability_service: PlatformCapabilityLookupService,
+    ekg_resolver: EducationalGraphProposalResolver,
+):
+    kind = case["kind"]
+    if kind == "educational_context":
+        return trust_builder.build_for_context(
+            _educational_context_from_case(tenant_id, case["input"])
+        )
+    if kind == "platform_capability_lookup":
+        result = capability_service.lookup(PlatformCapabilityLookupRequest(**case["request"]))
+        return trust_builder.build_for_capability_lookup(result, tenant_id=tenant_id)
+    if kind == "kai_candidate":
+        candidate = kai_builder.build(
+            KnowledgeAcquisitionInputReference(tenant_id=tenant_id, **case["input"])
+        )
+        return trust_builder.build_for_kai_candidate(candidate)
+    if kind == "ekg_relationship_proposal":
+        reference_payload = case["reference"]
+        proposal = ekg_resolver.propose(
+            EducationalGraphRelationshipReference(
+                tenant_id=tenant_id,
+                educational_identity_id=reference_payload.get("educational_identity_id"),
+                candidate_target_references=tuple(
+                    EducationalGraphReference(**target)
+                    for target in reference_payload.get("candidate_target_references", ())
+                ),
+            )
+        )
+        return trust_builder.build_for_ekg_proposal(proposal)
+    raise AssertionError(f"Unknown Trust Report golden kind: {kind}")
+
+
+def _educational_context_from_case(
+    tenant_id: uuid.UUID,
+    payload: dict,
+) -> EducationalContext:
+    provenance_payload = payload["provenance"]
+    return EducationalContext(
+        tenant_id=tenant_id,
+        resolution_status=payload["resolution_status"],
+        board=payload.get("board"),
+        curriculum=payload.get("curriculum"),
+        curriculum_version=payload.get("curriculum_version"),
+        grade=payload.get("grade"),
+        subject=payload.get("subject"),
+        educational_identity_id=payload.get("educational_identity_id"),
+        field_sources=payload.get("field_sources", {}),
+        conflicts=tuple(
+            EducationalContextConflict(**conflict)
+            for conflict in payload.get("conflicts", ())
+        ),
+        ambiguities=tuple(
+            EducationalContextAmbiguity(**ambiguity)
+            for ambiguity in payload.get("ambiguities", ())
+        ),
+        provenance=EducationalContextProvenance(**provenance_payload),
+    )
 
 
 def _identity_from_case(
