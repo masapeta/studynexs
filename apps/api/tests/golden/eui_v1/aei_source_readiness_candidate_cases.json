@@ -1,0 +1,162 @@
+{
+  "version": "eui-aei-source-readiness-candidate-golden-v1",
+  "authorization": "EUI-PH7D-NARROW-AEI-SOURCE-READINESS-AUTH-001",
+  "tenant_id": "11111111-1111-4111-8111-111111111111",
+  "cases": [
+    {
+      "id": "aei_source_candidate_ready_001",
+      "subject_type": "answer_sheet_evaluation",
+      "scope_ref": "answer_sheet_evaluation:candidate-ready",
+      "candidate_scope": "context_metadata_only",
+      "scorecard": {
+        "review_posture": "eligible",
+        "eligible": true,
+        "dimensions": [
+          {"dimension": "evidence_window", "status": "passed"},
+          {"dimension": "evidence_completeness", "status": "passed"},
+          {"dimension": "capability_posture", "status": "passed"},
+          {"dimension": "trust_posture", "status": "passed"},
+          {"dimension": "rollback", "status": "passed"}
+        ],
+        "source_flag_enabled": false
+      },
+      "expected": {
+        "candidate_state": "ready_for_internal_trial",
+        "ready_for_internal_trial": true,
+        "blocked_evidence_classes": [],
+        "source_switch_active": false
+      }
+    },
+    {
+      "id": "aei_source_candidate_insufficient_evidence_001",
+      "subject_type": "answer_sheet_evaluation",
+      "scope_ref": "answer_sheet_evaluation:candidate-insufficient-evidence",
+      "candidate_scope": "context_metadata_only",
+      "scorecard": {
+        "review_posture": "needs_more_evidence",
+        "eligible": false,
+        "dimensions": [
+          {"dimension": "evidence_window", "status": "needs_more_evidence"}
+        ]
+      },
+      "expected": {
+        "candidate_state": "not_ready_more_evidence",
+        "ready_for_internal_trial": false,
+        "blocked_evidence_classes": ["evidence_window"],
+        "source_switch_active": false
+      }
+    },
+    {
+      "id": "aei_source_candidate_capability_work_001",
+      "subject_type": "answer_sheet_evaluation",
+      "scope_ref": "answer_sheet_evaluation:candidate-capability-work",
+      "candidate_scope": "context_metadata_only",
+      "scorecard": {
+        "review_posture": "needs_capability_work",
+        "eligible": false,
+        "dimensions": [
+          {"dimension": "capability_posture", "status": "needs_capability_work"}
+        ]
+      },
+      "expected": {
+        "candidate_state": "not_ready_capability_work",
+        "ready_for_internal_trial": false,
+        "blocked_evidence_classes": ["platform_capability"],
+        "source_switch_active": false
+      }
+    },
+    {
+      "id": "aei_source_candidate_product_blocker_001",
+      "subject_type": "answer_sheet_evaluation",
+      "scope_ref": "answer_sheet_evaluation:candidate-product-blocker",
+      "candidate_scope": "context_metadata_only",
+      "scorecard": {
+        "review_posture": "blocked_product_impacting",
+        "eligible": false,
+        "dimensions": [
+          {
+            "dimension": "product_impacting_divergence",
+            "status": "blocked_product_impacting"
+          }
+        ],
+        "blocker_categories": ["blocked_product_impacting"]
+      },
+      "expected": {
+        "candidate_state": "blocked_product_impacting",
+        "ready_for_internal_trial": false,
+        "blocked_evidence_classes": ["product_behavior"],
+        "source_switch_active": false
+      }
+    },
+    {
+      "id": "aei_source_candidate_unsafe_blocker_001",
+      "subject_type": "answer_sheet_evaluation",
+      "scope_ref": "answer_sheet_evaluation:candidate-unsafe-blocker",
+      "candidate_scope": "context_metadata_only",
+      "scorecard": {
+        "review_posture": "blocked_unsafe",
+        "eligible": false,
+        "dimensions": [
+          {"dimension": "unsafe_divergence", "status": "blocked_unsafe"},
+          {
+            "dimension": "product_impacting_divergence",
+            "status": "blocked_product_impacting"
+          }
+        ],
+        "blocker_categories": ["blocked_product_impacting", "blocked_unsafe"]
+      },
+      "expected": {
+        "candidate_state": "blocked_unsafe",
+        "ready_for_internal_trial": false,
+        "blocked_evidence_classes": ["product_behavior", "safety"],
+        "source_switch_active": false
+      }
+    },
+    {
+      "id": "aei_source_candidate_broad_scope_blocked_001",
+      "subject_type": "answer_sheet_evaluation",
+      "scope_ref": "answer_sheet_evaluation:candidate-broad-scope",
+      "candidate_scope": "marks_source",
+      "scorecard": {
+        "review_posture": "eligible",
+        "eligible": true,
+        "dimensions": [
+          {"dimension": "evidence_window", "status": "passed"},
+          {"dimension": "evidence_completeness", "status": "passed"},
+          {"dimension": "capability_posture", "status": "passed"},
+          {"dimension": "trust_posture", "status": "passed"}
+        ]
+      },
+      "expected": {
+        "candidate_state": "blocked_product_impacting",
+        "ready_for_internal_trial": false,
+        "blocked_evidence_classes": ["product_behavior"],
+        "source_switch_active": false
+      }
+    },
+    {
+      "id": "aei_source_candidate_source_switch_attempt_blocked_001",
+      "subject_type": "answer_sheet_evaluation",
+      "scope_ref": "answer_sheet_evaluation:candidate-source-switch-attempt",
+      "candidate_scope": "context_metadata_only",
+      "source_switch_requested": true,
+      "scorecard": {
+        "review_posture": "eligible",
+        "eligible": true,
+        "source_flag_enabled": true,
+        "dimensions": [
+          {"dimension": "evidence_window", "status": "passed"},
+          {"dimension": "evidence_completeness", "status": "passed"},
+          {"dimension": "capability_posture", "status": "passed"},
+          {"dimension": "trust_posture", "status": "passed"}
+        ]
+      },
+      "expected": {
+        "candidate_state": "blocked_unsafe",
+        "ready_for_internal_trial": false,
+        "blocked_evidence_classes": ["rollback", "safety"],
+        "source_switch_active": false
+      }
+    }
+  ]
+}

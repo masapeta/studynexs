@@ -13,6 +13,10 @@ from app.modules.eui.schemas.aei_consumer_migration import (
     AEIConsumerMigrationComparison,
     AEIConsumerMigrationDifference,
 )
+from app.modules.eui.schemas.aei_source_readiness import (
+    AEISourceReadinessDimensionResult,
+    AEISourceReadinessScorecard,
+)
 from app.modules.eui.schemas.educational_context import (
     EducationalContext,
     EducationalContextAmbiguity,
@@ -38,6 +42,9 @@ from app.modules.eui.services.aei_consumer_migration_evidence import (
 )
 from app.modules.eui.services.aei_divergence_readiness import (
     AEIDivergenceReadinessReviewService,
+)
+from app.modules.eui.services.aei_source_readiness_candidate import (
+    AEISourceReadinessCandidateService,
 )
 from app.modules.eui.services.educational_context_resolver import EducationalContextResolver
 from app.modules.eui.services.educational_graph_resolver import (
@@ -416,6 +423,58 @@ def test_eui_aei_divergence_readiness_golden_harness_cases_are_deterministic():
     assert len(scorecard_ids) == len(payload["cases"])
 
 
+def test_eui_aei_source_readiness_candidate_golden_harness_cases_are_deterministic():
+    payload = json.loads(
+        (GOLDEN_DIR / "aei_source_readiness_candidate_cases.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert payload["version"] == "eui-aei-source-readiness-candidate-golden-v1"
+    assert payload["authorization"] == "EUI-PH7D-NARROW-AEI-SOURCE-READINESS-AUTH-001"
+    case_ids = [case["id"] for case in payload["cases"]]
+    assert len(case_ids) == len(set(case_ids))
+
+    tenant_id = uuid.UUID(payload["tenant_id"])
+    service = AEISourceReadinessCandidateService()
+    candidate_ids: set[str] = set()
+    for case in payload["cases"]:
+        scorecard = _source_readiness_scorecard_from_case(
+            tenant_id,
+            case["subject_type"],
+            case["scope_ref"],
+            case["scorecard"],
+        )
+        candidate = service.build(
+            scorecard=scorecard,
+            candidate_scope=case.get("candidate_scope", "context_metadata_only"),
+            source_switch_requested=case.get("source_switch_requested", False),
+        )
+        candidate_again = service.build(
+            scorecard=scorecard,
+            candidate_scope=case.get("candidate_scope", "context_metadata_only"),
+            source_switch_requested=case.get("source_switch_requested", False),
+        )
+        expected = case["expected"]
+
+        assert candidate.id == candidate_again.id, case["id"]
+        assert candidate.id.startswith("eui-aei-source-candidate://"), case["id"]
+        candidate_ids.add(candidate.id)
+        assert candidate.candidate_state == expected["candidate_state"], case["id"]
+        assert candidate.ready_for_internal_trial is expected[
+            "ready_for_internal_trial"
+        ], case["id"]
+        assert sorted(candidate.blocked_evidence_classes) == sorted(
+            expected["blocked_evidence_classes"]
+        ), case["id"]
+        assert candidate.source_switch_active is expected["source_switch_active"], case["id"]
+        assert candidate.authoritative is False, case["id"]
+        assert candidate.internal_only is True, case["id"]
+        assert candidate.metadata["raw_content_captured"] is False, case["id"]
+
+    assert len(candidate_ids) == len(payload["cases"])
+
+
 def _trust_report_from_case(
     case: dict,
     *,
@@ -566,4 +625,37 @@ def _readiness_comparison_from_case(
         capability_mode=capability_mode if complete_evidence else None,
         trust_posture="trusted" if complete_evidence else None,
         trust_consumer_visibility=trust_visibility if complete_evidence else None,
+    )
+
+
+def _source_readiness_scorecard_from_case(
+    tenant_id: uuid.UUID,
+    subject_type: str,
+    scope_ref: str,
+    payload: dict,
+) -> AEISourceReadinessScorecard:
+    review_posture = payload["review_posture"]
+    eligible = payload["eligible"]
+    dimensions = tuple(
+        AEISourceReadinessDimensionResult(
+            dimension=dimension["dimension"],
+            status=dimension["status"],
+            reason=f"{dimension['dimension']}_{dimension['status']}_golden_case",
+            blocker=str(dimension["status"]).startswith("blocked"),
+        )
+        for dimension in payload.get("dimensions", ())
+    )
+    return AEISourceReadinessScorecard(
+        id=f"eui-aei-readiness://answer-sheet-evaluation/{scope_ref.rsplit(':', 1)[-1]}",
+        tenant_id=tenant_id,
+        subject_type=subject_type,  # type: ignore[arg-type]
+        scope_ref=scope_ref,
+        review_posture=review_posture,  # type: ignore[arg-type]
+        eligible=eligible,
+        evidence_window_required=2,
+        evidence_window_count=2 if eligible else 1,
+        reviewed_comparison_ids=("comparison-a", "comparison-b") if eligible else (),
+        dimensions=dimensions,
+        blocker_categories=tuple(payload.get("blocker_categories", ())),
+        source_flag_enabled=payload.get("source_flag_enabled", False),
     )
