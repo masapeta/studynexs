@@ -46,6 +46,9 @@ from app.modules.eui.services.aei_divergence_readiness import (
 from app.modules.eui.services.aei_source_readiness_candidate import (
     AEISourceReadinessCandidateService,
 )
+from app.modules.eui.services.aei_source_readiness_trial import (
+    AEISourceReadinessTrialService,
+)
 from app.modules.eui.services.educational_context_resolver import EducationalContextResolver
 from app.modules.eui.services.educational_graph_resolver import (
     EducationalGraphProposalResolver,
@@ -473,6 +476,86 @@ def test_eui_aei_source_readiness_candidate_golden_harness_cases_are_determinist
         assert candidate.metadata["raw_content_captured"] is False, case["id"]
 
     assert len(candidate_ids) == len(payload["cases"])
+
+
+def test_eui_aei_source_readiness_trial_golden_harness_cases_are_deterministic():
+    payload = json.loads(
+        (GOLDEN_DIR / "aei_source_readiness_trial_cases.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert payload["version"] == "eui-aei-source-readiness-trial-golden-v1"
+    assert (
+        payload["authorization"]
+        == "EUI-PH7E-NARROW-AEI-SOURCE-READINESS-TRIAL-AUTH-001"
+    )
+    case_ids = [case["id"] for case in payload["cases"]]
+    assert len(case_ids) == len(set(case_ids))
+
+    tenant_id = uuid.UUID(payload["tenant_id"])
+    candidate_service = AEISourceReadinessCandidateService()
+    trial_service = AEISourceReadinessTrialService()
+    trial_ids: set[str] = set()
+    for case in payload["cases"]:
+        candidate_payload = case.get("candidate")
+        candidate = None
+        if candidate_payload is not None:
+            scorecard = _source_readiness_scorecard_from_case(
+                tenant_id,
+                case["subject_type"],
+                case["scope_ref"],
+                candidate_payload["scorecard"],
+            )
+            candidate = candidate_service.build(
+                scorecard=scorecard,
+                candidate_scope=candidate_payload.get(
+                    "candidate_scope", "context_metadata_only"
+                ),
+                source_switch_requested=case.get("source_switch_requested", False),
+            )
+
+        result = trial_service.build(
+            candidate=candidate,
+            tenant_id=tenant_id,
+            subject_type=case["subject_type"],
+            scope_ref=case["scope_ref"],
+            source_switch_requested=case.get("source_switch_requested", False),
+            legacy_source_of_truth_confirmed=case.get(
+                "legacy_source_of_truth_confirmed", True
+            ),
+            trial_enabled=case.get("trial_enabled", True),
+        )
+        result_again = trial_service.build(
+            candidate=candidate,
+            tenant_id=tenant_id,
+            subject_type=case["subject_type"],
+            scope_ref=case["scope_ref"],
+            source_switch_requested=case.get("source_switch_requested", False),
+            legacy_source_of_truth_confirmed=case.get(
+                "legacy_source_of_truth_confirmed", True
+            ),
+            trial_enabled=case.get("trial_enabled", True),
+        )
+        expected = case["expected"]
+
+        assert result.id == result_again.id, case["id"]
+        assert result.id.startswith("eui-aei-source-trial://"), case["id"]
+        trial_ids.add(result.id)
+        assert result.trial_state == expected["trial_state"], case["id"]
+        assert result.trial_ready is expected["trial_ready"], case["id"]
+        assert sorted(result.selected_evidence_classes) == sorted(
+            expected["selected_evidence_classes"]
+        ), case["id"]
+        assert sorted(result.blocked_evidence_classes) == sorted(
+            expected["blocked_evidence_classes"]
+        ), case["id"]
+        assert result.source_switch_active is expected["source_switch_active"], case["id"]
+        assert result.authoritative is False, case["id"]
+        assert result.internal_only is True, case["id"]
+        assert result.metadata["raw_content_captured"] is False, case["id"]
+
+    assert len(trial_ids) == len(payload["cases"])
 
 
 def _trust_report_from_case(

@@ -1,0 +1,136 @@
+{
+  "version": "eui-aei-source-readiness-trial-golden-v1",
+  "authorization": "EUI-PH7E-NARROW-AEI-SOURCE-READINESS-TRIAL-AUTH-001",
+  "tenant_id": "11111111-1111-4111-8111-111111111111",
+  "cases": [
+    {
+      "id": "aei_source_trial_ready_001",
+      "subject_type": "answer_sheet_evaluation",
+      "scope_ref": "answer_sheet_evaluation:trial-ready",
+      "candidate": {
+        "candidate_scope": "context_metadata_only",
+        "scorecard": {
+          "review_posture": "eligible",
+          "eligible": true,
+          "dimensions": [
+            {"dimension": "evidence_window", "status": "passed"},
+            {"dimension": "evidence_completeness", "status": "passed"},
+            {"dimension": "capability_posture", "status": "passed"},
+            {"dimension": "trust_posture", "status": "passed"},
+            {"dimension": "rollback", "status": "passed"}
+          ]
+        }
+      },
+      "expected": {
+        "trial_state": "trial_ready",
+        "trial_ready": true,
+        "selected_evidence_classes": [
+          "behavior_equivalence",
+          "educational_context",
+          "educational_identity",
+          "evidence_window",
+          "performance",
+          "platform_capability",
+          "readiness_scorecard",
+          "regression_coverage",
+          "rollback",
+          "safe_evidence_flags",
+          "trust_report"
+        ],
+        "blocked_evidence_classes": [],
+        "source_switch_active": false
+      }
+    },
+    {
+      "id": "aei_source_trial_not_ready_more_evidence_001",
+      "subject_type": "answer_sheet_evaluation",
+      "scope_ref": "answer_sheet_evaluation:trial-more-evidence",
+      "candidate": {
+        "candidate_scope": "context_metadata_only",
+        "scorecard": {
+          "review_posture": "needs_more_evidence",
+          "eligible": false,
+          "dimensions": [
+            {"dimension": "evidence_window", "status": "needs_more_evidence"}
+          ]
+        }
+      },
+      "expected": {
+        "trial_state": "trial_not_ready",
+        "trial_ready": false,
+        "selected_evidence_classes": [],
+        "blocked_evidence_classes": ["evidence_window"],
+        "source_switch_active": false
+      }
+    },
+    {
+      "id": "aei_source_trial_broad_scope_blocked_001",
+      "subject_type": "answer_sheet_evaluation",
+      "scope_ref": "answer_sheet_evaluation:trial-broad-scope",
+      "candidate": {
+        "candidate_scope": "marks_source",
+        "scorecard": {
+          "review_posture": "eligible",
+          "eligible": true,
+          "dimensions": [
+            {"dimension": "evidence_window", "status": "passed"},
+            {"dimension": "evidence_completeness", "status": "passed"},
+            {"dimension": "capability_posture", "status": "passed"},
+            {"dimension": "trust_posture", "status": "passed"}
+          ]
+        }
+      },
+      "expected": {
+        "trial_state": "trial_blocked_product_impacting",
+        "trial_ready": false,
+        "selected_evidence_classes": [],
+        "blocked_evidence_classes": ["product_behavior"],
+        "source_switch_active": false
+      }
+    },
+    {
+      "id": "aei_source_trial_source_switch_attempt_blocked_001",
+      "subject_type": "answer_sheet_evaluation",
+      "scope_ref": "answer_sheet_evaluation:trial-source-switch-attempt",
+      "source_switch_requested": true,
+      "candidate": {
+        "candidate_scope": "context_metadata_only",
+        "scorecard": {
+          "review_posture": "eligible",
+          "eligible": true,
+          "source_flag_enabled": true,
+          "dimensions": [
+            {"dimension": "evidence_window", "status": "passed"},
+            {"dimension": "evidence_completeness", "status": "passed"},
+            {"dimension": "capability_posture", "status": "passed"},
+            {"dimension": "trust_posture", "status": "passed"}
+          ]
+        }
+      },
+      "expected": {
+        "trial_state": "trial_blocked_unsafe",
+        "trial_ready": false,
+        "selected_evidence_classes": [],
+        "blocked_evidence_classes": ["rollback", "safety"],
+        "source_switch_active": false
+      }
+    },
+    {
+      "id": "aei_source_trial_disabled_missing_candidate_001",
+      "subject_type": "answer_sheet_evaluation",
+      "scope_ref": "answer_sheet_evaluation:trial-disabled-missing-candidate",
+      "trial_enabled": false,
+      "candidate": null,
+      "expected": {
+        "trial_state": "trial_skipped",
+        "trial_ready": false,
+        "selected_evidence_classes": [],
+        "blocked_evidence_classes": [
+          "readiness_scorecard",
+          "safe_evidence_flags"
+        ],
+        "source_switch_active": false
+      }
+    }
+  ]
+}

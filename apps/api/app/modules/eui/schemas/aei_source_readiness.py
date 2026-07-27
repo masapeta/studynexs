@@ -80,6 +80,16 @@ AEISourceReadinessEvidenceClass = Literal[
     "safety",
 ]
 
+AEISourceReadinessTrialMode = Literal["internal_metadata_trial"]
+
+AEISourceReadinessTrialState = Literal[
+    "trial_ready",
+    "trial_not_ready",
+    "trial_blocked_product_impacting",
+    "trial_blocked_unsafe",
+    "trial_skipped",
+]
+
 
 class AEISourceReadinessDimensionResult(BaseModel):
     """One bounded internal review dimension for source-readiness scoring."""
@@ -192,4 +202,60 @@ class AEISourceReadinessCandidate(BaseModel):
             and self.blocked_evidence_classes
         ):
             raise ValueError("ready candidates must not carry blocked evidence classes")
+        return self
+
+
+class AEISourceReadinessTrialResult(BaseModel):
+    """Internal narrow AEI source-readiness trial result.
+
+    Phase 7E trial results are internal certification artifacts only. They do
+    not make EUI authoritative, do not change evaluation behavior, and cannot
+    activate source switching.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    id: str = Field(pattern=r"^eui-aei-source-trial://")
+    tenant_id: uuid.UUID
+    consumer: Literal["aei"] = "aei"
+    subject_type: AEIConsumerMigrationSubjectType
+    scope_ref: str
+    candidate_ref: str | None = Field(
+        default=None,
+        pattern=r"^eui-aei-source-candidate://",
+    )
+    candidate_scope: AEISourceReadinessCandidateScope = "context_metadata_only"
+    trial_mode: AEISourceReadinessTrialMode = "internal_metadata_trial"
+    trial_state: AEISourceReadinessTrialState
+    selected_evidence_classes: tuple[AEISourceReadinessEvidenceClass, ...] = ()
+    blocked_evidence_classes: tuple[AEISourceReadinessEvidenceClass, ...] = ()
+    legacy_source_of_truth_confirmed: bool = True
+    source_flag_enabled: bool = False
+    source_flag_status: str = "disabled_or_inert"
+    source_switch_active: Literal[False] = False
+    internal_only: Literal[True] = True
+    rollback_posture: str = "feature_flag_disablement"
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @property
+    def authoritative(self) -> bool:
+        return False
+
+    @property
+    def trial_ready(self) -> bool:
+        return self.trial_state == "trial_ready"
+
+    @model_validator(mode="after")
+    def _validate_trial_posture(self) -> "AEISourceReadinessTrialResult":
+        if self.trial_state == "trial_ready" and self.candidate_ref is None:
+            raise ValueError("ready trial results require a candidate reference")
+        if (
+            self.trial_state == "trial_ready"
+            and self.candidate_scope != "context_metadata_only"
+        ):
+            raise ValueError("ready trial results are limited to context metadata")
+        if self.trial_state == "trial_ready" and self.blocked_evidence_classes:
+            raise ValueError("ready trial results must not carry blocked evidence")
+        if self.trial_state == "trial_ready" and not self.legacy_source_of_truth_confirmed:
+            raise ValueError("ready trial results require legacy source confirmation")
         return self
