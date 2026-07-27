@@ -1,80 +1,142 @@
-# StudyNexs — Current Status
+# StudyNexs — Master Status
 
 > **Owner:** Avinash Reddy Masapeta (ARM)
-> **As of:** 2026-07-23
-> **Canonical execution plan:** [`product/PRODUCT_EXECUTION_PLAN.md`](./product/PRODUCT_EXECUTION_PLAN.md)
+> **As of:** 2026-07-27
+> **Status role:** Current project anchor for architecture, runtime milestones, and next engineering gate.
 
 ---
 
 ## Executive status
 
-**Release 0.3 / Batch 3 — School Pilot Experience is accepted and frozen.**
+StudyNexs is an AI-first School Operating System with a frozen AEI/EUI
+architecture and a controlled EUI runtime implementation program.
 
-The platform now has the validated first-pilot experience for the two decision-critical school users:
+The current engineering rhythm is:
 
-- Principal runtime proof;
-- Teacher runtime proof;
-- Principal browser walkthrough;
-- Teacher browser walkthrough;
-- tenant isolation verification;
-- same-pack grounding verification for teacher-generated lesson plan and question paper;
-- focused evidence recorded in the Batch 3 completion report.
+```text
+Architecture
+      ↓
+Design Brief
+      ↓
+ARM Authorization
+      ↓
+Implementation
+      ↓
+Validation
+      ↓
+Certification
+      ↓
+Commit
+      ↓
+Tag
+      ↓
+Publish
+      ↓
+Update Master Status
+```
 
-Release 0.1, Release 0.2, and Release 0.3 should not be modified except for production defects, security fixes, or critical regressions.
+Architecture should not be reopened unless ARM explicitly authorizes an
+architecture change.
 
 ---
 
-## Current execution state
+## Current baseline
 
-| Area | Status |
+| Layer | Status |
 |---|---|
-| Current release | **Release 0.3 — Batch 3 School Pilot Experience** |
-| Release status | **Accepted / Frozen** |
-| Latest accepted commit | `649d835` — `feat(pilot): complete Batch 3 principal teacher proof` |
-| Completion report | [`product/BATCH_03_COMPLETION_REPORT.md`](./product/BATCH_03_COMPLETION_REPORT.md) |
-| Previous release | **Release 0.2 — Batch 2 Academic Onboarding** |
-| Previous release status | **Accepted / Frozen** |
-| Current authorized release | **None** |
-| Release 0.4 implementation | **Not authorized** |
+| StudyNexs vision | Stable |
+| AEI v1 | Frozen / protected |
+| EUI v1 architecture | Frozen / accepted |
+| EUI Runtime Roadmap v1 | Accepted planning baseline |
+| Phase 0 - Engineering Preparation | Complete / certified / published |
+| Phase 1 Sprint 1 - Educational Identity | Complete / certified / published |
+| Phase 1 Sprint 2 - Educational Context | Complete / certified / published |
+| Phase 1 Sprint 3 - Platform Capability Registry | Complete / certified / published |
+| Runtime consumer migration | Not authorized |
 
 ---
 
-## Batch 3 validation evidence
+## Published EUI runtime milestones
 
-| Gate | Result |
-|---|---:|
-| API readiness | PASS — DB + Redis healthy |
-| Principal runtime proof | PASS |
-| Teacher runtime proof | PASS |
-| Principal + Teacher browser walkthrough | PASS — 13 checks |
-| Tenant tracking | PASS — tenant `reference` |
-| Same-pack grounding | PASS — lesson plan + question paper use pack `1bdfffc6-933d-4780-9de4-b7d6c92201bb` |
-| Admin web production build | PASS |
-| Reference School smoke | PASS — 32 checks |
-| Focused lint/compile checks | PASS |
-
-Runtime proof artifacts:
-
-| Artifact | ID |
-|---|---|
-| Approved CurriculumPack | `1bdfffc6-933d-4780-9de4-b7d6c92201bb` |
-| Final proof lesson plan | `8e245b4e-a5cf-4cff-bfd3-69714cc6c2fc` |
-| Final proof question paper | `2f3022d0-187c-4bce-98e1-53dbb0799238` |
+| Milestone | Status | Commit | Tag |
+|---|---|---|---|
+| Phase 1 Sprint 1 - Educational Identity | Published / certified | `221601e611bdb0fac13279af7fe4a8e89d31f99a` | `eui-runtime-phase1-sprint1-educational-identity-certified` |
+| Phase 1 Sprint 2 - Educational Context | Published / certified | `a559faeba7389bb583bfdcd64f8119f3811613d6` | `eui-runtime-phase1-sprint2-educational-context-certified` |
+| Phase 1 Sprint 3 - Platform Capability Registry | Published / certified | `5f3babf007fcbaba7a8a33ec316e80b974d8df7b` | `eui-runtime-phase1-sprint3-platform-capability-registry-certified` |
 
 ---
 
-## Current authorization state
+## Current engineering gate
 
-No implementation batch is currently authorized.
+The next dependency-order runtime milestone is:
 
-Release 0.4 must not begin until ARM explicitly authorizes the next execution batch.
+```text
+EUI Runtime Phase 4 — Knowledge Acquisition Intelligence
+```
+
+No Phase 4 design brief or implementation contract has been authorized yet.
+
+The project should pause at this gate until ARM explicitly authorizes a Phase 4
+design brief or chooses a different next milestone.
 
 ---
 
-## Known repository state
+## Explicitly not authorized
 
-The Batch 3 implementation commit is isolated. The working tree may still contain unrelated uncommitted dashboard/briefing/status/showcase artifacts from earlier sessions; those are not part of Release 0.3 acceptance.
+Until ARM separately authorizes a future implementation contract, the following
+remain out of scope:
 
-Reference tenant AI credits were exhausted by repeated validation runs; the existing principal emergency override path was used and is now asserted by the Batch 3 proof. For a real pilot, preflight should ensure sufficient AI budget or active principal override.
+- Knowledge Acquisition Intelligence design or implementation;
+- Educational Knowledge Graph expansion;
+- Trust Framework implementation;
+- schema changes;
+- API changes;
+- UI changes;
+- consumer migration;
+- AEI behavior changes;
+- EUI contract changes outside accepted design;
+- product capability claim changes;
+- replacement of the AEI Subject Capability Registry;
+- public use of Platform Capability Registry entries for UI badges, sales
+  claims, support documentation, or product scope documentation.
 
-Global repo lint remains a known technical-debt area. Batch 3 validation used focused tests, web build, browser walkthrough, runtime proof, and scoped lint/compile checks.
+---
+
+## Current source-of-truth statement
+
+StudyNexs has a frozen AEI/EUI architecture, a published Educational Identity
+runtime foundation, a published Educational Context passive runtime foundation,
+and a published Platform Capability Registry passive runtime foundation. The
+next engineering step is not yet authorized; dependency-order planning points to
+Knowledge Acquisition Intelligence as the next possible design brief.
+
+---
+
+## Validation posture
+
+Latest published runtime sprint:
+
+```text
+EUI Phase 1 Sprint 3 — Platform Capability Registry
+```
+
+Certified evidence:
+
+- Focused EUI Ruff: PASS
+- Sprint 3 tests: 20 passed
+- Sprint 1/2 Educational Identity and Context regression: 31 passed
+- AEI / evaluation / KG regression slice: 57 passed
+- API import: PASS
+- git diff --check: PASS
+- EUI DB-write scan: PASS with note for existing non-database `seen.add(key)`
+
+Certification report:
+
+[`product/eui-runtime/phase-1/EUI_PHASE_1_SPRINT_3_PLATFORM_CAPABILITY_REGISTRY_CERTIFICATION_REPORT.md`](./product/eui-runtime/phase-1/EUI_PHASE_1_SPRINT_3_PLATFORM_CAPABILITY_REGISTRY_CERTIFICATION_REPORT.md)
+
+---
+
+## Standing rule
+
+Every published sprint must end by updating this Master Status before the next
+sprint begins.
