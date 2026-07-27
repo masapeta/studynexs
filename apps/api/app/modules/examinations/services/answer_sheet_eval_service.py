@@ -56,6 +56,9 @@ from app.modules.examinations.services.aei_v1_review_policy import (
     apply_review_policy_metadata,
     normalize_teacher_overrides_for_review_policy,
 )
+from app.modules.examinations.services.aei_v1_visual_science_assist import (
+    apply_visual_science_assist_metadata,
+)
 from app.modules.examinations.services.answer_sheet_vision import (
     extract_answers_from_image,
     is_image_mime,
@@ -570,6 +573,7 @@ class AnswerSheetEvalService:
         if (
             settings.AEI_V1_MATH_NORMALIZATION_ENABLED
             or settings.AEI_V1_LANGUAGE_OCR_ASSIST_ENABLED
+            or settings.AEI_V1_VISUAL_SCIENCE_ASSIST_ENABLED
         ):
             paper = (
                 await self.db.execute(
@@ -583,6 +587,7 @@ class AnswerSheetEvalService:
         suggestions: dict[str, dict] = {}
         subjective_items: list[SubjectiveItem] = []
         subjective_meta: dict[str, dict] = {}
+        question_contexts: dict[str, dict] = {}
 
         for q in exam.question_schema or []:
             qno = str(q["no"])
@@ -593,6 +598,16 @@ class AnswerSheetEvalService:
             student_answer = str(student_answers.get(qno, "")).strip()
             options = rubric.get("options")
             topic = q.get("topic") or exam.topic
+            question_contexts[qno] = {
+                "question_type": q_type,
+                "question_text": rubric.get("question_text") or rubric.get("text") or q.get("text"),
+                "topic": topic,
+                "answer_key": answer_key,
+                "rubric": rubric,
+                "question": q,
+                "checklist": rubric.get("checklist") or q.get("checklist") or [],
+                "evaluation_config": rubric.get("evaluation_config") or {},
+            }
 
             if self._is_objective(q_type, answer_key):
                 math_result = (
@@ -674,6 +689,13 @@ class AnswerSheetEvalService:
                 suggestions,
                 subject=subject_name,
                 answer_sources=answer_sources or {},
+            )
+
+        if settings.AEI_V1_VISUAL_SCIENCE_ASSIST_ENABLED:
+            suggestions = apply_visual_science_assist_metadata(
+                suggestions,
+                subject=subject_name,
+                question_contexts=question_contexts,
             )
 
         if settings.AEI_V1_REVIEW_POLICY_ENABLED:

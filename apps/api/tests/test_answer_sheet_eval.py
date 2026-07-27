@@ -431,6 +431,91 @@ async def test_aei_v1_language_ocr_assist_flag_on_adds_language_review_metadata(
     assert assist["assist_only"] is True
 
 
+@pytest.mark.asyncio
+async def test_aei_v1_visual_science_assist_flag_off_preserves_suggestions(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch,
+):
+    fx = await _seed_eval_fixture(db_session)
+    fx["subject"].name = "Chemistry"
+    fx["paper"].subject_name = "Chemistry"
+    await _update_q1_rubric(
+        db_session,
+        paper=fx["paper"],
+        answer_key="2H2 + O2 -> 2H2O",
+    )
+    monkeypatch.setattr(
+        "app.modules.examinations.services.answer_sheet_eval_service"
+        ".settings.AEI_V1_VISUAL_SCIENCE_ASSIST_ENABLED",
+        False,
+    )
+
+    token = access_token_for(fx["incharge"])
+    resp = await client.post(
+        f"/api/v1/exams/{fx['exam'].id}/evaluations",
+        headers=auth_headers(token),
+        json={
+            "student_id": str(fx["student"].id),
+            "student_answers": {
+                "1": "H2 + O2 -> H2O",
+                "2": "B",
+                "3": "plants use sunlight",
+            },
+        },
+    )
+
+    assert resp.status_code == 201, resp.text
+    suggestion = resp.json()["data"]["ai_suggestions"]["1"]
+    assert "aei_v1_visual_science_assist" not in suggestion
+    assert "visual_science_capability_mode" not in suggestion
+
+
+@pytest.mark.asyncio
+async def test_aei_v1_visual_science_assist_flag_on_adds_chemistry_review_metadata(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch,
+):
+    fx = await _seed_eval_fixture(db_session)
+    fx["subject"].name = "Chemistry"
+    fx["paper"].subject_name = "Chemistry"
+    await _update_q1_rubric(
+        db_session,
+        paper=fx["paper"],
+        answer_key="2H2 + O2 -> 2H2O",
+    )
+    monkeypatch.setattr(
+        "app.modules.examinations.services.answer_sheet_eval_service"
+        ".settings.AEI_V1_VISUAL_SCIENCE_ASSIST_ENABLED",
+        True,
+    )
+
+    token = access_token_for(fx["incharge"])
+    resp = await client.post(
+        f"/api/v1/exams/{fx['exam'].id}/evaluations",
+        headers=auth_headers(token),
+        json={
+            "student_id": str(fx["student"].id),
+            "student_answers": {
+                "1": "H2 + O2 -> H2O",
+                "2": "B",
+                "3": "plants use sunlight",
+            },
+        },
+    )
+
+    assert resp.status_code == 201, resp.text
+    suggestion = resp.json()["data"]["ai_suggestions"]["1"]
+    assist = suggestion["aei_v1_visual_science_assist"]
+    assert float(suggestion["marks_suggested"]) == 0
+    assert suggestion["visual_science_capability_mode"] == "assist"
+    assert suggestion["visual_science_reasoning_type"] == "reaction_balancing"
+    assert suggestion["manual_review_required"] is True
+    assert assist["evidence_summary"]["chemical_balance_status"] == "unbalanced"
+    assert assist["autonomous_science_grading"] is False
+
+
 def test_grade_subjective_partial():
     marks, feedback, _ = grade_subjective_heuristic(
         student_answer="plants make food using sunlight",

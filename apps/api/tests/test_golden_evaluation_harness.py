@@ -15,6 +15,9 @@ from app.modules.examinations.services.aei_v1_math_normalization import (
 from app.modules.examinations.services.aei_v1_review_policy import (
     apply_review_policy_metadata,
 )
+from app.modules.examinations.services.aei_v1_visual_science_assist import (
+    apply_visual_science_assist_metadata,
+)
 from app.modules.examinations.services.subject_capability_registry import SubjectCapabilityRegistry
 
 GOLDEN_CASES_PATH = Path(__file__).parent / "golden" / "aei_v1" / "pilot_trust_cases.json"
@@ -29,6 +32,9 @@ BATCH_C_APPROVED_EVIDENCE_CASES_PATH = (
 )
 BATCH_D_LANGUAGE_OCR_CASES_PATH = (
     Path(__file__).parent / "golden" / "aei_v1" / "batch_d_language_ocr_assist_cases.json"
+)
+BATCH_E_VISUAL_SCIENCE_CASES_PATH = (
+    Path(__file__).parent / "golden" / "aei_v1" / "batch_e_visual_science_assist_cases.json"
 )
 
 
@@ -54,6 +60,11 @@ def _load_batch_c_approved_evidence_cases() -> dict:
 
 def _load_batch_d_language_ocr_cases() -> dict:
     with BATCH_D_LANGUAGE_OCR_CASES_PATH.open("r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def _load_batch_e_visual_science_cases() -> dict:
+    with BATCH_E_VISUAL_SCIENCE_CASES_PATH.open("r", encoding="utf-8") as handle:
         return json.load(handle)
 
 
@@ -241,4 +252,51 @@ def test_batch_d_language_ocr_assist_golden_cases_execute_deterministically():
         assert (
             assist["autonomous_language_grading"]
             is expected["autonomous_language_grading"]
+        ), case["id"]
+
+
+def test_batch_e_visual_science_assist_golden_cases_execute_deterministically():
+    data = _load_batch_e_visual_science_cases()
+
+    assert data["version"] == "aei-v1-batch-e-visual-science-assist"
+    case_ids: set[str] = set()
+    for case in data["cases"]:
+        assert case["id"] not in case_ids
+        case_ids.add(case["id"])
+
+        case_input = case["input"]
+        enriched = apply_visual_science_assist_metadata(
+            case_input["suggestions"],
+            subject=case_input["subject"],
+            question_contexts=case_input["question_contexts"],
+        )
+        expected = case["expected"]
+        suggestion = next(iter(enriched.values()))
+        assist = suggestion["aei_v1_visual_science_assist"]
+
+        assert (
+            suggestion["visual_science_capability_mode"]
+            == expected["visual_science_capability_mode"]
+        ), case["id"]
+        assert (
+            suggestion["visual_science_reasoning_type"]
+            == expected["visual_science_reasoning_type"]
+        ), case["id"]
+        assert (
+            bool(suggestion.get("manual_review_required"))
+            is expected["manual_review_required"]
+        ), case["id"]
+        assert suggestion["assist_only"] is expected["assist_only"], case["id"]
+        assert suggestion["checklist_only"] is expected["checklist_only"], case["id"]
+        assert (
+            assist["autonomous_visual_grading"]
+            is expected["autonomous_visual_grading"]
+        ), case["id"]
+        assert (
+            assist["autonomous_science_grading"]
+            is expected["autonomous_science_grading"]
+        ), case["id"]
+        assert (
+            assist["autonomous_marks_from_checklist"]
+            is expected["autonomous_marks_from_checklist"]
         ), case["id"]

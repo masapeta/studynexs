@@ -245,6 +245,9 @@ class Settings(BaseSettings):
     # AEI v1.0 Batch D.
     # Language/OCR assist metadata is disabled by default and non-authoritative.
     AEI_V1_LANGUAGE_OCR_ASSIST_ENABLED: bool = False
+    # AEI v1.0 Batch E.
+    # Visual/science assist metadata is disabled by default and checklist-only.
+    AEI_V1_VISUAL_SCIENCE_ASSIST_ENABLED: bool = False
     # Educational Understanding Intelligence (EUI) Phase 1 Sprint 1.
     # Passive identity resolution only; disabled by default and user-invisible.
     EUI_IDENTITY_PASSIVE_ENABLED: bool = False

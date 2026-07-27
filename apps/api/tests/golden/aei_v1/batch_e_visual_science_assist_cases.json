@@ -1,0 +1,183 @@
+{
+  "version": "aei-v1-batch-e-visual-science-assist",
+  "cases": [
+    {
+      "id": "aei_batch_e_chemistry_reaction_unbalanced_001",
+      "subject": "Chemistry",
+      "capability": "reaction_balancing",
+      "input": {
+        "suggestions": {
+          "1": {
+            "marks_suggested": 0,
+            "max_marks": 2,
+            "student_answer": "H2 + O2 -> H2O",
+            "confidence": 0.85,
+            "method": "objective"
+          }
+        },
+        "question_contexts": {
+          "1": {
+            "question_type": "short",
+            "answer_key": "2H2 + O2 -> 2H2O",
+            "rubric": {}
+          }
+        },
+        "subject": "Chemistry"
+      },
+      "expected": {
+        "visual_science_capability_mode": "assist",
+        "visual_science_reasoning_type": "reaction_balancing",
+        "manual_review_required": true,
+        "assist_only": true,
+        "checklist_only": false,
+        "autonomous_visual_grading": false,
+        "autonomous_science_grading": false,
+        "autonomous_marks_from_checklist": false
+      },
+      "notes": "Simple reaction-balancing evidence is assistive only and requires teacher review."
+    },
+    {
+      "id": "aei_batch_e_biology_diagram_checklist_001",
+      "subject": "Biology",
+      "capability": "diagrams",
+      "input": {
+        "suggestions": {
+          "1": {
+            "marks_suggested": 2,
+            "max_marks": 3,
+            "student_answer": "cell wall and nucleus labelled",
+            "confidence": 0.7,
+            "method": "heuristic_fallback"
+          }
+        },
+        "question_contexts": {
+          "1": {
+            "question_type": "diagram",
+            "checklist": ["cell wall", "nucleus", "cytoplasm"],
+            "rubric": {
+              "checklist": ["cell wall", "nucleus", "cytoplasm"]
+            }
+          }
+        },
+        "subject": "Biology"
+      },
+      "expected": {
+        "visual_science_capability_mode": "checklist",
+        "visual_science_reasoning_type": "visual_checklist",
+        "manual_review_required": true,
+        "assist_only": true,
+        "checklist_only": true,
+        "autonomous_visual_grading": false,
+        "autonomous_science_grading": false,
+        "autonomous_marks_from_checklist": false
+      },
+      "notes": "Biology diagram labels can be summarized as checklist evidence, but marks remain teacher-confirmed."
+    },
+    {
+      "id": "aei_batch_e_geography_map_checklist_001",
+      "subject": "Geography",
+      "capability": "maps",
+      "input": {
+        "suggestions": {
+          "1": {
+            "marks_suggested": 1,
+            "max_marks": 2,
+            "student_answer": "legend and capital label present",
+            "confidence": 0.72,
+            "method": "heuristic_fallback"
+          }
+        },
+        "question_contexts": {
+          "1": {
+            "question_type": "map",
+            "checklist": ["legend", "capital label", "scale"],
+            "rubric": {
+              "checklist": ["legend", "capital label", "scale"]
+            }
+          }
+        },
+        "subject": "Geography"
+      },
+      "expected": {
+        "visual_science_capability_mode": "checklist",
+        "visual_science_reasoning_type": "map_checklist",
+        "manual_review_required": true,
+        "assist_only": true,
+        "checklist_only": true,
+        "autonomous_visual_grading": false,
+        "autonomous_science_grading": false,
+        "autonomous_marks_from_checklist": false
+      },
+      "notes": "Map evidence remains checklist-only and cannot certify marks autonomously."
+    },
+    {
+      "id": "aei_batch_e_physics_formula_assist_001",
+      "subject": "Physics",
+      "capability": "formula_recognition",
+      "input": {
+        "suggestions": {
+          "1": {
+            "marks_suggested": 1,
+            "max_marks": 2,
+            "student_answer": "F = ma",
+            "confidence": 0.8,
+            "method": "objective"
+          }
+        },
+        "question_contexts": {
+          "1": {
+            "question_type": "short",
+            "answer_key": "F = ma",
+            "rubric": {}
+          }
+        },
+        "subject": "Physics"
+      },
+      "expected": {
+        "visual_science_capability_mode": "assist",
+        "visual_science_reasoning_type": "formula_recognition",
+        "manual_review_required": true,
+        "assist_only": true,
+        "checklist_only": false,
+        "autonomous_visual_grading": false,
+        "autonomous_science_grading": false,
+        "autonomous_marks_from_checklist": false
+      },
+      "notes": "Formula recognition is an assistive science signal for teacher review."
+    },
+    {
+      "id": "aei_batch_e_chemistry_structure_manual_review_001",
+      "subject": "Chemistry",
+      "capability": "structures",
+      "input": {
+        "suggestions": {
+          "1": {
+            "marks_suggested": 0,
+            "max_marks": 3,
+            "student_answer": "draw benzene structure",
+            "confidence": 0.5,
+            "method": "heuristic_fallback"
+          }
+        },
+        "question_contexts": {
+          "1": {
+            "question_type": "structure",
+            "rubric": {}
+          }
+        },
+        "subject": "Chemistry"
+      },
+      "expected": {
+        "visual_science_capability_mode": "manual_review",
+        "visual_science_reasoning_type": "chemical_structure_manual_review",
+        "manual_review_required": true,
+        "assist_only": true,
+        "checklist_only": false,
+        "autonomous_visual_grading": false,
+        "autonomous_science_grading": false,
+        "autonomous_marks_from_checklist": false
+      },
+      "notes": "Chemical structures remain manual-review posture in AEI v1."
+    }
+  ]
+}
