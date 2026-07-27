@@ -1,0 +1,118 @@
+{
+  "version": "aei-v1-batch-c-approved-evidence",
+  "cases": [
+    {
+      "id": "aei_batch_c_approved_no_override_001",
+      "subject": "mathematics",
+      "capability": "approved_evidence_contract",
+      "input": {
+        "evaluation_status": "approved",
+        "approved_by": "teacher-001",
+        "approved_at": "2026-07-28T10:00:00+05:30",
+        "suggestions": {
+          "1": {
+            "marks_suggested": 2,
+            "max_marks": 2,
+            "confidence": 0.98,
+            "method": "aei_v1_math_normalization",
+            "student_answer": "1/2",
+            "manual_review_required": false,
+            "capability_mode": "supported",
+            "normalized_answer": "0.5",
+            "matched_acceptable_answer": "0.5"
+          }
+        },
+        "teacher_overrides": {}
+      },
+      "expected": {
+        "approved_evidence": true,
+        "approved_for_downstream": true,
+        "question_count": 1,
+        "override_count": 0,
+        "manual_review_required_count": 0,
+        "raw_student_answer_excluded": true,
+        "source_of_truth": "teacher_decision"
+      },
+      "notes": "Teacher-approved evidence may include safe deterministic AEI metadata but never raw student answers."
+    },
+    {
+      "id": "aei_batch_c_approved_override_001",
+      "subject": "science",
+      "capability": "approved_evidence_contract",
+      "input": {
+        "evaluation_status": "approved",
+        "approved_by": "teacher-002",
+        "approved_at": "2026-07-28T10:15:00+05:30",
+        "suggestions": {
+          "3": {
+            "marks_suggested": 1,
+            "max_marks": 3,
+            "confidence": 0.61,
+            "method": "heuristic_fallback",
+            "student_answer": "plants use sunlight",
+            "manual_review_required": true,
+            "manual_review_reason": "Suggestion confidence is below the review threshold.",
+            "capability_mode": "manual_review"
+          }
+        },
+        "teacher_overrides": {
+          "3": {
+            "marks": 2,
+            "reason": "Teacher accepted partial conceptual explanation.",
+            "aei_v1_override_audit": {
+              "batch": "B",
+              "method": "aei_v1_review_policy",
+              "override_applied": true,
+              "original_marks_suggested": 1,
+              "final_marks": 2,
+              "manual_review_required": true,
+              "manual_review_reason": "Suggestion confidence is below the review threshold.",
+              "reviewer_identifier": "teacher-002",
+              "review_timestamp": "2026-07-28T10:15:00+05:30"
+            }
+          }
+        }
+      },
+      "expected": {
+        "approved_evidence": true,
+        "approved_for_downstream": true,
+        "question_count": 1,
+        "override_count": 1,
+        "manual_review_required_count": 1,
+        "raw_student_answer_excluded": true,
+        "source_of_truth": "teacher_decision"
+      },
+      "notes": "Teacher override metadata is safe only after approval and remains distinct from the original suggestion."
+    },
+    {
+      "id": "aei_batch_c_unapproved_suggestion_001",
+      "subject": "mathematics",
+      "capability": "approved_evidence_contract",
+      "input": {
+        "evaluation_status": "suggested",
+        "approved_by": null,
+        "approved_at": null,
+        "suggestions": {
+          "1": {
+            "marks_suggested": 2,
+            "max_marks": 2,
+            "confidence": 0.95,
+            "method": "objective",
+            "student_answer": "4"
+          }
+        },
+        "teacher_overrides": {}
+      },
+      "expected": {
+        "approved_evidence": false,
+        "approved_for_downstream": false,
+        "question_count": 0,
+        "override_count": 0,
+        "manual_review_required_count": 0,
+        "raw_student_answer_excluded": true,
+        "source_of_truth": "teacher_decision"
+      },
+      "notes": "Unapproved AI suggestions must not become downstream evidence."
+    }
+  ]
+}

@@ -21,6 +21,9 @@ from app.db.models.user import User, UserRole
 from app.modules.ai.gateway import LLMResult
 from app.modules.ai.services.assessment_grounding import GroundingContext
 from app.modules.ai.services.question_bank_service import ingest_from_paper
+from app.modules.examinations.services.aei_v1_evidence_ledger import (
+    contains_unsafe_evidence_key,
+)
 from app.modules.examinations.services.answer_sheet_eval_service import (
     AnswerSheetEvalService,
     grade_objective,
@@ -546,6 +549,98 @@ async def test_eval_response_exposes_academic_evidence_ledger(
     assert row["curriculum_pack_id"] == str(pack.id)
     assert row["evaluation_grounded"] is True
     assert "trace-topic-1" in row["citation_ids"]
+
+
+@pytest.mark.asyncio
+async def test_aei_v1_evidence_ledger_flag_off_preserves_legacy_ledger(
+    client: AsyncClient, db_session: AsyncSession, monkeypatch
+):
+    fx = await _seed_eval_fixture(db_session)
+    monkeypatch.setattr(
+        "app.modules.examinations.endpoints.evaluation"
+        ".settings.AEI_V1_EVIDENCE_LEDGER_METADATA_ENABLED",
+        False,
+    )
+
+    token = access_token_for(fx["incharge"])
+    resp = await client.post(
+        f"/api/v1/exams/{fx['exam'].id}/evaluations",
+        headers=auth_headers(token),
+        json={
+            "student_id": str(fx["student"].id),
+            "student_answers": {"1": "4", "2": "B", "3": "plants use sunlight"},
+        },
+    )
+
+    assert resp.status_code == 201, resp.text
+    ledger = resp.json()["data"]["evidence_ledger"]
+    assert "aei_v1_approved_evidence" not in ledger
+
+
+@pytest.mark.asyncio
+async def test_aei_v1_evidence_ledger_flag_on_emits_approved_evidence_after_teacher_approval(
+    client: AsyncClient, db_session: AsyncSession, monkeypatch
+):
+    fx = await _seed_eval_fixture(db_session)
+    monkeypatch.setattr(
+        "app.modules.examinations.endpoints.evaluation"
+        ".settings.AEI_V1_EVIDENCE_LEDGER_METADATA_ENABLED",
+        True,
+    )
+    monkeypatch.setattr(
+        "app.modules.examinations.services.answer_sheet_eval_service"
+        ".settings.AEI_V1_REVIEW_POLICY_ENABLED",
+        True,
+    )
+
+    token = access_token_for(fx["incharge"])
+    resp = await client.post(
+        f"/api/v1/exams/{fx['exam'].id}/evaluations",
+        headers=auth_headers(token),
+        json={
+            "student_id": str(fx["student"].id),
+            "student_answers": {"1": "4", "2": "B", "3": "plants use sunlight"},
+        },
+    )
+    assert resp.status_code == 201, resp.text
+    suggested = resp.json()["data"]
+    suggested_metadata = suggested["evidence_ledger"]["aei_v1_approved_evidence"]
+    assert suggested_metadata["approved_evidence"] is False
+    assert suggested_metadata["approved_for_downstream"] is False
+    assert suggested_metadata["questions"] == {}
+
+    approved = await client.post(
+        f"/api/v1/exams/evaluations/{suggested['id']}/approve",
+        headers=auth_headers(token),
+        json={
+            "teacher_overrides": {
+                "1": {"marks": 1, "reason": "Teacher reviewed alternate working."}
+            },
+        },
+    )
+
+    assert approved.status_code == 200, approved.text
+    metadata = approved.json()["data"]["evidence_ledger"]["aei_v1_approved_evidence"]
+    assert metadata["approved_evidence"] is True
+    assert metadata["approved_for_downstream"] is True
+    assert metadata["teacher_approved_by"] == str(fx["incharge"].id)
+    assert metadata["question_count"] == 3
+    assert metadata["override_count"] == 1
+    assert metadata["manual_review_required_count"] == sum(
+        1
+        for question in metadata["questions"].values()
+        if question["original_suggestion"].get("manual_review_required")
+    )
+    assert metadata["downstream_contract"]["source_of_truth"] == "teacher_decision"
+
+    q1 = metadata["questions"]["1"]
+    assert q1["original_suggestion"]["marks_suggested"] == 2
+    assert q1["final_teacher_decision"]["final_marks"] == 1
+    assert q1["final_teacher_decision"]["override_applied"] is True
+    assert q1["final_teacher_decision"]["override_reason"] == (
+        "Teacher reviewed alternate working."
+    )
+    assert contains_unsafe_evidence_key(metadata) is False
 
 
 @pytest.mark.asyncio

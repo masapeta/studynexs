@@ -1,6 +1,10 @@
 import json
 from pathlib import Path
 
+from app.modules.examinations.services.aei_v1_evidence_ledger import (
+    build_approved_evidence_metadata,
+    contains_unsafe_evidence_key,
+)
 from app.modules.examinations.services.aei_v1_math_normalization import (
     AEI_MATH_EVALUATION_METHOD,
     evaluate_math_normalization,
@@ -17,6 +21,9 @@ BATCH_A_MATH_CASES_PATH = (
 BATCH_B_REVIEW_CASES_PATH = (
     Path(__file__).parent / "golden" / "aei_v1" / "batch_b_review_policy_cases.json"
 )
+BATCH_C_APPROVED_EVIDENCE_CASES_PATH = (
+    Path(__file__).parent / "golden" / "aei_v1" / "batch_c_approved_evidence_cases.json"
+)
 
 
 def _load_golden_cases() -> dict:
@@ -31,6 +38,11 @@ def _load_batch_a_math_cases() -> dict:
 
 def _load_batch_b_review_cases() -> dict:
     with BATCH_B_REVIEW_CASES_PATH.open("r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def _load_batch_c_approved_evidence_cases() -> dict:
+    with BATCH_C_APPROVED_EVIDENCE_CASES_PATH.open("r", encoding="utf-8") as handle:
         return json.load(handle)
 
 
@@ -138,3 +150,43 @@ def test_batch_b_review_policy_golden_cases_execute_deterministically():
         if "manual_review_reason" in expected:
             assert enriched["manual_review_reason"] == expected["manual_review_reason"]
         assert enriched["aei_v1_review_policy"]["batch"] == "B"
+
+
+def test_batch_c_approved_evidence_golden_cases_execute_deterministically():
+    data = _load_batch_c_approved_evidence_cases()
+
+    assert data["version"] == "aei-v1-batch-c-approved-evidence"
+    case_ids: set[str] = set()
+    for case in data["cases"]:
+        assert case["id"] not in case_ids
+        case_ids.add(case["id"])
+
+        case_input = case["input"]
+        metadata = build_approved_evidence_metadata(
+            evaluation_status=case_input["evaluation_status"],
+            suggestions=case_input["suggestions"],
+            teacher_overrides=case_input["teacher_overrides"],
+            approved_by=case_input["approved_by"],
+            approved_at=case_input["approved_at"],
+        )
+        expected = case["expected"]
+
+        assert metadata["approved_evidence"] is expected["approved_evidence"], case["id"]
+        assert (
+            metadata["approved_for_downstream"] is expected["approved_for_downstream"]
+        ), case["id"]
+        assert metadata["question_count"] == expected["question_count"], case["id"]
+        assert metadata["override_count"] == expected["override_count"], case["id"]
+        assert (
+            metadata["manual_review_required_count"]
+            == expected["manual_review_required_count"]
+        ), case["id"]
+        assert (
+            metadata["raw_student_answer_excluded"]
+            is expected["raw_student_answer_excluded"]
+        ), case["id"]
+        assert (
+            metadata["downstream_contract"]["source_of_truth"]
+            == expected["source_of_truth"]
+        ), case["id"]
+        assert contains_unsafe_evidence_key(metadata) is False, case["id"]

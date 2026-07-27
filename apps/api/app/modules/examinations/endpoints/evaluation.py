@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.api_route import CommitOnSuccessRoute
+from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, require_roles
 from app.core.rate_limit import rate_limit
@@ -29,6 +30,9 @@ from app.modules.examinations.schemas.evaluation import (
     EvaluationOut,
     MisconceptionOut,
 )
+from app.modules.examinations.services.aei_v1_evidence_ledger import (
+    build_approved_evidence_metadata,
+)
 from app.modules.examinations.services.answer_sheet_eval_service import (
     AnswerSheetEvalService,
     EvalError,
@@ -37,6 +41,7 @@ from app.modules.examinations.services.misconception_service import list_misconc
 from app.shared.schemas.common import APIResponse
 
 router = APIRouter(route_class=CommitOnSuccessRoute)
+settings = get_settings()
 _STAFF = ("teacher", "class_incharge", "admin", "super_admin")
 _EVAL_RATE = {"max_requests": 8, "window_seconds": 60}
 
@@ -114,7 +119,7 @@ async def _evaluation_out(
     out.question_paper_grounded = bool(paper and paper.grounded)
     out.evaluation_grounded = _suggestions_are_grounded(row.ai_suggestions)
     out.citation_ids = _citation_ids_from_suggestions(row.ai_suggestions)
-    out.evidence_ledger = {
+    evidence_ledger = {
         "tenant_id": str(row.school_id),
         "curriculum_pack_id": str(paper.pack_id) if paper and paper.pack_id else None,
         "question_paper_id": str(exam.source_paper_id) if exam.source_paper_id else None,
@@ -129,6 +134,15 @@ async def _evaluation_out(
         "evaluation_grounded": _suggestions_are_grounded(row.ai_suggestions),
         "citation_ids": _citation_ids_from_suggestions(row.ai_suggestions),
     }
+    if settings.AEI_V1_EVIDENCE_LEDGER_METADATA_ENABLED:
+        evidence_ledger["aei_v1_approved_evidence"] = build_approved_evidence_metadata(
+            evaluation_status=row.status,
+            suggestions=row.ai_suggestions,
+            teacher_overrides=row.teacher_overrides,
+            approved_by=row.approved_by,
+            approved_at=row.approved_at,
+        )
+    out.evidence_ledger = evidence_ledger
     return out
 
 
