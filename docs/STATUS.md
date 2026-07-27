@@ -74,6 +74,7 @@ canonical roadmap names are:
 | AEI v1.0 Batch D - Language/OCR assist metadata | Complete / certified / published |
 | AEI v1.0 Batch E - Visual/science assist metadata | Complete / certified / published |
 | AEI v1.0 Certification | Complete / certified / published |
+| AEI v1.0 Teacher Evaluation UX-A - Trust metadata display | Complete / certified / published |
 | EUI v1 architecture | Frozen / accepted |
 | EUI Runtime Roadmap v1 | Accepted planning baseline |
 | Phase 0 - Engineering Preparation | Complete / certified / published |
@@ -207,6 +208,36 @@ or expanded public product claims.
 
 ---
 
+## Published AEI v1.0 teacher evaluation experience milestones
+
+| Batch | Status | Commit | Tag | Scope |
+|---|---|---|---|---|
+| UX-A - Review-table trust metadata display | Published / certified | `a391fb2bd659957223a7a631471096a8e3b0ba6b` | `aei-v1-teacher-evaluation-ux-a-trust-display-certified` | Display-only teacher review guidance, confidence/capability/manual-review badges, and safe AEI metadata evidence rows on the existing teacher evaluation page |
+
+UX-A turns certified AEI v1.0 suggestion metadata into teacher-visible trust
+signals on the existing answer-sheet evaluation review page.
+
+Supported UX-A behavior:
+
+- compact teacher-review guidance summary above the review table;
+- per-question confidence, method, capability, and manual-review badges;
+- available Maths normalization/equivalence evidence rows;
+- neutral legacy fallback when AEI metadata is absent;
+- no backend, marks, approval, evidence-ledger, source-switching, schema, API,
+  or feature-flag enablement changes.
+
+UX-A certification caveat:
+
+- dedicated browser proof was not executed in this session because the existing
+  browser harness requires a running Reference tenant API and production web
+  server;
+- admin-web production build and TypeScript validation passed;
+- helper lint passed;
+- focused page lint remains blocked by pre-existing evaluation-page lint debt
+  outside the UX-A display-only scope.
+
+---
+
 ## Published EUI runtime milestones
 
 | Roadmap phase | Status | Commit | Tag | Historical artifact label |
@@ -230,27 +261,27 @@ or expanded public product claims.
 The latest completed artifact is:
 
 ```text
-AEI v1.0 Certification
+AEI v1.0 Teacher Evaluation UX-A - Trust metadata display
 ```
 
-AEI v1.0 Batch F is published and certified as the final AEI v1.0
-supported-scope certification baseline.
+AEI v1.0 Teacher Evaluation UX-A is published and certified as the first
+post-certification, product-facing teacher evaluation experience slice.
 
-The certification confirms Batches A-E, the supported-scope capability matrix,
-Golden Harness coverage, rollback posture, and broad AEI/EUI regression evidence.
-No schema, API route, UI, marks, teacher-review routing, persistence, feature-flag
-enablement, source-of-truth switch, or parent/student visibility changes were
-introduced by Batch F.
+UX-A displays existing AEI suggestion metadata on the existing teacher
+evaluation review page. It does not change marks, approval behavior,
+teacher-review routing, backend behavior, schema, API, evidence-ledger behavior,
+feature-flag enablement, source-of-truth posture, or parent/student visibility.
 
 Next gated milestone:
 
 ```text
-Post-AEI v1.0 product-facing enablement / teacher evaluation experience
+AEI v1.0 Teacher Evaluation UX-B - Override reason workflow
 ```
 
-No post-certification AEI product-facing implementation, feature-flag enablement,
-UI work, public capability claim expansion, or product launch-readiness work is
-authorized until ARM explicitly issues the next implementation authorization.
+No further post-certification AEI product-facing implementation, feature-flag
+enablement, UI work beyond published UX-A, public capability claim expansion,
+or product launch-readiness work is authorized until ARM explicitly issues the
+next implementation authorization.
 
 EUI Phase 7 remains closed at Phase 7E. Phase 7F source adoption is deferred
 future scope, not the next active implementation milestone.
@@ -287,7 +318,8 @@ remain out of scope:
   foundation;
 - schema changes;
 - API changes;
-- UI changes;
+- UI changes beyond the published AEI v1.0 Teacher Evaluation UX-A display
+  slice;
 - consumer migration beyond the published Phase 7E AEI internal
   source-readiness trial foundation;
 - Phase 7F source adoption unless ARM reopens it under the documented reopen
@@ -298,6 +330,8 @@ remain out of scope:
   metadata foundation, and Batch E visual/science assist metadata foundation;
 - AEI v1.0 feature-flag enablement, source switching, or product-facing behavior
   changes without separate ARM authorization;
+- AEI v1.0 Teacher Evaluation UX-B or later UX batches without separate ARM
+  authorization;
 - post-certification AEI expansion without separate ARM authorization;
 - AEI source-of-truth switching to EUI;
 - EUI contract changes outside accepted design;
@@ -325,10 +359,12 @@ Normalization foundation, and a published AEI v1.0 Batch B Review Policy
 Metadata foundation, a published AEI v1.0 Batch C Evidence Ledger Metadata
 foundation, and a published AEI v1.0 Batch D Language/OCR Assist Metadata
 foundation, and a published AEI v1.0 Batch E Visual/Science Assist Metadata
-foundation, and a published AEI v1.0 Certification baseline. Phase 7 is closed
+foundation, a published AEI v1.0 Certification baseline, and a published AEI
+v1.0 Teacher Evaluation UX-A Trust Metadata Display baseline. Phase 7 is closed
 at 7E. Phase 7F source adoption is deferred future scope. AEI v1.0 is certified
-for the declared supported scope, but product-facing enablement, feature-flag
-rollout, UI work, and public capability claim expansion require separate ARM
+for the declared supported scope, and UX-A is the first product-facing display
+slice. Further teacher-evaluation UX batches, feature-flag rollout, source
+switching, and public capability claim expansion require separate ARM
 authorization.
 
 ---
@@ -338,30 +374,30 @@ authorization.
 Latest published runtime phase:
 
 ```text
-AEI v1.0 Certification
+AEI v1.0 Teacher Evaluation UX-A - Trust metadata display
 ```
 
 Historical artifact label:
 
 ```text
-AEI v1.0 Supported Scope Certification
+AEI v1.0 Teacher Evaluation Trust Metadata Display
 ```
 
 Certified evidence:
 
-- Broad AEI/EUI certification Ruff: PASS
-- Broad AEI/EUI certification regression: 191 passed
-- Test-only lint cleanup regression: 11 passed
-- Golden Harness coverage: 35 AEI cases
-- API import: PASS
+- UX-A helper lint: PASS
+- Admin-web production build and TypeScript validation: PASS
 - git diff --check: PASS
-- All AEI v1.0 behavior flags remain default false: PASS
-- Flag-off legacy suggestion/approval behavior preserved: PASS
-- No schema/API/UI/marks/feature-flag-enablement/source-switching changes: PASS
+- Existing teacher evaluation page compiles in production build: PASS
+- Display-only frontend implementation: PASS
+- No backend/API/schema/marks/approval/evidence-ledger/source-switch changes: PASS
+- Dedicated browser proof: NOT EXECUTED; recorded certification caveat
+- Focused page lint: BLOCKED by pre-existing evaluation-page lint debt outside
+  UX-A scope; helper lint is clean
 
 Certification report:
 
-[`product/aei-v1/AEI_V1_CERTIFICATION_REPORT.md`](./product/aei-v1/AEI_V1_CERTIFICATION_REPORT.md)
+[`product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_A_CERTIFICATION_REPORT.md`](./product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_A_CERTIFICATION_REPORT.md)
 
 Supported scope matrix:
 
