@@ -1,0 +1,87 @@
+{
+  "version": "eui-identity-golden-v1",
+  "authorization": "EUI-PH1-AUTH-001",
+  "cases": [
+    {
+      "id": "eui_identity_cbse_g6_science_motion_si_units",
+      "input": {
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "curriculum_version": "2024",
+        "grade": "Grade 6",
+        "subject": "Science",
+        "chapter_number": "5",
+        "chapter": "Motion and Measurement of Distances",
+        "topic": "Measuring Length",
+        "concept": "SI Units"
+      },
+      "expected_id": "ei://cbse/ncf2023/2024/g6/science/ch05/topic-measuring-length/concept-si-units"
+    },
+    {
+      "id": "eui_identity_icse_g8_physics_force_lo",
+      "input": {
+        "board": "ICSE",
+        "curriculum": "Council Curriculum",
+        "curriculum_version": "2026",
+        "grade": "Class 8",
+        "subject": "Physics",
+        "chapter_number": "3",
+        "chapter": "Force and Pressure",
+        "learning_objective": "Explain balanced and unbalanced forces"
+      },
+      "expected_id": "ei://icse/council-curriculum/2026/g8/physics/ch03/lo-explain-balanced-and-unbalanced-forces"
+    },
+    {
+      "id": "eui_identity_state_g7_telugu_language_chapter",
+      "input": {
+        "board": "AP State Board",
+        "curriculum": "State Telugu Reader",
+        "curriculum_version": "2025",
+        "grade": "Standard 7",
+        "subject": "Telugu",
+        "chapter_number": "2",
+        "chapter": "Language and Expression"
+      },
+      "expected_id": "ei://ap-state-board/state-telugu-reader/2025/g7/telugu/ch02"
+    },
+    {
+      "id": "eui_identity_cbse_g10_math_quadratics_topic",
+      "input": {
+        "board": "CBSE",
+        "curriculum": "NCERT",
+        "curriculum_version": "2024-25",
+        "grade": "Grade 10",
+        "subject": "Mathematics",
+        "chapter_number": "4",
+        "chapter": "Quadratic Equations",
+        "topic": "Nature of Roots"
+      },
+      "expected_id": "ei://cbse/ncert/2024-25/g10/mathematics/ch04/topic-nature-of-roots"
+    },
+    {
+      "id": "eui_identity_same_chapter_different_subject_is_distinct",
+      "input": {
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "curriculum_version": "2024",
+        "grade": "Grade 6",
+        "subject": "Physics",
+        "chapter_number": "5",
+        "chapter": "Motion and Measurement of Distances"
+      },
+      "expected_id": "ei://cbse/ncf2023/2024/g6/physics/ch05"
+    },
+    {
+      "id": "eui_identity_missing_chapter_number_uses_chapter_slug",
+      "input": {
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "curriculum_version": "2024",
+        "grade": "Grade 6",
+        "subject": "Science",
+        "chapter": "Materials Around Us"
+      },
+      "expected_id": "ei://cbse/ncf2023/2024/g6/science/chapter-materials-around-us"
+    }
+  ]
+}
