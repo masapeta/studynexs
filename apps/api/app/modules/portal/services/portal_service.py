@@ -2,12 +2,13 @@
 from __future__ import annotations
 
 import uuid
+from decimal import Decimal
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.academic import Class, Subject
-from app.db.models.attendance import Attendance, AttendanceStatus
+from app.db.models.attendance import Attendance
 from app.db.models.fee import FeeStructure, StudentFeeRecord
 from app.db.models.mastery import FlagStatus, MasteryFlag, StudentTopicMastery
 from app.db.models.student import Parent, Student, StudentParentMap
@@ -24,6 +25,13 @@ from app.modules.portal.schemas.portal import (
 )
 
 _WEAK_THRESHOLD = 70.0
+_ZERO_MONEY = Decimal("0.00")
+_MONEY_QUANTUM = Decimal("0.01")
+
+
+def _pending_balance(total: Decimal, paid: Decimal) -> Decimal:
+    """Compute a non-negative fee balance without binary floating-point arithmetic."""
+    return max(_ZERO_MONEY, total - paid).quantize(_MONEY_QUANTUM)
 
 
 def resolve_portal(role: str) -> str:
@@ -38,7 +46,9 @@ def resolve_portal(role: str) -> str:
     return "staff"
 
 
-async def _attendance_pct(db: AsyncSession, school_id: uuid.UUID, student_id: uuid.UUID) -> float | None:
+async def _attendance_pct(
+    db: AsyncSession, school_id: uuid.UUID, student_id: uuid.UUID
+) -> float | None:
     rows = (
         await db.execute(
             select(Attendance.status, func.count())
@@ -68,7 +78,11 @@ async def _fee_pending(db: AsyncSession, school_id: uuid.UUID, student_id: uuid.
     ).first()
     if not row:
         return 0.0
-    return round(max(0.0, float(row[0] or 0) - float(row[1] or 0)), 2)
+    total = row[0] if isinstance(row[0], Decimal) else Decimal(str(row[0] or 0))
+    paid = row[1] if isinstance(row[1], Decimal) else Decimal(str(row[1] or 0))
+    # ``ChildSummaryOut.fee_pending`` is a longstanding JSON number. Keep that wire type while
+    # ensuring all monetary arithmetic above the response boundary remains Decimal-exact.
+    return float(_pending_balance(total, paid))
 
 
 async def _weak_topic_count(db: AsyncSession, school_id: uuid.UUID, student_id: uuid.UUID) -> int:
@@ -205,13 +219,21 @@ async def list_parent_children_fees(
 
     grouped: dict[uuid.UUID, list[FeeRecordSummaryOut]] = {sid: [] for sid in student_ids}
     for record, structure in fee_rows:
-        fee_type = structure.fee_type.value if hasattr(structure.fee_type, "value") else str(structure.fee_type)
+        fee_type = (
+            structure.fee_type.value
+            if hasattr(structure.fee_type, "value")
+            else str(structure.fee_type)
+        )
         grouped[record.student_id].append(
             FeeRecordSummaryOut(
                 id=record.id,
                 fee_type=fee_type,
                 amount=float(record.amount),
-                status=record.status.value if hasattr(record.status, "value") else str(record.status),
+                status=(
+                    record.status.value
+                    if hasattr(record.status, "value")
+                    else str(record.status)
+                ),
                 due_date=record.due_date.isoformat() if record.due_date else None,
             )
         )
@@ -275,7 +297,9 @@ async def _build_parent_child_progress(
 async def list_parent_children_progress(
     db: AsyncSession, *, school_id: uuid.UUID, parent_user_id: uuid.UUID
 ) -> list[ParentChildProgressOut]:
-    children_rows = await _parent_linked_children(db, school_id=school_id, parent_user_id=parent_user_id)
+    children_rows = await _parent_linked_children(
+        db, school_id=school_id, parent_user_id=parent_user_id
+    )
     if not children_rows:
         return []
 

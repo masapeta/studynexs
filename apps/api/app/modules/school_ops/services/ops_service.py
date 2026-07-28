@@ -767,10 +767,8 @@ class SchoolOpsService:
                         "user_id": str(u.id),
                         "name": u.full_name,
                         "role": role_key.replace("_", " "),
-                        # Serialize as a JSON number (float at the boundary), matching the existing
-                        # wire contract — a raw Decimal would serialize as a JSON string and break
-                        # clients. Arithmetic elsewhere stays Decimal.
-                        "gross_amount": float(e.gross_amount),
+                        # Keep money exact in the service; the endpoint owns wire serialization.
+                        "gross_amount": e.gross_amount,
                         "status": e.status.value,
                         "entry_id": str(e.id),
                     }
@@ -781,8 +779,8 @@ class SchoolOpsService:
                         "user_id": str(u.id),
                         "name": u.full_name,
                         "role": role_key.replace("_", " "),
-                        "gross_amount": float(
-                            self._DEFAULT_GROSS.get(role_key, self._FALLBACK_GROSS)
+                        "gross_amount": self._DEFAULT_GROSS.get(
+                            role_key, self._FALLBACK_GROSS
                         ),
                         "status": "not_generated",
                         "entry_id": None,
@@ -871,7 +869,7 @@ class SchoolOpsService:
                 "id": str(r.id),
                 "vendor": r.vendor,
                 "category": r.category,
-                "amount": float(r.amount),
+                "amount": r.amount,
                 "expense_date": r.expense_date.isoformat(),
                 "receipt_file_id": str(r.receipt_file_id) if r.receipt_file_id else None,
             }
@@ -885,6 +883,8 @@ class SchoolOpsService:
             school_id=school_id,
             vendor=data.vendor,
             category=data.category,
+            # Pydantic validates the v1 JSON number into Decimal before it enters
+            # the monetary domain, so no binary-float arithmetic reaches storage.
             amount=data.amount,
             expense_date=data.expense_date,
             receipt_file_id=data.receipt_file_id,
@@ -894,7 +894,7 @@ class SchoolOpsService:
         await self.db.flush()
         return row
 
-    async def expenses_month_total(self, school_id: uuid.UUID) -> float:
+    async def expenses_month_total(self, school_id: uuid.UUID) -> Decimal:
         from datetime import date as date_cls
 
         today = date_cls.today()
@@ -905,7 +905,9 @@ class SchoolOpsService:
                 SchoolExpense.expense_date >= month_start,
             )
         )
-        return float(total or 0)
+        if isinstance(total, Decimal):
+            return total
+        return Decimal(str(total or 0))
 
     # ── Staff directory ──────────────────────────────────────────
 

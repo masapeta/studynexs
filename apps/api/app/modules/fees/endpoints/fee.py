@@ -118,7 +118,7 @@ async def download_receipt(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Download fee receipt as PDF (or HTML fallback)."""
+    """Download a server-rendered fee receipt PDF."""
     from fastapi.responses import Response
     from sqlalchemy import select
 
@@ -140,17 +140,11 @@ async def download_receipt(
 
     pdf_bytes = await generate_receipt_pdf(receipt)
 
-    # Check if it's actual PDF or HTML fallback
-    content_type = "application/pdf" if pdf_bytes[:4] == b"%PDF" else "text/html"
-    filename = (
-        f"{receipt_number}.pdf" if content_type == "application/pdf" else f"{receipt_number}.html"
-    )
-
     return Response(
         content=pdf_bytes,
-        media_type=content_type,
+        media_type="application/pdf",
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Disposition": f'attachment; filename="{receipt_number}.pdf"',
             "X-Content-Type-Options": "nosniff",
         },
     )

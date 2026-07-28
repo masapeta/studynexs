@@ -1,6 +1,5 @@
-"""Report-card renderer — clean printable HTML, converted to PDF via WeasyPrint when available.
+"""Report-card renderer — clean printable HTML, converted to a real PDF.
 
-Falls back to print-ready HTML (browser Print-to-PDF) in dev, like the paper/receipt renderers.
 All stored text is HTML-escaped.
 """
 from __future__ import annotations
@@ -8,6 +7,7 @@ from __future__ import annotations
 import html
 
 from app.db.models.report_card import ReportCard
+from app.shared.pdf_renderer import render_pdf
 
 _STYLES = """
   @page { size: A4; margin: 16mm; }
@@ -102,11 +102,6 @@ def render_report_html(report: ReportCard, *, school_name: str | None = None) ->
 def generate_report_pdf(
     report: ReportCard, *, school_name: str | None = None
 ) -> tuple[bytes, str]:
-    """Return (content, media_type). PDF if WeasyPrint is installed, else print-ready HTML."""
+    """Return real PDF content and its media type."""
     doc = render_report_html(report, school_name=school_name)
-    try:
-        from weasyprint import HTML
-
-        return HTML(string=doc).write_pdf(), "application/pdf"
-    except (ImportError, OSError):
-        return doc.encode("utf-8"), "text/html"
+    return render_pdf(doc, document_type="report_card"), "application/pdf"

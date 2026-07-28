@@ -1,6 +1,5 @@
 """
 Fee Receipt PDF Generator — renders receipt as HTML then converts to PDF.
-Uses weasyprint in production; falls back to HTML-only in dev.
 
 Usage:
     from app.modules.fees.services.receipt_pdf import generate_receipt_pdf
@@ -10,7 +9,10 @@ Usage:
 import html
 from urllib.parse import urlsplit
 
+from starlette.concurrency import run_in_threadpool
+
 from app.db.models.fee import FeeReceipt
+from app.shared.pdf_renderer import render_pdf
 
 
 def _safe_logo_url(url: str | None) -> str | None:
@@ -26,7 +28,7 @@ def _safe_logo_url(url: str | None) -> str | None:
     return html.escape(url, quote=True)
 
 
-def render_receipt_html(receipt: FeeReceipt) -> str:
+def render_receipt_html(receipt: FeeReceipt, *, include_remote_logo: bool = True) -> str:
     """Render receipt as styled HTML. All school/student-controlled fields are escaped."""
 
     def e(value) -> str:
@@ -40,7 +42,20 @@ def render_receipt_html(receipt: FeeReceipt) -> str:
     fee_type = e(receipt.fee_type)
     receipt_number = e(receipt.receipt_number)
     transaction_id = e(receipt.transaction_id)
-    logo = _safe_logo_url(receipt.school_logo_url)
+    # HTML previews may load the school's configured logo in the user's browser.
+    # Server-side PDF rendering deliberately omits it: fetching a tenant-provided
+    # URL from the API process would create an SSRF primitive.
+    logo = _safe_logo_url(receipt.school_logo_url) if include_remote_logo else None
+    paid_at = receipt.paid_at.strftime("%d-%b-%Y %I:%M %p") if receipt.paid_at else ""
+    payment_mode = (
+        receipt.payment_mode.value.replace("_", " ").title() if receipt.payment_mode else ""
+    )
+    transaction_row = (
+        '<span class="label">Transaction ID:</span>'
+        f'<span class="value">{transaction_id}</span>'
+        if transaction_id
+        else ""
+    )
 
     return f"""<!DOCTYPE html>
 <html>
@@ -49,16 +64,29 @@ def render_receipt_html(receipt: FeeReceipt) -> str:
 <style>
     @page {{ size: A5; margin: 15mm; }}
     body {{ font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a1a; margin: 0; padding: 20px; }}
-    .receipt {{ border: 2px solid #2563eb; border-radius: 12px; padding: 24px; max-width: 500px; margin: auto; }}
-    .header {{ text-align: center; border-bottom: 2px solid #e5e7eb; padding-bottom: 16px; margin-bottom: 16px; }}
+    .receipt {{
+        border: 2px solid #2563eb; border-radius: 12px;
+        padding: 24px; max-width: 500px; margin: auto;
+    }}
+    .header {{
+        text-align: center; border-bottom: 2px solid #e5e7eb;
+        padding-bottom: 16px; margin-bottom: 16px;
+    }}
     .school-logo {{ width: 60px; height: 60px; border-radius: 50%; margin-bottom: 8px; }}
     .school-name {{ font-size: 18px; font-weight: 700; color: #1e40af; margin: 4px 0; }}
     .school-address {{ font-size: 12px; color: #6b7280; }}
-    .receipt-title {{ background: #2563eb; color: white; text-align: center; padding: 8px; border-radius: 6px; margin: 12px 0; font-weight: 600; }}
+    .receipt-title {{
+        background: #2563eb; color: white; text-align: center;
+        padding: 8px; border-radius: 6px; margin: 12px 0; font-weight: 600;
+    }}
     .details {{ display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; font-size: 13px; }}
     .label {{ color: #6b7280; font-weight: 500; }}
     .value {{ font-weight: 600; text-align: right; }}
-    .amount-row {{ border-top: 2px solid #2563eb; margin-top: 16px; padding-top: 12px; display: flex; justify-content: space-between; font-size: 18px; font-weight: 700; color: #059669; }}
+    .amount-row {{
+        border-top: 2px solid #2563eb; margin-top: 16px; padding-top: 12px;
+        display: flex; justify-content: space-between;
+        font-size: 18px; font-weight: 700; color: #059669;
+    }}
     .footer {{ text-align: center; margin-top: 20px; font-size: 11px; color: #9ca3af; }}
     .stamp {{ text-align: right; margin-top: 24px; font-style: italic; color: #6b7280; }}
 </style>
@@ -78,7 +106,7 @@ def render_receipt_html(receipt: FeeReceipt) -> str:
         <span class="value">{receipt_number}</span>
 
         <span class="label">Date:</span>
-        <span class="value">{receipt.paid_at.strftime('%d-%b-%Y %I:%M %p') if receipt.paid_at else ''}</span>
+        <span class="value">{paid_at}</span>
 
         <span class="label">Student:</span>
         <span class="value">{student_name}</span>
@@ -90,9 +118,9 @@ def render_receipt_html(receipt: FeeReceipt) -> str:
         <span class="value">{fee_type}</span>
 
         <span class="label">Payment Mode:</span>
-        <span class="value">{receipt.payment_mode.value.replace('_', ' ').title() if receipt.payment_mode else ''}</span>
+        <span class="value">{payment_mode}</span>
 
-        {f'<span class="label">Transaction ID:</span><span class="value">{transaction_id}</span>' if transaction_id else ''}
+        {transaction_row}
     </div>
 
     <div class="amount-row">
@@ -112,19 +140,14 @@ def render_receipt_html(receipt: FeeReceipt) -> str:
 
 
 async def generate_receipt_pdf(receipt: FeeReceipt) -> bytes:
-    """
-    Generate PDF bytes from a FeeReceipt.
-    Uses weasyprint if available, otherwise returns HTML bytes.
-    """
-    html_str = render_receipt_html(receipt)
+    """Generate real PDF bytes from a fee receipt or raise ``PDFRenderError``."""
 
-    try:
-        from weasyprint import HTML
-        pdf_bytes = HTML(string=html_str).write_pdf()
-        return pdf_bytes
-    except ImportError:
-        # weasyprint not installed — return HTML as fallback
-        return html_str.encode("utf-8")
+    html_str = render_receipt_html(receipt, include_remote_logo=False)
+    return await run_in_threadpool(
+        render_pdf,
+        html_str,
+        document_type="fee_receipt",
+    )
 
 
 async def generate_receipt_html(receipt: FeeReceipt) -> str:

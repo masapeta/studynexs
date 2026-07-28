@@ -47,12 +47,13 @@ async def list_classes(
     db: AsyncSession = Depends(get_db),
 ):
     service = AcademicService(db)
-    classes, total = await service.list_classes(uuid.UUID(current_user.school_id), page, page_size)
     scope = await get_staff_scope(db, current_user)
-    allowed = scope.all_class_ids()
-    if allowed is not None:
-        classes = [c for c in classes if c.id in allowed]
-        total = len(classes)
+    classes, total = await service.list_classes(
+        uuid.UUID(current_user.school_id),
+        page,
+        page_size,
+        allowed_class_ids=scope.all_class_ids(),
+    )
     return PaginatedResponse(
         items=[ClassOut.model_validate(c) for c in classes],
         total=total,

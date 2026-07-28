@@ -159,6 +159,19 @@ def create_app() -> FastAPI:
     # ── Exception handlers ───────────────────────────────────────
     from sqlalchemy.exc import IntegrityError
 
+    from app.shared.pdf_renderer import PDFRenderError
+
+    @app.exception_handler(PDFRenderError)
+    async def pdf_render_error_handler(request: Request, exc: PDFRenderError):
+        """Return an explicit retryable failure instead of an HTML pseudo-PDF."""
+
+        logger.warning("pdf_request_unavailable", path=request.url.path)
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "PDF generation is temporarily unavailable. Please try again."},
+            headers={"Retry-After": "30"},
+        )
+
     @app.exception_handler(IntegrityError)
     async def integrity_error_handler(request: Request, exc: IntegrityError):
         """Map DB constraint violations to 409 instead of a 500."""
@@ -206,13 +219,13 @@ def create_app() -> FastAPI:
     app.include_router(school_router, prefix=f"{prefix}/school", tags=["school"])
     app.include_router(mastery_router, prefix=f"{prefix}/mastery", tags=["mastery"])
 
-    from app.modules.curriculum.endpoints.pack import router as curriculum_pack_router
-    from app.modules.curriculum.endpoints.ingest import router as curriculum_ingest_router
-    from app.modules.curriculum.endpoints.graph import router as curriculum_graph_router
     from app.modules.curriculum.endpoints.concept_card import router as concept_card_router
     from app.modules.curriculum.endpoints.content_review import router as content_review_router
-    from app.modules.curriculum.endpoints.rag import router as curriculum_rag_router
+    from app.modules.curriculum.endpoints.graph import router as curriculum_graph_router
+    from app.modules.curriculum.endpoints.ingest import router as curriculum_ingest_router
     from app.modules.curriculum.endpoints.onboarding import router as curriculum_onboarding_router
+    from app.modules.curriculum.endpoints.pack import router as curriculum_pack_router
+    from app.modules.curriculum.endpoints.rag import router as curriculum_rag_router
 
     app.include_router(curriculum_pack_router, prefix=f"{prefix}/curriculum", tags=["curriculum"])
     app.include_router(curriculum_ingest_router, prefix=f"{prefix}/curriculum", tags=["curriculum"])
@@ -220,11 +233,15 @@ def create_app() -> FastAPI:
     app.include_router(concept_card_router, prefix=f"{prefix}/curriculum", tags=["curriculum"])
     app.include_router(content_review_router, prefix=f"{prefix}/curriculum", tags=["curriculum"])
     app.include_router(curriculum_rag_router, prefix=f"{prefix}/curriculum", tags=["curriculum"])
-    app.include_router(curriculum_onboarding_router, prefix=f"{prefix}/curriculum", tags=["curriculum"])
+    app.include_router(
+        curriculum_onboarding_router,
+        prefix=f"{prefix}/curriculum",
+        tags=["curriculum"],
+    )
     app.include_router(portal_router, prefix=f"{prefix}/portal", tags=["portal"])
 
-    from app.modules.tutor.endpoints.tutor import router as tutor_router
     from app.modules.parent_copilot.endpoints.copilot import router as parent_copilot_router
+    from app.modules.tutor.endpoints.tutor import router as tutor_router
 
     app.include_router(tutor_router, prefix=f"{prefix}/tutor", tags=["tutor"])
     app.include_router(
@@ -233,8 +250,8 @@ def create_app() -> FastAPI:
 
     from app.modules.curriculum.endpoints.lesson_plan import router as lesson_plan_router
     from app.modules.dashboard.endpoints.dashboard import router as dashboard_router
-    from app.modules.platform.endpoints.engineering import router as platform_router
     from app.modules.demo.endpoints.demo import router as demo_router
+    from app.modules.platform.endpoints.engineering import router as platform_router
 
     app.include_router(dashboard_router, prefix=f"{prefix}/dashboard", tags=["dashboard"])
     app.include_router(platform_router, prefix=f"{prefix}/platform", tags=["platform"])

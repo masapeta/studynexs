@@ -4,16 +4,15 @@ from __future__ import annotations
 import enum
 import uuid
 from datetime import date, datetime
+from decimal import Decimal
 
 from sqlalchemy import (
     BigInteger,
-    Boolean,
     Date,
     DateTime,
     Enum,
     ForeignKey,
     Index,
-    Integer,
     Numeric,
     String,
     Text,
@@ -68,7 +67,7 @@ class FeeStructure(BaseModel):
         UUID(as_uuid=True), ForeignKey("classes.id"), nullable=True
     )  # NULL = all classes
     fee_type: Mapped[FeeType] = mapped_column(Enum(FeeType), nullable=False)
-    amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     frequency: Mapped[FeeFrequency] = mapped_column(Enum(FeeFrequency), nullable=False)
     academic_year_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("academic_years.id"), nullable=False
@@ -88,10 +87,10 @@ class StudentFeeRecord(BaseModel):
     fee_structure_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("fee_structures.id"), nullable=False
     )
-    amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     due_date: Mapped[date] = mapped_column(Date, nullable=False)
     status: Mapped[FeeStatus] = mapped_column(Enum(FeeStatus), default=FeeStatus.PENDING)
-    paid_amount: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
+    paid_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     payment_mode: Mapped[PaymentMode | None] = mapped_column(Enum(PaymentMode))
     razorpay_order_id: Mapped[str | None] = mapped_column(String(100))
@@ -129,7 +128,7 @@ class FeeReceipt(BaseModel):
     )
     student_name: Mapped[str] = mapped_column(String(200), nullable=False)  # snapshot
     class_name: Mapped[str] = mapped_column(String(50), nullable=False)     # snapshot: "Grade 5-A"
-    amount_paid: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    amount_paid: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     payment_mode: Mapped[PaymentMode] = mapped_column(Enum(PaymentMode), nullable=False)
     fee_type: Mapped[str] = mapped_column(String(50), nullable=False)       # snapshot: "Tuition"
     fee_period: Mapped[str | None] = mapped_column(String(50))              # "July 2026", "Q1 2026"
@@ -196,4 +195,3 @@ class ReceiptCounter(BaseModel):
     )
     last_sequence: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
     prefix: Mapped[str] = mapped_column(String(10), nullable=False)  # "SIA", "GVPS", "LSS"
-

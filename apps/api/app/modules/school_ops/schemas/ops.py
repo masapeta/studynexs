@@ -3,6 +3,7 @@
 import re
 import uuid
 from datetime import date, time
+from decimal import Decimal
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -193,7 +194,12 @@ class EnrolledStageDetails(BaseModel):
 class SchoolExpenseCreate(BaseModel):
     vendor: str = Field(..., max_length=200)
     category: str = Field(..., max_length=60)
-    amount: float = Field(..., gt=0)
+    amount: Decimal = Field(
+        ...,
+        gt=Decimal("0"),
+        max_digits=12,
+        decimal_places=2,
+    )
     expense_date: date
     receipt_file_id: Optional[uuid.UUID] = None
 

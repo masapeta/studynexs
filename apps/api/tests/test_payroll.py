@@ -4,11 +4,14 @@ Regression for a GET that silently created and persisted StaffPayrollEntry rows 
 salary liabilities) with float amounts.
 """
 
+from decimal import Decimal
+
 import pytest
 from sqlalchemy import func, select
 
 from app.db.models.school_ops import StaffPayrollEntry
 from app.db.models.user import User
+from app.modules.school_ops.services.ops_service import SchoolOpsService
 from tests.conftest import auth_headers, get_auth_token
 
 
@@ -44,6 +47,10 @@ async def test_payroll_generate_is_explicit_and_idempotent(
     r1 = await client.post("/api/v1/ops/payroll/generate", headers=auth_headers(token))
     assert r1.status_code == 200
     assert r1.json()["data"]["created"] >= 1
+
+    service_rows = await SchoolOpsService(db_session).list_payroll(admin_user.school_id)
+    teacher_service_row = next(e for e in service_rows if e["role"] == "teacher")
+    assert isinstance(teacher_service_row["gross_amount"], Decimal)
 
     # Now the list shows a real, markable entry.
     resp = await client.get("/api/v1/ops/payroll", headers=auth_headers(token))

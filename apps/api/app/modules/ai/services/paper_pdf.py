@@ -1,6 +1,5 @@
-"""Question-paper renderer — clean exam-paper HTML, converted to PDF via WeasyPrint when available.
+"""Question-paper renderer — clean exam-paper HTML, converted to a real PDF.
 
-Falls back to print-ready HTML (browser Print-to-PDF) in dev, like the fee-receipt renderer.
 AI-generated content is HTML-escaped (math text contains <, >, & etc.).
 """
 from __future__ import annotations
@@ -8,6 +7,7 @@ from __future__ import annotations
 import html
 
 from app.db.models.question_paper import QuestionPaper
+from app.shared.pdf_renderer import render_pdf
 
 _STYLES = """
   @page { size: A4; margin: 18mm; }
@@ -93,11 +93,6 @@ def render_paper_html(
 def generate_paper_pdf(
     paper: QuestionPaper, *, school_name: str | None = None, include_answers: bool = False
 ) -> tuple[bytes, str]:
-    """Return (content, media_type). PDF if WeasyPrint is installed, else print-ready HTML."""
+    """Return real PDF content and its media type."""
     doc = render_paper_html(paper, school_name=school_name, include_answers=include_answers)
-    try:
-        from weasyprint import HTML
-
-        return HTML(string=doc).write_pdf(), "application/pdf"
-    except (ImportError, OSError):
-        return doc.encode("utf-8"), "text/html"
+    return render_pdf(doc, document_type="question_paper"), "application/pdf"

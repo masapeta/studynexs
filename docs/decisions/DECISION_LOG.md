@@ -8,6 +8,55 @@ See [`../README.md`](../README.md) for document precedence.
 
 ---
 
+## 2026-07-28 — Production Safety Gate 1 accepted
+
+**Decision:** Accept and authorize publication of Stabilization Gate 1 —
+Production Safety.
+
+**Reason:** The scoped implementation closes the validated direct-dependency,
+production CORS, notification tenancy, teacher pagination, Decimal arithmetic,
+and truthful PDF defects. Changed-scope and adjacent regression validation,
+independent review, a final production-image build, and multilingual PDF runtime
+proof passed. The bounded repository-wide test run limitation is recorded in
+the certification report rather than misrepresented as a pass.
+
+**Scope boundary:** This decision does not authorize Operational Proof, AEI
+activation, topic-ID/mastery work, or Teacher Evaluation UX-D.
+
+**Acceptance evidence:**
+[`../product/PRODUCTION_SAFETY_BATCH_CERTIFICATION_REPORT.md`](../product/PRODUCTION_SAFETY_BATCH_CERTIFICATION_REPORT.md)
+
+**Status:** Active
+
+---
+
+## 2026-07-28 — Stabilization sequence supersedes UX-D as the next gate
+
+**Decision:** Reconcile the operational governance sources and execute the
+following order: Production Safety, Operational Proof, AEI Activation/Trust,
+topic-ID/mastery spine unification design, then Teacher Evaluation UX-D.
+
+**Reason:** Independent validation of the July 2026 war-room audit confirmed
+production-safety and operational-proof gaps that must be closed before more
+teacher-facing assist UI is added. Certified AEI capabilities also require a
+controlled activation and trust proof before UX-D can truthfully expose their
+supported-scope metadata.
+
+**Authorization:** Production Safety is the single active implementation gate
+after governance reconciliation. Operational Proof, AEI Activation/Trust,
+topic-ID/mastery work, and UX-D are ordered future gates only; none is
+authorized by this decision.
+
+**Historical preservation:** Release 0.1 through Release 0.3 and published
+AEI/EUI milestones remain accepted and frozen. Earlier statements naming UX-D
+as the immediate next milestone are superseded, not deleted.
+
+**Status:** Superseded by the Production Safety acceptance entry above.
+
+**References:** [`../product/PRODUCT_EXECUTION_PLAN.md`](../product/PRODUCT_EXECUTION_PLAN.md) · [`../product/CURRENT_BATCH.md`](../product/CURRENT_BATCH.md) · [`../STATUS.md`](../STATUS.md)
+
+---
+
 ## 2026-07-23 — Batch 3 School Pilot Experience accepted and frozen
 
 **Decision:** Accept **Release 0.3 / Batch 3 — School Pilot Experience** and freeze its architecture and implementation.

@@ -40,37 +40,61 @@ class NotificationService:
         return notif
 
     async def list_user_notifications(
-        self, user_id: uuid.UUID, unread_only: bool = False, limit: int = 30
+        self,
+        *,
+        school_id: uuid.UUID,
+        user_id: uuid.UUID,
+        unread_only: bool = False,
+        limit: int = 30,
     ) -> list[Notification]:
-        query = select(Notification).where(Notification.user_id == user_id)
+        query = select(Notification).where(
+            Notification.school_id == school_id,
+            Notification.user_id == user_id,
+        )
         if unread_only:
-            query = query.where(Notification.is_read == False)
+            query = query.where(Notification.is_read.is_(False))
         result = await self.db.execute(
             query.order_by(Notification.created_at.desc()).limit(limit)
         )
         return list(result.scalars().all())
 
-    async def mark_read(self, notification_id: uuid.UUID, user_id: uuid.UUID) -> None:
+    async def mark_read(
+        self,
+        *,
+        school_id: uuid.UUID,
+        notification_id: uuid.UUID,
+        user_id: uuid.UUID,
+    ) -> None:
         await self.db.execute(
             update(Notification)
-            .where(Notification.id == notification_id, Notification.user_id == user_id)
+            .where(
+                Notification.school_id == school_id,
+                Notification.id == notification_id,
+                Notification.user_id == user_id,
+            )
             .values(is_read=True)
         )
         await self.db.flush()
 
-    async def mark_all_read(self, user_id: uuid.UUID) -> None:
+    async def mark_all_read(self, *, school_id: uuid.UUID, user_id: uuid.UUID) -> None:
         await self.db.execute(
             update(Notification)
-            .where(Notification.user_id == user_id, Notification.is_read == False)
+            .where(
+                Notification.school_id == school_id,
+                Notification.user_id == user_id,
+                Notification.is_read.is_(False),
+            )
             .values(is_read=True)
         )
         await self.db.flush()
 
-    async def unread_count(self, user_id: uuid.UUID) -> int:
+    async def unread_count(self, *, school_id: uuid.UUID, user_id: uuid.UUID) -> int:
         from sqlalchemy import func
         result = await self.db.execute(
             select(func.count()).where(
-                Notification.user_id == user_id, Notification.is_read == False
+                Notification.school_id == school_id,
+                Notification.user_id == user_id,
+                Notification.is_read.is_(False),
             )
         )
         return result.scalar() or 0

@@ -4,11 +4,18 @@ from __future__ import annotations
 import html
 from datetime import date
 
+from app.shared.pdf_renderer import render_pdf
 
 _STYLES = """
   @page { size: A4; margin: 16mm; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; color: #111; font-size: 11pt; line-height: 1.45; }
-  h1 { font-family: 'Times New Roman', Georgia, serif; font-size: 22pt; margin: 0 0 6px; letter-spacing: 0.02em; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    color: #111; font-size: 11pt; line-height: 1.45;
+  }
+  h1 {
+    font-family: 'Times New Roman', Georgia, serif;
+    font-size: 22pt; margin: 0 0 6px; letter-spacing: 0.02em;
+  }
   h2 { font-family: 'Times New Roman', Georgia, serif; font-size: 12pt; margin: 18px 0 4px; }
   .rule { border-top: 2px solid #111; margin: 6px 0 14px; }
   .rule-thin { border-top: 1px solid #888; margin: 4px 0 10px; }
@@ -38,6 +45,13 @@ def _list_html(items: list[str]) -> str:
     if not items:
         return "<ul><li>&nbsp;</li><li>&nbsp;</li><li>&nbsp;</li></ul>"
     return "<ul>" + "".join(f"<li>{html.escape(str(item))}</li>" for item in items) + "</ul>"
+
+
+def _field_html(label: str, value: str) -> str:
+    return (
+        f"<div class='field'><span class='label'>{html.escape(label)}:</span>"
+        f"<span class='value'>{html.escape(value)}</span></div>"
+    )
 
 
 def _segment_notes(segment: dict) -> str:
@@ -104,17 +118,20 @@ def render_lesson_plan_html(
         + "</style></head><body>"
         + "<h1>SCHOOL LESSON PLAN</h1><div class='rule'></div>"
         + "<div class='meta-grid'>"
-        + f"<div class='field'><span class='label'>Teacher:</span><span class='value'>{html.escape(teacher_name)}</span></div>"
-        + f"<div class='field'><span class='label'>Subject:</span><span class='value'>{html.escape(subject_name)}</span></div>"
-        + f"<div class='field'><span class='label'>Grade Level:</span><span class='value'>{html.escape(class_label)}</span></div>"
-        + f"<div class='field'><span class='label'>Date:</span><span class='value'>{html.escape(_fmt_date(scheduled_for))}</span></div>"
+        + _field_html("Teacher", teacher_name)
+        + _field_html("Subject", subject_name)
+        + _field_html("Grade Level", class_label)
+        + _field_html("Date", _fmt_date(scheduled_for))
         + "</div>"
         + "<h2>Lesson Overview:</h2><div class='rule-thin'></div>"
         + "<div class='overview'>"
-        + f"<div class='field'><span class='label'>Topic:</span><span class='value'>{html.escape(topic)}</span></div>"
-        + f"<div class='field'><span class='label'>Duration:</span><span class='value'>{html.escape(duration_label)}</span></div>"
+        + _field_html("Topic", topic)
+        + _field_html("Duration", duration_label)
         + "</div>"
-        + "<div class='field' style='display:block;margin-top:8px;'><span class='label'>Objectives:</span>"
+        + (
+            "<div class='field' style='display:block;margin-top:8px;'>"
+            "<span class='label'>Objectives:</span>"
+        )
         + _list_html(learning_objectives)
         + "</div>"
         + "<h2>Materials Needed:</h2><div class='rule-thin'></div>"
@@ -131,11 +148,6 @@ def render_lesson_plan_html(
 
 
 def generate_lesson_plan_pdf(**kwargs) -> tuple[bytes, str]:
-    """Return (content, media_type). PDF if WeasyPrint is installed, else print-ready HTML."""
+    """Return real PDF content and its media type."""
     doc = render_lesson_plan_html(**kwargs)
-    try:
-        from weasyprint import HTML
-
-        return HTML(string=doc).write_pdf(), "application/pdf"
-    except (ImportError, OSError):
-        return doc.encode("utf-8"), "text/html"
+    return render_pdf(doc, document_type="lesson_plan"), "application/pdf"

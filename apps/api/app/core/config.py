@@ -6,8 +6,10 @@ Production validators crash on boot if misconfigured.
 from __future__ import annotations
 
 import enum
+import ipaddress
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -20,6 +22,51 @@ class Environment(str, enum.Enum):
     DEVELOPMENT = "development"
     TESTING = "testing"
     PRODUCTION = "production"
+
+
+def _unsafe_production_origin(origin: str) -> str | None:
+    """Return why a CORS origin is unsafe for production, or ``None`` when safe.
+
+    Browsers send a serialized origin (scheme + host + optional port), never a URL
+    path.  Validate that exact shape here so variants such as localhost subdomains,
+    IPv6 loopback, or wildcard hosts cannot bypass a short string deny-list.
+    """
+    candidate = origin.strip()
+    if candidate != origin:
+        return "origin must not include surrounding whitespace"
+    if not candidate or "*" in candidate:
+        return "wildcards and empty origins are not allowed"
+
+    try:
+        parsed = urlsplit(candidate)
+        port = parsed.port  # Force validation of malformed ports.
+    except ValueError:
+        return "origin is not a valid URL origin"
+
+    if parsed.scheme.lower() != "https":
+        return "production origins must use HTTPS"
+    if not parsed.hostname:
+        return "origin must include a hostname"
+    if parsed.username or parsed.password:
+        return "origin must not include credentials"
+    if parsed.path or parsed.query or parsed.fragment:
+        return "origin must not include a path, query, or fragment"
+
+    hostname = parsed.hostname.rstrip(".").lower()
+    if hostname == "localhost" or hostname.endswith(".localhost"):
+        return "localhost origins are not allowed"
+
+    try:
+        address = ipaddress.ip_address(hostname)
+    except ValueError:
+        address = None
+    if address is not None and (address.is_loopback or address.is_unspecified):
+        return "loopback and unspecified-address origins are not allowed"
+
+    # Referencing the parsed port above is intentional; non-default HTTPS ports are
+    # valid origins and remain supported for private production deployments.
+    _ = port
+    return None
 
 
 class Settings(BaseSettings):
@@ -319,9 +366,17 @@ class Settings(BaseSettings):
         if "change-me" in self.WEBHOOK_SECRET.lower():
             errors.append("WEBHOOK_SECRET must be changed")
 
-        unsafe_origins = {"*", "http://localhost:3000", "http://localhost:3001"}
-        if unsafe_origins & set(self.ALLOWED_ORIGINS):
-            errors.append("ALLOWED_ORIGINS must not contain localhost or wildcard")
+        unsafe_origin_reasons = [
+            f"{origin!r}: {reason}"
+            for origin in self.ALLOWED_ORIGINS
+            if (reason := _unsafe_production_origin(origin)) is not None
+        ]
+        if unsafe_origin_reasons:
+            errors.append(
+                "ALLOWED_ORIGINS contains unsafe production origins ("
+                + "; ".join(unsafe_origin_reasons)
+                + ")"
+            )
 
         if not self.COOKIE_SECURE:
             errors.append("COOKIE_SECURE must be True in production (HTTPS)")

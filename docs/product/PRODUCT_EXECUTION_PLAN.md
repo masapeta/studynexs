@@ -3,8 +3,34 @@
 > **Living document** — update this file when product execution batches are accepted or re-prioritized.
 > **Constitutional priority:** [`PRODUCT_EXECUTION_CONSTITUTION.md`](./PRODUCT_EXECUTION_CONSTITUTION.md)
 
-**Last updated:** 2026-07-23
-**Current governance state:** Batch 1, Batch 2, and Batch 3 are accepted and frozen; no implementation batch is currently authorized.
+**Last updated:** 2026-07-28
+**Current governance state:** Batch 1, Batch 2, and Batch 3 remain accepted and
+frozen. Production Safety is accepted and publication-authorized. No
+implementation gate is active; Operational Proof is planned and not authorized.
+
+---
+
+## 2026-07-28 stabilization execution override
+
+This current decision supersedes earlier statements that there is no active
+batch or that Teacher Evaluation UX-D is the next implementation target. It
+does not alter or delete the accepted release history below.
+
+Execution order:
+
+1. Governance-source reconciliation and correction of the July 2026 technical
+   audit.
+2. **Production Safety Batch** — completed, certified, and publication
+   authorized.
+3. **Operational Proof** — planned; not authorized.
+4. **AEI Activation/Trust** — planned; not authorized.
+5. **Topic-ID/mastery spine unification design** — planned design gate; not
+   authorized for implementation.
+6. **Teacher Evaluation UX-D** — deferred until supported capabilities execute
+   with runtime evidence; not authorized.
+
+Later gates do not inherit authorization from the completed Production Safety
+Batch. Each requires its own review and explicit ARM authorization.
 
 ---
 
@@ -29,14 +55,15 @@ Only one batch may have status **AUTHORIZED** at any time.
 
 | Field | Value |
 |---|---|
-| **Release** | None |
-| **Batch** | None |
-| **Title** | No current authorized batch |
-| **Status** | **NO ACTIVE BATCH** |
-| **Authorized by** | ARM approval required before Release 0.4 |
-| **Authorization date** | Not applicable |
-| **Previous batch** | Release 0.3 / Batch 3 — School Pilot Experience (**Frozen**) |
-| **Next batch** | Release 0.4 — Not Authorized |
+| **Release** | Stabilization program |
+| **Batch** | Gate 1 |
+| **Title** | Production Safety Batch |
+| **Status** | **COMPLETED / CERTIFIED / PUBLICATION AUTHORIZED** |
+| **Authorized by** | ARM |
+| **Authorization date** | 2026-07-28 |
+| **Implementation posture** | ARM accepted; commit, tag, and publication authorized |
+| **Previous published product-facing slice** | AEI v1.0 Teacher Evaluation UX-C (**Published / Certified**) |
+| **Next gate** | Operational Proof — Planned / Not Authorized |
 
 All other batches must be one of: Planned, Frozen, Deferred, or Completed.
 
@@ -44,11 +71,53 @@ All other batches must be one of: Planned, Frozen, Deferred, or Completed.
 
 ## Current phase
 
-**No active implementation batch**
+**Stabilization Gate 1 — Production Safety Batch (completed)**
 
 ### Status
 
-**Release 0.3 / Batch 3 — School Pilot Experience is Accepted / Frozen. Release 0.4 is not authorized.**
+**Accepted and certified. No implementation gate is currently active.**
+
+Certification evidence:
+[`PRODUCTION_SAFETY_BATCH_CERTIFICATION_REPORT.md`](./PRODUCTION_SAFETY_BATCH_CERTIFICATION_REPORT.md).
+Operational Proof remains planned and not authorized; no later-gate
+authorization is implied.
+
+### Objective
+
+Remove verified production-safety defects before further product-facing AEI
+work:
+
+- declare required runtime dependencies;
+- reject unsafe localhost CORS origins in production;
+- enforce tenant scope on notification reads;
+- correct teacher-scope pagination and totals;
+- preserve exact `Decimal` money handling;
+- make PDF behavior truthful and fail safely when PDF rendering is unavailable.
+
+### Required validation posture
+
+- focused build, lint, and tests for every changed surface;
+- adjacent regression coverage for authentication, tenancy, evaluation, fees,
+  pagination, and document output as applicable;
+- additive `/api/v1` compatibility;
+- no weakening of boot, security, tenant, or human-authority guardrails;
+- explicit evidence for every accepted audit finding closed by this batch.
+
+### Hard constraints
+
+- keep Release 0.1 through Release 0.3 and the certified AEI/EUI architecture
+  frozen except for verified production defects, security fixes, or critical
+  regressions;
+- do not start Operational Proof, AEI Activation/Trust, topic-ID/mastery
+  implementation, or UX-D under this authorization;
+- do not broaden product claims while capability flags remain unproven in the
+  authorized runtime environment.
+
+---
+
+## Historical accepted execution baseline
+
+**Release 0.3 / Batch 3 — School Pilot Experience remains Accepted / Frozen.**
 
 ### Objective completed
 
@@ -95,7 +164,7 @@ Batch 3 reused the existing platform foundation:
 - question-paper generation;
 - existing browser/API validation harness patterns.
 
-### Hard constraints
+### Historical freeze constraints
 
 Do **not** modify frozen releases except for:
 
@@ -103,7 +172,8 @@ Do **not** modify frozen releases except for:
 - security fixes;
 - critical regressions.
 
-Do **not** start Release 0.4 until ARM explicitly authorizes it.
+The former Release 0.4 sequence is superseded as the immediate execution target
+by the 2026-07-28 stabilization execution override above.
 
 ---
 

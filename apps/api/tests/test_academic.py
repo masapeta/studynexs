@@ -6,7 +6,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.academic import AcademicYear, Class
+from app.db.models.academic import AcademicYear, Class, Subject, TeacherSubjectMapping
 from app.db.models.user import User
 from tests.conftest import auth_headers, get_auth_token
 
@@ -20,7 +20,62 @@ async def test_list_classes(client: AsyncClient, admin_user: User):
 
 
 @pytest.mark.asyncio
-async def test_create_class(client: AsyncClient, admin_user: User, db_session: AsyncSession, test_school):
+async def test_teacher_class_scope_is_applied_before_pagination(
+    client: AsyncClient,
+    teacher_user: User,
+    test_school,
+    test_class: Class,
+    academic_year: AcademicYear,
+    db_session: AsyncSession,
+):
+    """A scoped class beyond the unfiltered first page must still be page one for its teacher."""
+    allowed_class = Class(
+        school_id=test_school.id,
+        grade="Grade 9",
+        section="A",
+        academic_year_id=academic_year.id,
+    )
+    db_session.add(allowed_class)
+    await db_session.flush()
+    subject = Subject(
+        school_id=test_school.id,
+        class_id=allowed_class.id,
+        name="Science",
+        code="SCI",
+    )
+    db_session.add(subject)
+    await db_session.flush()
+    db_session.add(
+        TeacherSubjectMapping(
+            school_id=test_school.id,
+            teacher_id=teacher_user.id,
+            subject_id=subject.id,
+            class_id=allowed_class.id,
+            is_primary=True,
+        )
+    )
+    await db_session.flush()
+
+    token = await get_auth_token(client, "test_teacher", "Teacher@123")
+    response = await client.get(
+        "/api/v1/academic/classes?page=1&page_size=1",
+        headers=auth_headers(token),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert [row["id"] for row in payload["items"]] == [str(allowed_class.id)]
+    assert payload["total"] == 1
+    assert payload["total_pages"] == 1
+
+
+@pytest.mark.asyncio
+async def test_create_class(
+    client: AsyncClient,
+    admin_user: User,
+    db_session: AsyncSession,
+    test_school,
+):
     # Need an academic year first
     ay = AcademicYear(
         school_id=test_school.id,

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import uuid
+from decimal import Decimal
 
 from sqlalchemy import Boolean, Index, Integer, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID
@@ -20,7 +21,9 @@ class AIUsage(BaseModel):
     model: Mapped[str] = mapped_column(String(100), nullable=False)
     tokens_in: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     tokens_out: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    cost_usd: Mapped[float] = mapped_column(Numeric(12, 6), default=0, nullable=False)
+    cost_usd: Mapped[Decimal] = mapped_column(
+        Numeric(12, 6), default=Decimal("0.000000"), nullable=False
+    )
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Credit metering — schools see credits, operators see cost_usd
     role: Mapped[str | None] = mapped_column(String(30))

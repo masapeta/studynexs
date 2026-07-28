@@ -41,7 +41,13 @@ Capability Evidence
 | **Product Execution Plan** | What is the team building now? | [`product/PRODUCT_EXECUTION_PLAN.md`](./product/PRODUCT_EXECUTION_PLAN.md) |
 | **Current Batch** | What must the active coding session execute? | [`product/CURRENT_BATCH.md`](./product/CURRENT_BATCH.md) |
 
-When a batch completes, update **only** the Product Execution Plan (plus capability evidence and Decision Log entries as required).
+The **Product Execution Plan** and **Current Batch** are the authoritative
+sources for active execution scope. `STATUS.md` is the project anchor and must
+reflect, but must not override, those operational documents.
+
+When a batch completes, update the Product Execution Plan and Current Batch,
+then update capability evidence, the Decision Log, and Master Status as
+required by the accepted release workflow.
 
 ---
 
@@ -58,6 +64,20 @@ When a batch completes, update **only** the Product Execution Plan (plus capabil
 
 ## Current execution target
 
-**Batch 1 — Curriculum Intelligence** is accepted and frozen as Release 0.1.
+**Release 0.1 through Release 0.3 remain accepted and frozen historical
+baselines.**
 
-**Current authorized target:** **Batch 2 — Academic Onboarding** · [`product/CURRENT_BATCH.md`](./product/CURRENT_BATCH.md)
+**Latest accepted gate:** **Stabilization Gate 1 — Production Safety Batch** ·
+[`product/CURRENT_BATCH.md`](./product/CURRENT_BATCH.md)
+
+ARM accepted the implementation and authorized publication. Certification is
+recorded in
+[`product/PRODUCTION_SAFETY_BATCH_CERTIFICATION_REPORT.md`](./product/PRODUCTION_SAFETY_BATCH_CERTIFICATION_REPORT.md).
+
+No implementation gate is active. Operational Proof is next in sequence and
+remains planned / not authorized.
+
+The ordered gates after Production Safety are Operational Proof, AEI
+Activation/Trust, topic-ID/mastery spine design, and then Teacher Evaluation
+UX-D. Those later gates are planning order only and are not implementation
+authorization.

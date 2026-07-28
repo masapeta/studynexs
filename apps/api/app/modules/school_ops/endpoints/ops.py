@@ -329,14 +329,15 @@ async def list_payroll(
 ):
     service = SchoolOpsService(db)
     rows = await service.list_payroll(uuid.UUID(current_user.school_id))
-    # Rows carry gross_amount as a float (wire contract). Accumulate in Decimal for exactness,
-    # then emit JSON numbers so the response shape is unchanged.
-    total = sum((Decimal(str(r["gross_amount"])) for r in rows), Decimal("0"))
+    # Service values remain Decimal through aggregation. Convert only the response copy to JSON
+    # numbers so the stable /api/v1 contract stays unchanged.
+    total = sum((r["gross_amount"] for r in rows), Decimal("0"))
     paid = sum(
-        (Decimal(str(r["gross_amount"])) for r in rows if r["status"] == "paid"), Decimal("0")
+        (r["gross_amount"] for r in rows if r["status"] == "paid"), Decimal("0")
     )
+    wire_rows = [{**row, "gross_amount": float(row["gross_amount"])} for row in rows]
     return APIResponse(
-        data={"entries": rows, "total_gross": float(total), "paid_gross": float(paid)}
+        data={"entries": wire_rows, "total_gross": float(total), "paid_gross": float(paid)}
     )
 
 
@@ -382,7 +383,8 @@ async def list_expenses(
     service = SchoolOpsService(db)
     rows = await service.list_expenses(uuid.UUID(current_user.school_id))
     month_total = await service.expenses_month_total(uuid.UUID(current_user.school_id))
-    return APIResponse(data={"expenses": rows, "month_total": month_total})
+    wire_rows = [{**row, "amount": float(row["amount"])} for row in rows]
+    return APIResponse(data={"expenses": wire_rows, "month_total": float(month_total)})
 
 
 @router.post("/expenses", response_model=APIResponse, status_code=201)

@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.concurrency import run_in_threadpool
 
 from app.core.api_route import CommitOnSuccessRoute
 from app.core.authorization import get_student_in_school
@@ -73,9 +74,6 @@ from app.modules.ai.services.question_bank_service import (
     count_compose_candidates,
     ingest_from_paper,
 )
-from app.modules.knowledge_graph.services.question_concept_link_service import (
-    QuestionConceptLinkService,
-)
 from app.modules.ai.services.question_paper_service import (
     duplicate_paper,
     generate_paper,
@@ -89,6 +87,9 @@ from app.modules.ai.services.usage_caps import enforce_monthly_ai_cap
 from app.modules.ai.services.usage_log import list_question_paper_usage_log
 from app.modules.ai.telemetry import ai_metrics, bind_ai_context
 from app.modules.curriculum.schemas.provenance import provenance_from_sources
+from app.modules.knowledge_graph.services.question_concept_link_service import (
+    QuestionConceptLinkService,
+)
 from app.shared.schemas.common import APIResponse
 
 settings = get_settings()
@@ -791,19 +792,18 @@ async def download_question_paper(
     current_user: CurrentUser = Depends(require_roles(*_TEACH_ROLES)),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    """Render the paper for printing (PDF if WeasyPrint present, else print-ready HTML).
-    `answers=true` returns the teacher-only answer-key version."""
+    """Render a paper PDF; ``answers=true`` returns the teacher-only answer key."""
     scope = await get_staff_scope(db, current_user)
     paper = await _get_owned_paper(db, current_user.school_id, paper_id)
     assert_qp_download(scope, paper)
     school = (
         await db.execute(select(School).where(School.id == paper.school_id))
     ).scalar_one_or_none()
-    content, media_type = generate_paper_pdf(
+    content, media_type = await run_in_threadpool(
+        generate_paper_pdf,
         paper, school_name=(school.name if school else None), include_answers=answers
     )
-    ext = "pdf" if media_type == "application/pdf" else "html"
-    filename = f"{paper.subject_name}_{paper.grade}_paper.{ext}".replace(" ", "_")
+    filename = f"{paper.subject_name}_{paper.grade}_paper.pdf".replace(" ", "_")
     return Response(
         content=content,
         media_type=media_type,
@@ -980,7 +980,7 @@ async def download_report_card(
     current_user: CurrentUser = Depends(require_roles(*_TEACH_ROLES)),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    """Render the report card for printing (PDF if WeasyPrint present, else print-ready HTML)."""
+    """Render a server-generated report-card PDF."""
     scope = await get_staff_scope(db, current_user)
     report = await _get_owned_report(db, current_user.school_id, report_id)
     if not scope.can_access_report_card(report):
@@ -988,9 +988,12 @@ async def download_report_card(
     school = (
         await db.execute(select(School).where(School.id == report.school_id))
     ).scalar_one_or_none()
-    content, media_type = generate_report_pdf(report, school_name=(school.name if school else None))
-    ext = "pdf" if media_type == "application/pdf" else "html"
-    filename = f"{report.student_name}_report.{ext}".replace(" ", "_")
+    content, media_type = await run_in_threadpool(
+        generate_report_pdf,
+        report,
+        school_name=(school.name if school else None),
+    )
+    filename = f"{report.student_name}_report.pdf".replace(" ", "_")
     return Response(
         content=content,
         media_type=media_type,

@@ -22,7 +22,11 @@ async def list_notifications(
     db: AsyncSession = Depends(get_db),
 ):
     service = NotificationService(db)
-    notifs = await service.list_user_notifications(uuid.UUID(current_user.id), unread_only)
+    notifs = await service.list_user_notifications(
+        school_id=uuid.UUID(current_user.school_id),
+        user_id=uuid.UUID(current_user.id),
+        unread_only=unread_only,
+    )
     return APIResponse(data=[NotificationOut.model_validate(n) for n in notifs])
 
 
@@ -32,7 +36,10 @@ async def unread_count(
     db: AsyncSession = Depends(get_db),
 ):
     service = NotificationService(db)
-    count = await service.unread_count(uuid.UUID(current_user.id))
+    count = await service.unread_count(
+        school_id=uuid.UUID(current_user.school_id),
+        user_id=uuid.UUID(current_user.id),
+    )
     return APIResponse(data={"unread_count": count})
 
 
@@ -43,7 +50,11 @@ async def mark_read(
     db: AsyncSession = Depends(get_db),
 ):
     service = NotificationService(db)
-    await service.mark_read(notification_id, uuid.UUID(current_user.id))
+    await service.mark_read(
+        school_id=uuid.UUID(current_user.school_id),
+        notification_id=notification_id,
+        user_id=uuid.UUID(current_user.id),
+    )
     return APIResponse(message="Marked as read")
 
 
@@ -53,5 +64,8 @@ async def mark_all_read(
     db: AsyncSession = Depends(get_db),
 ):
     service = NotificationService(db)
-    await service.mark_all_read(uuid.UUID(current_user.id))
+    await service.mark_all_read(
+        school_id=uuid.UUID(current_user.school_id),
+        user_id=uuid.UUID(current_user.id),
+    )
     return APIResponse(message="All notifications marked as read")

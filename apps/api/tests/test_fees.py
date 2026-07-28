@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 
 import pytest
 from httpx import AsyncClient
@@ -56,6 +57,16 @@ async def test_pay_fee_flow(
     )
     fee_record = res.scalar_one()
     assert fee_record.status == "paid"
+    assert fee_record.paid_amount == Decimal("5000.00")
+    assert isinstance(fee_record.paid_amount, Decimal)
+
+    # Internal fee values are Decimal, while /api/v1 preserves its established JSON numbers.
+    stats_resp = await client.get("/api/v1/fees/stats", headers=headers)
+    assert stats_resp.status_code == 200
+    stats = stats_resp.json()["data"]
+    assert isinstance(stats["total_collected"], (int, float))
+    assert isinstance(stats["pending_amount"], (int, float))
+    assert isinstance(stats["this_month"], (int, float))
 
 
 async def _make_fee_record(db_session, admin_user, student_user, fee_setup) -> StudentFeeRecord:

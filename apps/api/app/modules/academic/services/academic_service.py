@@ -1,9 +1,9 @@
 """Academic service — classes, subjects, enrollment, parent linking."""
 from __future__ import annotations
 
-import math
 import re
 import uuid
+from decimal import Decimal
 
 from fastapi import HTTPException
 from sqlalchemy import case, func, or_, select
@@ -36,9 +36,16 @@ class AcademicService:
     # ── Classes ──────────────────────────────────────────────────
 
     async def list_classes(
-        self, school_id: uuid.UUID, page: int = 1, page_size: int = 50
+        self,
+        school_id: uuid.UUID,
+        page: int = 1,
+        page_size: int = 50,
+        *,
+        allowed_class_ids: set[uuid.UUID] | None = None,
     ) -> tuple[list[Class], int]:
         query = select(Class).where(Class.school_id == school_id)
+        if allowed_class_ids is not None:
+            query = query.where(Class.id.in_(allowed_class_ids))
         total = (await self.db.execute(
             select(func.count()).select_from(query.subquery())
         )).scalar() or 0
@@ -360,7 +367,10 @@ class AcademicService:
 
         # Get or create parent record
         result = await self.db.execute(
-            select(Parent).where(Parent.user_id == data.parent_user_id, Parent.school_id == school_id)
+            select(Parent).where(
+                Parent.user_id == data.parent_user_id,
+                Parent.school_id == school_id,
+            )
         )
         parent = result.scalar_one_or_none()
 
@@ -461,9 +471,13 @@ class AcademicService:
                 )
             )
         ).first()
-        total_fee = float(fee_row[0] or 0)
-        paid = float(fee_row[1] or 0)
-        fees = {"total": total_fee, "paid": paid, "pending": round(total_fee - paid, 2)}
+        total_fee = (
+            fee_row[0] if isinstance(fee_row[0], Decimal) else Decimal(str(fee_row[0] or 0))
+        )
+        paid = fee_row[1] if isinstance(fee_row[1], Decimal) else Decimal(str(fee_row[1] or 0))
+        pending = max(Decimal("0.00"), total_fee - paid).quantize(Decimal("0.01"))
+        # Preserve the existing JSON-number response while keeping fee arithmetic exact.
+        fees = {"total": float(total_fee), "paid": float(paid), "pending": float(pending)}
 
         st = (
             await self.db.execute(
@@ -529,7 +543,9 @@ class AcademicService:
 
     # ── Teacher Mappings ─────────────────────────────────────────
 
-    async def map_teacher(self, school_id: uuid.UUID, data: TeacherMappingCreate) -> TeacherSubjectMapping:
+    async def map_teacher(
+        self, school_id: uuid.UUID, data: TeacherMappingCreate
+    ) -> TeacherSubjectMapping:
         await TenantScope(self.db, school_id).teacher_mapping_refs(
             data.teacher_id, data.subject_id, data.class_id
         )

@@ -4,6 +4,7 @@ from __future__ import annotations
 import enum
 import uuid
 from datetime import date, datetime, time
+from decimal import Decimal
 
 from sqlalchemy import (
     Boolean,
@@ -86,7 +87,7 @@ class LibraryIssue(BaseModel):
     )
     due_date: Mapped[date | None] = mapped_column(Date)
     returned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    fine_amount: Mapped[float] = mapped_column(Numeric(8, 2), default=0)
+    fine_amount: Mapped[Decimal] = mapped_column(Numeric(8, 2), default=Decimal("0.00"))
     status: Mapped[LibraryIssueStatus] = mapped_column(
         Enum(LibraryIssueStatus), default=LibraryIssueStatus.ISSUED
     )
@@ -180,7 +181,7 @@ class StaffPayrollEntry(BaseModel):
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
     )
     period_month: Mapped[date] = mapped_column(Date, nullable=False)
-    gross_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    gross_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     status: Mapped[PayrollStatus] = mapped_column(
         Enum(PayrollStatus, values_callable=lambda obj: [e.value for e in obj]),
         default=PayrollStatus.PENDING,
@@ -232,7 +233,7 @@ class SchoolExpense(BaseModel):
     )
     vendor: Mapped[str] = mapped_column(String(200), nullable=False)
     category: Mapped[str] = mapped_column(String(60), nullable=False)
-    amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     expense_date: Mapped[date] = mapped_column(Date, nullable=False)
     receipt_file_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("uploaded_files.id"), nullable=True

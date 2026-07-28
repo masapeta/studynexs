@@ -1,11 +1,19 @@
-FROM python:3.11-alpine AS builder
+FROM python:3.11-alpine3.22 AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-RUN apk add --no-cache build-base postgresql-dev
+RUN apk add --no-cache \
+    build-base \
+    postgresql-dev \
+    so:libfontconfig.so.1 \
+    so:libgobject-2.0.so.0 \
+    so:libharfbuzz.so.0 \
+    so:libharfbuzz-subset.so.0 \
+    so:libpango-1.0.so.0 \
+    so:libpangoft2-1.0.so.0
 
 # Explicit whitelist — .dockerignore is defense-in-depth, not the only barrier
 COPY pyproject.toml alembic.ini ./
@@ -20,15 +28,26 @@ RUN python -m venv /opt/venv && \
     /opt/venv/bin/pip install --no-cache-dir -e ".[ai,observability,rag]" && \
     /opt/venv/bin/python -m pip install --no-cache-dir --upgrade wheel jaraco.context
 
-FROM python:3.11-alpine
+FROM python:3.11-alpine3.22
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PATH="/opt/venv/bin:$PATH"
+    PATH="/opt/venv/bin:$PATH" \
+    XDG_CACHE_HOME="/app/.cache"
 
 WORKDIR /app
 
-RUN apk add --no-cache libpq && \
+RUN apk add --no-cache \
+    font-noto \
+    font-noto-devanagari \
+    font-noto-telugu \
+    libpq \
+    so:libfontconfig.so.1 \
+    so:libgobject-2.0.so.0 \
+    so:libharfbuzz.so.0 \
+    so:libharfbuzz-subset.so.0 \
+    so:libpango-1.0.so.0 \
+    so:libpangoft2-1.0.so.0 && \
     python -m pip install --no-cache-dir --upgrade pip setuptools wheel jaraco.context && \
     adduser -D -H -s /sbin/nologin appuser
 
@@ -40,7 +59,7 @@ COPY app ./app
 COPY alembic ./alembic
 
 # Local-disk upload storage must be writable by the runtime user
-RUN mkdir -p /app/uploads && chown -R appuser:appuser /app
+RUN mkdir -p /app/.cache /app/uploads && chown -R appuser:appuser /app
 
 USER appuser
 

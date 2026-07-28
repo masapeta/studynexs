@@ -22,6 +22,7 @@ dependencies = [
     # ── Auth & Security ──
     "PyJWT>=2.9.0",
     "bcrypt>=4.0.0",
+    "cryptography>=42.0.0",
     # ── Redis ──
     "redis[hiredis]>=5.0.0",
     # ── HTTP Client ──
@@ -36,6 +37,8 @@ dependencies = [
     "pypdf>=5.0.0",
     "pillow>=10.0.0",
     "pytesseract>=0.3.10",
+    # ── Server-side PDF rendering ──
+    "weasyprint>=69.0,<70.0",
 ]
 
 [project.optional-dependencies]

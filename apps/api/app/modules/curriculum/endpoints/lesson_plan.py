@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.concurrency import run_in_threadpool
 
 from app.core.api_route import CommitOnSuccessRoute
 from app.core.database import get_db
@@ -17,6 +18,10 @@ from app.core.staff_permissions import get_staff_scope
 from app.db.models.academic import Class, Subject
 from app.db.models.lesson_plan import LessonPlan, LessonPlanStatus
 from app.db.models.user import User
+from app.modules.ai.gateway.errors import raise_http_for_llm_error
+from app.modules.ai.services.teacher_copilot_service import TeacherCopilotService
+from app.modules.ai.services.usage_caps import enforce_monthly_ai_cap
+from app.modules.ai.telemetry import bind_ai_context
 from app.modules.curriculum.schemas.lesson_plan import (
     GenerateLessonPlanRequest,
     LessonPlanOut,
@@ -24,12 +29,8 @@ from app.modules.curriculum.schemas.lesson_plan import (
     UpdateLessonPlanRequest,
 )
 from app.modules.curriculum.schemas.provenance import provenance_from_sources
-from app.modules.curriculum.services.lesson_plan_service import LessonPlanService
 from app.modules.curriculum.services.lesson_plan_pdf import generate_lesson_plan_pdf
-from app.modules.ai.services.teacher_copilot_service import TeacherCopilotService
-from app.modules.ai.services.usage_caps import enforce_monthly_ai_cap
-from app.modules.ai.telemetry import bind_ai_context
-from app.modules.ai.gateway.errors import raise_http_for_llm_error
+from app.modules.curriculum.services.lesson_plan_service import LessonPlanService
 from app.shared.schemas.common import APIResponse
 
 router = APIRouter(route_class=CommitOnSuccessRoute)
@@ -282,7 +283,7 @@ async def download_lesson_plan_pdf(
     current_user: CurrentUser = Depends(require_roles(*_TEACH)),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    """Render the lesson plan for printing (PDF if WeasyPrint present, else print-ready HTML)."""
+    """Render a server-generated lesson-plan PDF."""
     scope = await get_staff_scope(db, current_user)
     svc = LessonPlanService(db)
     plan = await _get_plan(db, current_user.school_id, plan_id)
@@ -291,7 +292,8 @@ async def download_lesson_plan_pdf(
     school_id = uuid.UUID(current_user.school_id)
     ctx = await _plan_context(db, school_id, plan)
     topic = plan.topic or plan.title
-    content, media_type = generate_lesson_plan_pdf(
+    content, media_type = await run_in_threadpool(
+        generate_lesson_plan_pdf,
         teacher_name=str(ctx["teacher_name"] or "—"),
         subject_name=str(ctx["subject_name"] or "—"),
         class_label=str(ctx["class_label"] or "—"),
@@ -303,9 +305,8 @@ async def download_lesson_plan_pdf(
         segments=list(plan.segments or []),
         notes=plan.notes,
     )
-    ext = "pdf" if media_type == "application/pdf" else "html"
     safe_topic = (topic or "lesson_plan").replace(" ", "_")[:40]
-    filename = f"lesson_plan_{safe_topic}.{ext}"
+    filename = f"lesson_plan_{safe_topic}.pdf"
     return Response(
         content=content,
         media_type=media_type,

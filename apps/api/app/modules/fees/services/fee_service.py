@@ -22,6 +22,27 @@ from app.db.models.school import School
 from app.db.models.student import Student
 from app.db.models.user import User
 
+_ZERO_MONEY = Decimal("0.00")
+
+
+def _money_decimal(value: Decimal | int | float | str | None) -> Decimal:
+    """Return an exact value for internal monetary arithmetic.
+
+    Database ``Numeric`` values and validated payment inputs are already ``Decimal``.  The
+    fallback conversion exists only for legacy/test callers and converts through text so a
+    binary float never participates in arithmetic.
+    """
+    if value is None:
+        return _ZERO_MONEY
+    if isinstance(value, Decimal):
+        return value
+    return Decimal(str(value))
+
+
+def _money_json_number(value: Decimal) -> float:
+    """Preserve the established /api/v1 JSON-number contract at the response boundary."""
+    return float(value)
+
 
 def _default_receipt_prefix(school: School) -> str:
     """Receipt prefix used when a school's counter wasn't provisioned at onboarding."""
@@ -62,7 +83,7 @@ class FeeService:
         (sequential retries return the existing receipt; truly-concurrent dups hit the partial
         unique index and surface as a 409).
         """
-        pay_amount = Decimal(str(amount))
+        pay_amount = _money_decimal(amount)
         for field, value in (
             ("transaction_id", transaction_id),
             ("idempotency_key", idempotency_key),
@@ -80,7 +101,7 @@ class FeeService:
                     # Idempotent replay only when the key is reused for the SAME amount. A key
                     # reused with a different amount is a client error — returning the earlier
                     # (unrelated) receipt would silently mis-record the new payment.
-                    if Decimal(str(existing_receipt.amount_paid)) != pay_amount:
+                    if _money_decimal(existing_receipt.amount_paid) != pay_amount:
                         raise ValueError(
                             f"{field} was already used for a payment of a different amount"
                         )
@@ -101,8 +122,8 @@ class FeeService:
         if fee_record.status == FeeStatus.PAID:
             raise ValueError("Fee already paid")
 
-        total_due = Decimal(str(fee_record.amount))
-        already_paid = Decimal(str(fee_record.paid_amount or 0))
+        total_due = _money_decimal(fee_record.amount)
+        already_paid = _money_decimal(fee_record.paid_amount)
         remaining = total_due - already_paid
 
         if pay_amount > remaining:
@@ -212,13 +233,13 @@ class FeeService:
         total_collected_query = select(func.sum(FeeReceipt.amount_paid)).where(
             FeeReceipt.school_id == school_id
         )
-        total_collected = await self.db.scalar(total_collected_query) or 0.0
+        total_collected = _money_decimal(await self.db.scalar(total_collected_query))
 
         # Pending Fees
         pending_fees_query = select(
             func.sum(StudentFeeRecord.amount - StudentFeeRecord.paid_amount)
         ).where(StudentFeeRecord.school_id == school_id, StudentFeeRecord.status != FeeStatus.PAID)
-        pending_amount = await self.db.scalar(pending_fees_query) or 0.0
+        pending_amount = _money_decimal(await self.db.scalar(pending_fees_query))
 
         pending_families_query = select(
             func.count(func.distinct(StudentFeeRecord.student_id))
@@ -233,13 +254,13 @@ class FeeService:
         this_month_query = select(func.sum(FeeReceipt.amount_paid)).where(
             FeeReceipt.school_id == school_id, FeeReceipt.paid_at >= current_month_start
         )
-        this_month = await self.db.scalar(this_month_query) or 0.0
+        this_month = _money_decimal(await self.db.scalar(this_month_query))
 
         return {
-            "total_collected": float(total_collected),
-            "pending_amount": float(pending_amount),
+            "total_collected": _money_json_number(total_collected),
+            "pending_amount": _money_json_number(pending_amount),
             "pending_families": pending_families,
-            "this_month": float(this_month),
+            "this_month": _money_json_number(this_month),
         }
 
     async def get_recent_payments(self, school_id: uuid.UUID, limit: int = 10) -> list[FeeReceipt]:
@@ -321,8 +342,8 @@ class FeeService:
         total_due_all = Decimal("0")
         total_paid_all = Decimal("0")
         for sid, name, grade, section, total_due, total_paid in rows:
-            due = Decimal(str(total_due or 0))
-            paid = Decimal(str(total_paid or 0))
+            due = _money_decimal(total_due)
+            paid = _money_decimal(total_paid)
             total_due_all += due
             total_paid_all += paid
             # paid (nothing owed or fully covered) → overdue → partially paid → pending.
@@ -342,8 +363,8 @@ class FeeService:
                     "student_id": str(sid),
                     "name": name,
                     "class_label": f"{grade} {section}".strip(),
-                    "total_due": float(due),
-                    "paid_amount": float(paid),
+                    "total_due": _money_json_number(due),
+                    "paid_amount": _money_json_number(paid),
                     "status": status,
                     "fee_record_id": str(record_id) if record_id else None,
                 }
@@ -351,7 +372,7 @@ class FeeService:
 
         return {
             "students": students_out,
-            "total_due": float(total_due_all),
-            "total_collected": float(total_paid_all),
+            "total_due": _money_json_number(total_due_all),
+            "total_collected": _money_json_number(total_paid_all),
             "term_label": "Term 1",
         }
