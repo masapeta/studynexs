@@ -77,6 +77,7 @@ canonical roadmap names are:
 | AEI v1.0 Teacher Evaluation UX-A - Trust metadata display | Complete / certified / published |
 | AEI v1.0 Teacher Evaluation UX-B - Override reason workflow | Complete / certified / published |
 | AEI v1.0 Teacher Evaluation UX-C - Evidence and approved-decision panel | Complete / certified / published |
+| Stabilization Gate 1 - Production Safety | Complete / certified / published |
 | EUI v1 architecture | Frozen / accepted |
 | EUI Runtime Roadmap v1 | Accepted planning baseline |
 | Phase 0 - Engineering Preparation | Complete / certified / published |
@@ -315,31 +316,37 @@ UX-C certification caveat:
 
 ## Current engineering gate
 
-The latest completed artifact is:
+The latest completed published gate is:
 
 ```text
-AEI v1.0 Teacher Evaluation UX-C - Evidence and approved-decision panel
+Stabilization Gate 1 - Production Safety
 ```
 
-AEI v1.0 Teacher Evaluation UX-C is published and certified as the third
-post-certification, product-facing teacher evaluation experience slice.
+Publication baseline:
 
-UX-C makes evidence posture and approved teacher decisions clearer on the
-existing teacher evaluation review page. It reads existing evidence metadata
-only and does not change marks calculation, approval authority, teacher-review
-routing, backend behavior, schema, API, evidence-ledger generation,
-feature-flag enablement, source-of-truth posture, or parent/student visibility.
+- commit `248ea659c096a04f198a41fd81156efcf145919c`;
+- annotated tag `production-safety-gate1-certified`;
+- certification
+  [`product/PRODUCTION_SAFETY_BATCH_CERTIFICATION_REPORT.md`](./product/PRODUCTION_SAFETY_BATCH_CERTIFICATION_REPORT.md).
 
-Next gated milestone:
+Production Safety closes the validated direct-dependency, production CORS,
+notification tenancy, teacher pagination, Decimal arithmetic, and truthful PDF
+defects. It does not activate AEI, migrate an EUI source of truth, change a
+teacher/student/parent workflow, or authorize the next gate.
 
-```text
-AEI v1.0 Teacher Evaluation UX-D - Supported-scope assist panels
-```
+No implementation gate is currently active. The next planned gate is
+Operational Proof and remains not authorized.
 
-No further post-certification AEI product-facing implementation, feature-flag
-enablement, UI work beyond published UX-C, public capability claim expansion,
-or product launch-readiness work is authorized until ARM explicitly issues the
-next implementation authorization.
+Ordered gates after Production Safety:
+
+1. Operational Proof — planned, not authorized.
+2. AEI Activation/Trust — planned, not authorized.
+3. Topic-ID/mastery spine unification — planned as a separate design gate,
+   not authorized for implementation.
+4. Teacher Evaluation UX-D — deferred until supported capabilities execute
+   with runtime evidence; not authorized.
+
+Completion of Production Safety does not authorize any later gate.
 
 EUI Phase 7 remains closed at Phase 7E. Phase 7F source adoption is deferred
 future scope, not the next active implementation milestone.
@@ -388,8 +395,9 @@ remain out of scope:
   metadata foundation, and Batch E visual/science assist metadata foundation;
 - AEI v1.0 feature-flag enablement, source switching, or product-facing behavior
   changes without separate ARM authorization;
-- AEI v1.0 Teacher Evaluation UX-D or later UX batches without separate ARM
-  authorization;
+- AEI v1.0 Teacher Evaluation UX-D or later UX batches before the Production
+  Safety, Operational Proof, and AEI Activation/Trust gates provide the
+  required runtime evidence and ARM separately authorizes the UX work;
 - post-certification AEI expansion without separate ARM authorization;
 - AEI source-of-truth switching to EUI;
 - EUI contract changes outside accepted design;
@@ -427,11 +435,29 @@ product-facing display slice, UX-B is the teacher-authored override reason
 workflow slice, and UX-C is the teacher-facing evidence posture and approved
 decision panel slice. Further teacher-evaluation UX batches, feature-flag
 rollout, source switching, and public capability claim expansion require
-separate ARM authorization.
+separate ARM authorization. Production Safety is now published and certified;
+Operational Proof, AEI Activation/Trust, topic-ID/mastery spine design, and
+UX-D follow in that order without inherited authorization.
 
 ---
 
 ## Validation posture
+
+Latest published stabilization gate:
+
+```text
+Stabilization Gate 1 - Production Safety
+```
+
+Status: **Complete / certified / published**
+
+Commit: `248ea659c096a04f198a41fd81156efcf145919c`
+
+Annotated tag: `production-safety-gate1-certified`
+
+Evidence:
+
+[`product/PRODUCTION_SAFETY_BATCH_CERTIFICATION_REPORT.md`](./product/PRODUCTION_SAFETY_BATCH_CERTIFICATION_REPORT.md)
 
 Latest published runtime phase:
 
