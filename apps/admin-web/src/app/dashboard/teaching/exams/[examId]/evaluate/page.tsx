@@ -19,6 +19,60 @@ import {
 } from "@/lib/aei-evaluation-display";
 import { AI_INPUT, clampText, validateAnswerSheetFile } from "@/lib/ai-input-limits";
 
+type ApiDataResponse<T> = {
+  data: T;
+};
+
+type ApiCollectionResponse<T> = {
+  data?: T[];
+  items?: T[];
+};
+
+type UploadResponse = {
+  data: {
+    id: string;
+  };
+};
+
+type JobStatusResponse = {
+  data?: {
+    status?: string;
+    error?: string;
+  };
+};
+
+type ClassRow = {
+  id: string;
+};
+
+type ExamRow = {
+  id: string;
+  title?: string | null;
+  class_id?: string;
+  can_evaluate_sheets?: boolean | null;
+};
+
+type QuestionRow = {
+  no: string | number;
+  max_marks: string | number;
+};
+
+type StudentRow = {
+  id: string;
+  student_name?: string | null;
+  full_name?: string | null;
+  roll_no?: string | number | null;
+};
+
+type EvaluationRow = EvaluationEvidence & EvaluationWithOverrides & {
+  id: string;
+  student_id: string;
+  status?: string | null;
+  correction_summary?: string | null;
+  job_id?: string | null;
+  error_message?: string | null;
+};
+
 async function uploadAnswerSheet(file: File): Promise<string> {
   const form = new FormData();
   form.append("file", file);
@@ -33,20 +87,20 @@ async function uploadAnswerSheet(file: File): Promise<string> {
     credentials: "include",
   });
   if (!res.ok) throw new Error(await res.text());
-  const body = await res.json();
+  const body = (await res.json()) as UploadResponse;
   return body.data.id;
 }
 
-async function pollUntilSuggested(examId: string, evalId: string, jobId?: string) {
+async function pollUntilSuggested(examId: string, evalId: string, jobId?: string): Promise<EvaluationRow> {
   const maxAttempts = 60;
   for (let i = 0; i < maxAttempts; i++) {
     if (jobId) {
-      const job = await api(`/api/v1/jobs/${jobId}`).catch(() => null);
+      const job = await api<JobStatusResponse>(`/api/v1/jobs/${jobId}`).catch(() => null);
       if (job?.data?.status === "failed") {
         throw new Error(job.data.error || "Evaluation job failed");
       }
     }
-    const ev = await api(`/api/v1/exams/evaluations/${evalId}`);
+    const ev = await api<ApiDataResponse<EvaluationRow>>(`/api/v1/exams/evaluations/${evalId}`);
     const row = ev.data;
     if (row.status === "suggested" || row.status === "approved") return row;
     if (row.status === "failed") throw new Error(row.error_message || "Evaluation failed");
@@ -55,19 +109,27 @@ async function pollUntilSuggested(examId: string, evalId: string, jobId?: string
   throw new Error("Evaluation timed out — check again from recent evaluations");
 }
 
+function buildInitialAnswers(questions: QuestionRow[]): Record<string, string> {
+  const init: Record<string, string> = {};
+  questions.forEach((question) => {
+    init[String(question.no)] = "";
+  });
+  return init;
+}
+
 export default function EvaluateExamPage() {
   const params = useParams();
   const router = useRouter();
   const examId = params.examId as string;
 
-  const [exam, setExam] = useState<any>(null);
-  const [students, setStudents] = useState<any[]>([]);
-  const [questions, setQuestions] = useState<any[]>([]);
-  const [evaluations, setEvaluations] = useState<any[]>([]);
+  const [exam, setExam] = useState<ExamRow | null>(null);
+  const [students, setStudents] = useState<StudentRow[]>([]);
+  const [questions, setQuestions] = useState<QuestionRow[]>([]);
+  const [evaluations, setEvaluations] = useState<EvaluationRow[]>([]);
   const [selectedStudent, setSelectedStudent] = useState("");
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [sheetFile, setSheetFile] = useState<File | null>(null);
-  const [activeEval, setActiveEval] = useState<any>(null);
+  const [activeEval, setActiveEval] = useState<EvaluationRow | null>(null);
   const [overrides, setOverrides] = useState<Record<string, string>>({});
   const [overrideReasons, setOverrideReasons] = useState<Record<string, string>>({});
   const [manualReviewAcknowledgements, setManualReviewAcknowledgements] = useState<Record<string, boolean>>({});
@@ -78,39 +140,41 @@ export default function EvaluateExamPage() {
 
   useEffect(() => {
     if (!examId) return;
-    setLoading(true);
-    setError("");
 
-    api("/api/v1/academic/classes?page_size=100")
-      .then(async (classesRes) => {
-        const classes = classesRes.items || classesRes.data || [];
-        for (const c of classes) {
-          const exRes = await api(`/api/v1/exams?class_id=${c.id}`).catch(() => ({ data: [] }));
-          const found = (exRes.data || []).find((e: any) => e.id === examId);
-          if (!found) continue;
-          setExam({ ...found, class_id: c.id });
-          const [qRes, evRes, stuRes] = await Promise.all([
-            api(`/api/v1/exams/${examId}/questions`),
-            api(`/api/v1/exams/${examId}/evaluations`),
-            api(`/api/v1/academic/students?class_id=${c.id}&page_size=100`),
-          ]);
-          const qs = qRes.data || [];
-          setQuestions(qs);
-          setEvaluations(evRes.data || []);
-          setStudents(stuRes.items || stuRes.data || []);
-          const init: Record<string, string> = {};
-          qs.forEach((q: any) => { init[q.no] = ""; });
-          setAnswers(init);
-          break;
-        }
-      })
+    async function loadInitialExamData() {
+      setLoading(true);
+      setError("");
+      const classesRes = await api<ApiCollectionResponse<ClassRow>>("/api/v1/academic/classes?page_size=100");
+      const classes = classesRes.items || classesRes.data || [];
+
+      for (const c of classes) {
+        const exRes = await api<ApiCollectionResponse<ExamRow>>(`/api/v1/exams?class_id=${c.id}`)
+          .catch(() => ({ data: [] as ExamRow[] }));
+        const found = (exRes.data || []).find((e) => e.id === examId);
+        if (!found) continue;
+        setExam({ ...found, class_id: c.id });
+        const [qRes, evRes, stuRes] = await Promise.all([
+          api<ApiDataResponse<QuestionRow[]>>(`/api/v1/exams/${examId}/questions`),
+          api<ApiDataResponse<EvaluationRow[]>>(`/api/v1/exams/${examId}/evaluations`),
+          api<ApiCollectionResponse<StudentRow>>(`/api/v1/academic/students?class_id=${c.id}&page_size=100`),
+        ]);
+        const qs = qRes.data || [];
+        setQuestions(qs);
+        setEvaluations(evRes.data || []);
+        setStudents(stuRes.items || stuRes.data || []);
+        setAnswers(buildInitialAnswers(qs));
+        break;
+      }
+    }
+
+    loadInitialExamData()
       .catch((e) => setError(getApiErrorMessage(e, "Failed to load exam")))
       .finally(() => setLoading(false));
   }, [examId]);
 
   useEffect(() => {
     if (loading || evaluations.length === 0 || activeEval) return;
-    const pending = evaluations.find((e: { status?: string }) => e.status === "suggested");
+    const pending = evaluations.find((e) => e.status === "suggested");
     if (pending) loadEval(pending);
   }, [loading, evaluations, activeEval]);
 
@@ -137,7 +201,7 @@ export default function EvaluateExamPage() {
         }
         fileId = await uploadAnswerSheet(sheetFile);
       }
-      const res = await api(`/api/v1/exams/${examId}/evaluations`, {
+      const res = await api<ApiDataResponse<EvaluationRow>>(`/api/v1/exams/${examId}/evaluations`, {
         method: "POST",
         body: JSON.stringify({
           student_id: selectedStudent,
@@ -147,10 +211,10 @@ export default function EvaluateExamPage() {
       });
       let row = res.data;
       if (row.status === "processing") {
-        row = await pollUntilSuggested(examId, row.id, row.job_id);
+        row = await pollUntilSuggested(examId, row.id, row.job_id ?? undefined);
       }
       setActiveEval(row);
-      setEvaluations((evs) => [row, ...evs.filter((e: any) => e.id !== row.id)]);
+      setEvaluations((evs) => [row, ...evs.filter((e) => e.id !== row.id)]);
       setOverrides(buildOverrideMarks(row));
       setOverrideReasons(buildOverrideReasons(row));
       setManualReviewAcknowledgements(buildManualReviewAcknowledgements(row));
@@ -209,7 +273,7 @@ export default function EvaluateExamPage() {
 
     setApproving(true);
     try {
-      const res = await api(`/api/v1/exams/evaluations/${activeEval.id}/approve`, {
+      const res = await api<ApiDataResponse<EvaluationRow>>(`/api/v1/exams/evaluations/${activeEval.id}/approve`, {
         method: "POST",
         body: JSON.stringify({ teacher_overrides, manual_review_acknowledgements }),
       });
@@ -226,7 +290,7 @@ export default function EvaluateExamPage() {
     }
   }
 
-  function loadEval(ev: any) {
+  function loadEval(ev: EvaluationRow) {
     setActiveEval(ev);
     setSelectedStudent(ev.student_id);
     setOverrides(buildOverrideMarks(ev));
@@ -344,11 +408,11 @@ export default function EvaluateExamPage() {
                       <td>
                         <input
                           className="form-input"
-                          value={answers[q.no] ?? ""}
+                          value={answers[String(q.no)] ?? ""}
                           onChange={(e) =>
                             setAnswers({
                               ...answers,
-                              [q.no]: clampText(e.target.value, AI_INPUT.answerMaxLength),
+                              [String(q.no)]: clampText(e.target.value, AI_INPUT.answerMaxLength),
                             })
                           }
                           maxLength={AI_INPUT.answerMaxLength}
