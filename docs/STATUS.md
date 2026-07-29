@@ -14,7 +14,8 @@ supported-scope baseline, and published Assessment Intelligence v1.0 Batch A
 contract/capability foundation, Batch B blueprint readiness foundation, Batch C
 rubric/model-answer readiness foundation, Batch D question-bank/reuse readiness
 foundation, Batch E paper-to-evaluation linkage readiness foundation, and Batch
-F bilingual/multilingual assessment readiness foundation.
+F bilingual/multilingual assessment readiness foundation, and Batch G teacher
+workflow/browser proof foundation.
 
 The current engineering rhythm is:
 
@@ -93,6 +94,7 @@ canonical roadmap names are:
 | Assessment Intelligence v1.0 Batch D - Question bank and reuse readiness | Complete / certified / published |
 | Assessment Intelligence v1.0 Batch E - Paper-to-evaluation linkage readiness | Complete / certified / published |
 | Assessment Intelligence v1.0 Batch F - Bilingual / multilingual assessment readiness | Complete / certified / published |
+| Assessment Intelligence v1.0 Batch G - Teacher workflow / browser proof | Complete / certified / published |
 | Stabilization Gate 1 - Production Safety | Complete / certified / published |
 | Operational Proof | Complete / certified / published |
 | AEI Activation / Trust | Complete / certified / published |
@@ -240,6 +242,7 @@ or expanded public product claims.
 | Batch D - Question Bank and Reuse Readiness | Published / certified | `e837ad9de07fe2ee4dcb25052e1fb447d6d6af83` | `assessment-v1-batch-d-question-bank-reuse-readiness-certified` | Question-bank/reuse declaration contract, static supported-scope declarations, Golden Harness cases, focused static validation, and certification; no runtime behavior changes |
 | Batch E - Paper-to-Evaluation Linkage Readiness | Published / certified | `acbc897dd6db2f1375a367a10a7d6575102f4e8f` | `assessment-v1-batch-e-paper-to-evaluation-linkage-readiness-certified` | Paper-to-evaluation linkage declaration contract, static supported-scope declarations, Golden Harness cases, focused static validation, and certification; no runtime behavior changes |
 | Batch F - Bilingual / Multilingual Assessment Readiness | Published / certified | `75f8c15fced408a457e9ce0106adb83f666acd1c` | `assessment-v1-batch-f-bilingual-multilingual-readiness-certified` | Bilingual/multilingual assessment declaration contract, static language supported-scope declarations, Golden Harness cases, focused static validation, and certification; no runtime behavior changes |
+| Batch G - Teacher Workflow / Browser Proof | Published / certified | `42e7b80376989303a483b82db2b1020110d996a3` | `assessment-v1-batch-g-teacher-workflow-browser-proof-certified` | Browser proof harness and certification for the supported teacher assessment workflow, with tenant/API/console guards and no product behavior changes |
 
 Assessment Intelligence v1.0 Batch A establishes the product-completion
 foundation for assessment creation, question bank reuse, exam linkage, and
@@ -449,14 +452,43 @@ parent/student visibility changes, mastery updates, public bilingual/
 multilingual product claim expansion, or Batch G teacher workflow/browser
 proof.
 
-Next Assessment Intelligence gate:
+Assessment Intelligence v1.0 Batch G proves the supported teacher assessment
+workflow in a real browser without changing production behavior.
+
+Batch G adds:
+
+- Batch G Teacher Workflow / Browser Proof Design Brief;
+- Batch G Implementation Authorization Contract;
+- dedicated `e2e-assessment-v1` browser proof command;
+- Reference tenant supported-scope proof requirements;
+- console/API/tenant guard evidence;
+- Batch G Certification Report.
+
+Batch G certifies:
+
+- supported Reference tenant Grade 6 Science question paper prerequisite;
+- supported linked/evaluable exam prerequisite;
+- AI Papers route rendering and teacher-authority posture;
+- Exams route rendering and question-schema/marks posture;
+- Evaluation route opening with AEI/evaluation-assist path visible;
+- tenant header propagation on observed API calls;
+- no disallowed console/API failures;
+- no schema/API/UI/runtime/marks/routing/evidence-ledger behavior changes.
+
+Batch G does not authorize or implement schema changes, API changes, production
+UI changes, marks changes, teacher-review routing changes, evidence-ledger
+changes, AEI behavior changes, EUI source adoption, public product claim
+expansion, new question-paper generation behavior, or new evaluation behavior.
+
+Latest Assessment Intelligence published gate:
 
 ```text
 Assessment Intelligence v1.0 Batch G - Teacher Workflow / Browser Proof
 ```
 
-Status: **Not authorized**. Batch G requires a separate ARM design brief and
-implementation authorization contract before any implementation begins.
+Status: **Complete / certified / published**.
+
+No Assessment Intelligence implementation gate is currently active.
 
 ---
 
@@ -623,53 +655,49 @@ UX-E certification caveat:
 The latest completed published gate is:
 
 ```text
-Assessment Intelligence v1.0 Batch D - Question Bank and Reuse Readiness
+Assessment Intelligence v1.0 Batch G - Teacher Workflow / Browser Proof
 ```
 
 Publication baseline:
 
-- commit `e837ad9de07fe2ee4dcb25052e1fb447d6d6af83`;
-- annotated tag `assessment-v1-batch-d-question-bank-reuse-readiness-certified`.
+- commit `42e7b80376989303a483b82db2b1020110d996a3`;
+- annotated tag `assessment-v1-batch-g-teacher-workflow-browser-proof-certified`.
 
-Assessment Intelligence v1.0 Batch D adds the static question-bank/reuse
-readiness foundation for declared supported scope. It includes a
-question-bank/reuse declaration contract, static supported-scope declarations,
-deterministic Golden Harness cases, focused validation tests, and certification
-evidence.
+Assessment Intelligence v1.0 Batch G adds the browser proof foundation for the
+declared supported teacher assessment workflow. It includes a deterministic
+browser proof harness, supported-scope fixture requirements, console/API/tenant
+guards, and certification evidence.
 
-Batch D does not change runtime answer-sheet evaluation, question-paper
+Batch G does not change runtime answer-sheet evaluation, question-paper
 generation, question-bank behavior, paper approval behavior, exam services,
-schema, API, UI, AEI, EUI, feature flags, providers, prompts, marks, routing,
-evidence ledger, mastery, or product claims.
+schema, API, production UI, AEI, EUI, feature flags, providers, prompts, marks,
+routing, evidence ledger, mastery, or product claims.
 
 No implementation gate is currently active. Assessment Intelligence v1.0 Batch
-A, Batch B, Batch C, and Batch D are published and certified. The next
-recommended product-facing gate is Assessment Intelligence v1.0 Batch E -
-Paper-to-Evaluation Linkage Readiness, under a separate ARM design and
-implementation authorization.
+A through Batch G are published and certified. The next product-facing gate must
+be selected and authorized separately by ARM.
 
-Ordered candidate gates after Assessment Intelligence v1.0 Batch D:
+Ordered candidate gates after Assessment Intelligence v1.0 Batch G:
 
-1. Assessment Intelligence v1.0 Batch E - Paper-to-Evaluation Linkage
-   Readiness - certify the handoff from approved paper/question-bank/rubric
-   context into evaluation setup without changing marks or teacher authority;
-   not authorized.
-2. AEI Handwriting OCR Phase 2 live Track-A benchmark run authorization -
+1. AEI Handwriting OCR Phase 2 live Track-A benchmark run authorization -
    collect/use secured 50-100 teacher-verified real sheets and produce an
    aggregate candidate comparison report; not authorized.
-3. AEI Handwriting OCR Phase 3 optimization design - confidence-routed chain
+2. AEI Handwriting OCR Phase 3 optimization design - confidence-routed chain
    and Qwen/Surya/Gemini operational decision based on Phase 2 evidence; not
    authorized.
+3. Complete Curriculum Intelligence v1.0 readiness and implementation planning
+   so assessment, evaluation, tutor, and analytics share approved curriculum
+   truth; not authorized.
 4. Topic-ID / Mastery Spine Phase B additive schema readiness design - future
    learning-intelligence plumbing only if ARM chooses deeper spine persistence;
    not authorized.
 
-Completion of Assessment Intelligence v1.0 Batch D does not authorize runtime
-question-bank source switching, paper-to-evaluation linkage, answer-sheet
-evaluation behavior changes, question-paper generation behavior changes,
-question-bank runtime changes, exam service behavior changes, source switching,
-public product claim expansion, UI changes, API changes, schema changes, marks
-changes, routing changes, mastery changes, or evidence-ledger behavior changes.
+Completion of Assessment Intelligence v1.0 Batch G does not authorize runtime
+question-bank source switching, answer-sheet evaluation behavior changes,
+question-paper generation behavior changes, question-bank runtime changes, exam
+service behavior changes, source switching, public product claim expansion,
+production UI changes, API changes, schema changes, marks changes, routing
+changes, mastery changes, or evidence-ledger behavior changes.
 
 EUI Phase 7 remains closed at Phase 7E. Phase 7F source adoption is deferred
 future scope, not the next active implementation milestone.
@@ -725,11 +753,11 @@ remain out of scope:
 - AEI v1.0 feature-flag enablement, source switching, or product-facing behavior
   changes beyond the certified Activation / Trust proof without separate ARM
   authorization;
-- Assessment Intelligence v1.0 Batch E or later, including paper-to-evaluation
-  linkage, rubric/model-answer behavior, blueprint runtime behavior, question
-  paper generation behavior, question bank runtime behavior, exam service
-  behavior, API/UI/schema changes, marks/routing changes, or product claim expansion,
-  without separate ARM authorization;
+- Assessment Intelligence behavior beyond the published Batch A-G foundations,
+  including blueprint runtime behavior, question paper generation behavior,
+  question bank runtime behavior, exam service behavior, API/UI/schema changes,
+  marks/routing changes, evidence-ledger behavior changes, or product claim
+  expansion, without separate ARM authorization;
 - later AEI v1.0 Teacher Evaluation UX batches until ARM separately authorizes
   the UX work;
 - post-certification AEI expansion without separate ARM authorization;
@@ -778,6 +806,18 @@ Assessment Intelligence v1.0 Batch D is published and adds question-bank/reuse
 declaration posture, static supported-scope question-bank/reuse declarations,
 Golden Harness question-bank/reuse cases, and certification without runtime
 behavior changes.
+Assessment Intelligence v1.0 Batch E is published and adds paper-to-evaluation
+linkage declaration posture, static supported-scope linkage declarations,
+Golden Harness linkage cases, and certification without runtime behavior
+changes.
+Assessment Intelligence v1.0 Batch F is published and adds bilingual/
+multilingual assessment declaration posture, static supported-scope language
+declarations, Golden Harness bilingual/multilingual cases, and certification
+without runtime behavior changes.
+Assessment Intelligence v1.0 Batch G is published and adds the supported
+teacher workflow/browser proof harness, Reference tenant prerequisite evidence,
+tenant/API/console guard posture, and certification without product behavior
+changes.
 AEI v1.0 is certified for the declared supported scope, UX-A is the first
 product-facing display slice, UX-B is the teacher-authored override reason
 workflow slice, UX-C is the teacher-facing evidence posture and approved
@@ -799,9 +839,10 @@ Phase 2 is published and adds the repository-safe Track-A benchmark foundation
 without running live real-sheet benchmarks or changing production OCR routing.
 UX-E remains the assembled teacher-evaluation certification baseline and the
 lint cleanup remains the code-health gate that resolved the pre-existing page
-lint debt. The next recommended product-facing gate is Assessment Intelligence
-v1.0 Batch E - Paper-to-Evaluation Linkage Readiness, but it is not active until
-ARM authorizes it under a separate design and implementation contract.
+lint debt. Assessment Intelligence v1.0 Batch G is now the latest published
+Assessment gate. No Assessment Intelligence implementation gate is active until
+ARM authorizes the next product-facing milestone under a separate design and
+implementation contract.
 
 ---
 
@@ -810,45 +851,46 @@ ARM authorizes it under a separate design and implementation contract.
 Latest published Assessment Intelligence gate:
 
 ```text
-Assessment Intelligence v1.0 Batch D - Question Bank and Reuse Readiness
+Assessment Intelligence v1.0 Batch G - Teacher Workflow / Browser Proof
 ```
 
 Status: **Complete / certified / published**
 
-Commit: `e837ad9de07fe2ee4dcb25052e1fb447d6d6af83`
+Commit: `42e7b80376989303a483b82db2b1020110d996a3`
 
-Annotated tag: `assessment-v1-batch-d-question-bank-reuse-readiness-certified`
+Annotated tag: `assessment-v1-batch-g-teacher-workflow-browser-proof-certified`
 
 Evidence:
 
-[`product/assessment-intelligence/ASSESSMENT_INTELLIGENCE_V1_BATCH_D_QUESTION_BANK_REUSE_READINESS_CERTIFICATION_REPORT.md`](./product/assessment-intelligence/ASSESSMENT_INTELLIGENCE_V1_BATCH_D_QUESTION_BANK_REUSE_READINESS_CERTIFICATION_REPORT.md)
+[`product/assessment-intelligence/ASSESSMENT_INTELLIGENCE_V1_BATCH_G_TEACHER_WORKFLOW_BROWSER_PROOF_CERTIFICATION_REPORT.md`](./product/assessment-intelligence/ASSESSMENT_INTELLIGENCE_V1_BATCH_G_TEACHER_WORKFLOW_BROWSER_PROOF_CERTIFICATION_REPORT.md)
 
 Certified evidence:
 
-- Focused Assessment Intelligence v1.0 question-bank/reuse readiness tests:
-  PASS - 9 passed
-- Adjacent Assessment Intelligence static and AEI regression slice: PASS - 44
-  passed
-- Question bank regression tests: PASS - 7 passed
-- Question bank compose regression tests: PASS - 5 passed
-- Pure answer-sheet grading checks: PASS - 3 passed
-- Representative DB-backed answer-sheet evaluation case: PASS - 1 passed
-- Focused Ruff check: PASS
+- Browser proof command: PASS - 16 checks, 0 disallowed console/API errors
+- Reference tenant supported-scope question paper prerequisite: PASS
+- Reference tenant linked/evaluable exam prerequisite: PASS
+- AI Papers route rendering and teacher-authority posture: PASS
+- Exams route rendering and question-schema/marks posture: PASS
+- Evaluation route proof with AEI/evaluation-assist path visible: PASS
+- Tenant header guard: PASS - observed on 52 API calls
+- Browser console/API guard: PASS - allowed auth probes only, no disallowed
+  failures
+- Focused browser proof syntax check: PASS
+- Focused browser proof ESLint check: PASS
+- Admin-web production build: PASS
 - API import: PASS
+- Assessment A-F regression slice: PASS - 49 passed
+- AEI focused tests: PASS - 33 passed
 - `git diff --check`: PASS
-- No schema/API/UI/runtime behavior changes: PASS
-- Validation caveat: full `tests/test_answer_sheet_eval.py` was not practical
-  as one local command because it reaches the configured live LLM gateway; an
-  initial parallel DB-backed adjacent slice also hit a PostgreSQL enum/schema
-  creation collision. Targeted affected slices passed when rerun serially.
+- No schema/API/production UI/runtime behavior changes: PASS
 
 Next Assessment Intelligence gate:
 
 ```text
-Assessment Intelligence v1.0 Batch E - Paper-to-Evaluation Linkage Readiness
+Not selected
 ```
 
-Status: **Not authorized**
+Status: **Awaiting ARM selection / authorization**
 
 ---
 
