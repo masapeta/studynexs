@@ -44,6 +44,15 @@ export type AeiEvidenceRow = {
   value: string;
 };
 
+export type AeiAssistEvidencePanel = {
+  title: string;
+  posture: string;
+  boundaryCopy: string;
+  tone: AeiBadgeTone;
+  rows: AeiEvidenceRow[];
+  observations: AeiEvidenceRow[];
+};
+
 export type AeiEvaluationTrustSummary = {
   totalQuestions: number;
   questionsWithAeiMetadata: number;
@@ -190,6 +199,15 @@ export function buildAeiEvidenceRows(suggestion: AeiSuggestionLike): AeiEvidence
   return rows;
 }
 
+export function buildAeiAssistEvidencePanels(
+  suggestion: AeiSuggestionLike,
+): AeiAssistEvidencePanel[] {
+  return [
+    buildLanguageOcrAssistPanel(suggestion),
+    buildVisualScienceAssistPanel(suggestion),
+  ].filter((panel): panel is AeiAssistEvidencePanel => panel !== null);
+}
+
 export function hasAeiMetadata(suggestion: AeiSuggestionLike): boolean {
   return Boolean(
     suggestion.aei_v1 ||
@@ -201,6 +219,123 @@ export function hasAeiMetadata(suggestion: AeiSuggestionLike): boolean {
       suggestion.normalized_answer ||
       suggestion.matched_acceptable_answer,
   );
+}
+
+function buildLanguageOcrAssistPanel(
+  suggestion: AeiSuggestionLike,
+): AeiAssistEvidencePanel | null {
+  const assist = recordValue(suggestion.aei_v1_language_ocr_assist);
+  const rows: AeiEvidenceRow[] = [];
+  const observations: AeiEvidenceRow[] = [];
+  const answerSource = firstDisplayValue(suggestion.answer_input_source, assist?.answer_input_source);
+  const language = firstDisplayValue(suggestion.answer_language, assist?.detected_language);
+  const script = firstDisplayValue(suggestion.detected_script, assist?.detected_script);
+  const capability = firstDisplayValue(
+    suggestion.language_ocr_capability_mode,
+    assist?.capability_mode,
+  );
+  const languageConfidence = firstConfidenceValue(
+    suggestion.language_confidence,
+    assist?.language_confidence,
+  );
+  const ocrConfidence = firstConfidenceValue(suggestion.ocr_confidence, assist?.ocr_confidence);
+  const reviewReason = firstReviewReason(suggestion.manual_review_reason, assist?.review_reasons);
+
+  addEvidence(rows, "Source", answerSource);
+  addEvidence(rows, "Detected language", language);
+  addEvidence(rows, "Detected script", script);
+  if (suggestion.code_mixed === true || assist?.code_mixed === true) {
+    addEvidence(rows, "Code-mixed posture", "Code-mixed detected");
+  }
+  addEvidence(rows, "Language confidence", languageConfidence);
+  addEvidence(rows, "OCR confidence", ocrConfidence);
+  addEvidence(rows, "Capability posture", capability ? capabilityWording(capability) : "");
+  addEvidence(rows, "Review reason", reviewReason);
+  addEvidence(observations, "OCR confidence threshold", firstConfidenceValue(assist?.ocr_confidence_threshold));
+  if (assist?.ocr_confidence_missing === true) {
+    addEvidence(observations, "OCR confidence", "Unavailable - teacher confirmation required");
+  }
+  if (assist?.low_ocr_confidence === true) {
+    addEvidence(observations, "OCR confidence", "Below teacher-review threshold");
+  }
+  if (assist?.autonomous_language_grading === false) {
+    addEvidence(observations, "Language grading", "Not autonomous");
+  }
+
+  if (!assist && rows.length === 0 && observations.length === 0) return null;
+
+  return {
+    title: "Language/OCR assist",
+    posture: "Assistive evidence only - teacher confirmation required",
+    boundaryCopy: "OCR/language assist does not certify marks. Confirm the answer text before approving.",
+    tone: "warning",
+    rows,
+    observations,
+  };
+}
+
+function buildVisualScienceAssistPanel(
+  suggestion: AeiSuggestionLike,
+): AeiAssistEvidencePanel | null {
+  const assist = recordValue(suggestion.aei_v1_visual_science_assist);
+  const summary = recordValue(assist?.evidence_summary);
+  const rows: AeiEvidenceRow[] = [];
+  const observations: AeiEvidenceRow[] = [];
+  const capability = firstDisplayValue(
+    suggestion.visual_science_capability_mode,
+    assist?.capability_mode,
+  );
+  const reasoningType = firstDisplayValue(
+    suggestion.visual_science_reasoning_type,
+    assist?.reasoning_type,
+  );
+  const visualType = firstDisplayValue(suggestion.visual_type, assist?.visual_type);
+  const scientificType = firstDisplayValue(suggestion.scientific_type, assist?.scientific_type);
+  const reviewReason = firstReviewReason(suggestion.manual_review_reason, assist?.review_reasons);
+
+  addEvidence(rows, "Capability posture", capability ? capabilityWording(capability) : "");
+  addEvidence(rows, "Reasoning type", reasoningType);
+  addEvidence(rows, "Visual type", visualType);
+  addEvidence(rows, "Scientific type", scientificType);
+  if (suggestion.visual_science_review_required === true || assist?.manual_review_required === true) {
+    addEvidence(rows, "Teacher review", "Required");
+  }
+  if (suggestion.checklist_only === true || assist?.checklist_only === true) {
+    addEvidence(rows, "Checklist posture", "Checklist only - teacher confirmation required");
+  }
+  if (suggestion.assist_only === true || assist?.assist_only === true) {
+    addEvidence(rows, "Assist posture", "Assist only - teacher confirmation required");
+  }
+  addEvidence(rows, "Review reason", reviewReason);
+
+  addEvidence(observations, "Checklist expected", assist?.checklist_expected);
+  addEvidence(observations, "Checklist observed", assist?.checklist_observed);
+  addEvidence(observations, "Checklist present", summary?.checklist_present);
+  addEvidence(observations, "Checklist missing", summary?.checklist_missing);
+  addEvidence(observations, "Reasoning result", firstDisplayValue(assist?.reasoning_result, summary?.reasoning_result));
+  addEvidence(observations, "Chemical balance status", summary?.chemical_balance_status);
+  addEvidence(observations, "Chemical symbols", summary?.chemical_symbols);
+  addEvidence(observations, "Formula detected", summary?.formula_detected);
+  if (assist?.autonomous_marks_from_checklist === false) {
+    addEvidence(observations, "Marks from checklist", "Not autonomous");
+  }
+  if (assist?.autonomous_visual_grading === false) {
+    addEvidence(observations, "Visual grading", "Not autonomous");
+  }
+  if (assist?.autonomous_science_grading === false) {
+    addEvidence(observations, "Science grading", "Not autonomous");
+  }
+
+  if (!assist && rows.length === 0 && observations.length === 0) return null;
+
+  return {
+    title: "Visual/science assist",
+    posture: "Checklist/assist evidence only - teacher confirmation required",
+    boundaryCopy: "Checklist observations support your review. They do not automatically award marks.",
+    tone: "warning",
+    rows,
+    observations,
+  };
 }
 
 function suggestionValues(
@@ -216,6 +351,56 @@ function isSuggestionLike(value: unknown): value is AeiSuggestionLike {
 function addEvidence(rows: AeiEvidenceRow[], label: string, value: unknown) {
   const text = displayValue(value);
   if (text) rows.push({ label, value: text });
+}
+
+function recordValue(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function firstDisplayValue(...values: unknown[]): string {
+  for (const value of values) {
+    const text = displayValue(value);
+    if (text) return text;
+  }
+  return "";
+}
+
+function firstConfidenceValue(...values: unknown[]): string {
+  for (const value of values) {
+    const confidence = numberValue(value);
+    if (confidence !== null) return `${Math.round(confidence * 100)}%`;
+  }
+  return "";
+}
+
+function firstReviewReason(primary: unknown, fallback: unknown): string {
+  const direct = displayValue(primary);
+  if (direct) return direct;
+  if (Array.isArray(fallback)) return fallback.map(displayValue).filter(Boolean).join("; ");
+  return displayValue(fallback);
+}
+
+function capabilityWording(mode: string): string {
+  switch (normalizeMode(mode)) {
+    case "assist":
+      return "Assist only - teacher confirmation required";
+    case "checklist":
+      return "Checklist only - teacher confirmation required";
+    case "manual_review":
+      return "Teacher review required";
+    case "unsupported":
+      return "Not supported for automatic evaluation";
+    case "expansion":
+      return "Future scope";
+    case "supported":
+      return "Supported";
+    case "partial":
+      return "Partial support - teacher confirmation required";
+    default:
+      return mode;
+  }
 }
 
 function displayValue(value: unknown): string {

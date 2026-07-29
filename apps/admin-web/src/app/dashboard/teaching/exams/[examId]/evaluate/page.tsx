@@ -10,8 +10,10 @@ import { AppFileInput } from "@/components/ui/AppFileInput";
 import { TEACHING } from "@/lib/dashboard-routes";
 import {
   buildAeiEvaluationTrustSummary,
+  buildAeiAssistEvidencePanels,
   buildAeiEvidenceRows,
   buildAeiSuggestionTrustBadges,
+  type AeiAssistEvidencePanel,
   type AeiBadgeTone,
   type AeiSuggestionLike,
 } from "@/lib/aei-evaluation-display";
@@ -558,7 +560,8 @@ function AeiEvaluationTrustSummaryPanel({
 function AeiSuggestionTrustMetadata({ suggestion }: { suggestion: EvalSuggestion }) {
   const badges = buildAeiSuggestionTrustBadges(suggestion);
   const evidenceRows = buildAeiEvidenceRows(suggestion);
-  if (badges.length === 0 && evidenceRows.length === 0) return null;
+  const assistPanels = buildAeiAssistEvidencePanels(suggestion);
+  if (badges.length === 0 && evidenceRows.length === 0 && assistPanels.length === 0) return null;
 
   return (
     <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
@@ -575,6 +578,54 @@ function AeiSuggestionTrustMetadata({ suggestion }: { suggestion: EvalSuggestion
         <div style={{ display: "grid", gap: 3, color: "var(--text-muted)" }}>
           {evidenceRows.map((row) => (
             <div key={`${row.label}:${row.value}`}>
+              <strong style={{ color: "var(--text-primary)" }}>{row.label}:</strong> {row.value}
+            </div>
+          ))}
+        </div>
+      )}
+      {assistPanels.length > 0 && (
+        <div style={{ display: "grid", gap: 8 }}>
+          {assistPanels.map((panel) => (
+            <AeiAssistEvidencePanelView key={panel.title} panel={panel} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AeiAssistEvidencePanelView({ panel }: { panel: AeiAssistEvidencePanel }) {
+  return (
+    <div
+      style={{
+        display: "grid",
+        gap: 6,
+        padding: 10,
+        borderRadius: 10,
+        border: "1px solid rgba(245, 159, 0, 0.35)",
+        background: "rgba(245, 159, 0, 0.06)",
+        color: "var(--text-muted)",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+        <strong style={{ color: "var(--text-primary)" }}>{panel.title}</strong>
+        <span style={trustChipStyle(panel.tone)}>{panel.posture}</span>
+      </div>
+      <div>{panel.boundaryCopy}</div>
+      {panel.rows.length > 0 && (
+        <div style={{ display: "grid", gap: 3 }}>
+          {panel.rows.map((row) => (
+            <div key={`${panel.title}:row:${row.label}:${row.value}`}>
+              <strong style={{ color: "var(--text-primary)" }}>{row.label}:</strong> {row.value}
+            </div>
+          ))}
+        </div>
+      )}
+      {panel.observations.length > 0 && (
+        <div style={{ display: "grid", gap: 3 }}>
+          <strong style={{ color: "var(--text-primary)" }}>Checklist / assist observations</strong>
+          {panel.observations.map((row) => (
+            <div key={`${panel.title}:observation:${row.label}:${row.value}`}>
               <strong style={{ color: "var(--text-primary)" }}>{row.label}:</strong> {row.value}
             </div>
           ))}
