@@ -1,0 +1,392 @@
+{
+  "version": "assessment-intelligence-v1-batch-e-paper-to-evaluation-linkage-golden-v1",
+  "authorization": "ASSESSMENT-V1-BATCH-E-AUTH-001",
+  "description": "Assessment Intelligence v1.0 Batch E cases validating static paper-to-evaluation linkage posture only.",
+  "cases": [
+    {
+      "id": "linkage_approved_paper_schema_supported_001",
+      "linkage_declaration_id": "assessment-linkage://same-tenant/approved-paper-schema/v1",
+      "case_type": "approved_paper_schema",
+      "scope": {
+        "school_scope": "same_school",
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "grade": "6",
+        "subject": "Science"
+      },
+      "linkage": {
+        "linkage_posture": "approved_paper_schema",
+        "support_mode": "supported",
+        "source_paper_required": true,
+        "source_paper_status": "approved",
+        "question_schema_source": "approved_paper",
+        "question_schema_required": true,
+        "question_numbers_unique": true,
+        "max_marks_preserved": true,
+        "can_evaluate_sheets": false
+      },
+      "expected": {
+        "mode": "supported",
+        "product_claim_allowed": true,
+        "teacher_authority_required": true,
+        "teacher_review_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "input_authority": "input_capture_only",
+        "marks_source": "teacher_approved_decision",
+        "mastery_source": "approved_marks_and_evidence",
+        "autonomous_grading": false,
+        "autonomous_marks": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "linkage_source_paper_schema_ready_supported_001",
+      "linkage_declaration_id": "assessment-linkage://same-tenant/source-paper-schema-evaluation-ready/v1",
+      "case_type": "source_paper_schema_evaluation_ready",
+      "scope": {
+        "school_scope": "same_school",
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "grade": "10",
+        "subject": "Mathematics"
+      },
+      "linkage": {
+        "linkage_posture": "source_paper_schema_evaluation_ready",
+        "support_mode": "supported",
+        "source_paper_required": true,
+        "source_paper_status": "approved",
+        "question_schema_source": "approved_paper",
+        "question_schema_required": true,
+        "question_numbers_unique": true,
+        "max_marks_preserved": true,
+        "can_evaluate_sheets": true,
+        "aei_assist_allowed": true
+      },
+      "expected": {
+        "mode": "supported",
+        "product_claim_allowed": true,
+        "teacher_authority_required": true,
+        "teacher_review_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "input_authority": "input_capture_only",
+        "marks_source": "teacher_approved_decision",
+        "mastery_source": "approved_marks_and_evidence",
+        "autonomous_grading": false,
+        "autonomous_marks": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "linkage_rubric_context_supported_001",
+      "linkage_declaration_id": "assessment-linkage://same-tenant/linked-rubric-context/v1",
+      "case_type": "linked_rubric_context",
+      "scope": {
+        "school_scope": "same_school",
+        "answer_context_batch": "C"
+      },
+      "linkage": {
+        "linkage_posture": "linked_rubric_context",
+        "support_mode": "supported",
+        "source_paper_required": true,
+        "source_paper_status": "approved",
+        "question_schema_source": "approved_paper",
+        "question_schema_required": true,
+        "rubric_source": "linked_source_paper",
+        "rubric_available": true,
+        "can_evaluate_sheets": true
+      },
+      "expected": {
+        "mode": "supported",
+        "product_claim_allowed": true,
+        "teacher_authority_required": true,
+        "teacher_review_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "input_authority": "input_capture_only",
+        "marks_source": "teacher_approved_decision",
+        "mastery_source": "approved_marks_and_evidence",
+        "autonomous_grading": false,
+        "autonomous_marks": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "linkage_ocr_input_assist_001",
+      "linkage_declaration_id": "assessment-linkage://assist/ocr-answer-input/v1",
+      "case_type": "ocr_answer_input_assist",
+      "scope": {
+        "school_scope": "same_school",
+        "input_method": "ocr"
+      },
+      "linkage": {
+        "linkage_posture": "ocr_input_assist",
+        "support_mode": "assist",
+        "source_paper_required": true,
+        "source_paper_status": "approved",
+        "question_schema_required": true,
+        "ocr_input_allowed": true,
+        "manual_input_allowed": false,
+        "input_authority": "input_capture_only"
+      },
+      "expected": {
+        "mode": "assist",
+        "product_claim_allowed": false,
+        "teacher_authority_required": true,
+        "teacher_review_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "input_authority": "input_capture_only",
+        "marks_source": "teacher_approved_decision",
+        "mastery_source": "approved_marks_and_evidence",
+        "autonomous_grading": false,
+        "autonomous_marks": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "linkage_manual_input_assist_001",
+      "linkage_declaration_id": "assessment-linkage://assist/manual-answer-input/v1",
+      "case_type": "manual_answer_input_assist",
+      "scope": {
+        "school_scope": "same_school",
+        "input_method": "manual_transcription"
+      },
+      "linkage": {
+        "linkage_posture": "manual_input_assist",
+        "support_mode": "assist",
+        "source_paper_required": true,
+        "source_paper_status": "approved",
+        "question_schema_required": true,
+        "ocr_input_allowed": false,
+        "manual_input_allowed": true,
+        "input_authority": "input_capture_only"
+      },
+      "expected": {
+        "mode": "assist",
+        "product_claim_allowed": false,
+        "teacher_authority_required": true,
+        "teacher_review_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "input_authority": "input_capture_only",
+        "marks_source": "teacher_approved_decision",
+        "mastery_source": "approved_marks_and_evidence",
+        "autonomous_grading": false,
+        "autonomous_marks": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "linkage_manual_schema_review_001",
+      "linkage_declaration_id": "assessment-linkage://manual-review/manual-schema-without-source-paper/v1",
+      "case_type": "manual_schema_without_source_paper",
+      "scope": {
+        "school_scope": "same_school",
+        "schema_source": "manual"
+      },
+      "linkage": {
+        "linkage_posture": "manual_schema_review",
+        "support_mode": "manual_review",
+        "source_paper_required": false,
+        "source_paper_status": "absent",
+        "question_schema_source": "manual",
+        "question_schema_required": true,
+        "question_numbers_unique": true,
+        "can_evaluate_sheets": false,
+        "manual_review_reason": "Manual schema lacks approved source paper context."
+      },
+      "expected": {
+        "mode": "manual_review",
+        "product_claim_allowed": false,
+        "teacher_authority_required": true,
+        "teacher_review_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "input_authority": "input_capture_only",
+        "marks_source": "teacher_approved_decision",
+        "mastery_source": "approved_marks_and_evidence",
+        "autonomous_grading": false,
+        "autonomous_marks": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "linkage_draft_source_paper_unsupported_001",
+      "linkage_declaration_id": "assessment-linkage://unsupported/draft-or-unapproved-source-paper/v1",
+      "case_type": "draft_or_unapproved_source_paper",
+      "scope": {
+        "school_scope": "same_school"
+      },
+      "linkage": {
+        "linkage_posture": "unsupported_linkage",
+        "support_mode": "unsupported",
+        "source_paper_required": true,
+        "source_paper_status": "draft",
+        "question_schema_source": "unsupported",
+        "question_schema_required": true,
+        "unsupported_reason": "Only approved question papers can become authoritative schema sources."
+      },
+      "expected": {
+        "mode": "unsupported",
+        "product_claim_allowed": false,
+        "teacher_authority_required": true,
+        "teacher_review_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "input_authority": "input_capture_only",
+        "marks_source": "teacher_approved_decision",
+        "mastery_source": "approved_marks_and_evidence",
+        "autonomous_grading": false,
+        "autonomous_marks": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "linkage_cross_tenant_source_paper_unsupported_001",
+      "linkage_declaration_id": "assessment-linkage://unsupported/cross-tenant-source-paper/v1",
+      "case_type": "cross_tenant_source_paper",
+      "scope": {
+        "school_scope": "different_school"
+      },
+      "linkage": {
+        "linkage_posture": "unsupported_linkage",
+        "support_mode": "unsupported",
+        "source_paper_required": true,
+        "source_paper_status": "approved",
+        "tenant_scope_violation": true,
+        "question_schema_source": "unsupported",
+        "unsupported_reason": "Question-paper linkage is school-private in v1.0."
+      },
+      "expected": {
+        "mode": "unsupported",
+        "product_claim_allowed": false,
+        "teacher_authority_required": true,
+        "teacher_review_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "input_authority": "input_capture_only",
+        "marks_source": "teacher_approved_decision",
+        "mastery_source": "approved_marks_and_evidence",
+        "autonomous_grading": false,
+        "autonomous_marks": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "linkage_missing_schema_unsupported_001",
+      "linkage_declaration_id": "assessment-linkage://unsupported/missing-question-schema/v1",
+      "case_type": "missing_question_schema",
+      "scope": {
+        "school_scope": "same_school"
+      },
+      "linkage": {
+        "linkage_posture": "unsupported_linkage",
+        "support_mode": "unsupported",
+        "source_paper_required": true,
+        "source_paper_status": "approved",
+        "question_schema_required": true,
+        "question_schema_present": false,
+        "can_evaluate_sheets": false,
+        "unsupported_reason": "Evaluation readiness requires both source_paper_id and question_schema."
+      },
+      "expected": {
+        "mode": "unsupported",
+        "product_claim_allowed": false,
+        "teacher_authority_required": true,
+        "teacher_review_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "input_authority": "input_capture_only",
+        "marks_source": "teacher_approved_decision",
+        "mastery_source": "approved_marks_and_evidence",
+        "autonomous_grading": false,
+        "autonomous_marks": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "linkage_autonomous_marks_unsupported_001",
+      "linkage_declaration_id": "assessment-linkage://unsupported/autonomous-marks-or-preapproval-evidence/v1",
+      "case_type": "autonomous_marks_or_preapproval_evidence",
+      "scope": {
+        "authority_boundary": "teacher_approval_missing"
+      },
+      "linkage": {
+        "linkage_posture": "unsupported_linkage",
+        "support_mode": "unsupported",
+        "source_paper_required": true,
+        "source_paper_status": "approved",
+        "question_schema_required": true,
+        "aei_assist_allowed": true,
+        "teacher_approval_present": false,
+        "unsupported_reason": "AEI suggestions and captured input cannot become final marks or downstream evidence without teacher approval."
+      },
+      "expected": {
+        "mode": "unsupported",
+        "product_claim_allowed": false,
+        "teacher_authority_required": true,
+        "teacher_review_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "input_authority": "input_capture_only",
+        "marks_source": "teacher_approved_decision",
+        "mastery_source": "approved_marks_and_evidence",
+        "autonomous_grading": false,
+        "autonomous_marks": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "linkage_source_adoption_expansion_001",
+      "linkage_declaration_id": "assessment-linkage://expansion/source-of-truth-adoption/v1",
+      "case_type": "future_source_adoption",
+      "scope": {
+        "source_adoption": "future"
+      },
+      "linkage": {
+        "linkage_posture": "future_expansion",
+        "support_mode": "expansion",
+        "source_paper_status": "future",
+        "unsupported_reason": "Source adoption requires future authorization, certification, and rollback proof."
+      },
+      "expected": {
+        "mode": "expansion",
+        "product_claim_allowed": false,
+        "teacher_authority_required": true,
+        "teacher_review_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "input_authority": "input_capture_only",
+        "marks_source": "teacher_approved_decision",
+        "mastery_source": "approved_marks_and_evidence",
+        "autonomous_grading": false,
+        "autonomous_marks": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    }
+  ]
+}
