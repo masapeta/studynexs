@@ -13,9 +13,10 @@ architecture, a published EUI runtime foundation, a certified AEI v1.0
 supported-scope baseline, and published Assessment Intelligence v1.0 Batch A
 contract/capability foundation, Batch B blueprint readiness foundation, Batch C
 rubric/model-answer readiness foundation, Batch D question-bank/reuse readiness
-foundation, Batch E paper-to-evaluation linkage readiness foundation, and Batch
-F bilingual/multilingual assessment readiness foundation, and Batch G teacher
-workflow/browser proof foundation.
+foundation, Batch E paper-to-evaluation linkage readiness foundation, Batch F
+bilingual/multilingual assessment readiness foundation, Batch G teacher
+workflow/browser proof foundation, and Batch G-B reproducible Reference fixture
+/ browser proof closure.
 
 The current engineering rhythm is:
 
@@ -96,6 +97,7 @@ canonical roadmap names are:
 | Assessment Intelligence v1.0 Batch E - Paper-to-evaluation linkage readiness | Complete / certified / published |
 | Assessment Intelligence v1.0 Batch F - Bilingual / multilingual assessment readiness | Complete / certified / published |
 | Assessment Intelligence v1.0 Batch G - Teacher workflow / browser proof | Complete / certified / published |
+| Assessment Intelligence v1.0 Batch G-B - Reproducible Reference fixture / browser proof closure | Complete / certified / published |
 | Stabilization Gate 1 - Production Safety | Complete / certified / published |
 | Operational Proof | Complete / certified / published |
 | AEI Activation / Trust | Complete / certified / published |
@@ -244,6 +246,7 @@ or expanded public product claims.
 | Batch E - Paper-to-Evaluation Linkage Readiness | Published / certified | `acbc897dd6db2f1375a367a10a7d6575102f4e8f` | `assessment-v1-batch-e-paper-to-evaluation-linkage-readiness-certified` | Paper-to-evaluation linkage declaration contract, static supported-scope declarations, Golden Harness cases, focused static validation, and certification; no runtime behavior changes |
 | Batch F - Bilingual / Multilingual Assessment Readiness | Published / certified | `75f8c15fced408a457e9ce0106adb83f666acd1c` | `assessment-v1-batch-f-bilingual-multilingual-readiness-certified` | Bilingual/multilingual assessment declaration contract, static language supported-scope declarations, Golden Harness cases, focused static validation, and certification; no runtime behavior changes |
 | Batch G - Teacher Workflow / Browser Proof | Published / certified | `42e7b80376989303a483b82db2b1020110d996a3` | `assessment-v1-batch-g-teacher-workflow-browser-proof-certified` | Browser proof harness and certification for the supported teacher assessment workflow, with tenant/API/console guards and no product behavior changes |
+| Batch G-B - Reproducible Reference Fixture / Browser Proof Closure | Published / certified | `5641c195a7d11a998d50424e9ea440c9d50aa63d` | `assessment-v1-batch-g-b-reference-fixture-browser-proof-certified` | Idempotent Reference tenant fixture seed, deterministic Grade 6 Science approved paper + linked/evaluable exam, focused fixture tests, browser proof closure, and certification; no product behavior changes |
 
 Assessment Intelligence v1.0 Batch A establishes the product-completion
 foundation for assessment creation, question bank reuse, exam linkage, and
@@ -481,10 +484,39 @@ UI changes, marks changes, teacher-review routing changes, evidence-ledger
 changes, AEI behavior changes, EUI source adoption, public product claim
 expansion, new question-paper generation behavior, or new evaluation behavior.
 
+Assessment Intelligence v1.0 Batch G-B closes the reproducibility gap for the
+Batch G browser proof.
+
+Batch G-B adds:
+
+- Batch G-B Reproducible Reference Fixture Design Brief;
+- Batch G-B Implementation Authorization Contract;
+- idempotent Reference tenant fixture seed script;
+- focused fixture validation tests;
+- browser proof repair guidance;
+- Batch G-B Certification Report.
+
+Batch G-B certifies:
+
+- deterministic Reference tenant Grade 6 Science approved question paper
+  fixture;
+- deterministic linked/evaluable Unit Test exam fixture;
+- fixture question schema consistency and total-mark preservation;
+- successful fixture seed execution;
+- successful browser proof against the seeded Reference tenant fixture;
+- no schema/API/UI/runtime/marks/routing/evidence-ledger behavior changes.
+
+Batch G-B does not authorize or implement schema changes, API changes,
+production UI changes, production startup seed changes, marks changes,
+teacher-review routing changes, evidence-ledger changes, AEI behavior changes,
+EUI source adoption, OCR behavior changes, PDF ingestion behavior changes,
+public product claim expansion, new question-paper generation behavior, or new
+evaluation behavior.
+
 Latest Assessment Intelligence published gate:
 
 ```text
-Assessment Intelligence v1.0 Batch G - Teacher Workflow / Browser Proof
+Assessment Intelligence v1.0 Batch G-B - Reproducible Reference Fixture / Browser Proof Closure
 ```
 
 Status: **Complete / certified / published**.
@@ -656,29 +688,30 @@ UX-E certification caveat:
 The latest completed published gate is:
 
 ```text
-Assessment Intelligence v1.0 Batch G - Teacher Workflow / Browser Proof
+Assessment Intelligence v1.0 Batch G-B - Reproducible Reference Fixture / Browser Proof Closure
 ```
 
 Publication baseline:
 
-- commit `42e7b80376989303a483b82db2b1020110d996a3`;
-- annotated tag `assessment-v1-batch-g-teacher-workflow-browser-proof-certified`.
+- commit `5641c195a7d11a998d50424e9ea440c9d50aa63d`;
+- annotated tag `assessment-v1-batch-g-b-reference-fixture-browser-proof-certified`.
 
-Assessment Intelligence v1.0 Batch G adds the browser proof foundation for the
-declared supported teacher assessment workflow. It includes a deterministic
-browser proof harness, supported-scope fixture requirements, console/API/tenant
-guards, and certification evidence.
+Assessment Intelligence v1.0 Batch G-B closes the browser proof reproducibility
+gap for the declared supported teacher assessment workflow. It includes an
+idempotent Reference tenant fixture seed, deterministic Grade 6 Science approved
+paper and linked/evaluable Unit Test exam fixtures, focused fixture tests,
+browser proof repair guidance, and certification evidence.
 
-Batch G does not change runtime answer-sheet evaluation, question-paper
+Batch G-B does not change runtime answer-sheet evaluation, question-paper
 generation, question-bank behavior, paper approval behavior, exam services,
-schema, API, production UI, AEI, EUI, feature flags, providers, prompts, marks,
-routing, evidence ledger, mastery, or product claims.
+schema, API, production UI, AEI, EUI, feature flags, providers, prompts, OCR,
+PDF ingestion, marks, routing, evidence ledger, mastery, or product claims.
 
 No implementation gate is currently active. Assessment Intelligence v1.0 Batch
-A through Batch G are published and certified. The next product-facing gate must
-be selected and authorized separately by ARM.
+A through Batch G-B are published and certified. The next product-facing gate
+must be selected and authorized separately by ARM.
 
-Ordered candidate gates after Assessment Intelligence v1.0 Batch G:
+Ordered candidate gates after Assessment Intelligence v1.0 Batch G-B:
 
 1. AEI Handwriting OCR Phase 2 live Track-A benchmark run authorization -
    collect/use secured 50-100 teacher-verified real sheets and produce an
@@ -693,7 +726,7 @@ Ordered candidate gates after Assessment Intelligence v1.0 Batch G:
    learning-intelligence plumbing only if ARM chooses deeper spine persistence;
    not authorized.
 
-Completion of Assessment Intelligence v1.0 Batch G does not authorize runtime
+Completion of Assessment Intelligence v1.0 Batch G-B does not authorize runtime
 question-bank source switching, answer-sheet evaluation behavior changes,
 question-paper generation behavior changes, question-bank runtime changes, exam
 service behavior changes, source switching, public product claim expansion,
@@ -843,7 +876,7 @@ repository-safe Track-A benchmark foundation without running live real-sheet
 benchmarks or changing production OCR routing.
 UX-E remains the assembled teacher-evaluation certification baseline and the
 lint cleanup remains the code-health gate that resolved the pre-existing page
-lint debt. Assessment Intelligence v1.0 Batch G is now the latest published
+lint debt. Assessment Intelligence v1.0 Batch G-B is now the latest published
 Assessment gate. No Assessment Intelligence implementation gate is active until
 ARM authorizes the next product-facing milestone under a separate design and
 implementation contract.
@@ -855,22 +888,24 @@ implementation contract.
 Latest published Assessment Intelligence gate:
 
 ```text
-Assessment Intelligence v1.0 Batch G - Teacher Workflow / Browser Proof
+Assessment Intelligence v1.0 Batch G-B - Reproducible Reference Fixture / Browser Proof Closure
 ```
 
 Status: **Complete / certified / published**
 
-Commit: `42e7b80376989303a483b82db2b1020110d996a3`
+Commit: `5641c195a7d11a998d50424e9ea440c9d50aa63d`
 
-Annotated tag: `assessment-v1-batch-g-teacher-workflow-browser-proof-certified`
+Annotated tag: `assessment-v1-batch-g-b-reference-fixture-browser-proof-certified`
 
 Evidence:
 
-[`product/assessment-intelligence/ASSESSMENT_INTELLIGENCE_V1_BATCH_G_TEACHER_WORKFLOW_BROWSER_PROOF_CERTIFICATION_REPORT.md`](./product/assessment-intelligence/ASSESSMENT_INTELLIGENCE_V1_BATCH_G_TEACHER_WORKFLOW_BROWSER_PROOF_CERTIFICATION_REPORT.md)
+[`product/assessment-intelligence/ASSESSMENT_INTELLIGENCE_V1_BATCH_G_B_REPRODUCIBLE_REFERENCE_FIXTURE_CERTIFICATION_REPORT.md`](./product/assessment-intelligence/ASSESSMENT_INTELLIGENCE_V1_BATCH_G_B_REPRODUCIBLE_REFERENCE_FIXTURE_CERTIFICATION_REPORT.md)
 
 Certified evidence:
 
 - Browser proof command: PASS - 16 checks, 0 disallowed console/API errors
+- Reference tenant fixture seed: PASS
+- Focused fixture tests: PASS - 5 passed
 - Reference tenant supported-scope question paper prerequisite: PASS
 - Reference tenant linked/evaluable exam prerequisite: PASS
 - AI Papers route rendering and teacher-authority posture: PASS
@@ -881,10 +916,9 @@ Certified evidence:
   failures
 - Focused browser proof syntax check: PASS
 - Focused browser proof ESLint check: PASS
+- Focused fixture Ruff check: PASS
 - Admin-web production build: PASS
 - API import: PASS
-- Assessment A-F regression slice: PASS - 49 passed
-- AEI focused tests: PASS - 33 passed
 - `git diff --check`: PASS
 - No schema/API/production UI/runtime behavior changes: PASS
 
