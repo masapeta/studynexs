@@ -1,0 +1,314 @@
+{
+  "version": "assessment-intelligence-v1-batch-b-blueprint-golden-v1",
+  "authorization": "ASSESSMENT-V1-BATCH-B-AUTH-001",
+  "description": "Assessment Intelligence v1.0 Batch B cases validating static blueprint declaration posture only.",
+  "cases": [
+    {
+      "id": "blueprint_g6_science_unit_supported_001",
+      "blueprint_id": "assessment-blueprint://cbse/ncf2023/g6/science/unit-test/v1",
+      "case_type": "supported_blueprint",
+      "scope": {
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "grade": "6",
+        "subject": "Science",
+        "paper_type": "unit_test",
+        "language": "English"
+      },
+      "blueprint": {
+        "sections": [
+          {
+            "section_id": "section-a",
+            "question_type": "mcq",
+            "marks_per_question": 1,
+            "question_count": 5,
+            "answer_any_count": 5,
+            "options_required": 4
+          },
+          {
+            "section_id": "section-b",
+            "question_type": "short_answer",
+            "marks_per_question": 2,
+            "question_count": 5,
+            "answer_any_count": 5
+          },
+          {
+            "section_id": "section-c",
+            "question_type": "long_answer",
+            "marks_per_question": 5,
+            "question_count": 1,
+            "answer_any_count": 1
+          }
+        ]
+      },
+      "expected": {
+        "mode": "supported",
+        "printed_marks_total": 20,
+        "answer_required_total": 20,
+        "internal_choice": false,
+        "product_claim_allowed": true,
+        "teacher_authority_required": true,
+        "autonomous_approval": false,
+        "autonomous_grading": false,
+        "evaluation_pipeline": "AEI",
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "blueprint_g10_math_internal_choice_supported_001",
+      "blueprint_id": "assessment-blueprint://cbse/ncf2023/g10/mathematics/term-exam/v1",
+      "case_type": "internal_choice_blueprint",
+      "scope": {
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "grade": "10",
+        "subject": "Mathematics",
+        "paper_type": "term_exam",
+        "language": "English"
+      },
+      "blueprint": {
+        "sections": [
+          {
+            "section_id": "section-i",
+            "question_type": "very_short",
+            "marks_per_question": 2,
+            "question_count": 6,
+            "answer_any_count": 6
+          },
+          {
+            "section_id": "section-ii",
+            "question_type": "short_answer",
+            "marks_per_question": 4,
+            "question_count": 6,
+            "answer_any_count": 6
+          },
+          {
+            "section_id": "section-iii",
+            "question_type": "long_answer",
+            "marks_per_question": 6,
+            "question_count": 6,
+            "answer_any_count": 4
+          },
+          {
+            "section_id": "part-b",
+            "question_type": "mcq",
+            "marks_per_question": 1,
+            "question_count": 20,
+            "answer_any_count": 20,
+            "options_required": 4
+          }
+        ]
+      },
+      "expected": {
+        "mode": "supported",
+        "printed_marks_total": 92,
+        "answer_required_total": 80,
+        "internal_choice": true,
+        "internal_choice_sections": ["section-iii"],
+        "product_claim_allowed": true,
+        "teacher_authority_required": true,
+        "autonomous_approval": false,
+        "autonomous_grading": false,
+        "evaluation_pipeline": "AEI",
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "blueprint_printed_vs_effective_total_001",
+      "blueprint_id": "assessment-blueprint://cbse/ncf2023/g10/mathematics/term-exam/v1",
+      "case_type": "printed_vs_answer_required_total",
+      "scope": {
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "grade": "10",
+        "subject": "Mathematics",
+        "paper_type": "term_exam"
+      },
+      "blueprint": {
+        "sections": [
+          {
+            "section_id": "choice-section",
+            "question_type": "long_answer",
+            "marks_per_question": 6,
+            "question_count": 6,
+            "answer_any_count": 4
+          }
+        ]
+      },
+      "expected": {
+        "mode": "supported",
+        "printed_marks_total": 36,
+        "answer_required_total": 24,
+        "internal_choice": true,
+        "product_claim_allowed": true,
+        "teacher_authority_required": true,
+        "autonomous_approval": false,
+        "autonomous_grading": false,
+        "evaluation_pipeline": "AEI",
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "blueprint_mcq_options_requirement_001",
+      "blueprint_id": "assessment-blueprint://cbse/ncf2023/g10/mathematics/practice-mcq/v1",
+      "case_type": "mcq_options_requirement",
+      "scope": {
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "grade": "10",
+        "subject": "Mathematics",
+        "paper_type": "practice"
+      },
+      "blueprint": {
+        "sections": [
+          {
+            "section_id": "practice-a",
+            "question_type": "mcq",
+            "marks_per_question": 1,
+            "question_count": 20,
+            "answer_any_count": 20,
+            "options_required": 4
+          }
+        ]
+      },
+      "expected": {
+        "mode": "assist",
+        "printed_marks_total": 20,
+        "answer_required_total": 20,
+        "internal_choice": false,
+        "mcq_options_required": 4,
+        "product_claim_allowed": false,
+        "teacher_authority_required": true,
+        "autonomous_approval": false,
+        "autonomous_grading": false,
+        "evaluation_pipeline": "AEI",
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "blueprint_school_custom_manual_review_001",
+      "blueprint_id": "assessment-blueprint://school-custom/manual-review/v1",
+      "case_type": "manual_review_blueprint",
+      "scope": {
+        "board": "school_custom",
+        "curriculum": "school_defined",
+        "grade": "any",
+        "subject": "any",
+        "paper_type": "custom"
+      },
+      "blueprint": {
+        "sections": []
+      },
+      "expected": {
+        "mode": "manual_review",
+        "product_claim_allowed": false,
+        "manual_review_required": true,
+        "teacher_authority_required": true,
+        "autonomous_approval": false,
+        "autonomous_grading": false,
+        "evaluation_pipeline": "AEI",
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "blueprint_requested_total_mismatch_manual_review_001",
+      "blueprint_id": "assessment-blueprint://cbse/ncf2023/g6/science/unit-test/v1",
+      "case_type": "requested_total_mismatch",
+      "scope": {
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "grade": "6",
+        "subject": "Science",
+        "paper_type": "unit_test",
+        "requested_total_marks": 25
+      },
+      "blueprint": {
+        "sections": [
+          {
+            "section_id": "section-a",
+            "question_type": "mcq",
+            "marks_per_question": 1,
+            "question_count": 5,
+            "answer_any_count": 5,
+            "options_required": 4
+          },
+          {
+            "section_id": "section-b",
+            "question_type": "short_answer",
+            "marks_per_question": 2,
+            "question_count": 5,
+            "answer_any_count": 5
+          },
+          {
+            "section_id": "section-c",
+            "question_type": "long_answer",
+            "marks_per_question": 5,
+            "question_count": 1,
+            "answer_any_count": 1
+          }
+        ]
+      },
+      "expected": {
+        "mode": "manual_review",
+        "printed_marks_total": 20,
+        "answer_required_total": 20,
+        "requested_total_mismatch": true,
+        "product_claim_allowed": false,
+        "manual_review_required": true,
+        "teacher_authority_required": true,
+        "autonomous_approval": false,
+        "autonomous_grading": false,
+        "evaluation_pipeline": "AEI",
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "blueprint_universal_claim_unsupported_001",
+      "blueprint_id": "assessment-blueprint://universal/any-board/any-grade/any-subject/v1",
+      "case_type": "unsupported_blueprint_claim",
+      "scope": {
+        "board": "any",
+        "curriculum": "any",
+        "grade": "any",
+        "subject": "any",
+        "paper_type": "any"
+      },
+      "blueprint": {
+        "sections": []
+      },
+      "expected": {
+        "mode": "unsupported",
+        "product_claim_allowed": false,
+        "teacher_authority_required": true,
+        "autonomous_approval": false,
+        "autonomous_grading": false,
+        "evaluation_pipeline": "AEI",
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "blueprint_state_board_telugu_expansion_001",
+      "blueprint_id": "assessment-blueprint://expansion/state-board/telugu-medium/v1",
+      "case_type": "future_expansion_blueprint",
+      "scope": {
+        "board": "state_board",
+        "curriculum": "state_defined",
+        "language": "Telugu",
+        "grade": "future",
+        "subject": "future"
+      },
+      "blueprint": {
+        "sections": []
+      },
+      "expected": {
+        "mode": "expansion",
+        "product_claim_allowed": false,
+        "teacher_authority_required": true,
+        "autonomous_approval": false,
+        "autonomous_grading": false,
+        "evaluation_pipeline": "AEI",
+        "runtime_behavior_change": false
+      }
+    }
+  ]
+}
