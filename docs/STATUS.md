@@ -86,6 +86,7 @@ canonical roadmap names are:
 | AEI v1.0 Teacher Evaluation UX-E - Final teacher evaluation experience certification | Complete / certified / published |
 | Teacher Evaluation Page Lint Cleanup | Complete / validated / published |
 | AI Gateway Config Hardening - General vs vision model routing | Complete / validated / published |
+| AI Gateway Gemini Vision Model Hardening | Complete / validated / published |
 | AEI Handwriting OCR Phase 1 - Gemini Flash transcription gate | Complete / certified / published |
 | AEI Handwriting OCR Phase 2 - Track-A benchmark foundation | Complete / certified / published |
 | Assessment Intelligence v1.0 Batch A - Contract and capability matrix | Complete / certified / published |
@@ -832,11 +833,14 @@ separate ARM authorization. Production Safety, Operational Proof, AEI
 Activation / Trust, Topic-ID / Mastery Spine Phase A, Teacher Evaluation UX-D,
 Teacher Evaluation Page Lint Cleanup, and Teacher Evaluation UX-E are now
 published. AI Gateway Config Hardening is also published and separates general
-AI model routing from answer-sheet OCR / vision model routing. AEI Handwriting
-OCR Phase 1 is published and adds the default-off Gemini Flash answer-sheet
-transcription gate through the StudyNexs AI Gateway only. AEI Handwriting OCR
-Phase 2 is published and adds the repository-safe Track-A benchmark foundation
-without running live real-sheet benchmarks or changing production OCR routing.
+AI model routing from answer-sheet OCR / vision model routing. AI Gateway
+Gemini Vision Model Hardening is published and updates the current Gemini OCR /
+vision default from the unavailable `gemini-1.5-flash` posture to
+`gemini-3.6-flash`. AEI Handwriting OCR Phase 1 is published and adds the
+default-off Gemini Flash answer-sheet transcription gate through the StudyNexs
+AI Gateway only. AEI Handwriting OCR Phase 2 is published and adds the
+repository-safe Track-A benchmark foundation without running live real-sheet
+benchmarks or changing production OCR routing.
 UX-E remains the assembled teacher-evaluation certification baseline and the
 lint cleanup remains the code-health gate that resolved the pre-existing page
 lint debt. Assessment Intelligence v1.0 Batch G is now the latest published
@@ -966,7 +970,7 @@ Evidence:
 - No backend/API/schema/marks/routing/ledger/source-switch behavior changes:
   PASS
 
-Latest published AI infrastructure hardening gate:
+Published AI infrastructure hardening gate:
 
 ```text
 AI Gateway Config Hardening - General vs vision model routing
@@ -994,6 +998,40 @@ Validation:
 - Focused ruff on changed API files and tests: PASS
 - `app.main` import: PASS
 - `git diff --check`: PASS
+
+Latest published AI infrastructure hardening gate:
+
+```text
+AI Gateway Gemini Vision Model Hardening
+```
+
+Status: **Complete / validated / published**
+
+Commit: `d0595b8001e917767e6e6dac62f8541b9a793922`
+
+Annotated tag: `ai-gateway-gemini-vision-model-hardening-certified`
+
+Scope:
+
+- updated the default Gemini gateway model to `gemini-3.6-flash`;
+- updated OCR / vision configuration examples and Phase 1 OCR documentation;
+- updated focused OCR / gateway tests and Golden Harness expectations;
+- added `gemini-3.6-flash` to AI gateway pricing metadata;
+- retained the legacy `gemini-1.5-flash` pricing entry for explicitly
+  configured legacy traffic;
+- kept answer-sheet OCR as transcription-only through the gateway;
+- preserved AEI evaluation, teacher approval, marks, routing, evidence ledger,
+  schema, API, production UI, and product behavior.
+
+Validation:
+
+- Focused gateway / answer-sheet vision / OCR Phase 1 tests: PASS - 18 passed
+- Focused ruff on changed API files and tests: PASS
+- `app.main` import: PASS
+- `git diff --check`: PASS
+- Live local OCR smoke on the supplied Math / English / Telugu images:
+  `gemini-3.6-flash` succeeded as OCR-only transcription; no grading or
+  persistence was performed.
 
 Latest published AEI OCR capability gate:
 
