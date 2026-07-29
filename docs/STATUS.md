@@ -78,6 +78,7 @@ canonical roadmap names are:
 | AEI v1.0 Teacher Evaluation UX-B - Override reason workflow | Complete / certified / published |
 | AEI v1.0 Teacher Evaluation UX-C - Evidence and approved-decision panel | Complete / certified / published |
 | AEI v1.0 Teacher Evaluation UX-D - Supported-scope assist panels | Complete / certified / published |
+| AEI v1.0 Teacher Evaluation UX-E - Final teacher evaluation experience certification | Complete / certified / published |
 | Teacher Evaluation Page Lint Cleanup | Complete / validated / published |
 | Stabilization Gate 1 - Production Safety | Complete / certified / published |
 | Operational Proof | Complete / certified / published |
@@ -224,6 +225,7 @@ or expanded public product claims.
 | UX-B - Override reason workflow | Published / certified | `c8ea8997f0aca8adb2fb1667cd25bff5500dd4a3` | `aei-v1-teacher-evaluation-ux-b-override-reasons-certified` | Teacher-authored override reason capture and saved override reason display on the existing teacher evaluation page |
 | UX-C - Evidence and approved-decision panel | Published / certified | `8c01e59111857750473133edfed0314103e7a3c8` | `aei-v1-teacher-evaluation-ux-c-evidence-decision-certified` | Teacher-facing evidence posture panel and approved-decision summary on the existing teacher evaluation page |
 | UX-D - Supported-scope assist panels | Published / certified | `690e15695aabbf60248d7353d096b5dea865b987` | `aei-v1-teacher-evaluation-ux-d-assist-panels-certified` | Display-only language/OCR and visual/science assist evidence panels on the existing teacher evaluation page |
+| UX-E - Final teacher evaluation experience certification | Published / certified | `3b07b05da83bb7fbbd265258f6074777b86d13a2` | `aei-v1-teacher-evaluation-experience-certified` | Final proof/certification gate for the assembled teacher evaluation experience; no code, API, schema, marks, routing, or source-of-truth changes |
 
 UX-A turns certified AEI v1.0 suggestion metadata into teacher-visible trust
 signals on the existing answer-sheet evaluation review page.
@@ -328,6 +330,31 @@ UX-D certification caveat:
 - focused page lint remains blocked by pre-existing evaluation-page lint debt
   outside the UX-D display slice.
 
+UX-E certifies the assembled teacher evaluation experience across UX-A through
+UX-D and AEI Activation / Trust.
+
+Supported UX-E certification posture:
+
+- the existing teacher evaluation page and AEI display helper remain the
+  certified product surface;
+- AI suggestions remain draft until teacher approval;
+- teacher override reasons, evidence posture, confidence, capability, and
+  assist/checklist boundaries remain teacher-safe;
+- supported-scope copy review found no autonomous grading or unsupported OCR /
+  visual / science claims;
+- no backend, UI behavior, API, schema, marks, routing, evidence-ledger,
+  source-switching, feature-flag enablement, or product-claim changes.
+
+UX-E certification caveat:
+
+- browser proof reached the Reference tenant teacher evaluation route with no
+  runtime, API, or console failures;
+- live Reference proof data did not contain every Batch D/E assist and
+  manual-review metadata scenario, so those cases were certified through source
+  inspection and existing UX-A/B/C/D baseline evidence;
+- future browser proof should use a disposable or resettable deterministic
+  evaluation fixture rather than shared Reference rows.
+
 ---
 
 ## Published EUI runtime milestones
@@ -353,37 +380,30 @@ UX-D certification caveat:
 The latest completed published gate is:
 
 ```text
-Teacher Evaluation Page Lint Cleanup
+AEI v1.0 Teacher Evaluation UX-E - Final teacher evaluation experience certification
 ```
 
 Publication baseline:
 
-- commit `0792a290afa7e782d34dbd4ff50b088d82b58dc7`;
-- no annotated tag was created because this is a code-health cleanup gate, not
-  a new product capability or certification milestone.
+- commit `3b07b05da83bb7fbbd265258f6074777b86d13a2`;
+- tag `aei-v1-teacher-evaluation-experience-certified`.
 
-Teacher Evaluation Page Lint Cleanup removes the known pre-existing lint debt
-from the teacher evaluation page that had been blocking focused page lint during
-UX-A through UX-D certification. The cleanup adds narrow local page types, typed
-API calls, and a lint-safe initial-load effect while preserving the existing
-teacher evaluation behavior.
+Teacher Evaluation UX-E certifies the assembled AEI v1.0 teacher evaluation
+experience across UX-A through UX-D and AEI Activation / Trust. It is a
+docs/proof certification gate with no product behavior changes.
 
 No implementation gate is currently active. The next recommended product-facing
-gate is Teacher Evaluation UX-E / final teacher-evaluation experience
-certification. It is not authorized until ARM opens a separate design or
-implementation contract.
+gate should be selected from the product completion roadmap under a separate
+ARM design or implementation authorization.
 
-Ordered gates after Teacher Evaluation Page Lint Cleanup:
+Ordered candidate gates after Teacher Evaluation UX-E:
 
-1. Teacher Evaluation UX-E / final teacher-evaluation experience
-   certification - future product-facing certification gate after supported
-   capabilities have runtime evidence; not authorized.
-2. Topic-ID / Mastery Spine Phase B additive schema readiness design - future
+1. Topic-ID / Mastery Spine Phase B additive schema readiness design - future
    learning-intelligence plumbing only if ARM chooses deeper spine persistence;
    not authorized.
+2. Next product-facing completion workstream from the roadmap; not authorized.
 
-Completion of Teacher Evaluation Page Lint Cleanup does not authorize any later
-gate.
+Completion of Teacher Evaluation UX-E does not authorize any later gate.
 
 EUI Phase 7 remains closed at Phase 7E. Phase 7F source adoption is deferred
 future scope, not the next active implementation milestone.
@@ -420,10 +440,9 @@ remain out of scope:
   foundation;
 - schema changes;
 - API changes;
-- UI changes beyond the published AEI v1.0 Teacher Evaluation UX-D
-  supported-scope assist panels, the earlier UX-A/B/C teacher-evaluation
-  slices, and the published AEI Activation / Trust acknowledgement/evidence
-  proof;
+- UI changes beyond the published AEI v1.0 Teacher Evaluation UX-A/B/C/D
+  teacher-evaluation slices, the published UX-E certification/proof milestone,
+  and the published AEI Activation / Trust acknowledgement/evidence proof;
 - consumer migration beyond the published Phase 7E AEI internal
   source-readiness trial foundation;
 - Topic-ID / Mastery Spine Phase B additive schema readiness, source adoption,
@@ -434,13 +453,14 @@ remain out of scope:
   normalization foundation, Batch B review-policy metadata foundation, Batch C
   approved-evidence ledger metadata foundation, Batch D language/OCR assist
   metadata foundation, Batch E visual/science assist metadata foundation, Batch
-  F certification baseline, UX-A/B/C/D teacher evaluation slices, and AEI
-  Activation / Trust runtime proof foundation;
+  F certification baseline, UX-A/B/C/D teacher evaluation slices, UX-E
+  teacher-evaluation certification/proof milestone, and AEI Activation / Trust
+  runtime proof foundation;
 - AEI v1.0 feature-flag enablement, source switching, or product-facing behavior
   changes beyond the certified Activation / Trust proof without separate ARM
   authorization;
-- AEI v1.0 Teacher Evaluation UX-E or later UX batches until ARM separately
-  authorizes the UX work;
+- later AEI v1.0 Teacher Evaluation UX batches until ARM separately authorizes
+  the UX work;
 - post-certification AEI expansion without separate ARM authorization;
 - AEI source-of-truth switching to EUI;
 - EUI contract changes outside accepted design;
@@ -469,24 +489,27 @@ foundation, a published AEI v1.0 Batch C Evidence Ledger Metadata foundation, a
 published AEI v1.0 Batch D Language/OCR Assist Metadata foundation, a published
 AEI v1.0 Batch E Visual/Science Assist Metadata foundation, a published AEI
 v1.0 Certification baseline, published AEI v1.0 Teacher Evaluation UX-A/B/C/D
-teacher-trust slices, a published AEI Activation / Trust runtime proof
+teacher-trust slices, a published AEI v1.0 Teacher Evaluation UX-E final
+teacher-experience certification, a published AEI Activation / Trust runtime proof
 foundation, and a published Topic-ID / Mastery Spine Phase A passive resolution
 foundation. Phase 7 is closed at 7E. Phase 7F source adoption is deferred future
 scope. AEI v1.0 is certified for the declared supported scope, UX-A is the first
 product-facing display slice, UX-B is the teacher-authored override reason
 workflow slice, UX-C is the teacher-facing evidence posture and approved
 decision panel slice, UX-D is the supported-scope assist-panel display slice,
-AEI Activation / Trust is the controlled trust proof for supported capabilities,
-and Topic-ID / Mastery Spine Phase A is the passive learning-intelligence spine
-foundation. Further teacher-evaluation UX batches, source switching, mastery
+and UX-E is the final assembled teacher-evaluation experience certification
+gate. AEI Activation / Trust is the controlled trust proof for supported
+capabilities, and Topic-ID / Mastery Spine Phase A is the passive
+learning-intelligence spine foundation. Further teacher-evaluation UX batches,
+source switching, mastery
 persistence/source adoption, and public capability claim expansion require
 separate ARM authorization. Production Safety, Operational Proof, AEI
 Activation / Trust, Topic-ID / Mastery Spine Phase A, Teacher Evaluation UX-D,
-and Teacher Evaluation Page Lint Cleanup are now published; UX-D remains the
-latest product-trust milestone and the lint cleanup resolves the pre-existing
-page lint debt that had blocked focused page lint. The next recommended
-product-facing gate is Teacher Evaluation UX-E / final teacher-evaluation
-experience certification.
+Teacher Evaluation Page Lint Cleanup, and Teacher Evaluation UX-E are now
+published. UX-E is the latest product-trust certification milestone and the
+lint cleanup remains the code-health gate that resolved the pre-existing page
+lint debt. The next product-facing gate is not active until ARM authorizes it
+under a separate design or implementation contract.
 
 ---
 
@@ -495,51 +518,54 @@ experience certification.
 Latest published product-trust gate:
 
 ```text
-AEI v1.0 Teacher Evaluation UX-D - Supported-scope assist panels
+AEI v1.0 Teacher Evaluation UX-E - Final teacher evaluation experience certification
 ```
 
 Status: **Complete / certified / published**
 
-Commit: `690e15695aabbf60248d7353d096b5dea865b987`
+Commit: `3b07b05da83bb7fbbd265258f6074777b86d13a2`
 
-Annotated tag: `aei-v1-teacher-evaluation-ux-d-assist-panels-certified`
+Annotated tag: `aei-v1-teacher-evaluation-experience-certified`
 
 Evidence:
 
-[`product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_D_CERTIFICATION_REPORT.md`](./product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_D_CERTIFICATION_REPORT.md)
+[`product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_E_CERTIFICATION_REPORT.md`](./product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_E_CERTIFICATION_REPORT.md)
 
-Latest published runtime phase:
+Latest published teacher-evaluation certification gate:
 
 ```text
-AEI v1.0 Teacher Evaluation UX-D - Supported-scope assist panels
+AEI v1.0 Teacher Evaluation UX-E - Final teacher evaluation experience certification
 ```
 
 Historical artifact label:
 
 ```text
-AEI v1.0 Teacher Evaluation UX-D
+AEI v1.0 Teacher Evaluation UX-E
 ```
 
 Certified evidence:
 
 - git diff --check: PASS
+- Focused teacher evaluation page lint: PASS
 - Admin-web helper lint: PASS
 - Admin-web TypeScript validation: PASS
 - Admin-web production build: PASS
-- Focused page lint: blocked by known pre-existing evaluation-page lint debt,
-  not introduced by UX-D
+- Browser proof reached Reference tenant route with no runtime/API/console
+  failures; live proof data did not cover every assist/manual-review metadata
+  shape, so remaining scenarios were verified through source inspection and
+  existing UX-A/B/C/D baselines
 - No backend/API/schema/marks/routing/ledger/source-switch behavior changes:
   PASS
-- Display-only supported-scope assist panels: PASS
+- Supported-scope copy review: PASS
 
 Certification report:
 
-[`product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_D_CERTIFICATION_REPORT.md`](./product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_D_CERTIFICATION_REPORT.md)
+[`product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_E_CERTIFICATION_REPORT.md`](./product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_E_CERTIFICATION_REPORT.md)
 
 Related design and authorization:
 
-- [`product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_D_DESIGN_BRIEF.md`](./product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_D_DESIGN_BRIEF.md)
-- [`product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_D_IMPLEMENTATION_AUTHORIZATION_CONTRACT.md`](./product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_D_IMPLEMENTATION_AUTHORIZATION_CONTRACT.md)
+- [`product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_E_DESIGN_BRIEF.md`](./product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_E_DESIGN_BRIEF.md)
+- [`product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_E_IMPLEMENTATION_AUTHORIZATION_CONTRACT.md`](./product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_E_IMPLEMENTATION_AUTHORIZATION_CONTRACT.md)
 
 Latest published engineering cleanup gate:
 
