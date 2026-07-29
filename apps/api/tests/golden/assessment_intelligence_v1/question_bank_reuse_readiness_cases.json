@@ -1,0 +1,346 @@
+{
+  "version": "assessment-intelligence-v1-batch-d-question-bank-reuse-golden-v1",
+  "authorization": "ASSESSMENT-V1-BATCH-D-AUTH-001",
+  "description": "Assessment Intelligence v1.0 Batch D cases validating static question-bank reuse posture only.",
+  "cases": [
+    {
+      "id": "bank_ingest_approved_paper_supported_001",
+      "reuse_declaration_id": "assessment-bank-reuse://school-private/approved-paper-ingestion/v1",
+      "case_type": "approved_paper_ingestion",
+      "scope": {
+        "school_scope": "same_school",
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "grade": "6",
+        "subject": "Science"
+      },
+      "reuse": {
+        "reuse_posture": "approved_paper_ingestion",
+        "support_mode": "supported",
+        "source": "teacher",
+        "approval_status": "approved",
+        "source_paper_required": true,
+        "source_bank_item_required": false,
+        "answer_context_available": true
+      },
+      "expected": {
+        "mode": "supported",
+        "product_claim_allowed": true,
+        "teacher_authority_required": true,
+        "reuse_review_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "autonomous_paper_approval": false,
+        "autonomous_question_approval": false,
+        "autonomous_grading": false,
+        "direct_marks_update": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "bank_reapprove_idempotent_supported_001",
+      "reuse_declaration_id": "assessment-bank-reuse://school-private/idempotent-reapproval/v1",
+      "case_type": "idempotent_reapproval",
+      "scope": {
+        "school_scope": "same_school",
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "grade": "6",
+        "subject": "Science"
+      },
+      "reuse": {
+        "reuse_posture": "idempotent_reapproval",
+        "support_mode": "supported",
+        "approval_status": "approved",
+        "source_paper_required": true,
+        "duplicate_source_rows_allowed": false
+      },
+      "expected": {
+        "mode": "supported",
+        "product_claim_allowed": true,
+        "teacher_authority_required": true,
+        "reuse_review_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "autonomous_paper_approval": false,
+        "autonomous_question_approval": false,
+        "autonomous_grading": false,
+        "direct_marks_update": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "bank_same_school_reuse_supported_001",
+      "reuse_declaration_id": "assessment-bank-reuse://school-private/same-school-approved-reuse/v1",
+      "case_type": "same_school_reuse",
+      "scope": {
+        "school_scope": "same_school",
+        "class_scope": "same_class",
+        "subject_scope": "same_subject",
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "grade": "10",
+        "subject": "Mathematics"
+      },
+      "reuse": {
+        "reuse_posture": "same_school_reuse",
+        "support_mode": "supported",
+        "source": "previous_paper",
+        "approval_status": "approved",
+        "source_paper_required": true,
+        "source_bank_item_required": true,
+        "draft_target_required": true,
+        "answer_context_available": true
+      },
+      "expected": {
+        "mode": "supported",
+        "product_claim_allowed": true,
+        "teacher_authority_required": true,
+        "reuse_review_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "autonomous_paper_approval": false,
+        "autonomous_question_approval": false,
+        "autonomous_grading": false,
+        "direct_marks_update": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "bank_compose_marks_type_match_supported_001",
+      "reuse_declaration_id": "assessment-bank-reuse://school-private/blueprint-slot-compose/v1",
+      "case_type": "blueprint_slot_compose",
+      "scope": {
+        "school_scope": "same_school",
+        "class_scope": "same_class",
+        "subject_scope": "same_subject",
+        "blueprint_id": "assessment-blueprint://cbse/ncf2023/g10/mathematics/term-exam/v1"
+      },
+      "reuse": {
+        "reuse_posture": "blueprint_slot_compose",
+        "support_mode": "supported",
+        "approval_status": "approved",
+        "source_bank_item_required": true,
+        "marks_match": true,
+        "type_match": true,
+        "topic_overlap": "not_required_for_marks_type_match",
+        "answer_context_available": true
+      },
+      "expected": {
+        "mode": "supported",
+        "product_claim_allowed": true,
+        "teacher_authority_required": true,
+        "reuse_review_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "autonomous_paper_approval": false,
+        "autonomous_question_approval": false,
+        "autonomous_grading": false,
+        "direct_marks_update": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "bank_compose_topic_overlap_supported_001",
+      "reuse_declaration_id": "assessment-bank-reuse://school-private/blueprint-topic-overlap/v1",
+      "case_type": "topic_overlap_candidate_ordering",
+      "scope": {
+        "school_scope": "same_school",
+        "class_scope": "same_class",
+        "subject_scope": "same_subject",
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "grade": "6",
+        "subject": "Science"
+      },
+      "reuse": {
+        "reuse_posture": "blueprint_slot_compose",
+        "support_mode": "supported",
+        "approval_status": "approved",
+        "source_bank_item_required": true,
+        "marks_match": true,
+        "type_match": true,
+        "topic_overlap": "standard_units",
+        "educational_identity_available": true,
+        "answer_context_available": true
+      },
+      "expected": {
+        "mode": "supported",
+        "product_claim_allowed": true,
+        "teacher_authority_required": true,
+        "reuse_review_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "autonomous_paper_approval": false,
+        "autonomous_question_approval": false,
+        "autonomous_grading": false,
+        "direct_marks_update": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "bank_gap_fill_assist_001",
+      "reuse_declaration_id": "assessment-bank-reuse://school-private/gap-fill-assist/v1",
+      "case_type": "gap_fill_assist",
+      "scope": {
+        "school_scope": "same_school",
+        "bank_coverage": "incomplete"
+      },
+      "reuse": {
+        "reuse_posture": "gap_fill_assist",
+        "support_mode": "assist",
+        "approval_status": "draft",
+        "source_bank_item_required": false,
+        "gap_fill_provenance": "generated_gap_fill",
+        "represented_as_bank_reuse": false,
+        "answer_context_available": false
+      },
+      "expected": {
+        "mode": "assist",
+        "product_claim_allowed": false,
+        "teacher_authority_required": true,
+        "reuse_review_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "autonomous_paper_approval": false,
+        "autonomous_question_approval": false,
+        "autonomous_grading": false,
+        "direct_marks_update": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "bank_changed_context_manual_review_001",
+      "reuse_declaration_id": "assessment-bank-reuse://school-private/changed-context-review/v1",
+      "case_type": "changed_context_review",
+      "scope": {
+        "school_scope": "same_school",
+        "context_change": "paper_type_or_academic_year_changed"
+      },
+      "reuse": {
+        "reuse_posture": "changed_context_review",
+        "support_mode": "manual_review",
+        "approval_status": "approved",
+        "source_paper_required": true,
+        "source_bank_item_required": true,
+        "changed_context_conflict_recorded": true
+      },
+      "expected": {
+        "mode": "manual_review",
+        "product_claim_allowed": false,
+        "teacher_authority_required": true,
+        "reuse_review_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "autonomous_paper_approval": false,
+        "autonomous_question_approval": false,
+        "autonomous_grading": false,
+        "direct_marks_update": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "bank_draft_item_unsupported_001",
+      "reuse_declaration_id": "assessment-bank-reuse://unsupported/draft-or-unapproved-bank-item/v1",
+      "case_type": "draft_or_unapproved_bank_item",
+      "scope": {
+        "school_scope": "same_school"
+      },
+      "reuse": {
+        "reuse_posture": "unsupported_reuse",
+        "support_mode": "unsupported",
+        "approval_status": "draft",
+        "source_bank_item_required": true,
+        "unsupported_reason": "Draft or unapproved bank item cannot be reused as approved content."
+      },
+      "expected": {
+        "mode": "unsupported",
+        "product_claim_allowed": false,
+        "teacher_authority_required": true,
+        "reuse_review_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "autonomous_paper_approval": false,
+        "autonomous_question_approval": false,
+        "autonomous_grading": false,
+        "direct_marks_update": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "bank_cross_tenant_unsupported_001",
+      "reuse_declaration_id": "assessment-bank-reuse://unsupported/cross-tenant-reuse/v1",
+      "case_type": "cross_tenant_reuse",
+      "scope": {
+        "school_scope": "different_school"
+      },
+      "reuse": {
+        "reuse_posture": "unsupported_reuse",
+        "support_mode": "unsupported",
+        "approval_status": "approved",
+        "tenant_scope_violation": true,
+        "unsupported_reason": "Question-bank reuse is school-private in v1.0."
+      },
+      "expected": {
+        "mode": "unsupported",
+        "product_claim_allowed": false,
+        "teacher_authority_required": true,
+        "reuse_review_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "autonomous_paper_approval": false,
+        "autonomous_question_approval": false,
+        "autonomous_grading": false,
+        "direct_marks_update": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "bank_global_marketplace_expansion_001",
+      "reuse_declaration_id": "assessment-bank-reuse://expansion/global-marketplace-bank/v1",
+      "case_type": "future_expansion",
+      "scope": {
+        "school_scope": "multi_school_or_global"
+      },
+      "reuse": {
+        "reuse_posture": "future_expansion",
+        "support_mode": "expansion",
+        "approval_status": "future",
+        "unsupported_reason": "Global or marketplace bank requires future architecture and certification."
+      },
+      "expected": {
+        "mode": "expansion",
+        "product_claim_allowed": false,
+        "teacher_authority_required": true,
+        "reuse_review_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "autonomous_paper_approval": false,
+        "autonomous_question_approval": false,
+        "autonomous_grading": false,
+        "direct_marks_update": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    }
+  ]
+}
