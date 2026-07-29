@@ -81,6 +81,7 @@ canonical roadmap names are:
 | AEI v1.0 Teacher Evaluation UX-E - Final teacher evaluation experience certification | Complete / certified / published |
 | Teacher Evaluation Page Lint Cleanup | Complete / validated / published |
 | AI Gateway Config Hardening - General vs vision model routing | Complete / validated / published |
+| AEI Handwriting OCR Phase 1 - Gemini Flash transcription gate | Complete / certified / published |
 | Stabilization Gate 1 - Production Safety | Complete / certified / published |
 | Operational Proof | Complete / certified / published |
 | AEI Activation / Trust | Complete / certified / published |
@@ -381,35 +382,44 @@ UX-E certification caveat:
 The latest completed published gate is:
 
 ```text
-AI Gateway Config Hardening - General vs vision model routing
+AEI Handwriting OCR Phase 1 - Gemini Flash answer-sheet transcription gate
 ```
 
 Publication baseline:
 
-- commit `b9d8f0b5f82fde6d361458ecfbe547ab422cbe80`;
-- no annotated tag was created because this is an infrastructure/config
-  hardening gate, not a product capability certification milestone.
+- commit `80fe4afc7e311536d99b9cd741ba1342fc1fb4c0`;
+- annotated tag `aei-handwriting-ocr-phase1-gemini-transcription-certified`.
 
-AI Gateway Config Hardening separates general reasoning model routing from
-answer-sheet OCR / vision routing. It lets StudyNexs run general AI through
-Ollama gemma4 cloud with OpenAI fallback while using Gemini Flash as an
-OCR-specialist provider for answer-sheet transcription. OCR remains
-transcription-only; AEI still evaluates and teachers remain final.
+AEI Handwriting OCR Phase 1 introduces a default-off transcription gate:
+
+```text
+AEI_HANDWRITING_OCR_PHASE1_ENABLED=false
+```
+
+When enabled, supported answer-sheet page images may be transcribed through the
+existing StudyNexs AI Gateway using the configured OCR / vision provider profile
+for Gemini Flash. OCR remains transcription-only; AEI still evaluates and
+teachers remain final.
 
 No implementation gate is currently active. The next recommended product-facing
 gate should be selected from the product completion roadmap under a separate
 ARM design or implementation authorization.
 
-Ordered candidate gates after AI Gateway Config Hardening:
+Ordered candidate gates after AEI Handwriting OCR Phase 1:
 
-1. AEI Handwriting OCR Phase 1 design / implementation authorization - Gemini
-   Flash answer-sheet transcription through the gateway only; not authorized.
-2. Topic-ID / Mastery Spine Phase B additive schema readiness design - future
+1. AEI Handwriting OCR Phase 2 validation design / implementation
+   authorization - Track-A teacher-verified real-sheet Golden Set and
+   benchmark plan for Gemini Flash, Qwen2.5-VL-7B, and Surya 2; not
+   authorized.
+2. Next product-facing completion workstream from the roadmap; not authorized.
+3. Topic-ID / Mastery Spine Phase B additive schema readiness design - future
    learning-intelligence plumbing only if ARM chooses deeper spine persistence;
    not authorized.
-3. Next product-facing completion workstream from the roadmap; not authorized.
 
-Completion of AI Gateway Config Hardening does not authorize any later gate.
+Completion of AEI Handwriting OCR Phase 1 does not authorize Phase 2
+benchmarking, source switching, public OCR claim expansion, UI changes, API
+changes, schema changes, marks changes, routing changes, or evidence-ledger
+behavior changes.
 
 EUI Phase 7 remains closed at Phase 7E. Phase 7F source adoption is deferred
 future scope, not the next active implementation milestone.
@@ -513,9 +523,11 @@ separate ARM authorization. Production Safety, Operational Proof, AEI
 Activation / Trust, Topic-ID / Mastery Spine Phase A, Teacher Evaluation UX-D,
 Teacher Evaluation Page Lint Cleanup, and Teacher Evaluation UX-E are now
 published. AI Gateway Config Hardening is also published and separates general
-AI model routing from answer-sheet OCR / vision model routing. UX-E remains the
-latest product-trust certification milestone and the lint cleanup remains the
-code-health gate that resolved the pre-existing page lint debt. The next
+AI model routing from answer-sheet OCR / vision model routing. AEI Handwriting
+OCR Phase 1 is now published and adds the default-off Gemini Flash answer-sheet
+transcription gate through the StudyNexs AI Gateway only. UX-E remains the
+assembled teacher-evaluation certification baseline and the lint cleanup remains
+the code-health gate that resolved the pre-existing page lint debt. The next
 product-facing gate is not active until ARM authorizes it under a separate
 design or implementation contract.
 
@@ -620,6 +632,40 @@ Scope:
 Validation:
 
 - Focused gateway / answer-sheet vision / fallback / telemetry tests: 14 passed
+- Focused ruff on changed API files and tests: PASS
+- `app.main` import: PASS
+- `git diff --check`: PASS
+
+Latest published AEI OCR capability gate:
+
+```text
+AEI Handwriting OCR Phase 1 - Gemini Flash answer-sheet transcription gate
+```
+
+Status: **Complete / certified / published**
+
+Commit: `80fe4afc7e311536d99b9cd741ba1342fc1fb4c0`
+
+Annotated tag: `aei-handwriting-ocr-phase1-gemini-transcription-certified`
+
+Scope:
+
+- added default-off OCR activation flag
+  `AEI_HANDWRITING_OCR_PHASE1_ENABLED=false`;
+- kept Gemini Flash answer-sheet transcription behind the existing StudyNexs AI
+  Gateway;
+- preserved the separation between general reasoning model routing and OCR /
+  vision model routing;
+- kept OCR transcription-only;
+- added repository-safe Golden Harness cases for flag-off, gateway-routing,
+  malformed JSON, and unsupported MIME behavior;
+- preserved AEI evaluation, teacher approval, marks, routing, evidence ledger,
+  schema, API, and UI behavior.
+
+Validation:
+
+- Focused OCR / gateway tests: 18 passed
+- Targeted adjacent evaluation regression tests: 2 passed
 - Focused ruff on changed API files and tests: PASS
 - `app.main` import: PASS
 - `git diff --check`: PASS
