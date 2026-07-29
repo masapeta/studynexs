@@ -80,6 +80,7 @@ canonical roadmap names are:
 | Stabilization Gate 1 - Production Safety | Complete / certified / published |
 | Operational Proof | Complete / certified / published |
 | AEI Activation / Trust | Complete / certified / published |
+| Topic-ID / Mastery Spine Phase A - Passive resolution | Complete / certified / published |
 | EUI v1 architecture | Frozen / accepted |
 | EUI Runtime Roadmap v1 | Accepted planning baseline |
 | Phase 0 - Engineering Preparation | Complete / certified / published |
@@ -321,33 +322,37 @@ UX-C certification caveat:
 The latest completed published gate is:
 
 ```text
-AEI Activation / Trust
+Topic-ID / Mastery Spine Phase A - Passive resolution
 ```
 
 Publication baseline:
 
-- commit `f54a4de2a663cdc1cd8c838a2b90f2e096b49567`;
-- annotated tag `aei-activation-trust-certified`;
+- commit `27a4b9a946bffcb3883b2ee4a5fa3a8bc153a645`;
+- annotated tag `topic-id-mastery-spine-passive-resolution-certified`;
 - certification
-  [`product/aei-v1/AEI_ACTIVATION_TRUST_CERTIFICATION_REPORT.md`](./product/aei-v1/AEI_ACTIVATION_TRUST_CERTIFICATION_REPORT.md).
+  [`product/learning-intelligence/TOPIC_ID_MASTERY_SPINE_UNIFICATION_PHASE_A_CERTIFICATION_REPORT.md`](./product/learning-intelligence/TOPIC_ID_MASTERY_SPINE_UNIFICATION_PHASE_A_CERTIFICATION_REPORT.md).
 
-AEI Activation / Trust proves the controlled activation profile for the
-supported AEI v1.0 capabilities, adds default-off manual-review acknowledgement
-enforcement, expands teacher-marked Golden Harness evidence, and provides UX
-A-C trust proof without source switching, autonomous grading, schema changes,
-new public endpoints, student/parent/principal changes, or product rollout.
+Topic-ID / Mastery Spine Phase A proves passive internal mastery spine
+resolution behind a default-off flag. It adds a strict internal
+`MasterySpineReference` contract, deterministic read-only resolver, operational
+metrics/logging, Golden Harness readiness cases, and tenant-scope validation
+without source switching, schema changes, API changes, UI changes, marks
+changes, AEI behavior changes, or consumer migration.
 
-No implementation gate is currently active. The next planned gate is
-Topic-ID/mastery spine unification design and remains not authorized.
+No implementation gate is currently active. The next planned gate is Teacher
+Evaluation UX-D design unless ARM chooses to open Topic-ID / Mastery Spine
+Phase B additive schema readiness first. Neither is authorized.
 
-Ordered gates after AEI Activation / Trust:
+Ordered gates after Topic-ID / Mastery Spine Phase A:
 
-1. Topic-ID/mastery spine unification — planned as a separate design gate,
-   not authorized for implementation.
-2. Teacher Evaluation UX-D — deferred until supported capabilities execute
-   with runtime evidence; not authorized.
+1. Teacher Evaluation UX-D design - planned as the next product-facing
+   teacher-evaluation UX gate; not authorized for implementation.
+2. Topic-ID / Mastery Spine Phase B additive schema readiness design - future
+   learning-intelligence plumbing only if ARM chooses deeper spine persistence
+   before UX-D; not authorized.
 
-Completion of AEI Activation / Trust does not authorize any later gate.
+Completion of Topic-ID / Mastery Spine Phase A does not authorize any later
+gate.
 
 EUI Phase 7 remains closed at Phase 7E. Phase 7F source adoption is deferred
 future scope, not the next active implementation milestone.
@@ -389,6 +394,8 @@ remain out of scope:
   acknowledgement/evidence proof;
 - consumer migration beyond the published Phase 7E AEI internal
   source-readiness trial foundation;
+- Topic-ID / Mastery Spine Phase B additive schema readiness, source adoption,
+  dual-read, consumer migration, or mastery source-of-truth switching;
 - Phase 7F source adoption unless ARM reopens it under the documented reopen
   conditions;
 - AEI behavior changes beyond the published default-off Batch A Maths
@@ -430,17 +437,20 @@ foundation, a published AEI v1.0 Batch C Evidence Ledger Metadata foundation, a
 published AEI v1.0 Batch D Language/OCR Assist Metadata foundation, a published
 AEI v1.0 Batch E Visual/Science Assist Metadata foundation, a published AEI
 v1.0 Certification baseline, published AEI v1.0 Teacher Evaluation UX-A/B/C
-teacher-trust slices, and a published AEI Activation / Trust runtime proof
+teacher-trust slices, a published AEI Activation / Trust runtime proof
+foundation, and a published Topic-ID / Mastery Spine Phase A passive resolution
 foundation. Phase 7 is closed at 7E. Phase 7F source adoption is deferred future
 scope. AEI v1.0 is certified for the declared supported scope, UX-A is the first
 product-facing display slice, UX-B is the teacher-authored override reason
 workflow slice, UX-C is the teacher-facing evidence posture and approved
-decision panel slice, and AEI Activation / Trust is the controlled trust proof
-for supported capabilities. Further teacher-evaluation UX batches, source
-switching, and public capability claim expansion require separate ARM
-authorization. Production Safety, Operational Proof, and AEI Activation / Trust
-are now published and certified; topic-ID/mastery spine design is the next
-planned gate without inherited implementation authorization.
+decision panel slice, AEI Activation / Trust is the controlled trust proof for
+supported capabilities, and Topic-ID / Mastery Spine Phase A is the passive
+learning-intelligence spine foundation. Further teacher-evaluation UX batches,
+source switching, mastery persistence/source adoption, and public capability
+claim expansion require separate ARM authorization. Production Safety,
+Operational Proof, AEI Activation / Trust, and Topic-ID / Mastery Spine Phase A
+are now published and certified; Teacher Evaluation UX-D design is the next
+planned gate unless ARM chooses to open Mastery Spine Phase B first.
 
 ---
 
@@ -449,51 +459,50 @@ planned gate without inherited implementation authorization.
 Latest published product-trust gate:
 
 ```text
-AEI Activation / Trust
+Topic-ID / Mastery Spine Phase A - Passive resolution
 ```
 
 Status: **Complete / certified / published**
 
-Commit: `f54a4de2a663cdc1cd8c838a2b90f2e096b49567`
+Commit: `27a4b9a946bffcb3883b2ee4a5fa3a8bc153a645`
 
-Annotated tag: `aei-activation-trust-certified`
+Annotated tag: `topic-id-mastery-spine-passive-resolution-certified`
 
 Evidence:
 
-[`product/aei-v1/AEI_ACTIVATION_TRUST_CERTIFICATION_REPORT.md`](./product/aei-v1/AEI_ACTIVATION_TRUST_CERTIFICATION_REPORT.md)
+[`product/learning-intelligence/TOPIC_ID_MASTERY_SPINE_UNIFICATION_PHASE_A_CERTIFICATION_REPORT.md`](./product/learning-intelligence/TOPIC_ID_MASTERY_SPINE_UNIFICATION_PHASE_A_CERTIFICATION_REPORT.md)
 
 Latest published runtime phase:
 
 ```text
-AEI Activation / Trust - Controlled trust proof foundation
+Topic-ID / Mastery Spine Phase A - Passive resolution foundation
 ```
 
 Historical artifact label:
 
 ```text
-AEI Activation / Trust
+Topic-ID / Mastery Spine Phase A
 ```
 
 Certified evidence:
 
 - Backend focused ruff: PASS
-- Activation/trust focused tests: PASS
-- AEI regression slice: PASS
+- Mastery spine focused tests: PASS
+- Adjacent mastery regression slice: PASS
 - API import: PASS
-- Admin-web production build and TypeScript validation: PASS
 - git diff --check: PASS
-- Teacher-marked Golden Harness activation/trust cases: PASS
-- Default-off manual-review acknowledgement rollback posture: PASS
-- Focused page lint: BLOCKED by pre-existing evaluation-page lint debt outside
-  Activation / Trust additions
+- Golden Harness passive mastery spine cases: PASS
+- Default-off passive flag rollback posture: PASS
+- No schema/API/UI/source switch/consumer migration: PASS
 
 Certification report:
 
-[`product/aei-v1/AEI_ACTIVATION_TRUST_CERTIFICATION_REPORT.md`](./product/aei-v1/AEI_ACTIVATION_TRUST_CERTIFICATION_REPORT.md)
+[`product/learning-intelligence/TOPIC_ID_MASTERY_SPINE_UNIFICATION_PHASE_A_CERTIFICATION_REPORT.md`](./product/learning-intelligence/TOPIC_ID_MASTERY_SPINE_UNIFICATION_PHASE_A_CERTIFICATION_REPORT.md)
 
-Supported scope matrix:
+Related design and authorization:
 
-[`product/aei-v1/AEI_V1_SUPPORTED_SCOPE_CAPABILITY_MATRIX.md`](./product/aei-v1/AEI_V1_SUPPORTED_SCOPE_CAPABILITY_MATRIX.md)
+- [`product/learning-intelligence/TOPIC_ID_MASTERY_SPINE_UNIFICATION_DESIGN_BRIEF.md`](./product/learning-intelligence/TOPIC_ID_MASTERY_SPINE_UNIFICATION_DESIGN_BRIEF.md)
+- [`product/learning-intelligence/TOPIC_ID_MASTERY_SPINE_UNIFICATION_IMPLEMENTATION_AUTHORIZATION_CONTRACT.md`](./product/learning-intelligence/TOPIC_ID_MASTERY_SPINE_UNIFICATION_IMPLEMENTATION_AUTHORIZATION_CONTRACT.md)
 
 ---
 
