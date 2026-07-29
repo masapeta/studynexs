@@ -232,11 +232,17 @@ class Settings(BaseSettings):
     AI_DEFAULT_PROVIDER: str = "gemini"  # default only; benchmark decides the real one
     AI_DEFAULT_MODEL: str = ""  # empty → factory picks the provider's default model
     AI_FALLBACK_PROVIDER: str = ""  # e.g. ollama — used when primary provider fails
-    # Answer-sheet OCR fallback; defaults to AI_FALLBACK_PROVIDER or ollama.
+    AI_FALLBACK_MODEL: str = ""  # empty → factory picks the fallback provider's default model
+    # Answer-sheet OCR / vision routing is intentionally separate from general reasoning.
+    # Empty → Gemini when configured, else a vision-capable provider.
+    AI_VISION_PRIMARY_PROVIDER: str = ""
+    AI_VISION_PRIMARY_MODEL: str = ""  # e.g. gemini-1.5-flash
     AI_VISION_FALLBACK_PROVIDER: str = ""
+    AI_VISION_FALLBACK_MODEL: str = ""  # e.g. gemma4:cloud
     OLLAMA_BASE_URL: str = ""  # e.g. http://host.docker.internal:11434 (Docker → host Ollama)
     OLLAMA_MODEL: str = "gemma4:cloud"
-    OLLAMA_VISION_MODEL: str = ""  # empty → OLLAMA_MODEL (gemma4 supports image input)
+    # Legacy alias; empty → OLLAMA_MODEL (gemma4 supports image input).
+    OLLAMA_VISION_MODEL: str = ""
     OLLAMA_API_KEY: str = ""  # optional — Ollama cloud / authenticated endpoints
     AI_REQUEST_TIMEOUT_SECONDS: float = 120.0
 

@@ -9,15 +9,33 @@ from app.modules.examinations.services import answer_sheet_vision as vision
 
 def test_vision_fallback_defaults_to_ollama(monkeypatch):
     monkeypatch.setattr(vision.settings, "AI_VISION_FALLBACK_PROVIDER", "")
-    monkeypatch.setattr(vision.settings, "AI_FALLBACK_PROVIDER", "")
+    monkeypatch.setattr(vision.settings, "AI_FALLBACK_PROVIDER", "openai")
     monkeypatch.setattr(vision.settings, "OLLAMA_BASE_URL", "https://ollama.com")
     assert vision._vision_fallback_provider() == "ollama"
 
 
 def test_vision_primary_prefers_gemini(monkeypatch):
+    monkeypatch.setattr(vision.settings, "AI_VISION_PRIMARY_PROVIDER", "")
     monkeypatch.setattr(vision.settings, "GEMINI_API_KEY", "key")
     monkeypatch.setattr(vision.settings, "AI_DEFAULT_PROVIDER", "openai")
     assert vision._vision_primary_provider() == "gemini"
+
+
+def test_vision_primary_can_be_explicitly_configured(monkeypatch):
+    monkeypatch.setattr(vision.settings, "AI_VISION_PRIMARY_PROVIDER", "ollama")
+    monkeypatch.setattr(vision.settings, "GEMINI_API_KEY", "key")
+    monkeypatch.setattr(vision.settings, "OLLAMA_BASE_URL", "https://ollama.com")
+    assert vision._vision_primary_provider() == "ollama"
+
+
+def test_vision_models_are_separate_from_general_default(monkeypatch):
+    monkeypatch.setattr(vision.settings, "AI_DEFAULT_PROVIDER", "ollama")
+    monkeypatch.setattr(vision.settings, "AI_DEFAULT_MODEL", "gpt-4o-mini")
+    monkeypatch.setattr(vision.settings, "AI_VISION_PRIMARY_MODEL", "gemini-1.5-flash")
+    monkeypatch.setattr(vision.settings, "AI_VISION_FALLBACK_MODEL", "gemma4:cloud")
+
+    assert vision._vision_model("gemini") == "gemini-1.5-flash"
+    assert vision._vision_model("ollama", fallback=True) == "gemma4:cloud"
 
 
 @pytest.mark.asyncio
@@ -52,6 +70,7 @@ async def test_extract_answers_falls_back_to_ollama(monkeypatch):
     monkeypatch.setattr(vision, "generate_llm", fake_generate_llm)
     monkeypatch.setattr(vision, "_vision_primary_provider", lambda: "openai")
     monkeypatch.setattr(vision, "_vision_fallback_provider", lambda: "ollama")
+    monkeypatch.setattr(vision.settings, "AI_VISION_FALLBACK_MODEL", "gemma4:cloud")
     monkeypatch.setattr(
         "app.modules.ai.gateway.invoke.get_provider",
         lambda name: primary if name == "openai" else fallback,

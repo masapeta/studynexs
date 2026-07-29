@@ -74,4 +74,7 @@ def default_model(provider: str | None = None) -> str:
     provider = (provider or settings.AI_DEFAULT_PROVIDER).lower()
     if provider == "ollama":
         return settings.OLLAMA_MODEL or _DEFAULT_MODELS["ollama"]
-    return settings.AI_DEFAULT_MODEL or _DEFAULT_MODELS.get(provider, "")
+    is_default_provider = provider == (settings.AI_DEFAULT_PROVIDER or "").strip().lower()
+    if is_default_provider and settings.AI_DEFAULT_MODEL:
+        return settings.AI_DEFAULT_MODEL
+    return _DEFAULT_MODELS.get(provider, "")

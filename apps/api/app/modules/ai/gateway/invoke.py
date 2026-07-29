@@ -24,10 +24,9 @@ def _fallback_provider_name(explicit: str | None = None) -> str | None:
 def _fallback_model(provider: str, explicit: str | None = None) -> str:
     if explicit:
         return explicit
-    if provider == "ollama":
-        vision_model = (settings.OLLAMA_VISION_MODEL or "").strip()
-        if vision_model:
-            return vision_model
+    configured = (settings.AI_FALLBACK_MODEL or "").strip()
+    if configured:
+        return configured
     return default_model(provider)
 
 

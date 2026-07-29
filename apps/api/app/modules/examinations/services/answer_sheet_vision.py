@@ -23,40 +23,47 @@ def _ollama_ready() -> bool:
     return ollama_configured()
 
 
+def _provider_ready(provider: str) -> bool:
+    if provider == "gemini":
+        return bool(settings.GEMINI_API_KEY)
+    if provider == "openai":
+        return bool(settings.OPENAI_API_KEY)
+    if provider == "ollama":
+        return _ollama_ready()
+    return False
+
+
 def _vision_fallback_provider() -> str | None:
-    """Answer-sheet handwriting fallback — Ollama gemma4 by default (not a second OpenAI call)."""
+    """Answer-sheet OCR fallback is separate from the general LLM fallback."""
     for candidate in (
         (settings.AI_VISION_FALLBACK_PROVIDER or "").strip().lower(),
-        (settings.AI_FALLBACK_PROVIDER or "").strip().lower(),
         "ollama",
     ):
         if not candidate:
             continue
-        if candidate == "ollama" and not _ollama_ready():
+        if candidate not in _VISION_PROVIDERS or not _provider_ready(candidate):
             continue
         return candidate
     return None
 
 
 def _vision_primary_provider() -> str | None:
-    """First vision attempt: Gemini if configured, else AI_DEFAULT_PROVIDER when vision-capable."""
+    """First OCR attempt: explicit vision provider, then Gemini, then a vision-capable default."""
+    configured = (settings.AI_VISION_PRIMARY_PROVIDER or "").strip().lower()
+    if configured:
+        if configured in _VISION_PROVIDERS and _provider_ready(configured):
+            return configured
+        return None
     if settings.GEMINI_API_KEY:
         return "gemini"
     primary = (settings.AI_DEFAULT_PROVIDER or "").strip().lower()
-    if primary in _VISION_PROVIDERS:
-        if primary == "ollama" and not _ollama_ready():
-            return None
-        if primary == "openai" and not settings.OPENAI_API_KEY:
-            return None
-        if primary == "gemini" and not settings.GEMINI_API_KEY:
-            return None
+    if primary in _VISION_PROVIDERS and _provider_ready(primary):
         return primary
     if settings.OPENAI_API_KEY:
         return "openai"
     if _ollama_ready():
         return "ollama"
     return None
-
 
 def vision_llm_available() -> bool:
     return _vision_primary_provider() is not None or _vision_fallback_provider() is not None
@@ -101,7 +108,25 @@ def _parse_answers_json(text: str) -> dict[str, str]:
 
 
 def _ollama_vision_model() -> str:
-    return (settings.OLLAMA_VISION_MODEL or settings.OLLAMA_MODEL or "gemma4:cloud").strip()
+    return (
+        settings.AI_VISION_FALLBACK_MODEL
+        or settings.OLLAMA_VISION_MODEL
+        or settings.OLLAMA_MODEL
+        or "gemma4:cloud"
+    ).strip()
+
+
+def _vision_model(provider: str, *, fallback: bool = False) -> str:
+    configured = (
+        (settings.AI_VISION_FALLBACK_MODEL or "").strip()
+        if fallback
+        else (settings.AI_VISION_PRIMARY_MODEL or "").strip()
+    )
+    if configured:
+        return configured
+    if provider == "ollama":
+        return _ollama_vision_model()
+    return default_model(provider)
 
 
 async def extract_answers_from_image(
@@ -133,11 +158,11 @@ async def extract_answers_from_image(
             images=[LLMImage(data=image_bytes, mime_type=mime_type.split(";")[0])],
         )
     ]
-    fb_model = _ollama_vision_model() if fallback == "ollama" else None
+    fb_model = _vision_model(fallback, fallback=True) if fallback else None
     try:
         result = await generate_llm(
             messages,
-            model=default_model(primary),
+            model=_vision_model(primary),
             provider_name=primary,
             fallback_provider_name=fallback,
             fallback_model=fb_model,
