@@ -9,8 +9,9 @@
 ## Executive status
 
 StudyNexs is an AI-first School Operating System with a frozen AEI/EUI
-architecture, a published EUI runtime foundation, and a certified AEI v1.0
-supported-scope baseline.
+architecture, a published EUI runtime foundation, a certified AEI v1.0
+supported-scope baseline, and a published Assessment Intelligence v1.0 Batch A
+contract/capability foundation.
 
 The current engineering rhythm is:
 
@@ -83,6 +84,7 @@ canonical roadmap names are:
 | AI Gateway Config Hardening - General vs vision model routing | Complete / validated / published |
 | AEI Handwriting OCR Phase 1 - Gemini Flash transcription gate | Complete / certified / published |
 | AEI Handwriting OCR Phase 2 - Track-A benchmark foundation | Complete / certified / published |
+| Assessment Intelligence v1.0 Batch A - Contract and capability matrix | Complete / certified / published |
 | Stabilization Gate 1 - Production Safety | Complete / certified / published |
 | Operational Proof | Complete / certified / published |
 | AEI Activation / Trust | Complete / certified / published |
@@ -217,6 +219,46 @@ Certified Batch F artifacts:
 Batch F does not authorize or implement product behavior changes, feature-flag
 enablement, UI changes, API changes, schema changes, source-of-truth switching,
 or expanded public product claims.
+
+---
+
+## Published Assessment Intelligence v1.0 milestones
+
+| Batch | Status | Commit | Tag | Scope |
+|---|---|---|---|---|
+| Batch A - Contract and Capability Matrix | Published / certified | `c2a0b725cda0f20335ae184311bde03947038523` | `assessment-v1-batch-a-contract-capability-matrix-certified` | Canonical assessment contract, supported-scope capability matrix, Golden Harness starter cases, focused static validation, and certification; no runtime behavior changes |
+
+Assessment Intelligence v1.0 Batch A establishes the product-completion
+foundation for assessment creation, question bank reuse, exam linkage, and
+AEI-aligned evaluation context.
+
+Batch A adds:
+
+- Assessment Intelligence v1.0 Production Readiness Review;
+- Assessment Intelligence v1.0 Implementation Design Brief;
+- Batch A Implementation Authorization Contract;
+- Canonical Assessment Contract;
+- Supported Scope Capability Matrix;
+- Golden Harness starter cases;
+- focused static contract/matrix validation tests;
+- Batch A Certification Report.
+
+Batch A does not authorize or implement schema changes, API changes, UI changes,
+runtime behavior changes, feature flags, AI provider changes, LLM inference,
+question paper generation changes, question bank runtime changes, exam service
+changes, AEI behavior changes, EUI source adoption, marks changes,
+teacher-review routing changes, evidence-ledger behavior changes,
+parent/student visibility changes, public product claim expansion, or Batch B
+implementation.
+
+Next Assessment Intelligence gate:
+
+```text
+Assessment Intelligence v1.0 Batch B - Blueprint Readiness
+```
+
+Status: **Not authorized**. Batch B requires a separate ARM implementation
+authorization contract before any implementation begins.
 
 ---
 
@@ -402,19 +444,21 @@ answer sheets or real teacher transcriptions, and does not change production OCR
 routing. OCR remains transcription-only; AEI still evaluates and teachers remain
 final.
 
-No implementation gate is currently active. The next recommended product-facing
-gate should be selected from the product completion roadmap under a separate
+No implementation gate is currently active. Assessment Intelligence v1.0 Batch
+A is published and certified. The next recommended product-facing gate is
+Assessment Intelligence v1.0 Batch B - Blueprint Readiness, under a separate
 ARM design or implementation authorization.
 
-Ordered candidate gates after AEI Handwriting OCR Phase 2:
+Ordered candidate gates after Assessment Intelligence v1.0 Batch A:
 
-1. AEI Handwriting OCR Phase 2 live Track-A benchmark run authorization -
+1. Assessment Intelligence v1.0 Batch B - Blueprint Readiness - make supported
+   blueprint behavior explicit, validated, and non-universal; not authorized.
+2. AEI Handwriting OCR Phase 2 live Track-A benchmark run authorization -
    collect/use secured 50-100 teacher-verified real sheets and produce an
    aggregate candidate comparison report; not authorized.
-2. AEI Handwriting OCR Phase 3 optimization design - confidence-routed chain
+3. AEI Handwriting OCR Phase 3 optimization design - confidence-routed chain
    and Qwen/Surya/Gemini operational decision based on Phase 2 evidence; not
    authorized.
-3. Next product-facing completion workstream from the roadmap; not authorized.
 4. Topic-ID / Mastery Spine Phase B additive schema readiness design - future
    learning-intelligence plumbing only if ARM chooses deeper spine persistence;
    not authorized.
@@ -478,6 +522,10 @@ remain out of scope:
 - AEI v1.0 feature-flag enablement, source switching, or product-facing behavior
   changes beyond the certified Activation / Trust proof without separate ARM
   authorization;
+- Assessment Intelligence v1.0 Batch B or later, including blueprint runtime
+  behavior, question paper generation behavior, question bank runtime behavior,
+  exam service behavior, API/UI/schema changes, or product claim expansion,
+  without separate ARM authorization;
 - later AEI v1.0 Teacher Evaluation UX batches until ARM separately authorizes
   the UX work;
 - post-certification AEI expansion without separate ARM authorization;
@@ -512,7 +560,10 @@ teacher-trust slices, a published AEI v1.0 Teacher Evaluation UX-E final
 teacher-experience certification, a published AEI Activation / Trust runtime proof
 foundation, and a published Topic-ID / Mastery Spine Phase A passive resolution
 foundation. Phase 7 is closed at 7E. Phase 7F source adoption is deferred future
-scope. AEI v1.0 is certified for the declared supported scope, UX-A is the first
+scope. Assessment Intelligence v1.0 Batch A is published and adds the canonical
+assessment contract, supported-scope capability matrix, Golden Harness starter
+cases, and certification foundation without runtime behavior changes. AEI v1.0
+is certified for the declared supported scope, UX-A is the first
 product-facing display slice, UX-B is the teacher-authored override reason
 workflow slice, UX-C is the teacher-facing evidence posture and approved
 decision panel slice, UX-D is the supported-scope assist-panel display slice,
@@ -533,12 +584,48 @@ Phase 2 is published and adds the repository-safe Track-A benchmark foundation
 without running live real-sheet benchmarks or changing production OCR routing.
 UX-E remains the assembled teacher-evaluation certification baseline and the
 lint cleanup remains the code-health gate that resolved the pre-existing page
-lint debt. The next product-facing gate is not active until ARM authorizes it
+lint debt. The next recommended product-facing gate is Assessment Intelligence
+v1.0 Batch B - Blueprint Readiness, but it is not active until ARM authorizes it
 under a separate design or implementation contract.
 
 ---
 
 ## Validation posture
+
+Latest published Assessment Intelligence gate:
+
+```text
+Assessment Intelligence v1.0 Batch A - Contract and Capability Matrix
+```
+
+Status: **Complete / certified / published**
+
+Commit: `c2a0b725cda0f20335ae184311bde03947038523`
+
+Annotated tag: `assessment-v1-batch-a-contract-capability-matrix-certified`
+
+Evidence:
+
+[`product/assessment-intelligence/ASSESSMENT_INTELLIGENCE_V1_BATCH_A_CONTRACT_CAPABILITY_MATRIX_CERTIFICATION_REPORT.md`](./product/assessment-intelligence/ASSESSMENT_INTELLIGENCE_V1_BATCH_A_CONTRACT_CAPABILITY_MATRIX_CERTIFICATION_REPORT.md)
+
+Certified evidence:
+
+- Focused Assessment Intelligence v1.0 contract tests: PASS - 6 passed
+- Adjacent assessment regression slice: PASS - 35 passed
+- Focused Ruff check: PASS
+- API import: PASS
+- `git diff --check`: PASS
+- No schema/API/UI/runtime behavior changes: PASS
+
+Next Assessment Intelligence gate:
+
+```text
+Assessment Intelligence v1.0 Batch B - Blueprint Readiness
+```
+
+Status: **Not authorized**
+
+---
 
 Latest published product-trust gate:
 
