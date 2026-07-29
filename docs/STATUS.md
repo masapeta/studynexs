@@ -12,8 +12,8 @@ StudyNexs is an AI-first School Operating System with a frozen AEI/EUI
 architecture, a published EUI runtime foundation, a certified AEI v1.0
 supported-scope baseline, and published Assessment Intelligence v1.0 Batch A
 contract/capability foundation, Batch B blueprint readiness foundation, Batch C
-rubric/model-answer readiness foundation, and Batch D question-bank/reuse
-readiness foundation.
+rubric/model-answer readiness foundation, Batch D question-bank/reuse readiness
+foundation, and Batch E paper-to-evaluation linkage readiness foundation.
 
 The current engineering rhythm is:
 
@@ -90,6 +90,7 @@ canonical roadmap names are:
 | Assessment Intelligence v1.0 Batch B - Blueprint readiness | Complete / certified / published |
 | Assessment Intelligence v1.0 Batch C - Rubric and model-answer readiness | Complete / certified / published |
 | Assessment Intelligence v1.0 Batch D - Question bank and reuse readiness | Complete / certified / published |
+| Assessment Intelligence v1.0 Batch E - Paper-to-evaluation linkage readiness | Complete / certified / published |
 | Stabilization Gate 1 - Production Safety | Complete / certified / published |
 | Operational Proof | Complete / certified / published |
 | AEI Activation / Trust | Complete / certified / published |
@@ -235,6 +236,7 @@ or expanded public product claims.
 | Batch B - Blueprint Readiness | Published / certified | `1dfb4692620050e3f7c8f0fc1b53cba2bd4fb389` | `assessment-v1-batch-b-blueprint-readiness-certified` | Blueprint declaration contract, static supported-scope blueprint declarations, Golden Harness cases, focused static validation, and certification; no runtime behavior changes |
 | Batch C - Rubric and Model-Answer Readiness | Published / certified | `06d431e4995c368e20ca55f7b2361d1e4cc1e55c` | `assessment-v1-batch-c-rubric-model-answer-readiness-certified` | Rubric/model-answer declaration contract, static supported-scope declarations, Golden Harness cases, focused static validation, and certification; no runtime behavior changes |
 | Batch D - Question Bank and Reuse Readiness | Published / certified | `e837ad9de07fe2ee4dcb25052e1fb447d6d6af83` | `assessment-v1-batch-d-question-bank-reuse-readiness-certified` | Question-bank/reuse declaration contract, static supported-scope declarations, Golden Harness cases, focused static validation, and certification; no runtime behavior changes |
+| Batch E - Paper-to-Evaluation Linkage Readiness | Published / certified | `acbc897dd6db2f1375a367a10a7d6575102f4e8f` | `assessment-v1-batch-e-paper-to-evaluation-linkage-readiness-certified` | Paper-to-evaluation linkage declaration contract, static supported-scope declarations, Golden Harness cases, focused static validation, and certification; no runtime behavior changes |
 
 Assessment Intelligence v1.0 Batch A establishes the product-completion
 foundation for assessment creation, question bank reuse, exam linkage, and
@@ -365,13 +367,51 @@ parent/student visibility changes, mastery updates, public product claim
 expansion, cross-school marketplace behavior, or Batch E paper-to-evaluation
 linkage.
 
+Assessment Intelligence v1.0 Batch E makes paper-to-evaluation linkage explicit,
+teacher-governed, and non-authoritative until approval.
+
+Batch E adds:
+
+- Batch E Paper-to-Evaluation Linkage Readiness Design Brief;
+- Batch E Implementation Authorization Contract;
+- Paper-to-Evaluation Linkage Declaration Contract;
+- static Paper-to-Evaluation Linkage Supported Scope Declarations;
+- Golden Harness paper-to-evaluation linkage readiness cases;
+- focused static paper-to-evaluation linkage readiness validation tests;
+- Batch E Certification Report.
+
+Batch E certifies:
+
+- supported same-tenant approved-paper-to-exam-schema posture;
+- supported source-paper-plus-schema evaluation-readiness posture;
+- supported linked rubric/model-answer context posture where Batch C context
+  exists;
+- assist posture for OCR answer input;
+- assist posture for manual answer input;
+- manual-review posture for manual schema without approved source paper;
+- unsupported posture for draft/unapproved source papers;
+- unsupported posture for cross-tenant source papers;
+- unsupported posture for missing question schema;
+- unsupported posture for autonomous marks or pre-approval downstream evidence;
+- expansion posture for broader future source adoption.
+
+Batch E does not authorize or implement schema changes, API changes, UI changes,
+runtime behavior changes, feature flags, AI provider changes, LLM inference,
+OCR engine changes, question-paper generation behavior changes, question-bank
+service behavior changes, exam service behavior changes, answer-sheet
+evaluation behavior changes, teacher approval behavior changes, AEI grading
+behavior changes, AEI confidence behavior changes, AEI teacher-review routing
+changes, EUI source adoption, marks changes, evidence-ledger behavior changes,
+parent/student visibility changes, mastery updates, public product claim
+expansion, or Batch F multilingual/bilingual behavior.
+
 Next Assessment Intelligence gate:
 
 ```text
-Assessment Intelligence v1.0 Batch E - Paper-to-Evaluation Linkage Readiness
+Assessment Intelligence v1.0 Batch F - Bilingual / Multilingual Assessment Readiness
 ```
 
-Status: **Not authorized**. Batch E requires a separate ARM design brief and
+Status: **Not authorized**. Batch F requires a separate ARM design brief and
 implementation authorization contract before any implementation begins.
 
 ---
