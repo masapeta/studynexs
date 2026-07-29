@@ -78,6 +78,7 @@ canonical roadmap names are:
 | AEI v1.0 Teacher Evaluation UX-B - Override reason workflow | Complete / certified / published |
 | AEI v1.0 Teacher Evaluation UX-C - Evidence and approved-decision panel | Complete / certified / published |
 | AEI v1.0 Teacher Evaluation UX-D - Supported-scope assist panels | Complete / certified / published |
+| Teacher Evaluation Page Lint Cleanup | Complete / validated / published |
 | Stabilization Gate 1 - Production Safety | Complete / certified / published |
 | Operational Proof | Complete / certified / published |
 | AEI Activation / Trust | Complete / certified / published |
@@ -352,39 +353,37 @@ UX-D certification caveat:
 The latest completed published gate is:
 
 ```text
-AEI v1.0 Teacher Evaluation UX-D - Supported-scope assist panels
+Teacher Evaluation Page Lint Cleanup
 ```
 
 Publication baseline:
 
-- commit `690e15695aabbf60248d7353d096b5dea865b987`;
-- annotated tag `aei-v1-teacher-evaluation-ux-d-assist-panels-certified`;
-- certification
-  [`product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_D_CERTIFICATION_REPORT.md`](./product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_D_CERTIFICATION_REPORT.md).
+- commit `0792a290afa7e782d34dbd4ff50b088d82b58dc7`;
+- no annotated tag was created because this is a code-health cleanup gate, not
+  a new product capability or certification milestone.
 
-Teacher Evaluation UX-D surfaces certified supported-scope assist metadata as
-teacher-facing, display-only evidence panels. It adds language/OCR and
-visual/science assist panels that read existing suggestion metadata only, remain
-non-authoritative, and preserve the teacher as final evaluator.
+Teacher Evaluation Page Lint Cleanup removes the known pre-existing lint debt
+from the teacher evaluation page that had been blocking focused page lint during
+UX-A through UX-D certification. The cleanup adds narrow local page types, typed
+API calls, and a lint-safe initial-load effect while preserving the existing
+teacher evaluation behavior.
 
-No implementation gate is currently active. The next recommended gate is a
-focused Teacher Evaluation Page Lint Cleanup before UX-E or final teacher
-evaluation experience certification. That cleanup is not authorized until ARM
-opens it as a separate low-risk debt-removal slice.
+No implementation gate is currently active. The next recommended product-facing
+gate is Teacher Evaluation UX-E / final teacher-evaluation experience
+certification. It is not authorized until ARM opens a separate design or
+implementation contract.
 
-Ordered gates after Teacher Evaluation UX-D:
+Ordered gates after Teacher Evaluation Page Lint Cleanup:
 
-1. Teacher Evaluation Page Lint Cleanup - recommended focused cleanup of known
-   pre-existing lint debt in the teacher evaluation page; not authorized.
-2. Teacher Evaluation UX-E / final teacher-evaluation experience
+1. Teacher Evaluation UX-E / final teacher-evaluation experience
    certification - future product-facing certification gate after supported
-   capabilities have runtime evidence and the page lint debt is resolved; not
-   authorized.
-3. Topic-ID / Mastery Spine Phase B additive schema readiness design - future
+   capabilities have runtime evidence; not authorized.
+2. Topic-ID / Mastery Spine Phase B additive schema readiness design - future
    learning-intelligence plumbing only if ARM chooses deeper spine persistence;
    not authorized.
 
-Completion of Teacher Evaluation UX-D does not authorize any later gate.
+Completion of Teacher Evaluation Page Lint Cleanup does not authorize any later
+gate.
 
 EUI Phase 7 remains closed at Phase 7E. Phase 7F source adoption is deferred
 future scope, not the next active implementation milestone.
@@ -482,9 +481,11 @@ and Topic-ID / Mastery Spine Phase A is the passive learning-intelligence spine
 foundation. Further teacher-evaluation UX batches, source switching, mastery
 persistence/source adoption, and public capability claim expansion require
 separate ARM authorization. Production Safety, Operational Proof, AEI
-Activation / Trust, Topic-ID / Mastery Spine Phase A, and Teacher Evaluation
-UX-D are now published and certified; the next recommended gate is a focused
-Teacher Evaluation Page Lint Cleanup before UX-E or final teacher-evaluation
+Activation / Trust, Topic-ID / Mastery Spine Phase A, Teacher Evaluation UX-D,
+and Teacher Evaluation Page Lint Cleanup are now published; UX-D remains the
+latest product-trust milestone and the lint cleanup resolves the pre-existing
+page lint debt that had blocked focused page lint. The next recommended
+product-facing gate is Teacher Evaluation UX-E / final teacher-evaluation
 experience certification.
 
 ---
@@ -539,6 +540,26 @@ Related design and authorization:
 
 - [`product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_D_DESIGN_BRIEF.md`](./product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_D_DESIGN_BRIEF.md)
 - [`product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_D_IMPLEMENTATION_AUTHORIZATION_CONTRACT.md`](./product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_D_IMPLEMENTATION_AUTHORIZATION_CONTRACT.md)
+
+Latest published engineering cleanup gate:
+
+```text
+Teacher Evaluation Page Lint Cleanup
+```
+
+Status: **Complete / validated / published**
+
+Commit: `0792a290afa7e782d34dbd4ff50b088d82b58dc7`
+
+Evidence:
+
+- Focused teacher evaluation page lint: PASS
+- Adjacent AEI evaluation-display helper lint: PASS
+- Admin-web TypeScript validation: PASS
+- Admin-web production build: PASS
+- git diff --check: PASS
+- No backend/API/schema/marks/routing/ledger/source-switch behavior changes:
+  PASS
 
 ---
 
