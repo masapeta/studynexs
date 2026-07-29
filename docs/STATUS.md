@@ -77,6 +77,7 @@ canonical roadmap names are:
 | AEI v1.0 Teacher Evaluation UX-A - Trust metadata display | Complete / certified / published |
 | AEI v1.0 Teacher Evaluation UX-B - Override reason workflow | Complete / certified / published |
 | AEI v1.0 Teacher Evaluation UX-C - Evidence and approved-decision panel | Complete / certified / published |
+| AEI v1.0 Teacher Evaluation UX-D - Supported-scope assist panels | Complete / certified / published |
 | Stabilization Gate 1 - Production Safety | Complete / certified / published |
 | Operational Proof | Complete / certified / published |
 | AEI Activation / Trust | Complete / certified / published |
@@ -221,6 +222,7 @@ or expanded public product claims.
 | UX-A - Review-table trust metadata display | Published / certified | `a391fb2bd659957223a7a631471096a8e3b0ba6b` | `aei-v1-teacher-evaluation-ux-a-trust-display-certified` | Display-only teacher review guidance, confidence/capability/manual-review badges, and safe AEI metadata evidence rows on the existing teacher evaluation page |
 | UX-B - Override reason workflow | Published / certified | `c8ea8997f0aca8adb2fb1667cd25bff5500dd4a3` | `aei-v1-teacher-evaluation-ux-b-override-reasons-certified` | Teacher-authored override reason capture and saved override reason display on the existing teacher evaluation page |
 | UX-C - Evidence and approved-decision panel | Published / certified | `8c01e59111857750473133edfed0314103e7a3c8` | `aei-v1-teacher-evaluation-ux-c-evidence-decision-certified` | Teacher-facing evidence posture panel and approved-decision summary on the existing teacher evaluation page |
+| UX-D - Supported-scope assist panels | Published / certified | `690e15695aabbf60248d7353d096b5dea865b987` | `aei-v1-teacher-evaluation-ux-d-assist-panels-certified` | Display-only language/OCR and visual/science assist evidence panels on the existing teacher evaluation page |
 
 UX-A turns certified AEI v1.0 suggestion metadata into teacher-visible trust
 signals on the existing answer-sheet evaluation review page.
@@ -297,6 +299,34 @@ UX-C certification caveat:
 - UX-C reads existing evidence metadata only and does not alter evidence
   generation or persistence.
 
+UX-D adds display-only supported-scope assist panels to the existing
+answer-sheet evaluation review page.
+
+Supported UX-D behavior:
+
+- language/OCR assist evidence can surface detected language, script,
+  code-mixed posture, OCR confidence, input source, and review posture when
+  already present in existing suggestion metadata;
+- visual/science assist evidence can surface visual type, science type,
+  checklist status, observations, missing elements, and review posture when
+  already present in existing suggestion metadata;
+- assist panels stay explicitly non-authoritative and teacher-confirmed;
+- legacy or missing assist metadata renders safely with no product behavior
+  changes;
+- UX-A trust display, UX-B override reason workflow, and UX-C evidence posture
+  remain intact;
+- no backend, marks, approval endpoint, teacher-review routing,
+  evidence-ledger generation, OCR/vision/LLM execution, source-switching,
+  schema, API, feature-flag enablement, or parent/student visibility changes.
+
+UX-D certification caveat:
+
+- dedicated browser proof was not executed in this session;
+- admin-web production build and TypeScript validation passed;
+- focused helper lint passed;
+- focused page lint remains blocked by pre-existing evaluation-page lint debt
+  outside the UX-D display slice.
+
 ---
 
 ## Published EUI runtime milestones
@@ -322,37 +352,39 @@ UX-C certification caveat:
 The latest completed published gate is:
 
 ```text
-Topic-ID / Mastery Spine Phase A - Passive resolution
+AEI v1.0 Teacher Evaluation UX-D - Supported-scope assist panels
 ```
 
 Publication baseline:
 
-- commit `27a4b9a946bffcb3883b2ee4a5fa3a8bc153a645`;
-- annotated tag `topic-id-mastery-spine-passive-resolution-certified`;
+- commit `690e15695aabbf60248d7353d096b5dea865b987`;
+- annotated tag `aei-v1-teacher-evaluation-ux-d-assist-panels-certified`;
 - certification
-  [`product/learning-intelligence/TOPIC_ID_MASTERY_SPINE_UNIFICATION_PHASE_A_CERTIFICATION_REPORT.md`](./product/learning-intelligence/TOPIC_ID_MASTERY_SPINE_UNIFICATION_PHASE_A_CERTIFICATION_REPORT.md).
+  [`product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_D_CERTIFICATION_REPORT.md`](./product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_D_CERTIFICATION_REPORT.md).
 
-Topic-ID / Mastery Spine Phase A proves passive internal mastery spine
-resolution behind a default-off flag. It adds a strict internal
-`MasterySpineReference` contract, deterministic read-only resolver, operational
-metrics/logging, Golden Harness readiness cases, and tenant-scope validation
-without source switching, schema changes, API changes, UI changes, marks
-changes, AEI behavior changes, or consumer migration.
+Teacher Evaluation UX-D surfaces certified supported-scope assist metadata as
+teacher-facing, display-only evidence panels. It adds language/OCR and
+visual/science assist panels that read existing suggestion metadata only, remain
+non-authoritative, and preserve the teacher as final evaluator.
 
-No implementation gate is currently active. The next planned gate is Teacher
-Evaluation UX-D design unless ARM chooses to open Topic-ID / Mastery Spine
-Phase B additive schema readiness first. Neither is authorized.
+No implementation gate is currently active. The next recommended gate is a
+focused Teacher Evaluation Page Lint Cleanup before UX-E or final teacher
+evaluation experience certification. That cleanup is not authorized until ARM
+opens it as a separate low-risk debt-removal slice.
 
-Ordered gates after Topic-ID / Mastery Spine Phase A:
+Ordered gates after Teacher Evaluation UX-D:
 
-1. Teacher Evaluation UX-D design - planned as the next product-facing
-   teacher-evaluation UX gate; not authorized for implementation.
-2. Topic-ID / Mastery Spine Phase B additive schema readiness design - future
-   learning-intelligence plumbing only if ARM chooses deeper spine persistence
-   before UX-D; not authorized.
+1. Teacher Evaluation Page Lint Cleanup - recommended focused cleanup of known
+   pre-existing lint debt in the teacher evaluation page; not authorized.
+2. Teacher Evaluation UX-E / final teacher-evaluation experience
+   certification - future product-facing certification gate after supported
+   capabilities have runtime evidence and the page lint debt is resolved; not
+   authorized.
+3. Topic-ID / Mastery Spine Phase B additive schema readiness design - future
+   learning-intelligence plumbing only if ARM chooses deeper spine persistence;
+   not authorized.
 
-Completion of Topic-ID / Mastery Spine Phase A does not authorize any later
-gate.
+Completion of Teacher Evaluation UX-D does not authorize any later gate.
 
 EUI Phase 7 remains closed at Phase 7E. Phase 7F source adoption is deferred
 future scope, not the next active implementation milestone.
@@ -389,9 +421,10 @@ remain out of scope:
   foundation;
 - schema changes;
 - API changes;
-- UI changes beyond the published AEI v1.0 Teacher Evaluation UX-C evidence
-  and approved-decision panel slice and the published AEI Activation / Trust
-  acknowledgement/evidence proof;
+- UI changes beyond the published AEI v1.0 Teacher Evaluation UX-D
+  supported-scope assist panels, the earlier UX-A/B/C teacher-evaluation
+  slices, and the published AEI Activation / Trust acknowledgement/evidence
+  proof;
 - consumer migration beyond the published Phase 7E AEI internal
   source-readiness trial foundation;
 - Topic-ID / Mastery Spine Phase B additive schema readiness, source adoption,
@@ -402,12 +435,12 @@ remain out of scope:
   normalization foundation, Batch B review-policy metadata foundation, Batch C
   approved-evidence ledger metadata foundation, Batch D language/OCR assist
   metadata foundation, Batch E visual/science assist metadata foundation, Batch
-  F certification baseline, UX-A/B/C teacher evaluation slices, and AEI
+  F certification baseline, UX-A/B/C/D teacher evaluation slices, and AEI
   Activation / Trust runtime proof foundation;
 - AEI v1.0 feature-flag enablement, source switching, or product-facing behavior
   changes beyond the certified Activation / Trust proof without separate ARM
   authorization;
-- AEI v1.0 Teacher Evaluation UX-D or later UX batches until ARM separately
+- AEI v1.0 Teacher Evaluation UX-E or later UX batches until ARM separately
   authorizes the UX work;
 - post-certification AEI expansion without separate ARM authorization;
 - AEI source-of-truth switching to EUI;
@@ -436,21 +469,23 @@ Normalization foundation, a published AEI v1.0 Batch B Review Policy Metadata
 foundation, a published AEI v1.0 Batch C Evidence Ledger Metadata foundation, a
 published AEI v1.0 Batch D Language/OCR Assist Metadata foundation, a published
 AEI v1.0 Batch E Visual/Science Assist Metadata foundation, a published AEI
-v1.0 Certification baseline, published AEI v1.0 Teacher Evaluation UX-A/B/C
+v1.0 Certification baseline, published AEI v1.0 Teacher Evaluation UX-A/B/C/D
 teacher-trust slices, a published AEI Activation / Trust runtime proof
 foundation, and a published Topic-ID / Mastery Spine Phase A passive resolution
 foundation. Phase 7 is closed at 7E. Phase 7F source adoption is deferred future
 scope. AEI v1.0 is certified for the declared supported scope, UX-A is the first
 product-facing display slice, UX-B is the teacher-authored override reason
 workflow slice, UX-C is the teacher-facing evidence posture and approved
-decision panel slice, AEI Activation / Trust is the controlled trust proof for
-supported capabilities, and Topic-ID / Mastery Spine Phase A is the passive
-learning-intelligence spine foundation. Further teacher-evaluation UX batches,
-source switching, mastery persistence/source adoption, and public capability
-claim expansion require separate ARM authorization. Production Safety,
-Operational Proof, AEI Activation / Trust, and Topic-ID / Mastery Spine Phase A
-are now published and certified; Teacher Evaluation UX-D design is the next
-planned gate unless ARM chooses to open Mastery Spine Phase B first.
+decision panel slice, UX-D is the supported-scope assist-panel display slice,
+AEI Activation / Trust is the controlled trust proof for supported capabilities,
+and Topic-ID / Mastery Spine Phase A is the passive learning-intelligence spine
+foundation. Further teacher-evaluation UX batches, source switching, mastery
+persistence/source adoption, and public capability claim expansion require
+separate ARM authorization. Production Safety, Operational Proof, AEI
+Activation / Trust, Topic-ID / Mastery Spine Phase A, and Teacher Evaluation
+UX-D are now published and certified; the next recommended gate is a focused
+Teacher Evaluation Page Lint Cleanup before UX-E or final teacher-evaluation
+experience certification.
 
 ---
 
@@ -459,50 +494,51 @@ planned gate unless ARM chooses to open Mastery Spine Phase B first.
 Latest published product-trust gate:
 
 ```text
-Topic-ID / Mastery Spine Phase A - Passive resolution
+AEI v1.0 Teacher Evaluation UX-D - Supported-scope assist panels
 ```
 
 Status: **Complete / certified / published**
 
-Commit: `27a4b9a946bffcb3883b2ee4a5fa3a8bc153a645`
+Commit: `690e15695aabbf60248d7353d096b5dea865b987`
 
-Annotated tag: `topic-id-mastery-spine-passive-resolution-certified`
+Annotated tag: `aei-v1-teacher-evaluation-ux-d-assist-panels-certified`
 
 Evidence:
 
-[`product/learning-intelligence/TOPIC_ID_MASTERY_SPINE_UNIFICATION_PHASE_A_CERTIFICATION_REPORT.md`](./product/learning-intelligence/TOPIC_ID_MASTERY_SPINE_UNIFICATION_PHASE_A_CERTIFICATION_REPORT.md)
+[`product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_D_CERTIFICATION_REPORT.md`](./product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_D_CERTIFICATION_REPORT.md)
 
 Latest published runtime phase:
 
 ```text
-Topic-ID / Mastery Spine Phase A - Passive resolution foundation
+AEI v1.0 Teacher Evaluation UX-D - Supported-scope assist panels
 ```
 
 Historical artifact label:
 
 ```text
-Topic-ID / Mastery Spine Phase A
+AEI v1.0 Teacher Evaluation UX-D
 ```
 
 Certified evidence:
 
-- Backend focused ruff: PASS
-- Mastery spine focused tests: PASS
-- Adjacent mastery regression slice: PASS
-- API import: PASS
 - git diff --check: PASS
-- Golden Harness passive mastery spine cases: PASS
-- Default-off passive flag rollback posture: PASS
-- No schema/API/UI/source switch/consumer migration: PASS
+- Admin-web helper lint: PASS
+- Admin-web TypeScript validation: PASS
+- Admin-web production build: PASS
+- Focused page lint: blocked by known pre-existing evaluation-page lint debt,
+  not introduced by UX-D
+- No backend/API/schema/marks/routing/ledger/source-switch behavior changes:
+  PASS
+- Display-only supported-scope assist panels: PASS
 
 Certification report:
 
-[`product/learning-intelligence/TOPIC_ID_MASTERY_SPINE_UNIFICATION_PHASE_A_CERTIFICATION_REPORT.md`](./product/learning-intelligence/TOPIC_ID_MASTERY_SPINE_UNIFICATION_PHASE_A_CERTIFICATION_REPORT.md)
+[`product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_D_CERTIFICATION_REPORT.md`](./product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_D_CERTIFICATION_REPORT.md)
 
 Related design and authorization:
 
-- [`product/learning-intelligence/TOPIC_ID_MASTERY_SPINE_UNIFICATION_DESIGN_BRIEF.md`](./product/learning-intelligence/TOPIC_ID_MASTERY_SPINE_UNIFICATION_DESIGN_BRIEF.md)
-- [`product/learning-intelligence/TOPIC_ID_MASTERY_SPINE_UNIFICATION_IMPLEMENTATION_AUTHORIZATION_CONTRACT.md`](./product/learning-intelligence/TOPIC_ID_MASTERY_SPINE_UNIFICATION_IMPLEMENTATION_AUTHORIZATION_CONTRACT.md)
+- [`product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_D_DESIGN_BRIEF.md`](./product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_D_DESIGN_BRIEF.md)
+- [`product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_D_IMPLEMENTATION_AUTHORIZATION_CONTRACT.md`](./product/aei-v1/AEI_V1_TEACHER_EVALUATION_EXPERIENCE_BATCH_UX_D_IMPLEMENTATION_AUTHORIZATION_CONTRACT.md)
 
 ---
 
