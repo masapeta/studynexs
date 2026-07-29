@@ -3,10 +3,12 @@ from __future__ import annotations
 
 import json
 import re
+import time
 
 import structlog
 
 from app.core.config import get_settings
+from app.core.platform_metrics import platform_metrics
 from app.modules.ai.gateway import LLMImage, LLMMessage, default_model, generate_llm
 from app.modules.ai.gateway.base import LLMResult
 from app.modules.ai.gateway.factory import ollama_configured
@@ -17,6 +19,23 @@ logger = structlog.get_logger()
 settings = get_settings()
 
 _VISION_PROVIDERS = frozenset({"gemini", "openai", "ollama"})
+_PHASE1_METRIC_TASK = "aei_handwriting_ocr_phase1"
+
+
+def _duration_ms(started: float) -> float:
+    return (time.perf_counter() - started) * 1000
+
+
+def _record_phase1_event(status: str, *, duration_ms: float | None = None) -> None:
+    platform_metrics.record_job_event(
+        task=_PHASE1_METRIC_TASK,
+        status=status,
+        duration_ms=duration_ms,
+    )
+
+
+def handwriting_ocr_phase1_enabled() -> bool:
+    return bool(settings.AEI_HANDWRITING_OCR_PHASE1_ENABLED)
 
 
 def _ollama_ready() -> bool:
@@ -65,7 +84,10 @@ def _vision_primary_provider() -> str | None:
         return "ollama"
     return None
 
+
 def vision_llm_available() -> bool:
+    if not handwriting_ocr_phase1_enabled():
+        return False
     return _vision_primary_provider() is not None or _vision_fallback_provider() is not None
 
 
@@ -99,12 +121,19 @@ def _parse_answers_json(text: str) -> dict[str, str]:
     try:
         data = json.loads(raw)
     except json.JSONDecodeError:
+        _record_phase1_event("parse_failed")
         logger.warning("vision_json_parse_failed")
         return {}
     answers = data.get("answers") if isinstance(data, dict) else data
     if not isinstance(answers, dict):
+        _record_phase1_event("parse_failed")
         return {}
-    return sanitize_vision_answers({str(k): str(v) for k, v in answers.items()})
+    try:
+        return sanitize_vision_answers({str(k): str(v) for k, v in answers.items()})
+    except ValueError:
+        _record_phase1_event("sanitize_failed")
+        logger.warning("vision_answer_sanitize_failed")
+        return {}
 
 
 def _ollama_vision_model() -> str:
@@ -137,9 +166,18 @@ async def extract_answers_from_image(
     rubrics: dict[str, dict],
 ) -> tuple[dict[str, str], LLMResult | None]:
     """OCR via vision LLM. Primary provider first, then Ollama gemma4 for handwriting."""
+    if not handwriting_ocr_phase1_enabled():
+        _record_phase1_event("disabled")
+        return {}, None
+
+    started = time.perf_counter()
+    _record_phase1_event("invoked")
+
     if not vision_llm_available():
+        _record_phase1_event("unavailable", duration_ms=_duration_ms(started))
         return {}, None
     if not is_image_mime(mime_type):
+        _record_phase1_event("unsupported_mime", duration_ms=_duration_ms(started))
         return {}, None
 
     primary = _vision_primary_provider()
@@ -148,6 +186,7 @@ async def extract_answers_from_image(
         primary = fallback
         fallback = None
     if not primary:
+        _record_phase1_event("unavailable", duration_ms=_duration_ms(started))
         return {}, None
 
     prompt = _question_prompt(question_schema, rubrics)
@@ -173,6 +212,11 @@ async def extract_answers_from_image(
             caller="extract_answers_from_image",
         )
     except (RuntimeError, ValueError):
+        _record_phase1_event("failed", duration_ms=_duration_ms(started))
         logger.warning("answer_sheet_vision_failed", primary=primary, fallback=fallback)
         return {}, None
-    return _parse_answers_json(result.text), result
+    if result.used_fallback:
+        _record_phase1_event("fallback_used")
+    answers = _parse_answers_json(result.text)
+    _record_phase1_event("completed", duration_ms=_duration_ms(started))
+    return answers, result

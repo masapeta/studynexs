@@ -40,6 +40,7 @@ def test_vision_models_are_separate_from_general_default(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_extract_answers_falls_back_to_ollama(monkeypatch):
+    monkeypatch.setattr(vision.settings, "AEI_HANDWRITING_OCR_PHASE1_ENABLED", True)
     primary = type("P", (), {})()
     fallback = type("P", (), {})()
 

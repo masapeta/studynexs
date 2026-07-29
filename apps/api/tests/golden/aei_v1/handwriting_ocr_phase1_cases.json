@@ -1,0 +1,40 @@
+{
+  "version": "aei-handwriting-ocr-phase1.v1",
+  "scope": "Repository-safe Golden Harness foundation for Gemini Flash answer-sheet transcription gate.",
+  "cases": [
+    {
+      "id": "ocr_phase1_flag_off_001",
+      "title": "Phase 1 flag disabled",
+      "input_type": "answer_sheet_image",
+      "mime_type": "image/jpeg",
+      "expected_behavior": "gateway_not_invoked",
+      "notes": "Provider keys must not activate school-facing OCR without the explicit Phase 1 flag."
+    },
+    {
+      "id": "ocr_phase1_gemini_gateway_001",
+      "title": "Gemini Flash gateway transcription",
+      "input_type": "answer_sheet_image",
+      "mime_type": "image/jpeg",
+      "expected_provider": "gemini",
+      "expected_model": "gemini-1.5-flash",
+      "expected_behavior": "sanitized_per_question_transcription",
+      "notes": "Gemini is OCR-only and must be invoked through the StudyNexs AI Gateway."
+    },
+    {
+      "id": "ocr_phase1_malformed_json_001",
+      "title": "Malformed provider JSON",
+      "input_type": "answer_sheet_image",
+      "mime_type": "image/jpeg",
+      "expected_behavior": "safe_empty_extraction",
+      "notes": "Bad OCR output must not break teacher evaluation."
+    },
+    {
+      "id": "ocr_phase1_unsupported_mime_001",
+      "title": "Unsupported MIME",
+      "input_type": "answer_sheet_upload",
+      "mime_type": "application/pdf",
+      "expected_behavior": "gateway_not_invoked",
+      "notes": "Phase 1 is scoped to page-level images, not new PDF rendering infrastructure."
+    }
+  ]
+}

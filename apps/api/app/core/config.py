@@ -298,6 +298,10 @@ class Settings(BaseSettings):
     # AEI v1.0 Batch D.
     # Language/OCR assist metadata is disabled by default and non-authoritative.
     AEI_V1_LANGUAGE_OCR_ASSIST_ENABLED: bool = False
+    # AEI Handwriting OCR Phase 1.
+    # Gemini Flash answer-sheet transcription through the gateway only; disabled
+    # by default so adding provider keys/config cannot silently activate OCR.
+    AEI_HANDWRITING_OCR_PHASE1_ENABLED: bool = False
     # AEI v1.0 Batch E.
     # Visual/science assist metadata is disabled by default and checklist-only.
     AEI_V1_VISUAL_SCIENCE_ASSIST_ENABLED: bool = False
