@@ -13,7 +13,8 @@ architecture, a published EUI runtime foundation, a certified AEI v1.0
 supported-scope baseline, and published Assessment Intelligence v1.0 Batch A
 contract/capability foundation, Batch B blueprint readiness foundation, Batch C
 rubric/model-answer readiness foundation, Batch D question-bank/reuse readiness
-foundation, and Batch E paper-to-evaluation linkage readiness foundation.
+foundation, Batch E paper-to-evaluation linkage readiness foundation, and Batch
+F bilingual/multilingual assessment readiness foundation.
 
 The current engineering rhythm is:
 
@@ -91,6 +92,7 @@ canonical roadmap names are:
 | Assessment Intelligence v1.0 Batch C - Rubric and model-answer readiness | Complete / certified / published |
 | Assessment Intelligence v1.0 Batch D - Question bank and reuse readiness | Complete / certified / published |
 | Assessment Intelligence v1.0 Batch E - Paper-to-evaluation linkage readiness | Complete / certified / published |
+| Assessment Intelligence v1.0 Batch F - Bilingual / multilingual assessment readiness | Complete / certified / published |
 | Stabilization Gate 1 - Production Safety | Complete / certified / published |
 | Operational Proof | Complete / certified / published |
 | AEI Activation / Trust | Complete / certified / published |
@@ -237,6 +239,7 @@ or expanded public product claims.
 | Batch C - Rubric and Model-Answer Readiness | Published / certified | `06d431e4995c368e20ca55f7b2361d1e4cc1e55c` | `assessment-v1-batch-c-rubric-model-answer-readiness-certified` | Rubric/model-answer declaration contract, static supported-scope declarations, Golden Harness cases, focused static validation, and certification; no runtime behavior changes |
 | Batch D - Question Bank and Reuse Readiness | Published / certified | `e837ad9de07fe2ee4dcb25052e1fb447d6d6af83` | `assessment-v1-batch-d-question-bank-reuse-readiness-certified` | Question-bank/reuse declaration contract, static supported-scope declarations, Golden Harness cases, focused static validation, and certification; no runtime behavior changes |
 | Batch E - Paper-to-Evaluation Linkage Readiness | Published / certified | `acbc897dd6db2f1375a367a10a7d6575102f4e8f` | `assessment-v1-batch-e-paper-to-evaluation-linkage-readiness-certified` | Paper-to-evaluation linkage declaration contract, static supported-scope declarations, Golden Harness cases, focused static validation, and certification; no runtime behavior changes |
+| Batch F - Bilingual / Multilingual Assessment Readiness | Published / certified | `75f8c15fced408a457e9ce0106adb83f666acd1c` | `assessment-v1-batch-f-bilingual-multilingual-readiness-certified` | Bilingual/multilingual assessment declaration contract, static language supported-scope declarations, Golden Harness cases, focused static validation, and certification; no runtime behavior changes |
 
 Assessment Intelligence v1.0 Batch A establishes the product-completion
 foundation for assessment creation, question bank reuse, exam linkage, and
@@ -405,13 +408,54 @@ changes, EUI source adoption, marks changes, evidence-ledger behavior changes,
 parent/student visibility changes, mastery updates, public product claim
 expansion, or Batch F multilingual/bilingual behavior.
 
+Assessment Intelligence v1.0 Batch F makes bilingual/multilingual assessment
+support explicit, conservative, and non-universal.
+
+Batch F adds:
+
+- Batch F Bilingual / Multilingual Assessment Readiness Design Brief;
+- Batch F Implementation Authorization Contract;
+- Bilingual / Multilingual Assessment Declaration Contract;
+- static Bilingual / Multilingual Supported Scope Declarations;
+- Golden Harness bilingual/multilingual readiness cases;
+- focused static bilingual/multilingual readiness validation tests;
+- Batch F Certification Report.
+
+Batch F certifies:
+
+- English assessment contract support inside declared scope only;
+- English grounded-paper readiness where Batch A-E requirements are satisfied;
+- English answer-key/model-answer/rubric posture aligned with Batch C;
+- teacher-authored bilingual paper manual-review posture;
+- AI-assisted bilingual draft manual-review posture;
+- bilingual rendering of already-reviewed teacher content as assist-only;
+- Hindi answer-language, Telugu handwriting/OCR answer, and code-mixed answer
+  relationships to AEI as assist-only;
+- local-language answer context without reviewed source as manual-review;
+- automatic question-paper translation as unsupported;
+- automatic rubric/model-answer translation as unsupported;
+- universal multilingual assessment as unsupported;
+- Telugu-medium/state-board assessment packs as future expansion.
+
+Batch F does not authorize or implement schema changes, API changes, UI changes,
+runtime behavior changes, feature flags, translation engine integration, OCR
+behavior changes, AI provider changes, LLM inference, question-paper generation
+behavior changes, bilingual/multilingual rendering behavior changes,
+question-bank service behavior changes, exam service behavior changes,
+answer-sheet evaluation behavior changes, AEI language/OCR behavior changes,
+AEI grading behavior changes, EUI source adoption, marks changes,
+teacher-review routing changes, evidence-ledger behavior changes,
+parent/student visibility changes, mastery updates, public bilingual/
+multilingual product claim expansion, or Batch G teacher workflow/browser
+proof.
+
 Next Assessment Intelligence gate:
 
 ```text
-Assessment Intelligence v1.0 Batch F - Bilingual / Multilingual Assessment Readiness
+Assessment Intelligence v1.0 Batch G - Teacher Workflow / Browser Proof
 ```
 
-Status: **Not authorized**. Batch F requires a separate ARM design brief and
+Status: **Not authorized**. Batch G requires a separate ARM design brief and
 implementation authorization contract before any implementation begins.
 
 ---
