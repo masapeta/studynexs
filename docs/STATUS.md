@@ -18,7 +18,8 @@ bilingual/multilingual assessment readiness foundation, Batch G teacher
 workflow/browser proof foundation, and Batch G-B reproducible Reference fixture
 / browser proof closure. Assessment Intelligence v1.0 Batch H is now published
 and certifies the final v1.0 product-claim boundary for the declared supported
-scope.
+scope. The governed Question Paper Studio is now published as the first
+post-certification Assessment Intelligence product-facing generation baseline.
 
 The current engineering rhythm is:
 
@@ -101,6 +102,7 @@ canonical roadmap names are:
 | Assessment Intelligence v1.0 Batch G - Teacher workflow / browser proof | Complete / certified / published |
 | Assessment Intelligence v1.0 Batch G-B - Reproducible Reference fixture / browser proof closure | Complete / certified / published |
 | Assessment Intelligence v1.0 Batch H - Final certification and product-claim boundary | Complete / certified / published |
+| Assessment Intelligence v1.0 Question Paper Studio - Governed generation workspace | Complete / certified / published |
 | Stabilization Gate 1 - Production Safety | Complete / certified / published |
 | Operational Proof | Complete / certified / published |
 | AEI Activation / Trust | Complete / certified / published |
@@ -251,6 +253,7 @@ or expanded public product claims.
 | Batch G - Teacher Workflow / Browser Proof | Published / certified | `42e7b80376989303a483b82db2b1020110d996a3` | `assessment-v1-batch-g-teacher-workflow-browser-proof-certified` | Browser proof harness and certification for the supported teacher assessment workflow, with tenant/API/console guards and no product behavior changes |
 | Batch G-B - Reproducible Reference Fixture / Browser Proof Closure | Published / certified | `5641c195a7d11a998d50424e9ea440c9d50aa63d` | `assessment-v1-batch-g-b-reference-fixture-browser-proof-certified` | Idempotent Reference tenant fixture seed, deterministic Grade 6 Science approved paper + linked/evaluable exam, focused fixture tests, browser proof closure, and certification; no product behavior changes |
 | Batch H - Final Certification / Product-Claim Boundary | Published / certified | `8a91404544596fad712626a5f5d2501a3630a43d` | `assessment-v1-certified` | Final Assessment Intelligence v1.0 certification report, product-claim boundary, focused static validation, and final no-overclaim guard; no runtime behavior changes |
+| Question Paper Studio - Governed Generation Workspace | Published / certified | `6b4a280a6f6bba273e3f11b192e649a8cfa3fa17` | `assessment-intelligence-v1-question-paper-studio-certified` | Teacher-governed question-paper generation workspace with approved-curriculum grounding, exact template/blueprint controls, question-bank reuse, ungrounded exception governance, paper-to-exam linkage guards, and browser proof |
 
 Assessment Intelligence v1.0 Batch A establishes the product-completion
 foundation for assessment creation, question bank reuse, exam linkage, and
@@ -552,10 +555,42 @@ behavior changes, parent/student visibility changes, AI provider changes, LLM
 inference changes, OCR behavior changes, translation behavior changes, or
 public product-claim expansion beyond the certified supported scope.
 
+Assessment Intelligence v1.0 Question Paper Studio turns the certified
+assessment foundation into a teacher-governed generation workspace.
+
+Question Paper Studio adds:
+
+- a three-step teacher workflow for configuration, exact template definition,
+  and question-level blueprint assignment;
+- approved CurriculumPack grounding with stable chapter identifiers;
+- exact section, question-type, question-count, marks, chapter, and Bloom-level
+  controls;
+- question-bank reuse that fails closed when exact supported coverage is
+  missing;
+- controlled ungrounded-paper exception governance with role, acknowledgement,
+  reason, and pre-approval submission requirements;
+- paper-to-exam linkage guards for class, subject, exam type, total marks, and
+  tenant ownership;
+- blueprint PDF support and browser proof coverage for the governed Studio
+  path.
+
+Question Paper Studio certifies:
+
+- teachers remain the final paper authority;
+- approved curriculum remains the default authoritative grounding source;
+- ungrounded generation is explicitly disabled by default and requires governed
+  acknowledgement when enabled;
+- arbitrary or foreign chapter identifiers are rejected;
+- exact bank-reuse gaps do not trigger hidden AI gap fill in Studio mode;
+- generated paper output budgets are bounded to reduce truncation risk;
+- Reference tenant browser proof passes with governed Studio anchors visible;
+- no marks, grading, evidence-ledger, source-of-truth, parent/student, or
+  answer-sheet evaluation behavior changes.
+
 Latest Assessment Intelligence published gate:
 
 ```text
-Assessment Intelligence v1.0 Batch H - Final Certification / Product-Claim Boundary
+Assessment Intelligence v1.0 Question Paper Studio - Governed Generation Workspace
 ```
 
 Status: **Complete / certified / published**.
@@ -727,29 +762,30 @@ UX-E certification caveat:
 The latest completed published gate is:
 
 ```text
-Assessment Intelligence v1.0 Batch H - Final Certification / Product-Claim Boundary
+Assessment Intelligence v1.0 Question Paper Studio - Governed Generation Workspace
 ```
 
 Publication baseline:
 
-- commit `8a91404544596fad712626a5f5d2501a3630a43d`;
-- annotated tag `assessment-v1-certified`.
+- commit `6b4a280a6f6bba273e3f11b192e649a8cfa3fa17`;
+- annotated tag `assessment-intelligence-v1-question-paper-studio-certified`.
 
-Assessment Intelligence v1.0 Batch H certifies the final Assessment
-Intelligence v1.0 supported-scope baseline. It consolidates Batch A through
-G-B evidence, adds the final certification report, and freezes the
-product-claim boundary for what StudyNexs may and may not claim.
+Question Paper Studio turns the certified Assessment Intelligence v1.0
+foundation into a governed teacher-facing question-paper generation workspace.
+It adds approved-curriculum grounding, exact template and blueprint controls,
+question-bank reuse, controlled ungrounded exception governance, paper-to-exam
+linkage guards, and browser proof for the supported path.
 
-Batch H does not change runtime answer-sheet evaluation, question-paper
-generation, question-bank behavior, paper approval behavior, exam services,
-schema, API, production UI, AEI, EUI, feature flags, providers, prompts, OCR,
-PDF ingestion, marks, routing, evidence ledger, mastery, or product behavior.
+Question Paper Studio preserves teacher approval as the authority boundary and
+does not change marks, grading, answer-sheet evaluation, evidence-ledger
+behavior, AEI source-of-truth behavior, parent/student visibility, or public
+product-claim boundaries.
 
 No implementation gate is currently active. Assessment Intelligence v1.0 Batch
-A through Batch H are published and certified. The next product-facing gate
-must be selected and authorized separately by ARM.
+A through Batch H and Question Paper Studio are published and certified. The
+next product-facing gate must be selected and authorized separately by ARM.
 
-Ordered candidate gates after Assessment Intelligence v1.0 certification:
+Ordered candidate gates after the governed Question Paper Studio baseline:
 
 1. AEI Handwriting OCR Phase 2 live Track-A benchmark run authorization -
    collect/use secured 50-100 teacher-verified real sheets and produce an
@@ -764,12 +800,12 @@ Ordered candidate gates after Assessment Intelligence v1.0 certification:
    learning-intelligence plumbing only if ARM chooses deeper spine persistence;
    not authorized.
 
-Completion of Assessment Intelligence v1.0 Batch H does not authorize runtime
-question-bank source switching, answer-sheet evaluation behavior changes,
-question-paper generation behavior changes, question-bank runtime changes, exam
-service behavior changes, source switching, public product claim expansion,
-production UI changes, API changes, schema changes, marks changes, routing
-changes, mastery changes, or evidence-ledger behavior changes.
+Completion of Question Paper Studio does not authorize autonomous paper
+approval, autonomous grading, answer-sheet evaluation behavior changes,
+question-bank source switching, source-of-truth switching, expanded public
+product claims, API changes, schema changes, marks changes, routing changes,
+mastery changes, evidence-ledger behavior changes, or parent/student
+visibility changes.
 
 EUI Phase 7 remains closed at Phase 7E. Phase 7F source adoption is deferred
 future scope, not the next active implementation milestone.
@@ -899,6 +935,9 @@ Assessment Intelligence v1.0 Batch H is published and certifies the final
 Assessment Intelligence v1.0 supported-scope baseline, including the final
 certification report and product-claim boundary, without runtime behavior
 changes.
+Assessment Intelligence v1.0 Question Paper Studio is published and adds the
+governed teacher-facing question-paper generation workspace on top of the
+certified Assessment foundation.
 AEI v1.0 is certified for the declared supported scope, UX-A is the first
 product-facing display slice, UX-B is the teacher-authored override reason
 workflow slice, UX-C is the teacher-facing evidence posture and approved
@@ -923,11 +962,11 @@ repository-safe Track-A benchmark foundation without running live real-sheet
 benchmarks or changing production OCR routing.
 UX-E remains the assembled teacher-evaluation certification baseline and the
 lint cleanup remains the code-health gate that resolved the pre-existing page
-lint debt. Assessment Intelligence v1.0 Batch H is now the latest published
-Assessment gate and certifies Assessment Intelligence v1.0 inside the declared
-supported scope. No Assessment Intelligence implementation gate is active until
-ARM authorizes the next product-facing milestone under a separate design and
-implementation contract.
+lint debt. Assessment Intelligence v1.0 Question Paper Studio is now the
+latest published Assessment gate and provides the governed paper-generation
+workspace inside the declared supported scope. No Assessment Intelligence
+implementation gate is active until ARM authorizes the next product-facing
+milestone under a separate design and implementation contract.
 
 ---
 
@@ -936,40 +975,31 @@ implementation contract.
 Latest published Assessment Intelligence gate:
 
 ```text
-Assessment Intelligence v1.0 Batch H - Final Certification / Product-Claim Boundary
+Assessment Intelligence v1.0 Question Paper Studio - Governed Generation Workspace
 ```
 
 Status: **Complete / certified / published**
 
-Commit: `8a91404544596fad712626a5f5d2501a3630a43d`
+Commit: `6b4a280a6f6bba273e3f11b192e649a8cfa3fa17`
 
-Annotated tag: `assessment-v1-certified`
+Annotated tag: `assessment-intelligence-v1-question-paper-studio-certified`
 
 Evidence:
 
-[`product/assessment-intelligence/ASSESSMENT_INTELLIGENCE_V1_FINAL_CERTIFICATION_REPORT.md`](./product/assessment-intelligence/ASSESSMENT_INTELLIGENCE_V1_FINAL_CERTIFICATION_REPORT.md)
-
-Product-claim boundary:
-
-[`product/assessment-intelligence/ASSESSMENT_INTELLIGENCE_V1_PRODUCT_CLAIM_BOUNDARY.md`](./product/assessment-intelligence/ASSESSMENT_INTELLIGENCE_V1_PRODUCT_CLAIM_BOUNDARY.md)
-
 Certified evidence:
 
-- Assessment Intelligence v1.0 final certification report: PASS
-- Assessment Intelligence v1.0 product-claim boundary: PASS
-- Focused final certification tests: PASS - 6 passed
-- Assessment Intelligence v1.0 static/regression slice: PASS - 60 passed
-- Product-claim no-overclaim guard: PASS
-- Teacher final authority preserved: PASS
-- AEI answer-evaluation authority preserved: PASS
-- Approved evidence downstream source preserved: PASS
-- Latest certified Batch G-B browser proof referenced: PASS - 16 checks, 0
-  disallowed console/API errors
-- Focused Ruff check: PASS
+- Focused Assessment/AI paper backend regression: PASS - 78 passed
+- Production admin-web build: PASS
+- Focused Python Ruff on modified/untracked sprint files: PASS
+- Focused admin-web ESLint on touched files: PASS
 - API import: PASS
+- Alembic head / downgrade / upgrade validation: PASS
 - `git diff --check`: PASS
-- No schema/API/production UI/runtime/marks/routing/evidence-ledger behavior
-  changes: PASS
+- Browser proof: PASS - 18 checks, 0 disallowed console/API errors
+- Tenant header proof: PASS - Reference tenant observed on 52 API calls
+- Remote publication proof: PASS - `develop` and annotated tag published
+- No marks, grading, evidence-ledger, source-of-truth, parent/student,
+  answer-sheet evaluation, or AEI behavior changes: PASS
 
 Next Assessment Intelligence gate:
 
