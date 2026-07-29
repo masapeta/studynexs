@@ -3,9 +3,14 @@
  * Assessment Intelligence v1.0 Batch G browser proof.
  *
  * This harness proves the supported teacher assessment workflow without
- * changing product behavior. It requires existing Reference tenant data; if the
+ * changing product behavior. It requires Reference tenant fixture data; if the
  * expected supported-scope paper/exam data is missing, the run fails honestly
  * as a proof-prerequisite blocker.
+ *
+ * Reproducible prerequisite:
+ *   cd ../api
+ *   python scripts/seed_reference_school.py
+ *   python scripts/seed_assessment_browser_proof_fixture.py
  *
  * Needs both servers up:
  *   API:  E2E_API_URL=http://127.0.0.1:8000
@@ -43,6 +48,8 @@ const PRIMARY_SCOPE = {
   paperType: "Unit Test",
   language: "English",
 };
+const FIXTURE_REPAIR_HINT =
+  "missing - run: cd apps/api && python scripts/seed_assessment_browser_proof_fixture.py";
 
 requireReferenceTenant(TENANT);
 
@@ -189,7 +196,7 @@ async function resolveSupportedScope(page, accessToken) {
   record(
     Boolean(supportedPaper),
     "reference data: supported-scope question paper",
-    supportedPaper ? `${supportedPaper.title || supportedPaper.id} (${supportedPaper.status})` : "missing"
+    supportedPaper ? `${supportedPaper.title || supportedPaper.id} (${supportedPaper.status})` : FIXTURE_REPAIR_HINT
   );
 
   const exams = asItems(await apiGet(page, accessToken, `/api/v1/exams?class_id=${klass.id}`));
@@ -200,7 +207,7 @@ async function resolveSupportedScope(page, accessToken) {
   record(
     Boolean(linkedExam),
     "reference data: linked/evaluable exam",
-    linkedExam ? `${linkedExam.title || linkedExam.id}` : "missing"
+    linkedExam ? `${linkedExam.title || linkedExam.id}` : FIXTURE_REPAIR_HINT
   );
 
   return { klass, subject, papers, supportedPaper, exams, linkedExam };
