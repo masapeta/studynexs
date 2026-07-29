@@ -1,0 +1,157 @@
+{
+  "version": "aei-activation-trust-teacher-marked-v1",
+  "description": "Teacher-modeled AEI Activation / Trust cases. No real student PII.",
+  "cases": [
+    {
+      "id": "aei_activation_math_supported_001",
+      "subject": "mathematics",
+      "capability_family": "math_normalization",
+      "input": {
+        "suggestions": {
+          "1": {
+            "marks_suggested": 2,
+            "max_marks": 2,
+            "confidence": 0.98,
+            "method": "aei_v1_math_normalization",
+            "normalized_answer": "0.5",
+            "matched_acceptable_answer": "1/2",
+            "capability_mode": "supported",
+            "manual_review_required": false
+          }
+        },
+        "teacher_overrides": {},
+        "manual_review_acknowledgements": {}
+      },
+      "expected": {
+        "manual_review_required_count": 0,
+        "manual_review_acknowledged_count": 0,
+        "math_normalization_count": 1,
+        "language_ocr_assist_count": 0,
+        "visual_science_assist_count": 0,
+        "approval_requires_acknowledgement": false
+      },
+      "notes": "Supported deterministic Maths equivalence should not require review."
+    },
+    {
+      "id": "aei_activation_language_assist_001",
+      "subject": "hindi",
+      "capability_family": "language_ocr_assist",
+      "input": {
+        "suggestions": {
+          "1": {
+            "marks_suggested": 0,
+            "max_marks": 2,
+            "confidence": 0.66,
+            "method": "heuristic_fallback",
+            "answer_language": "Hindi",
+            "detected_script": "Devanagari",
+            "capability_mode": "manual_review",
+            "manual_review_required": true,
+            "manual_review_reason": "Language-subject grading remains teacher-review posture.",
+            "aei_v1_language_ocr_assist": {
+              "method": "aei_v1_language_ocr_assist",
+              "assist_only": true,
+              "autonomous_language_grading": false
+            }
+          }
+        },
+        "teacher_overrides": {},
+        "manual_review_acknowledgements": {
+          "1": {
+            "acknowledged": true,
+            "action": "accepted"
+          }
+        }
+      },
+      "expected": {
+        "manual_review_required_count": 1,
+        "manual_review_acknowledged_count": 1,
+        "math_normalization_count": 0,
+        "language_ocr_assist_count": 1,
+        "visual_science_assist_count": 0,
+        "approval_requires_acknowledgement": true
+      },
+      "notes": "Language assist remains non-authoritative and teacher-acknowledged."
+    },
+    {
+      "id": "aei_activation_visual_science_001",
+      "subject": "chemistry",
+      "capability_family": "visual_science_assist",
+      "input": {
+        "suggestions": {
+          "1": {
+            "marks_suggested": 0,
+            "max_marks": 2,
+            "confidence": 0.72,
+            "method": "objective",
+            "capability_mode": "assist",
+            "manual_review_required": true,
+            "manual_review_reason": "Visual/science assist evidence requires teacher confirmation.",
+            "visual_science_capability_mode": "assist",
+            "visual_science_review_required": true,
+            "assist_only": true,
+            "aei_v1_visual_science_assist": {
+              "method": "aei_v1_visual_science_assist",
+              "reasoning_type": "reaction_balancing",
+              "autonomous_science_grading": false
+            }
+          }
+        },
+        "teacher_overrides": {
+          "1": {
+            "marks": 1,
+            "reason": "Teacher awarded partial credit for correct reactants."
+          }
+        },
+        "manual_review_acknowledgements": {
+          "1": {
+            "acknowledged": true,
+            "action": "adjusted"
+          }
+        }
+      },
+      "expected": {
+        "manual_review_required_count": 1,
+        "manual_review_acknowledged_count": 1,
+        "math_normalization_count": 0,
+        "language_ocr_assist_count": 0,
+        "visual_science_assist_count": 1,
+        "approval_requires_acknowledgement": true
+      },
+      "notes": "Visual/science assist can inform a teacher decision but must not award autonomous marks."
+    },
+    {
+      "id": "aei_activation_low_confidence_001",
+      "subject": "mathematics",
+      "capability_family": "review_policy",
+      "input": {
+        "suggestions": {
+          "1": {
+            "marks_suggested": 0,
+            "max_marks": 2,
+            "confidence": 0.42,
+            "method": "heuristic_fallback",
+            "capability_mode": "manual_review",
+            "manual_review_required": true,
+            "manual_review_reason": "Suggestion confidence is below the teacher-review threshold.",
+            "aei_v1_review_policy": {
+              "method": "aei_v1_review_policy",
+              "low_confidence": true
+            }
+          }
+        },
+        "teacher_overrides": {},
+        "manual_review_acknowledgements": {}
+      },
+      "expected": {
+        "manual_review_required_count": 1,
+        "manual_review_acknowledged_count": 0,
+        "math_normalization_count": 0,
+        "language_ocr_assist_count": 0,
+        "visual_science_assist_count": 0,
+        "approval_requires_acknowledgement": true
+      },
+      "notes": "A low-confidence/manual-review case should block silent approval when acknowledgement enforcement is enabled."
+    }
+  ]
+}

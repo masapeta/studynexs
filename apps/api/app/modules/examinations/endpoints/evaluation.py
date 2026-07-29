@@ -30,6 +30,10 @@ from app.modules.examinations.schemas.evaluation import (
     EvaluationOut,
     MisconceptionOut,
 )
+from app.modules.examinations.services.aei_activation_trust import (
+    activation_trust_profile_enabled,
+    build_activation_trust_evidence,
+)
 from app.modules.examinations.services.aei_v1_evidence_ledger import (
     build_approved_evidence_metadata,
 )
@@ -141,6 +145,12 @@ async def _evaluation_out(
             teacher_overrides=row.teacher_overrides,
             approved_by=row.approved_by,
             approved_at=row.approved_at,
+        )
+    if activation_trust_profile_enabled(settings):
+        evidence_ledger["aei_v1_activation_trust"] = build_activation_trust_evidence(
+            suggestions=row.ai_suggestions,
+            teacher_overrides=row.teacher_overrides,
+            manual_review_acknowledgement_required=settings.AEI_V1_MANUAL_REVIEW_ACK_REQUIRED,
         )
     out.evidence_ledger = evidence_ledger
     return out

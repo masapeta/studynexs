@@ -1,6 +1,11 @@
 import json
+from datetime import datetime
 from pathlib import Path
 
+from app.modules.examinations.services.aei_activation_trust import (
+    build_activation_trust_evidence,
+    validate_and_merge_manual_review_acknowledgements,
+)
 from app.modules.examinations.services.aei_v1_evidence_ledger import (
     build_approved_evidence_metadata,
     contains_unsafe_evidence_key,
@@ -36,6 +41,9 @@ BATCH_D_LANGUAGE_OCR_CASES_PATH = (
 BATCH_E_VISUAL_SCIENCE_CASES_PATH = (
     Path(__file__).parent / "golden" / "aei_v1" / "batch_e_visual_science_assist_cases.json"
 )
+ACTIVATION_TRUST_CASES_PATH = (
+    Path(__file__).parent / "golden" / "aei_v1" / "activation_trust_teacher_marked_cases.json"
+)
 
 
 def _load_golden_cases() -> dict:
@@ -65,6 +73,11 @@ def _load_batch_d_language_ocr_cases() -> dict:
 
 def _load_batch_e_visual_science_cases() -> dict:
     with BATCH_E_VISUAL_SCIENCE_CASES_PATH.open("r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def _load_activation_trust_cases() -> dict:
+    with ACTIVATION_TRUST_CASES_PATH.open("r", encoding="utf-8") as handle:
         return json.load(handle)
 
 
@@ -300,3 +313,54 @@ def test_batch_e_visual_science_assist_golden_cases_execute_deterministically():
             assist["autonomous_marks_from_checklist"]
             is expected["autonomous_marks_from_checklist"]
         ), case["id"]
+
+
+def test_activation_trust_teacher_marked_cases_execute_deterministically():
+    data = _load_activation_trust_cases()
+
+    assert data["version"] == "aei-activation-trust-teacher-marked-v1"
+    case_ids: set[str] = set()
+    for case in data["cases"]:
+        assert case["id"] not in case_ids
+        case_ids.add(case["id"])
+
+        case_input = case["input"]
+        expected = case["expected"]
+        suggestions = case_input["suggestions"]
+        teacher_overrides = case_input["teacher_overrides"]
+        acknowledgements = case_input["manual_review_acknowledgements"]
+
+        if expected["approval_requires_acknowledgement"] and acknowledgements:
+            teacher_overrides = validate_and_merge_manual_review_acknowledgements(
+                suggestions=suggestions,
+                teacher_overrides=teacher_overrides,
+                manual_review_acknowledgements=acknowledgements,
+                reviewer_identifier="teacher-golden",
+                review_timestamp=datetime.fromisoformat("2026-07-29T00:00:00+00:00"),
+            )
+
+        evidence = build_activation_trust_evidence(
+            suggestions=suggestions,
+            teacher_overrides=teacher_overrides,
+            manual_review_acknowledgement_required=expected[
+                "approval_requires_acknowledgement"
+            ],
+        )
+
+        assert (
+            evidence["manual_review_required_count"]
+            == expected["manual_review_required_count"]
+        ), case["id"]
+        assert (
+            evidence["manual_review_acknowledged_count"]
+            == expected["manual_review_acknowledged_count"]
+        ), case["id"]
+        counts = evidence["capability_counts"]
+        assert counts["math_normalization"] == expected["math_normalization_count"], case["id"]
+        assert counts["language_ocr_assist"] == expected["language_ocr_assist_count"], case["id"]
+        assert (
+            counts["visual_science_assist"]
+            == expected["visual_science_assist_count"]
+        ), case["id"]
+        assert evidence["autonomous_grading"] is False
+        assert evidence["approved_evidence_source"] == "teacher_decision"

@@ -68,6 +68,7 @@ export default function EvaluateExamPage() {
   const [activeEval, setActiveEval] = useState<any>(null);
   const [overrides, setOverrides] = useState<Record<string, string>>({});
   const [overrideReasons, setOverrideReasons] = useState<Record<string, string>>({});
+  const [manualReviewAcknowledgements, setManualReviewAcknowledgements] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [approving, setApproving] = useState(false);
@@ -150,6 +151,7 @@ export default function EvaluateExamPage() {
       setEvaluations((evs) => [row, ...evs.filter((e: any) => e.id !== row.id)]);
       setOverrides(buildOverrideMarks(row));
       setOverrideReasons(buildOverrideReasons(row));
+      setManualReviewAcknowledgements(buildManualReviewAcknowledgements(row));
     } catch (e) {
       setError(getApiErrorMessage(e, "Evaluation failed"));
     } finally {
@@ -161,7 +163,16 @@ export default function EvaluateExamPage() {
     if (!activeEval) return;
     setError("");
     const teacher_overrides: Record<string, { marks: number; reason?: string }> = {};
+    const manual_review_acknowledgements: Record<
+      string,
+      { acknowledged: boolean; action: "accepted" | "adjusted" }
+    > = {};
     const missingReasons: string[] = [];
+    const manualReviewQuestions = manualReviewQuestionNumbers(activeEval);
+    const ackRequired = manualReviewAcknowledgementRequired(activeEval);
+    const missingAcknowledgements = ackRequired
+      ? manualReviewQuestions.filter((qno) => manualReviewAcknowledgements[qno] !== true)
+      : [];
 
     Object.entries(overrides).forEach(([qno, marks]) => {
       const suggested = activeEval.ai_suggestions?.[qno]?.marks_suggested;
@@ -175,8 +186,22 @@ export default function EvaluateExamPage() {
       }
     });
 
+    manualReviewQuestions.forEach((qno) => {
+      if (manualReviewAcknowledgements[qno] === true) {
+        const suggested = activeEval.ai_suggestions?.[qno]?.marks_suggested;
+        manual_review_acknowledgements[qno] = {
+          acknowledged: true,
+          action: hasChangedMarks(suggested, overrides[qno]) ? "adjusted" : "accepted",
+        };
+      }
+    });
+
     if (missingReasons.length > 0) {
       setError(`Add a reason for each changed mark before approving: ${formatQuestionList(missingReasons)}.`);
+      return;
+    }
+    if (missingAcknowledgements.length > 0) {
+      setError(`Acknowledge teacher review for: ${formatQuestionList(missingAcknowledgements)}.`);
       return;
     }
 
@@ -184,11 +209,12 @@ export default function EvaluateExamPage() {
     try {
       const res = await api(`/api/v1/exams/evaluations/${activeEval.id}/approve`, {
         method: "POST",
-        body: JSON.stringify({ teacher_overrides }),
+        body: JSON.stringify({ teacher_overrides, manual_review_acknowledgements }),
       });
       setActiveEval(res.data);
       setOverrides(buildOverrideMarks(res.data));
       setOverrideReasons(buildOverrideReasons(res.data));
+      setManualReviewAcknowledgements(buildManualReviewAcknowledgements(res.data));
       setEvaluations((evs) => evs.map((e) => (e.id === res.data.id ? res.data : e)));
       alert("Marks approved. Weak topics updated in mastery; misconceptions saved to library.");
     } catch (e) {
@@ -203,6 +229,7 @@ export default function EvaluateExamPage() {
     setSelectedStudent(ev.student_id);
     setOverrides(buildOverrideMarks(ev));
     setOverrideReasons(buildOverrideReasons(ev));
+    setManualReviewAcknowledgements(buildManualReviewAcknowledgements(ev));
   }
 
   const studentName = (id: string) =>
@@ -351,7 +378,7 @@ export default function EvaluateExamPage() {
               <table className="data-table">
                 <thead><tr><th>Q</th><th>AI marks</th><th>Final marks</th><th>Feedback & rubric</th></tr></thead>
                 <tbody>
-                  {Object.entries(activeEval.ai_suggestions || {}).map(([qno, raw]: [string, any]) => {
+                  {Object.entries(activeEval.ai_suggestions || {}).map(([qno, raw]) => {
                     const s = raw as EvalSuggestion;
                     const finalMarks = overrides[qno] ?? String(s.marks_suggested);
                     const finalMarksChanged = hasChangedMarks(s.marks_suggested, finalMarks);
@@ -360,6 +387,9 @@ export default function EvaluateExamPage() {
                       activeEval.status === "approved" &&
                       hasSavedOverride(activeEval, qno) &&
                       hasChangedMarks(s.marks_suggested, activeEval.teacher_overrides?.[qno]?.marks);
+                    const manualReviewRequired = suggestionRequiresManualReview(s);
+                    const ackRequired = manualReviewAcknowledgementRequired(activeEval);
+                    const savedAcknowledgement = savedManualReviewAcknowledgement(activeEval, qno);
                     return (
                     <tr key={qno}>
                       <td>{qno}</td>
@@ -406,6 +436,38 @@ export default function EvaluateExamPage() {
                             <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                               <strong style={{ color: "var(--text-primary)" }}>Override reason:</strong>{" "}
                               {savedReason || "Reason not recorded."}
+                            </div>
+                          )}
+                          {activeEval.status !== "approved" && manualReviewRequired && (
+                            <label
+                              style={{
+                                display: "flex",
+                                gap: 8,
+                                alignItems: "flex-start",
+                                fontSize: 12,
+                                color: "var(--text-muted)",
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={manualReviewAcknowledgements[qno] === true}
+                                onChange={(e) =>
+                                  setManualReviewAcknowledgements({
+                                    ...manualReviewAcknowledgements,
+                                    [qno]: e.target.checked,
+                                  })
+                                }
+                                aria-label={`Acknowledge teacher review for question ${qno}`}
+                              />
+                              <span>
+                                I reviewed this uncertainty{ackRequired ? " (required before approval)" : ""}.
+                              </span>
+                            </label>
+                          )}
+                          {activeEval.status === "approved" && savedAcknowledgement && (
+                            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                              <strong style={{ color: "var(--text-primary)" }}>Manual review:</strong>{" "}
+                              acknowledged by teacher.
                             </div>
                           )}
                         </div>
@@ -533,6 +595,7 @@ type EvaluationEvidence = {
     question_paper_grounded?: unknown;
     evaluation_grounded?: unknown;
     aei_v1_approved_evidence?: unknown;
+    aei_v1_activation_trust?: unknown;
   };
   status?: string | null;
   ai_suggestions?: Record<string, unknown> | null;
@@ -569,6 +632,7 @@ function EvaluationEvidencePanel({ evaluation }: { evaluation: EvaluationEvidenc
     evaluation.citation_ids ||
     (Array.isArray(ledger.citation_ids) ? ledger.citation_ids.map(String) : []);
   const approvedEvidence = asRecord(ledger.aei_v1_approved_evidence);
+  const activationTrust = asRecord(ledger.aei_v1_activation_trust);
   const downstreamContract = asRecord(approvedEvidence?.downstream_contract);
   const approvedEvidenceAvailable = approvedEvidence?.approved_evidence === true;
   const approvedForDownstream =
@@ -626,6 +690,15 @@ function EvaluationEvidencePanel({ evaluation }: { evaluation: EvaluationEvidenc
         </span>
         <span style={metaChip}>{citations.length} citation{citations.length === 1 ? "" : "s"}</span>
         {sourceOfTruth && <span style={trustChipStyle("success")}>Source: {sourceOfTruth}</span>}
+        {activationTrust?.manual_review_acknowledgement_required === true && (
+          <span style={trustChipStyle("warning")}>Manual-review acknowledgement enforced</span>
+        )}
+        {typeof activationTrust?.manual_review_required_count === "number" && (
+          <span style={metaChip}>
+            {activationTrust.manual_review_required_count} review-required question
+            {activationTrust.manual_review_required_count === 1 ? "" : "s"}
+          </span>
+        )}
         {approvedEvidence?.raw_student_answer_excluded === true && (
           <span style={metaChip}>Raw answer excluded from approved evidence</span>
         )}
@@ -772,7 +845,8 @@ type EvalSuggestion = AeiSuggestionLike & {
 
 type EvaluationWithOverrides = {
   ai_suggestions?: Record<string, { marks_suggested?: unknown }>;
-  teacher_overrides?: Record<string, { marks?: unknown; reason?: unknown }>;
+  teacher_overrides?: Record<string, { marks?: unknown; reason?: unknown; aei_v1_manual_review_acknowledgement?: unknown }>;
+  evidence_ledger?: { aei_v1_activation_trust?: unknown } | null;
 };
 
 function buildOverrideMarks(evaluation: EvaluationWithOverrides | null | undefined): Record<string, string> {
@@ -794,6 +868,43 @@ function buildOverrideReasons(evaluation: EvaluationWithOverrides | null | undef
   return reasons;
 }
 
+function buildManualReviewAcknowledgements(evaluation: EvaluationWithOverrides | null | undefined): Record<string, boolean> {
+  const acknowledgements: Record<string, boolean> = {};
+  Object.entries(evaluation?.teacher_overrides || {}).forEach(([qno, override]) => {
+    const ack = asRecord(override?.aei_v1_manual_review_acknowledgement);
+    if (ack?.acknowledged === true) acknowledgements[qno] = true;
+  });
+  return acknowledgements;
+}
+
+function manualReviewQuestionNumbers(evaluation: EvaluationWithOverrides | null | undefined): string[] {
+  return Object.entries(evaluation?.ai_suggestions || {})
+    .filter(([, suggestion]) => suggestionRequiresManualReview(suggestion as AeiSuggestionLike))
+    .map(([qno]) => qno);
+}
+
+function suggestionRequiresManualReview(suggestion: AeiSuggestionLike): boolean {
+  const raw = suggestion as Record<string, unknown>;
+  const capabilityMode = typeof suggestion.capability_mode === "string"
+    ? suggestion.capability_mode.trim().toLowerCase()
+    : "";
+  return (
+    suggestion.manual_review_required === true ||
+    suggestion.visual_science_review_required === true ||
+    suggestion.assist_only === true ||
+    suggestion.checklist_only === true ||
+    raw.teacher_correction_required === true ||
+    raw.requires_language_teacher_review === true ||
+    ["assist", "checklist", "manual_review", "unsupported", "expansion"].includes(capabilityMode)
+  );
+}
+
+function manualReviewAcknowledgementRequired(evaluation: EvaluationWithOverrides | null | undefined): boolean {
+  const ledger = evaluation?.evidence_ledger || {};
+  const activationTrust = asRecord(ledger.aei_v1_activation_trust);
+  return activationTrust?.manual_review_acknowledgement_required === true;
+}
+
 function hasChangedMarks(suggested: unknown, finalMarks: unknown): boolean {
   const suggestedNumber = Number(suggested);
   const finalNumber = Number(finalMarks);
@@ -808,6 +919,11 @@ function hasSavedOverride(evaluation: EvaluationWithOverrides | null | undefined
 function savedOverrideReason(evaluation: EvaluationWithOverrides | null | undefined, qno: string): string {
   const reason = evaluation?.teacher_overrides?.[qno]?.reason;
   return typeof reason === "string" ? reason.trim() : "";
+}
+
+function savedManualReviewAcknowledgement(evaluation: EvaluationWithOverrides | null | undefined, qno: string): boolean {
+  const ack = asRecord(evaluation?.teacher_overrides?.[qno]?.aei_v1_manual_review_acknowledgement);
+  return ack?.acknowledged === true;
 }
 
 function formatQuestionList(qnos: string[]): string {

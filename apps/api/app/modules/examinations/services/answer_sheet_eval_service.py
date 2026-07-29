@@ -41,6 +41,11 @@ from app.modules.eui.services.aei_consumer_migration_evidence import (
 )
 from app.modules.examinations.schemas.evaluation import EvaluationApprove
 from app.modules.examinations.schemas.exam import MarkEntry
+from app.modules.examinations.services.aei_activation_trust import (
+    activation_trust_profile_enabled,
+    observe_activation_trust_suggestions,
+    validate_and_merge_manual_review_acknowledgements,
+)
 from app.modules.examinations.services.aei_passive_integration import (
     observe_answer_sheet_evaluation,
 )
@@ -296,6 +301,10 @@ class AnswerSheetEvalService:
                 school_id=row.school_id,
                 student_answers=answers,
                 answer_sources=answer_sources,
+            )
+            observe_activation_trust_suggestions(
+                enabled=activation_trust_profile_enabled(settings),
+                suggestions=suggestions,
             )
             passive_capture = await observe_answer_sheet_evaluation(
                 enabled=(
@@ -870,6 +879,17 @@ class AnswerSheetEvalService:
                 teacher_overrides = normalize_teacher_overrides_for_review_policy(
                     suggestions=row.ai_suggestions,
                     teacher_overrides=teacher_overrides,
+                    reviewer_identifier=str(approved_by),
+                    review_timestamp=approved_at,
+                )
+            except ValueError as exc:
+                raise EvalError(str(exc)) from exc
+        if settings.AEI_V1_MANUAL_REVIEW_ACK_REQUIRED:
+            try:
+                teacher_overrides = validate_and_merge_manual_review_acknowledgements(
+                    suggestions=row.ai_suggestions,
+                    teacher_overrides=teacher_overrides,
+                    manual_review_acknowledgements=data.manual_review_acknowledgements,
                     reviewer_identifier=str(approved_by),
                     review_timestamp=approved_at,
                 )

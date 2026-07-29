@@ -84,6 +84,7 @@ class MisconceptionOut(BaseModel):
 
 class EvaluationApprove(BaseModel):
     teacher_overrides: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    manual_review_acknowledgements: dict[str, dict[str, Any]] = Field(default_factory=dict)
     correction_summary: Optional[str] = Field(default=None, max_length=2000)
 
     @field_validator("teacher_overrides", mode="before")
@@ -95,6 +96,19 @@ class EvaluationApprove(BaseModel):
             raise ValueError("teacher_overrides must be an object")
         if len(v) > 100:
             raise ValueError("At most 100 question overrides allowed")
+        return v
+
+    @field_validator("manual_review_acknowledgements", mode="before")
+    @classmethod
+    def _limit_manual_review_acknowledgements(
+        cls, v: object
+    ) -> dict[str, dict[str, Any]]:
+        if v is None:
+            return {}
+        if not isinstance(v, dict):
+            raise ValueError("manual_review_acknowledgements must be an object")
+        if len(v) > 100:
+            raise ValueError("At most 100 manual review acknowledgements allowed")
         return v
 
     @field_validator("correction_summary", mode="before")
