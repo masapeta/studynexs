@@ -1,0 +1,84 @@
+{
+  "version": "aei-handwriting-ocr-phase2-track-a.synthetic.v1",
+  "scope": "Repository-safe synthetic Track-A benchmark cases. Real sheets and teacher transcriptions must remain outside git.",
+  "candidates": [
+    {
+      "candidate_label": "gemini_flash",
+      "runtime_role": "phase1_managed_baseline",
+      "license_posture": "configured provider terms require deployment review before real-data benchmark"
+    },
+    {
+      "candidate_label": "qwen2_5_vl_7b",
+      "runtime_role": "benchmark_candidate_only",
+      "license_posture": "pending final commercial-use verification before real-data benchmark"
+    },
+    {
+      "candidate_label": "surya_2",
+      "runtime_role": "benchmark_candidate_only",
+      "license_posture": "pending final commercial-use verification before real-data benchmark"
+    }
+  ],
+  "samples": [
+    {
+      "sample_id": "synthetic-track-a-clear-001",
+      "artifact_type": "answer_sheet_page",
+      "image_ref": "synthetic://clear-numbered-answer-sheet-001",
+      "language_context": ["english"],
+      "image_quality": "clear",
+      "answer_format": "numbered",
+      "ground_truth": {
+        "answers": {
+          "1": "the si unit is metre",
+          "2": "",
+          "3": "speed is distance by time"
+        }
+      },
+      "candidate_outputs": {
+        "gemini_flash": {
+          "schema_valid": true,
+          "answers": {
+            "1": "the si unit is metre",
+            "2": "",
+            "3": "speed is distance by time"
+          }
+        },
+        "qwen2_5_vl_7b": {
+          "schema_valid": true,
+          "answers": {
+            "1": "the si unit is meter",
+            "2": "",
+            "3": "speed is distance by time"
+          }
+        },
+        "surya_2": {
+          "schema_valid": true,
+          "answers": {
+            "1": "the si unit is metre",
+            "2": "blank",
+            "3": "speed is distance time"
+          }
+        }
+      }
+    },
+    {
+      "sample_id": "synthetic-track-a-malformed-001",
+      "artifact_type": "answer_sheet_page",
+      "image_ref": "synthetic://malformed-json-output-001",
+      "language_context": ["english", "telugu_influenced"],
+      "image_quality": "mixed",
+      "answer_format": "mixed",
+      "ground_truth": {
+        "answers": {
+          "1": "force changes motion",
+          "2": ""
+        }
+      },
+      "candidate_outputs": {
+        "gemini_flash": {
+          "schema_valid": false,
+          "answers": {}
+        }
+      }
+    }
+  ]
+}
