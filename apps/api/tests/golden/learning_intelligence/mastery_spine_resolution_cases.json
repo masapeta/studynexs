@@ -1,0 +1,67 @@
+{
+  "version": "mastery-spine-resolution-v1",
+  "description": "Golden cases for passive Topic-ID / mastery spine resolution. No real student PII.",
+  "cases": [
+    {
+      "id": "mastery_spine_exact_topic_id_001",
+      "scenario": "explicit_topic_id",
+      "expected": {
+        "resolution_status": "resolved",
+        "authority_posture": "canonical",
+        "spine_level": "topic",
+        "source_switching": false
+      }
+    },
+    {
+      "id": "mastery_spine_exact_concept_label_001",
+      "scenario": "exact_concept_label",
+      "input": {
+        "raw_label": "SI Units"
+      },
+      "expected": {
+        "resolution_status": "resolved",
+        "authority_posture": "canonical",
+        "spine_level": "concept",
+        "source_switching": false
+      }
+    },
+    {
+      "id": "mastery_spine_label_legacy_fallback_001",
+      "scenario": "legacy_fallback_without_pack_context",
+      "input": {
+        "raw_label": "  Old   Topic  "
+      },
+      "expected": {
+        "resolution_status": "legacy_fallback",
+        "authority_posture": "legacy",
+        "spine_level": "label",
+        "label": "Old Topic",
+        "source_switching": false
+      }
+    },
+    {
+      "id": "mastery_spine_duplicate_topic_label_001",
+      "scenario": "duplicate_topic_label",
+      "input": {
+        "raw_label": "Measuring Length"
+      },
+      "expected": {
+        "resolution_status": "ambiguous",
+        "authority_posture": "ambiguous",
+        "spine_level": "label",
+        "ambiguity_reason": "multiple_exact_label_matches",
+        "source_switching": false
+      }
+    },
+    {
+      "id": "mastery_spine_unresolved_empty_001",
+      "scenario": "unresolved_empty_reference",
+      "expected": {
+        "resolution_status": "unresolved",
+        "authority_posture": "unresolved",
+        "spine_level": "unresolved",
+        "source_switching": false
+      }
+    }
+  ]
+}

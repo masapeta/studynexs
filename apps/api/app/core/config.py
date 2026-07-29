@@ -299,6 +299,9 @@ class Settings(BaseSettings):
     # Manual-review acknowledgement enforcement is disabled by default and only
     # applies when explicitly enabled for controlled activation proof.
     AEI_V1_MANUAL_REVIEW_ACK_REQUIRED: bool = False
+    # Topic-ID / mastery spine unification Phase A.
+    # Passive mastery spine resolution only; disabled by default and product-invisible.
+    MASTERY_SPINE_PASSIVE_ENABLED: bool = False
     # Educational Understanding Intelligence (EUI) Phase 1 Sprint 1.
     # Passive identity resolution only; disabled by default and user-invisible.
     EUI_IDENTITY_PASSIVE_ENABLED: bool = False
