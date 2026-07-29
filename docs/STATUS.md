@@ -11,7 +11,7 @@
 StudyNexs is an AI-first School Operating System with a frozen AEI/EUI
 architecture, a published EUI runtime foundation, a certified AEI v1.0
 supported-scope baseline, and a published Assessment Intelligence v1.0 Batch A
-contract/capability foundation.
+contract/capability foundation plus Batch B blueprint readiness foundation.
 
 The current engineering rhythm is:
 
@@ -85,6 +85,7 @@ canonical roadmap names are:
 | AEI Handwriting OCR Phase 1 - Gemini Flash transcription gate | Complete / certified / published |
 | AEI Handwriting OCR Phase 2 - Track-A benchmark foundation | Complete / certified / published |
 | Assessment Intelligence v1.0 Batch A - Contract and capability matrix | Complete / certified / published |
+| Assessment Intelligence v1.0 Batch B - Blueprint readiness | Complete / certified / published |
 | Stabilization Gate 1 - Production Safety | Complete / certified / published |
 | Operational Proof | Complete / certified / published |
 | AEI Activation / Trust | Complete / certified / published |
@@ -227,6 +228,7 @@ or expanded public product claims.
 | Batch | Status | Commit | Tag | Scope |
 |---|---|---|---|---|
 | Batch A - Contract and Capability Matrix | Published / certified | `c2a0b725cda0f20335ae184311bde03947038523` | `assessment-v1-batch-a-contract-capability-matrix-certified` | Canonical assessment contract, supported-scope capability matrix, Golden Harness starter cases, focused static validation, and certification; no runtime behavior changes |
+| Batch B - Blueprint Readiness | Published / certified | `1dfb4692620050e3f7c8f0fc1b53cba2bd4fb389` | `assessment-v1-batch-b-blueprint-readiness-certified` | Blueprint declaration contract, static supported-scope blueprint declarations, Golden Harness cases, focused static validation, and certification; no runtime behavior changes |
 
 Assessment Intelligence v1.0 Batch A establishes the product-completion
 foundation for assessment creation, question bank reuse, exam linkage, and
@@ -251,13 +253,46 @@ teacher-review routing changes, evidence-ledger behavior changes,
 parent/student visibility changes, public product claim expansion, or Batch B
 implementation.
 
+Assessment Intelligence v1.0 Batch B makes blueprint support explicit,
+deterministic, and non-universal.
+
+Batch B adds:
+
+- Batch B Blueprint Readiness Design Brief;
+- Batch B Implementation Authorization Contract;
+- Blueprint Declaration Contract;
+- static Blueprint Supported Scope Declarations;
+- Golden Harness blueprint readiness cases;
+- focused static blueprint readiness validation tests;
+- Batch B Certification Report.
+
+Batch B certifies:
+
+- supported CBSE / NCF2023 / Grade 6 / Science / unit-test blueprint posture;
+- supported CBSE / NCF2023 / Grade 10 / Mathematics / term-exam blueprint
+  posture;
+- deterministic internal-choice handling, including printed marks versus
+  answer-required marks;
+- assist posture for Grade 10 Mathematics practice MCQ blueprint;
+- manual-review posture for school-custom blueprint;
+- unsupported posture for universal blueprint claims;
+- expansion posture for future Telugu-medium state-board support.
+
+Batch B does not authorize or implement schema changes, API changes, UI changes,
+runtime behavior changes, feature flags, AI provider changes, LLM inference,
+runtime blueprint source switching, question paper generation behavior changes,
+question bank runtime behavior changes, exam service behavior changes, AEI
+behavior changes, EUI source adoption, marks changes, teacher-review routing
+changes, evidence-ledger behavior changes, parent/student visibility changes,
+public product claim expansion, or Batch C rubric/model-answer work.
+
 Next Assessment Intelligence gate:
 
 ```text
-Assessment Intelligence v1.0 Batch B - Blueprint Readiness
+Assessment Intelligence v1.0 Batch C - Rubric and Model-Answer Readiness
 ```
 
-Status: **Not authorized**. Batch B requires a separate ARM implementation
+Status: **Not authorized**. Batch C requires a separate ARM implementation
 authorization contract before any implementation begins.
 
 ---
@@ -425,34 +460,33 @@ UX-E certification caveat:
 The latest completed published gate is:
 
 ```text
-AEI Handwriting OCR Phase 2 - Track-A Golden Set benchmark foundation
+Assessment Intelligence v1.0 Batch B - Blueprint Readiness
 ```
 
 Publication baseline:
 
-- commit `266d073386a10bf6f661cb8c7e1f67f476d960c6`;
-- annotated tag `aei-handwriting-ocr-phase2-track-a-benchmark-certified`.
+- commit `1dfb4692620050e3f7c8f0fc1b53cba2bd4fb389`;
+- annotated tag `assessment-v1-batch-b-blueprint-readiness-certified`.
 
-AEI Handwriting OCR Phase 2 adds the repository-safe Track-A benchmark
-foundation for comparing OCR candidates against teacher-verified transcription
-truth. It includes deterministic CER/WER/extraction/blank/hallucination/schema
-metrics, a synthetic Golden Harness fixture, a Track-A data handling guide, and
-an aggregate benchmark report template.
+Assessment Intelligence v1.0 Batch B adds the static blueprint readiness
+foundation for declared supported scope. It includes a blueprint declaration
+contract, static supported-scope declarations, deterministic Golden Harness
+cases, focused validation tests, and certification evidence.
 
-Phase 2 does not run live Gemini/Qwen/Surya benchmarks, does not commit real
-answer sheets or real teacher transcriptions, and does not change production OCR
-routing. OCR remains transcription-only; AEI still evaluates and teachers remain
-final.
+Batch B does not change runtime question-paper generation, question-bank
+behavior, exam services, schema, API, UI, AEI, EUI, feature flags, providers, or
+product claims.
 
 No implementation gate is currently active. Assessment Intelligence v1.0 Batch
-A is published and certified. The next recommended product-facing gate is
-Assessment Intelligence v1.0 Batch B - Blueprint Readiness, under a separate
-ARM design or implementation authorization.
+B is published and certified. The next recommended product-facing gate is
+Assessment Intelligence v1.0 Batch C - Rubric and Model-Answer Readiness, under
+a separate ARM design or implementation authorization.
 
-Ordered candidate gates after Assessment Intelligence v1.0 Batch A:
+Ordered candidate gates after Assessment Intelligence v1.0 Batch B:
 
-1. Assessment Intelligence v1.0 Batch B - Blueprint Readiness - make supported
-   blueprint behavior explicit, validated, and non-universal; not authorized.
+1. Assessment Intelligence v1.0 Batch C - Rubric and Model-Answer Readiness -
+   make objective keys, model answers, rubric posture, and teacher-review
+   boundaries explicit; not authorized.
 2. AEI Handwriting OCR Phase 2 live Track-A benchmark run authorization -
    collect/use secured 50-100 teacher-verified real sheets and produce an
    aggregate candidate comparison report; not authorized.
@@ -463,10 +497,12 @@ Ordered candidate gates after Assessment Intelligence v1.0 Batch A:
    learning-intelligence plumbing only if ARM chooses deeper spine persistence;
    not authorized.
 
-Completion of AEI Handwriting OCR Phase 2 does not authorize live real-sheet
-benchmark execution, source switching, confidence-routed OCR, public OCR claim
-expansion, UI changes, API changes, schema changes, marks changes, routing
-changes, or evidence-ledger behavior changes.
+Completion of Assessment Intelligence v1.0 Batch B does not authorize runtime
+blueprint source switching, question-paper generation behavior changes,
+question-bank runtime changes, exam service behavior changes, rubric/model
+answer work, source switching, public product claim expansion, UI changes, API
+changes, schema changes, marks changes, routing changes, or evidence-ledger
+behavior changes.
 
 EUI Phase 7 remains closed at Phase 7E. Phase 7F source adoption is deferred
 future scope, not the next active implementation milestone.
@@ -522,9 +558,10 @@ remain out of scope:
 - AEI v1.0 feature-flag enablement, source switching, or product-facing behavior
   changes beyond the certified Activation / Trust proof without separate ARM
   authorization;
-- Assessment Intelligence v1.0 Batch B or later, including blueprint runtime
-  behavior, question paper generation behavior, question bank runtime behavior,
-  exam service behavior, API/UI/schema changes, or product claim expansion,
+- Assessment Intelligence v1.0 Batch C or later, including rubric/model-answer
+  behavior, blueprint runtime behavior, question paper generation behavior,
+  question bank runtime behavior, exam service behavior, API/UI/schema changes,
+  or product claim expansion,
   without separate ARM authorization;
 - later AEI v1.0 Teacher Evaluation UX batches until ARM separately authorizes
   the UX work;
@@ -562,8 +599,11 @@ foundation, and a published Topic-ID / Mastery Spine Phase A passive resolution
 foundation. Phase 7 is closed at 7E. Phase 7F source adoption is deferred future
 scope. Assessment Intelligence v1.0 Batch A is published and adds the canonical
 assessment contract, supported-scope capability matrix, Golden Harness starter
-cases, and certification foundation without runtime behavior changes. AEI v1.0
-is certified for the declared supported scope, UX-A is the first
+cases, and certification foundation without runtime behavior changes.
+Assessment Intelligence v1.0 Batch B is published and adds blueprint
+declaration posture, static supported-scope blueprint declarations, Golden
+Harness blueprint cases, and certification without runtime behavior changes.
+AEI v1.0 is certified for the declared supported scope, UX-A is the first
 product-facing display slice, UX-B is the teacher-authored override reason
 workflow slice, UX-C is the teacher-facing evidence posture and approved
 decision panel slice, UX-D is the supported-scope assist-panel display slice,
@@ -585,8 +625,8 @@ without running live real-sheet benchmarks or changing production OCR routing.
 UX-E remains the assembled teacher-evaluation certification baseline and the
 lint cleanup remains the code-health gate that resolved the pre-existing page
 lint debt. The next recommended product-facing gate is Assessment Intelligence
-v1.0 Batch B - Blueprint Readiness, but it is not active until ARM authorizes it
-under a separate design or implementation contract.
+v1.0 Batch C - Rubric and Model-Answer Readiness, but it is not active until ARM
+authorizes it under a separate design or implementation contract.
 
 ---
 
@@ -595,23 +635,25 @@ under a separate design or implementation contract.
 Latest published Assessment Intelligence gate:
 
 ```text
-Assessment Intelligence v1.0 Batch A - Contract and Capability Matrix
+Assessment Intelligence v1.0 Batch B - Blueprint Readiness
 ```
 
 Status: **Complete / certified / published**
 
-Commit: `c2a0b725cda0f20335ae184311bde03947038523`
+Commit: `1dfb4692620050e3f7c8f0fc1b53cba2bd4fb389`
 
-Annotated tag: `assessment-v1-batch-a-contract-capability-matrix-certified`
+Annotated tag: `assessment-v1-batch-b-blueprint-readiness-certified`
 
 Evidence:
 
-[`product/assessment-intelligence/ASSESSMENT_INTELLIGENCE_V1_BATCH_A_CONTRACT_CAPABILITY_MATRIX_CERTIFICATION_REPORT.md`](./product/assessment-intelligence/ASSESSMENT_INTELLIGENCE_V1_BATCH_A_CONTRACT_CAPABILITY_MATRIX_CERTIFICATION_REPORT.md)
+[`product/assessment-intelligence/ASSESSMENT_INTELLIGENCE_V1_BATCH_B_BLUEPRINT_READINESS_CERTIFICATION_REPORT.md`](./product/assessment-intelligence/ASSESSMENT_INTELLIGENCE_V1_BATCH_B_BLUEPRINT_READINESS_CERTIFICATION_REPORT.md)
 
 Certified evidence:
 
-- Focused Assessment Intelligence v1.0 contract tests: PASS - 6 passed
-- Adjacent assessment regression slice: PASS - 35 passed
+- Focused Assessment Intelligence v1.0 blueprint readiness tests: PASS - 8
+  passed
+- Batch A contract regression tests: PASS - 6 passed
+- Adjacent assessment regression slice: PASS - 28 passed
 - Focused Ruff check: PASS
 - API import: PASS
 - `git diff --check`: PASS
@@ -620,7 +662,7 @@ Certified evidence:
 Next Assessment Intelligence gate:
 
 ```text
-Assessment Intelligence v1.0 Batch B - Blueprint Readiness
+Assessment Intelligence v1.0 Batch C - Rubric and Model-Answer Readiness
 ```
 
 Status: **Not authorized**
