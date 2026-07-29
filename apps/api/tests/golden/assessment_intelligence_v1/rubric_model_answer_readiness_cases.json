@@ -1,0 +1,331 @@
+{
+  "version": "assessment-intelligence-v1-batch-c-rubric-golden-v1",
+  "authorization": "ASSESSMENT-V1-BATCH-C-AUTH-001",
+  "description": "Assessment Intelligence v1.0 Batch C cases validating static rubric and model-answer posture only.",
+  "cases": [
+    {
+      "id": "rubric_g10_math_mcq_objective_supported_001",
+      "rubric_id": "assessment-rubric://cbse/ncf2023/g10/mathematics/mcq-objective/v1",
+      "case_type": "objective_key",
+      "scope": {
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "grade": "10",
+        "subject": "Mathematics",
+        "question_type": "mcq"
+      },
+      "rubric": {
+        "rubric_posture": "objective_key",
+        "support_mode": "supported",
+        "marks": 1,
+        "answer_key": "B",
+        "options_required": 4
+      },
+      "expected": {
+        "mode": "supported",
+        "product_claim_allowed": true,
+        "teacher_authority_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "autonomous_approval": false,
+        "autonomous_grading": false,
+        "direct_marks_update": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "rubric_g10_math_numeric_tolerance_supported_001",
+      "rubric_id": "assessment-rubric://cbse/ncf2023/g10/mathematics/numeric-answer/v1",
+      "case_type": "numeric_answer",
+      "scope": {
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "grade": "10",
+        "subject": "Mathematics",
+        "question_type": "numeric"
+      },
+      "rubric": {
+        "rubric_posture": "numeric_answer",
+        "support_mode": "supported",
+        "marks": 2,
+        "answer_key": "0.5",
+        "numeric_tolerance": "0"
+      },
+      "expected": {
+        "mode": "supported",
+        "product_claim_allowed": true,
+        "teacher_authority_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "autonomous_approval": false,
+        "autonomous_grading": false,
+        "direct_marks_update": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "rubric_g10_math_acceptable_variants_supported_001",
+      "rubric_id": "assessment-rubric://cbse/ncf2023/g10/mathematics/acceptable-variants/v1",
+      "case_type": "acceptable_answers",
+      "scope": {
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "grade": "10",
+        "subject": "Mathematics",
+        "question_type": "numeric"
+      },
+      "rubric": {
+        "rubric_posture": "numeric_answer",
+        "support_mode": "supported",
+        "marks": 2,
+        "answer_key": "0.5",
+        "acceptable_answers": ["1/2", "50%", "½"]
+      },
+      "expected": {
+        "mode": "supported",
+        "acceptable_answer_count": 3,
+        "product_claim_allowed": true,
+        "teacher_authority_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "autonomous_approval": false,
+        "autonomous_grading": false,
+        "direct_marks_update": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "rubric_g10_math_unit_scientific_supported_001",
+      "rubric_id": "assessment-rubric://cbse/ncf2023/g10/mathematics/unit-tolerance-scientific/v1",
+      "case_type": "unit_scientific_notation",
+      "scope": {
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "grade": "10",
+        "subject": "Mathematics",
+        "question_type": "numeric"
+      },
+      "rubric": {
+        "rubric_posture": "numeric_answer",
+        "support_mode": "supported",
+        "marks": 2,
+        "answer_key": "1200",
+        "numeric_tolerance": "0",
+        "unit_posture": "accepted_when_equivalent",
+        "scientific_notation_posture": "accepted_when_equivalent"
+      },
+      "expected": {
+        "mode": "supported",
+        "product_claim_allowed": true,
+        "teacher_authority_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "autonomous_approval": false,
+        "autonomous_grading": false,
+        "direct_marks_update": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "rubric_g6_science_model_answer_assist_001",
+      "rubric_id": "assessment-rubric://cbse/ncf2023/g6/science/short-answer-model/v1",
+      "case_type": "model_answer",
+      "scope": {
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "grade": "6",
+        "subject": "Science",
+        "question_type": "short_answer"
+      },
+      "rubric": {
+        "rubric_posture": "model_answer",
+        "support_mode": "assist",
+        "marks": 2,
+        "model_answer": "Standard units make measurements consistent and comparable."
+      },
+      "expected": {
+        "mode": "assist",
+        "product_claim_allowed": false,
+        "teacher_authority_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "autonomous_approval": false,
+        "autonomous_grading": false,
+        "direct_marks_update": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "rubric_g6_science_criterion_manual_review_001",
+      "rubric_id": "assessment-rubric://cbse/ncf2023/g6/science/long-answer-criterion/v1",
+      "case_type": "criterion_rubric",
+      "scope": {
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "grade": "6",
+        "subject": "Science",
+        "question_type": "long_answer"
+      },
+      "rubric": {
+        "rubric_posture": "criterion_rubric",
+        "support_mode": "manual_review",
+        "marks": 5,
+        "criteria": [
+          {"criterion": "Identifies standard units", "marks": 2},
+          {"criterion": "Explains consistency", "marks": 2},
+          {"criterion": "Uses example", "marks": 1}
+        ],
+        "manual_review_reason": "Criterion evidence requires teacher confirmation."
+      },
+      "expected": {
+        "mode": "manual_review",
+        "criteria_marks_total": 5,
+        "product_claim_allowed": false,
+        "teacher_authority_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "autonomous_approval": false,
+        "autonomous_grading": false,
+        "direct_marks_update": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "rubric_g6_science_checklist_visual_001",
+      "rubric_id": "assessment-rubric://cbse/ncf2023/g6/science/biology-diagram-checklist/v1",
+      "case_type": "checklist",
+      "scope": {
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "grade": "6",
+        "subject": "Science",
+        "question_type": "diagram"
+      },
+      "rubric": {
+        "rubric_posture": "checklist",
+        "support_mode": "checklist",
+        "marks": 5,
+        "checklist_items": ["cell wall", "nucleus", "cytoplasm"]
+      },
+      "expected": {
+        "mode": "checklist",
+        "checklist_item_count": 3,
+        "product_claim_allowed": false,
+        "teacher_authority_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "autonomous_approval": false,
+        "autonomous_grading": false,
+        "direct_marks_update": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "rubric_missing_answer_key_manual_review_001",
+      "rubric_id": "assessment-rubric://school-custom/missing-answer-key/manual-review/v1",
+      "case_type": "missing_answer_key",
+      "scope": {
+        "board": "school_custom",
+        "curriculum": "school_defined",
+        "grade": "any",
+        "subject": "any",
+        "question_type": "any"
+      },
+      "rubric": {
+        "rubric_posture": "manual_review",
+        "support_mode": "manual_review",
+        "marks": 1,
+        "manual_review_reason": "No answer key or model answer is available."
+      },
+      "expected": {
+        "mode": "manual_review",
+        "product_claim_allowed": false,
+        "teacher_authority_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "autonomous_approval": false,
+        "autonomous_grading": false,
+        "direct_marks_update": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "rubric_universal_subjective_autograding_unsupported_001",
+      "rubric_id": "assessment-rubric://universal/subjective-autograding/v1",
+      "case_type": "unsupported_subjective_autograding",
+      "scope": {
+        "board": "any",
+        "curriculum": "any",
+        "grade": "any",
+        "subject": "any",
+        "question_type": "subjective"
+      },
+      "rubric": {
+        "rubric_posture": "unsupported",
+        "support_mode": "unsupported",
+        "marks": 0,
+        "unsupported_reason": "Universal subjective auto-grading is not a v1.0 supported claim."
+      },
+      "expected": {
+        "mode": "unsupported",
+        "product_claim_allowed": false,
+        "teacher_authority_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "autonomous_approval": false,
+        "autonomous_grading": false,
+        "direct_marks_update": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "rubric_advanced_visual_proof_expansion_001",
+      "rubric_id": "assessment-rubric://expansion/advanced-visual-proof-grading/v1",
+      "case_type": "future_expansion",
+      "scope": {
+        "board": "future",
+        "curriculum": "future",
+        "grade": "future",
+        "subject": "future",
+        "question_type": "visual_proof"
+      },
+      "rubric": {
+        "rubric_posture": "unsupported",
+        "support_mode": "expansion",
+        "marks": 0,
+        "unsupported_reason": "Advanced visual proof grading requires future certification."
+      },
+      "expected": {
+        "mode": "expansion",
+        "product_claim_allowed": false,
+        "teacher_authority_required": true,
+        "evaluation_pipeline": "AEI",
+        "approved_evidence_required": true,
+        "autonomous_approval": false,
+        "autonomous_grading": false,
+        "direct_marks_update": false,
+        "direct_parent_evidence": false,
+        "direct_mastery_update": false,
+        "runtime_behavior_change": false
+      }
+    }
+  ]
+}
