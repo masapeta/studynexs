@@ -1,0 +1,312 @@
+{
+  "version": "assessment-intelligence-v1-batch-a-golden-v1",
+  "authorization": "ASSESSMENT-V1-BATCH-A-AUTH-001",
+  "description": "Assessment Intelligence v1.0 Batch A starter cases validating canonical contract and supported-scope posture only.",
+  "cases": [
+    {
+      "id": "assessment_grounded_g6_science_supported_001",
+      "capability_id": "assessment://generation/grounded-question-paper/cbse/ncf2023/g6/science/unit-test/v1",
+      "case_type": "grounded_question_paper",
+      "scope": {
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "grade": "6",
+        "subject": "Science",
+        "paper_type": "unit_test",
+        "language": "English"
+      },
+      "contract_focus": [
+        "curriculum_pack_id",
+        "educational_identity_id",
+        "grounding_sources",
+        "approval_status",
+        "runtime_authority"
+      ],
+      "expected": {
+        "mode": "supported",
+        "requires_approved_curriculum": true,
+        "teacher_authority_required": true,
+        "authoritative_without_approval": false,
+        "autonomous_grading": false,
+        "evaluation_pipeline": "AEI",
+        "downstream_evidence_source": "teacher_approved_evidence",
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "assessment_grounded_g10_math_supported_001",
+      "capability_id": "assessment://generation/grounded-question-paper/cbse/ncf2023/g10/mathematics/unit-test/v1",
+      "case_type": "grounded_question_paper",
+      "scope": {
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "grade": "10",
+        "subject": "Mathematics",
+        "paper_type": "unit_test",
+        "language": "English"
+      },
+      "contract_focus": [
+        "blueprint_id",
+        "question_type",
+        "marks",
+        "answer_key",
+        "aei_capability_mode"
+      ],
+      "expected": {
+        "mode": "supported",
+        "requires_approved_curriculum": true,
+        "teacher_authority_required": true,
+        "authoritative_without_approval": false,
+        "autonomous_grading": false,
+        "evaluation_pipeline": "AEI",
+        "downstream_evidence_source": "teacher_approved_evidence",
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "assessment_blueprint_internal_choice_supported_001",
+      "capability_id": "assessment://blueprint/internal-choice/cbse/ncf2023/g10/mathematics/term-exam/v1",
+      "case_type": "blueprint_posture",
+      "scope": {
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "grade": "10",
+        "subject": "Mathematics",
+        "paper_type": "term_exam",
+        "language": "English"
+      },
+      "contract_focus": [
+        "marks_posture",
+        "required_count",
+        "answer_any_count",
+        "duration_minutes"
+      ],
+      "expected": {
+        "mode": "supported",
+        "marks_posture": "internal_choice",
+        "teacher_authority_required": true,
+        "authoritative_without_approval": false,
+        "autonomous_grading": false,
+        "evaluation_pipeline": "AEI",
+        "downstream_evidence_source": "teacher_approved_evidence",
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "assessment_objective_key_supported_001",
+      "capability_id": "assessment://rubric/objective-key/cbse/ncf2023/g10/mathematics/mcq/v1",
+      "case_type": "rubric_posture",
+      "scope": {
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "grade": "10",
+        "subject": "Mathematics",
+        "question_type": "mcq",
+        "language": "English"
+      },
+      "contract_focus": [
+        "answer_key",
+        "rubric_posture",
+        "expected_answer_type"
+      ],
+      "expected": {
+        "mode": "supported",
+        "rubric_posture": "objective_key",
+        "teacher_authority_required": true,
+        "authoritative_without_approval": false,
+        "autonomous_grading": false,
+        "evaluation_pipeline": "AEI",
+        "downstream_evidence_source": "teacher_approved_evidence",
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "assessment_model_answer_assist_001",
+      "capability_id": "assessment://rubric/model-answer/cbse/ncf2023/g6/science/short-answer/v1",
+      "case_type": "rubric_posture",
+      "scope": {
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "grade": "6",
+        "subject": "Science",
+        "question_type": "short",
+        "language": "English"
+      },
+      "contract_focus": [
+        "model_answer",
+        "rubric_posture",
+        "manual_review_reason"
+      ],
+      "expected": {
+        "mode": "assist",
+        "rubric_posture": "model_answer",
+        "teacher_authority_required": true,
+        "authoritative_without_approval": false,
+        "autonomous_grading": false,
+        "evaluation_pipeline": "AEI",
+        "downstream_evidence_source": "teacher_approved_evidence",
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "assessment_criterion_review_manual_001",
+      "capability_id": "assessment://rubric/criterion-review/cbse/ncf2023/g6/science/long-answer/v1",
+      "case_type": "rubric_posture",
+      "scope": {
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "grade": "6",
+        "subject": "Science",
+        "question_type": "long",
+        "language": "English"
+      },
+      "contract_focus": [
+        "criteria",
+        "manual_review_reason",
+        "teacher_review_required"
+      ],
+      "expected": {
+        "mode": "manual_review",
+        "rubric_posture": "criterion_rubric",
+        "teacher_authority_required": true,
+        "authoritative_without_approval": false,
+        "autonomous_grading": false,
+        "evaluation_pipeline": "AEI",
+        "downstream_evidence_source": "teacher_approved_evidence",
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "assessment_question_bank_reuse_supported_001",
+      "capability_id": "assessment://question-bank/reuse/approved-school-private/v1",
+      "case_type": "question_bank_reuse",
+      "scope": {
+        "source": "approved_school_private_question_bank",
+        "output": "draft_question_paper"
+      },
+      "contract_focus": [
+        "source_question_bank_item_id",
+        "generated_by",
+        "approval_status",
+        "source_paper_id"
+      ],
+      "expected": {
+        "mode": "supported",
+        "output_status": "draft",
+        "teacher_authority_required": true,
+        "authoritative_without_approval": false,
+        "autonomous_grading": false,
+        "evaluation_pipeline": "AEI",
+        "downstream_evidence_source": "teacher_approved_evidence",
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "assessment_paper_to_evaluation_linkage_supported_001",
+      "capability_id": "assessment://linkage/paper-to-evaluation/approved-paper-aei/v1",
+      "case_type": "paper_to_evaluation_linkage",
+      "scope": {
+        "source": "approved_question_paper",
+        "target": "exam_question_schema",
+        "evaluation": "AEI"
+      },
+      "contract_focus": [
+        "question_number",
+        "marks",
+        "topic",
+        "evaluation_pipeline",
+        "approved_evidence_required"
+      ],
+      "expected": {
+        "mode": "supported",
+        "requires_approved_paper": true,
+        "teacher_authority_required": true,
+        "authoritative_without_approval": false,
+        "autonomous_grading": false,
+        "evaluation_pipeline": "AEI",
+        "downstream_evidence_source": "teacher_approved_evidence",
+        "runtime_behavior_change": false
+      }
+    },
+    {
+      "id": "assessment_bilingual_generation_manual_review_001",
+      "capability_id": "assessment://language/bilingual-paper-generation/cbse/ncf2023/general/v1",
+      "case_type": "language_posture",
+      "scope": {
+        "board": "CBSE",
+        "curriculum": "NCF2023",
+        "language_mode": "bilingual",
+        "languages": [
+          "English",
+          "Telugu"
+        ]
+      },
+      "contract_focus": [
+        "question_language",
+        "bilingual_mode",
+        "manual_review_reason"
+      ],
+      "expected": {
+        "mode": "manual_review",
+        "teacher_authority_required": true,
+        "authoritative_without_approval": false,
+        "autonomous_grading": false,
+        "evaluation_pipeline": "AEI",
+        "downstream_evidence_source": "teacher_approved_evidence",
+        "runtime_behavior_change": false,
+        "product_claim_allowed": false
+      }
+    },
+    {
+      "id": "assessment_universal_multilingual_unsupported_001",
+      "capability_id": "assessment://language/universal-multilingual-assessment/v1",
+      "case_type": "unsupported_claim",
+      "scope": {
+        "language_mode": "universal_multilingual",
+        "board": "any",
+        "grade": "any",
+        "subject": "any"
+      },
+      "contract_focus": [
+        "support_mode",
+        "unsupported_reason",
+        "fallback_behavior"
+      ],
+      "expected": {
+        "mode": "unsupported",
+        "teacher_authority_required": true,
+        "authoritative_without_approval": false,
+        "autonomous_grading": false,
+        "evaluation_pipeline": "AEI",
+        "downstream_evidence_source": "teacher_approved_evidence",
+        "runtime_behavior_change": false,
+        "product_claim_allowed": false
+      }
+    },
+    {
+      "id": "assessment_autonomous_diagram_grading_unsupported_001",
+      "capability_id": "assessment://visual/autonomous-diagram-grading/v1",
+      "case_type": "unsupported_claim",
+      "scope": {
+        "input_modality": "diagram",
+        "subject": "Science",
+        "claim": "autonomous_marks"
+      },
+      "contract_focus": [
+        "visual_requirement",
+        "checklist_items",
+        "unsupported_reason"
+      ],
+      "expected": {
+        "mode": "unsupported",
+        "teacher_authority_required": true,
+        "authoritative_without_approval": false,
+        "autonomous_grading": false,
+        "evaluation_pipeline": "AEI",
+        "downstream_evidence_source": "teacher_approved_evidence",
+        "runtime_behavior_change": false,
+        "product_claim_allowed": false
+      }
+    }
+  ]
+}
