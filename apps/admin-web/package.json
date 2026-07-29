@@ -12,6 +12,7 @@
     "lint": "eslint",
     "e2e-smoke": "node e2e-smoke.cjs",
     "e2e-smoke:prod": "node e2e-smoke.cjs",
+    "e2e-assessment-v1": "node e2e-assessment-intelligence-v1.cjs",
     "cf:build": "opennextjs-cloudflare build",
     "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview"
