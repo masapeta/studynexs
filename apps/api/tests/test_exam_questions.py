@@ -8,7 +8,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.academic import Class, Subject
-from app.db.models.examination import ExamMark
+from app.db.models.examination import ExamMark, ExamType
+from app.db.models.question_paper import PaperStatus, QuestionPaper
 from app.db.models.school import School
 from app.db.models.student import Student
 from app.db.models.user import User
@@ -277,3 +278,63 @@ async def test_import_from_cross_school_paper_rejected(
     )
     assert resp.status_code == 400
     assert "not found" in resp.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_import_from_paper_requires_matching_assessment_contract(
+    client: AsyncClient,
+    admin_user: User,
+    test_school: School,
+    test_class: Class,
+    db_session: AsyncSession,
+):
+    subject = await _subject(db_session, test_school, test_class)
+    paper = QuestionPaper(
+        school_id=test_school.id,
+        class_id=test_class.id,
+        subject_id=subject.id,
+        created_by=admin_user.id,
+        title="Approved Unit Test",
+        board="CBSE",
+        grade=test_class.grade,
+        subject_name=subject.name,
+        exam_type=ExamType.UNIT_TEST,
+        total_marks=25,
+        duration_minutes=45,
+        topics=["Algebra"],
+        difficulty_mix={},
+        sections=[
+            {
+                "title": "A",
+                "questions": [
+                    {"number": "1", "marks": 25, "text": "Solve the problem."}
+                ],
+            }
+        ],
+        status=PaperStatus.APPROVED,
+        ai_model="test",
+    )
+    db_session.add(paper)
+    await db_session.flush()
+
+    token = await get_auth_token(client, "test_admin", "Admin@123")
+    exam = await _create_exam(client, token, test_class, subject, exam_type="slip_test")
+    url = f"/api/v1/exams/{exam['id']}/questions"
+
+    mismatch = await client.put(
+        url,
+        headers=auth_headers(token),
+        json={"source_paper_id": str(paper.id)},
+    )
+    assert mismatch.status_code == 400
+    assert "assessment type" in mismatch.json()["detail"]
+
+    paper.exam_type = ExamType.SLIP_TEST
+    await db_session.flush()
+    imported = await client.put(
+        url,
+        headers=auth_headers(token),
+        json={"source_paper_id": str(paper.id)},
+    )
+    assert imported.status_code == 200, imported.text
+    assert imported.json()["data"]["source_paper_id"] == str(paper.id)

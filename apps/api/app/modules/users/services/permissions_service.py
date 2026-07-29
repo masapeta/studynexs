@@ -1,6 +1,7 @@
 """Build UserPermissionsOut from StaffScope."""
 from __future__ import annotations
 
+from app.core.config import get_settings
 from app.core.staff_permissions import StaffScope
 from app.modules.users.schemas.permissions import TeachingAssignmentOut, UserPermissionsOut
 
@@ -59,6 +60,10 @@ def permissions_from_scope(scope: StaffScope) -> UserPermissionsOut:
         can_publish_internal_notices=scope.is_admin,
         can_use_settings=scope.is_admin,
         can_approve_question_papers=scope.is_admin or has_incharge,
+        can_generate_ungrounded_question_papers=(
+            get_settings().QUESTION_PAPER_UNGROUNDED_ENABLED
+            and (scope.is_admin or has_incharge)
+        ),
         can_manage_curriculum=scope.is_admin or has_incharge,
         can_edit_curriculum_draft=scope.is_admin or has_incharge or has_teaching,
         can_approve_curriculum=scope.is_admin or has_incharge,

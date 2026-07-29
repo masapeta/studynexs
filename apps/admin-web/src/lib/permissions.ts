@@ -27,6 +27,7 @@ export interface UserPermissions {
   can_publish_internal_notices: boolean;
   can_use_settings: boolean;
   can_approve_question_papers: boolean;
+  can_generate_ungrounded_question_papers: boolean;
   can_manage_curriculum: boolean;
   can_edit_curriculum_draft: boolean;
   can_approve_curriculum: boolean;
@@ -58,6 +59,7 @@ export const EMPTY_PERMISSIONS: UserPermissions = {
   can_publish_internal_notices: false,
   can_use_settings: false,
   can_approve_question_papers: false,
+  can_generate_ungrounded_question_papers: false,
   can_manage_curriculum: false,
   can_edit_curriculum_draft: false,
   can_approve_curriculum: false,

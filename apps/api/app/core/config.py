@@ -245,6 +245,10 @@ class Settings(BaseSettings):
     OLLAMA_VISION_MODEL: str = ""
     OLLAMA_API_KEY: str = ""  # optional — Ollama cloud / authenticated endpoints
     AI_REQUEST_TIMEOUT_SECONDS: float = 120.0
+    # Emergency/manual-review exception for the new Question Paper Studio only. Approved
+    # CurriculumPacks remain mandatory unless this is explicitly enabled and an authorized
+    # staff member records an acknowledgement and reason.
+    QUESTION_PAPER_UNGROUNDED_ENABLED: bool = False
 
     # ── Embeddings (RAG) — provider-agnostic; provider exposes >=1 model ─────────
     # EMBEDDING_PROVIDER selects the adapter (openai | ollama | stub | …); EMBEDDING_MODEL

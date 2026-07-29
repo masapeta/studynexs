@@ -14,6 +14,7 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.models.base import BaseModel
+from app.db.models.examination import ExamType
 
 
 class PaperStatus(str, enum.Enum):
@@ -23,14 +24,19 @@ class PaperStatus(str, enum.Enum):
     EDITED = "edited"                    # teacher saved edits
     PENDING_APPROVAL = "pending_approval"  # submitted to incharge/HOD
     APPROVED = "approved"                # incharge signed off
-    REJECTED = "rejected"                # audit trail; manually reusable (edit/clone/resubmit); bank on re-approve
+    REJECTED = "rejected"                # reusable after edit/clone; banked on re-approve
     PUBLISHED = "published"              # used in exam / handed out
     ARCHIVED = "archived"                # retired copy
 
 
 # Statuses where the paper body must not change.
 _LOCKED_STATUSES = frozenset(
-    {PaperStatus.PENDING_APPROVAL, PaperStatus.APPROVED, PaperStatus.PUBLISHED, PaperStatus.ARCHIVED}
+    {
+        PaperStatus.PENDING_APPROVAL,
+        PaperStatus.APPROVED,
+        PaperStatus.PUBLISHED,
+        PaperStatus.ARCHIVED,
+    }
 )
 
 # Awaiting teacher submit or incharge decision.
@@ -73,11 +79,18 @@ class QuestionPaper(BaseModel):
     # Ordered citation sources aligned with per-question `citations` indices:
     # [{"index": 1, "chapter": "...", "topic": "...", "ref_id": "..."}]
     grounding_sources: Mapped[list | None] = mapped_column(JSONB)
+    # Populated only for the feature-flagged, authorized ungrounded Studio exception. The
+    # creator is the authorizing actor; the reason makes the exception reviewable/auditable.
+    ungrounded_reason: Mapped[str | None] = mapped_column(Text)
 
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     board: Mapped[str] = mapped_column(String(50), nullable=False)          # e.g. "SSC"
     grade: Mapped[str] = mapped_column(String(20), nullable=False)          # e.g. "Class 10"
     subject_name: Mapped[str] = mapped_column(String(100), nullable=False)  # snapshot for display
+    # Shared with Exam so the authored paper and its eventual assessment use one canonical type.
+    exam_type: Mapped[ExamType] = mapped_column(
+        Enum(ExamType), nullable=False, default=ExamType.UNIT_TEST
+    )
     total_marks: Mapped[float] = mapped_column(Numeric(6, 2), nullable=False)
     duration_minutes: Mapped[int | None] = mapped_column(Integer)
     topics: Mapped[list | None] = mapped_column(JSONB)            # list[str]

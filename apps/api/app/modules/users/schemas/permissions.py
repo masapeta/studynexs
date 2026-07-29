@@ -40,6 +40,7 @@ class UserPermissionsOut(BaseModel):
     can_publish_internal_notices: bool = False
     can_use_settings: bool = False
     can_approve_question_papers: bool = False
+    can_generate_ungrounded_question_papers: bool = False
     can_manage_curriculum: bool = False
     can_edit_curriculum_draft: bool = False
     can_approve_curriculum: bool = False

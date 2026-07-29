@@ -75,6 +75,10 @@ class StaffScope:
             return True
         return self.teaches(class_id, subject_id)
 
+    def can_generate_ungrounded_question_paper(self, class_id: uuid.UUID) -> bool:
+        """Manual-review exception: restricted to school admins or the class authority."""
+        return self.is_admin or class_id in self.incharge_class_ids
+
     def can_edit_curriculum_draft(self, class_id: uuid.UUID, subject_id: uuid.UUID) -> bool:
         if self.is_admin:
             return True
@@ -119,6 +123,10 @@ class StaffScope:
             PaperStatus.PUBLISHED,
             PaperStatus.ARCHIVED,
         ):
+            return False
+        # A recorded ungrounded exception must traverse explicit submit -> approve review;
+        # it cannot be approved directly from an AI-created draft.
+        if paper.ungrounded_reason and paper.status != PaperStatus.PENDING_APPROVAL:
             return False
         if self.is_admin:
             return True

@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import uuid
+from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -16,12 +18,17 @@ from app.modules.examinations.schemas.exam import (
     QuestionSchemaSet,
 )
 
+if TYPE_CHECKING:
+    from app.db.models.question_paper import QuestionPaper
+
 
 class ExamService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def create_exam(self, school_id: uuid.UUID, data: ExamCreate, created_by: uuid.UUID) -> Exam:
+    async def create_exam(
+        self, school_id: uuid.UUID, data: ExamCreate, created_by: uuid.UUID
+    ) -> Exam:
         scope = TenantScope(self.db, school_id)
         await scope.school_class(data.class_id)
         await scope.subject_in_class(data.subject_id, data.class_id)
@@ -40,7 +47,9 @@ class ExamService:
         await self.db.flush()
         return exam
 
-    async def list_exams(self, school_id: uuid.UUID, class_id: uuid.UUID | None = None) -> list[Exam]:
+    async def list_exams(
+        self, school_id: uuid.UUID, class_id: uuid.UUID | None = None
+    ) -> list[Exam]:
         if class_id:
             await TenantScope(self.db, school_id).school_class(class_id)
         query = select(Exam).where(Exam.school_id == school_id)
@@ -58,7 +67,13 @@ class ExamService:
 
         questions = data.questions
         if data.source_paper_id:
-            questions = await self._questions_from_paper(school_id, data.source_paper_id)
+            paper, questions = await self._questions_from_paper(school_id, data.source_paper_id)
+            if paper.class_id != exam.class_id or paper.subject_id != exam.subject_id:
+                raise ValueError("question paper class and subject must match the exam")
+            if paper.exam_type != exam.exam_type:
+                raise ValueError("question paper assessment type must match the exam")
+            if Decimal(str(paper.total_marks)) != Decimal(str(exam.total_marks)):
+                raise ValueError("question paper total marks must match the exam")
         if not questions:
             raise ValueError("send questions or a source_paper_id")
 
@@ -108,7 +123,7 @@ class ExamService:
 
     async def _questions_from_paper(
         self, school_id: uuid.UUID, paper_id: uuid.UUID
-    ) -> list[QuestionDef]:
+    ) -> tuple["QuestionPaper", list[QuestionDef]]:
         """Copy question structure from an approved school-scoped AI question paper."""
         from app.db.models.question_paper import PaperStatus, QuestionPaper
 
@@ -136,9 +151,11 @@ class ExamService:
         ]
         if not questions:
             raise ValueError("question paper has no usable questions")
-        return questions
+        return paper, questions
 
-    async def enter_marks(self, school_id: uuid.UUID, exam_id: uuid.UUID, entries: list[MarkEntry]) -> int:
+    async def enter_marks(
+        self, school_id: uuid.UUID, exam_id: uuid.UUID, entries: list[MarkEntry]
+    ) -> int:
         scope = TenantScope(self.db, school_id)
         exam = await scope.exam(exam_id)
         by_student = {e.student_id: e for e in entries}
@@ -250,7 +267,13 @@ class ExamService:
             return {
                 "subjects": [],
                 "students": [
-                    {"student_id": str(sid), "name": name, "marks": {}, "average": None, "grade_letter": None}
+                    {
+                        "student_id": str(sid),
+                        "name": name,
+                        "marks": {},
+                        "average": None,
+                        "grade_letter": None,
+                    }
                     for sid, name in student_rows
                 ],
             }
@@ -266,7 +289,12 @@ class ExamService:
 
         mark_rows = (
             await self.db.execute(
-                select(ExamMark.student_id, Exam.subject_id, ExamMark.marks_obtained, Exam.total_marks)
+                select(
+                    ExamMark.student_id,
+                    Exam.subject_id,
+                    ExamMark.marks_obtained,
+                    Exam.total_marks,
+                )
                 .join(Exam, Exam.id == ExamMark.exam_id)
                 .where(
                     ExamMark.school_id == school_id,
@@ -295,7 +323,10 @@ class ExamService:
             return "F"
 
         subject_out = []
-        for sid in sorted(subject_ids, key=lambda x: subject_map.get(x).name if subject_map.get(x) else ""):
+        for sid in sorted(
+            subject_ids,
+            key=lambda x: subject_map.get(x).name if subject_map.get(x) else "",
+        ):
             sub = subject_map.get(sid)
             if not sub:
                 continue

@@ -239,6 +239,16 @@ async function verifyAiPapers(page) {
     "AI Papers teacher authority posture visible/verifiable",
     "approval/draft posture anchor"
   );
+  record(
+    body.includes("Configuration") && body.includes("Template") && body.includes("Blueprint"),
+    "Question Paper Studio constraint-first workflow visible",
+    "configuration/template/blueprint anchors"
+  );
+  record(
+    body.includes("Assessment type") && body.includes("Approved curriculum pack"),
+    "Question Paper Studio governed assessment type and curriculum posture visible",
+    "assessment-type/approved-pack anchors"
+  );
   assertNoUnsupportedClaims(body, "AI Papers");
   await shot(page, "assessment-01-ai-papers");
 }

@@ -2,18 +2,17 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { FileText, CalendarDays, Clock, Sparkles, Save, Check, Printer, KeyRound, Copy } from "lucide-react";
+import { FileText, CalendarDays, Clock, Sparkles, Save, Check, Printer, KeyRound, Copy, Network, ThumbsUp, ThumbsDown } from "lucide-react";
 import { api, fetchProtectedDocumentUrl, getApiErrorMessage } from "@/lib/api";
-import { parseTopicList, AI_INPUT } from "@/lib/ai-input-limits";
-import { AppSelect } from "@/components/ui/AppSelect";
 import { PageHeaderCard } from "@/components/layout/PageHeaderCard";
-import { formatClassLabel, sortClasses } from "@/lib/format";
+import { sortClasses } from "@/lib/format";
 import { DocumentPreviewModal } from "@/components/DocumentPreviewModal";
 import { CurriculumGroundingBadge } from "@/components/curriculum/CurriculumGroundingBadge";
-import { AcademicIntelligenceBanner } from "@/components/curriculum/AcademicIntelligenceBanner";
 import { useAuth } from "@/lib/auth-context";
-import Link from "next/link";
-import { TEACHING } from "@/lib/dashboard-routes";
+import {
+  QuestionPaperStudio,
+  StudioGenerateRequest,
+} from "./QuestionPaperStudio";
 
 type Question = {
   number: string;
@@ -22,6 +21,9 @@ type Question = {
   type: string;
   options?: string[];
   answer_key?: string;
+  chapter?: string;
+  chapter_id?: string;
+  bloom?: string;
 };
 type Section = { title: string; instructions?: string | null; questions: Question[] };
 type Paper = {
@@ -30,6 +32,7 @@ type Paper = {
   board: string;
   grade: string;
   subject_name: string;
+  exam_type?: string;
   total_marks: number;
   duration_minutes?: number | null;
   general_instructions?: string | null;
@@ -41,6 +44,7 @@ type Paper = {
   pack_version?: number | null;
   grounded?: boolean;
   grounded_at?: string | null;
+  ungrounded_reason?: string | null;
   grounding_sources?: { chapter?: string; topic?: string; index?: number; pack_status?: string; pack_version?: number }[] | null;
   can_approve?: boolean;
   can_edit?: boolean;
@@ -103,16 +107,8 @@ function AiPapersPageInner() {
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
   const [classId, setClassId] = useState("");
   const [subjectId, setSubjectId] = useState("");
-  const [topics, setTopics] = useState(searchParams.get("topics") || "");
-  const [totalMarks, setTotalMarks] = useState(80);
-  const [duration, setDuration] = useState(180);
-  const [difficulty, setDifficulty] = useState(searchParams.get("difficulty") || "balanced");
-  const [generateMode, setGenerateMode] = useState<"full" | "from_bank">("full");
   const [packId, setPackId] = useState("");
   const [packs, setPacks] = useState<CurriculumPack[]>([]);
-  const [useGrounding, setUseGrounding] = useState(
-    Boolean(searchParams.get("pack_id") || searchParams.get("grounded"))
-  );
   const [copilotReview, setCopilotReview] = useState<CopilotReview | null>(null);
   const [reviewBusy, setReviewBusy] = useState(false);
   const [bankCount, setBankCount] = useState<number | null>(null);
@@ -136,6 +132,10 @@ function AiPapersPageInner() {
   } | null>(null);
   const [usageLog, setUsageLog] = useState<AiUsageLogRow[]>([]);
   const [docPreview, setDocPreview] = useState<{ url: string; title: string } | null>(null);
+  const [feedbackRating, setFeedbackRating] = useState<"" | "up" | "down">("");
+  const [feedbackNote, setFeedbackNote] = useState("");
+  const [feedbackBusy, setFeedbackBusy] = useState(false);
+  const [feedbackRecorded, setFeedbackRecorded] = useState(false);
   const openDocRef = useRef(false);
   const isAdmin = permissions?.role === "admin" || permissions?.role === "super_admin";
 
@@ -213,17 +213,15 @@ function AiPapersPageInner() {
       .catch(() => {});
   }
 
-  async function generate() {
-    if (!classId || !subjectId) {
-      setError("Pick a class and subject first.");
-      return;
-    }
-    if (useGrounding && generateMode === "full" && !packId) {
-      setError("Select an approved curriculum pack for grounded generation.");
-      return;
-    }
+  function resetFeedback() {
+    setFeedbackRating("");
+    setFeedbackNote("");
+    setFeedbackRecorded(false);
+  }
+
+  async function generate(request: StudioGenerateRequest) {
     const cost =
-      generateMode === "from_bank"
+      request.mode === "from_bank"
         ? (credits?.purpose_costs?.qp_from_bank ?? 2)
         : (credits?.purpose_costs?.qp_full ?? 5);
     const remaining = credits?.user_credits_remaining ?? credits?.credits_remaining;
@@ -231,7 +229,7 @@ function AiPapersPageInner() {
       setError("Not enough AI credits remaining this month. Contact your class incharge or principal.");
       return;
     }
-    if (generateMode === "from_bank" && (bankCount === 0 || bankCount === null)) {
+    if (request.mode === "from_bank" && (bankCount === 0 || bankCount === null)) {
       setError(
         bankCount === 0
           ? "No approved questions in the bank for this class and subject. Approve a paper first."
@@ -240,7 +238,7 @@ function AiPapersPageInner() {
       return;
     }
     const modeLabel =
-      generateMode === "from_bank"
+      request.mode === "from_bank"
         ? "From question bank (reuses approved questions; AI fills gaps only)"
         : "Full AI generate";
     if (
@@ -255,31 +253,34 @@ function AiPapersPageInner() {
     setPaper(null);
     setCopilotReview(null);
     try {
-      let topicList: string[];
-      try {
-        topicList = parseTopicList(topics);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Invalid topics");
-        setGenerating(false);
-        return;
-      }
       const endpoint =
-        generateMode === "from_bank"
+        request.mode === "from_bank"
           ? "/api/v1/ai/question-papers/generate-from-bank"
           : "/api/v1/ai/question-papers/generate";
       const res = await api<Paper>(endpoint, {
         method: "POST",
         body: JSON.stringify({
-          class_id: classId,
-          subject_id: subjectId,
-          topics: topicList,
-          total_marks: Number(totalMarks),
-          duration_minutes: Number(duration),
-          difficulty,
-          ...(useGrounding && generateMode === "full" && packId ? { pack_id: packId } : {}),
+          class_id: request.class_id,
+          subject_id: request.subject_id,
+          topics: request.topics,
+          total_marks: request.total_marks,
+          duration_minutes: request.duration_minutes,
+          difficulty: request.difficulty,
+          exam_type: request.exam_type,
+          title: request.title,
+          ...(request.pack_id ? { pack_id: request.pack_id } : {}),
+          ...(request.ungrounded_acknowledged
+            ? {
+                ungrounded_acknowledged: true,
+                ungrounded_reason: request.ungrounded_reason,
+              }
+            : {}),
+          section_plan: request.section_plan,
+          blueprint_slots: request.blueprint_slots,
         }),
       });
       setPaper(res);
+      resetFeedback();
       setShowAnswers(false);
       loadRecent();
       api("/api/v1/ai/credits").then(setCredits).catch(() => {});
@@ -311,6 +312,26 @@ function AiPapersPageInner() {
       setError(getApiErrorMessage(e, "Copilot review failed."));
     } finally {
       setReviewBusy(false);
+    }
+  }
+
+  async function submitPaperFeedback() {
+    if (!paper || !feedbackRating || feedbackBusy) return;
+    setFeedbackBusy(true);
+    setError("");
+    try {
+      await api(`/api/v1/ai/question-papers/${paper.id}/feedback`, {
+        method: "POST",
+        body: JSON.stringify({
+          rating: feedbackRating,
+          note: feedbackNote.trim() || null,
+        }),
+      });
+      setFeedbackRecorded(true);
+    } catch (caught) {
+      setError(getApiErrorMessage(caught, "Could not record your feedback."));
+    } finally {
+      setFeedbackBusy(false);
     }
   }
 
@@ -414,10 +435,32 @@ function AiPapersPageInner() {
     }
   }
 
+  async function openBlueprint() {
+    if (!paper || openingDoc || openDocRef.current) return;
+    openDocRef.current = true;
+    setOpeningDoc(true);
+    setError("");
+    try {
+      const url = await fetchProtectedDocumentUrl(
+        `/api/v1/ai/question-papers/${paper.id}/blueprint.pdf`
+      );
+      setDocPreview((prev) => {
+        if (prev?.url) URL.revokeObjectURL(prev.url);
+        return { url, title: "Question paper blueprint" };
+      });
+    } catch (caught) {
+      setError(getApiErrorMessage(caught, "Could not open the blueprint."));
+    } finally {
+      openDocRef.current = false;
+      setOpeningDoc(false);
+    }
+  }
+
   async function openRecent(id: string) {
     try {
       const res = await api(`/api/v1/ai/question-papers/${id}`);
       setPaper(res);
+      resetFeedback();
       setShowAnswers(false);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) {
@@ -435,6 +478,7 @@ function AiPapersPageInner() {
         body: JSON.stringify({}),
       });
       setPaper(res);
+      resetFeedback();
       setShowAnswers(false);
       loadRecent();
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -530,182 +574,38 @@ function AiPapersPageInner() {
         </div>
       )}
 
-      {/* Generator form */}
-      <div className="card" style={{ marginBottom: 24, padding: 24 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-          <div>
-            <label className="stat-label">Class</label>
-            <AppSelect
-              variant="field"
-              value={classId}
-              onChange={setClassId}
-              aria-label="Class"
-              options={classes.map((c) => ({
-                value: c.id,
-                label: formatClassLabel(c.grade, c.section),
-              }))}
-            />
-          </div>
-          <div>
-            <label className="stat-label">Subject</label>
-            <AppSelect
-              variant="field"
-              value={subjectId}
-              onChange={setSubjectId}
-              aria-label="Subject"
-              placeholder={subjects.length === 0 ? "No subjects for this class" : "Select…"}
-              options={subjects.map((s) => ({ value: s.id, label: s.name }))}
-            />
-          </div>
-        </div>
-
-        <div style={{ marginBottom: 16 }}>
-          <label className="stat-label">Topics / chapters (one per line or comma-separated)</label>
-          <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "0 0 6px" }}>
-            With curriculum grounding, topics steer RAG retrieval from the approved pack.
-          </p>
-          <textarea
-            className="form-input"
-            value={topics}
-            onChange={(e) => setTopics(e.target.value.slice(0, AI_INPUT.topicsRawMaxLength))}
-            maxLength={AI_INPUT.topicsRawMaxLength}
-            rows={3}
-            placeholder="Real Numbers, Polynomials, Quadratic Equations, Triangles, Trigonometry"
-            style={{ ...selStyle, resize: "vertical", fontFamily: "inherit" }}
-          />
-        </div>
-
-        {generateMode === "full" && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-            <div>
-              <label className="stat-label">Curriculum grounding</label>
-              <AppSelect
-                variant="field"
-                value={useGrounding ? "grounded" : "free"}
-                onChange={(v) => setUseGrounding(v === "grounded")}
-                aria-label="Curriculum grounding"
-                options={[
-                  { value: "free", label: "Free-text topics (legacy)" },
-                  { value: "grounded", label: "Grounded in approved pack" },
-                ]}
-              />
-            </div>
-            {useGrounding && (
-              <div>
-                <label className="stat-label">Approved curriculum pack</label>
-                <AppSelect
-                  variant="field"
-                  value={packId}
-                  onChange={setPackId}
-                  aria-label="Curriculum pack"
-                  options={
-                    packs.length
-                      ? packs.map((p) => ({
-                          value: p.id,
-                          label: p.book_title ? `${p.board} — ${p.book_title}` : `${p.board} pack`,
-                        }))
-                      : [{ value: "", label: "No approved packs" }]
-                  }
-                />
-              </div>
-            )}
-          </div>
+      <QuestionPaperStudio
+        key={`${classId}-${subjectId}`}
+        classes={classes}
+        subjects={subjects}
+        classId={classId}
+        subjectId={subjectId}
+        onClassChange={(value) => {
+          setPackId("");
+          setClassId(value);
+        }}
+        onSubjectChange={(value) => {
+          setPackId("");
+          setSubjectId(value);
+        }}
+        packs={packs}
+        packId={packId}
+        onPackChange={setPackId}
+        bankCount={bankCount}
+        fullCost={credits?.purpose_costs?.qp_full ?? 5}
+        bankCost={credits?.purpose_costs?.qp_from_bank ?? 2}
+        initialTopics={searchParams.get("topics") || ""}
+        initialDifficulty={searchParams.get("difficulty") || "balanced"}
+        initialGrounding={searchParams.get("grounded") !== "false"}
+        canEditCurriculum={Boolean(permissions?.can_edit_curriculum_draft)}
+        canGenerateUngrounded={Boolean(
+          permissions?.can_generate_ungrounded_question_papers &&
+          (permissions.is_admin || permissions.incharge_class_ids.includes(classId))
         )}
-
-        {useGrounding && packId ? (
-          <div style={{ marginBottom: 16 }}>
-            <AcademicIntelligenceBanner packId={packId} />
-          </div>
-        ) : useGrounding && !packs.length && classId && subjectId ? (
-          <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
-            No approved pack for grounding.
-            {permissions?.can_edit_curriculum_draft ? (
-              <>
-                {" "}
-                <Link href={TEACHING.curriculumOnboarding}>Complete academic onboarding</Link> first.
-              </>
-            ) : (
-              " Ask your class incharge or school administrator to approve a curriculum pack."
-            )}
-          </p>
-        ) : null}
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr auto", gap: 16, alignItems: "end" }}>
-          <div>
-            <label className="stat-label">Generation mode</label>
-            <AppSelect
-              variant="field"
-              value={generateMode}
-              onChange={(v) => setGenerateMode(v as "full" | "from_bank")}
-              aria-label="Generation mode"
-              options={[
-                { value: "full", label: `Full AI (${credits?.purpose_costs?.qp_full ?? 5} credits)` },
-                {
-                  value: "from_bank",
-                  label: `From question bank (${credits?.purpose_costs?.qp_from_bank ?? 2} credits)`,
-                },
-              ]}
-            />
-            {generateMode === "from_bank" && bankCount !== null && (
-              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
-                {bankCount} approved question{bankCount === 1 ? "" : "s"} in bank
-              </div>
-            )}
-          </div>
-          <div>
-            <label className="stat-label">Total marks</label>
-            <input
-              type="number"
-              className="form-input"
-              value={totalMarks}
-              onChange={(e) => setTotalMarks(Number(e.target.value))}
-              style={selStyle}
-            />
-          </div>
-          <div>
-            <label className="stat-label">Duration (min)</label>
-            <input
-              type="number"
-              className="form-input"
-              value={duration}
-              onChange={(e) => setDuration(Number(e.target.value))}
-              style={selStyle}
-            />
-          </div>
-          <div>
-            <label className="stat-label">Difficulty</label>
-            <AppSelect
-              variant="field"
-              value={difficulty}
-              onChange={setDifficulty}
-              aria-label="Difficulty"
-              options={[
-                { value: "easy", label: "Easy" },
-                { value: "balanced", label: "Balanced" },
-                { value: "hard", label: "Hard" },
-              ]}
-            />
-          </div>
-          <button
-            className="btn btn-primary"
-            onClick={generate}
-            disabled={generating}
-            style={{ width: "auto", padding: "10px 24px", borderRadius: "var(--radius-full)" }}
-          >
-            {generating ? "Generating…" : <><Sparkles size={16} /> {generateMode === "from_bank" ? "Compose from bank" : "Generate Paper"}</>}
-          </button>
-        </div>
-
-        {error && (
-          <div style={{ marginTop: 14, color: "var(--danger)", fontSize: 13 }}>{error}</div>
-        )}
-        {generating && (
-          <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 12, color: "var(--text-muted)" }}>
-            <div className="spinner" style={{ width: 20, height: 20 }} />
-            Drafting your paper{generateMode === "from_bank" ? " from the bank" : " with AI"} — this usually takes 15–30 seconds…
-          </div>
-        )}
-      </div>
+        generating={generating}
+        error={error}
+        onGenerate={generate}
+      />
 
       {/* Paper preview */}
       {paper && (
@@ -752,7 +652,8 @@ function AiPapersPageInner() {
           </div>
 
           <div style={{ color: "var(--text-muted)", fontSize: 13, margin: "8px 0 16px" }}>
-            {paper.board} · {paper.grade} · {paper.subject_name} · {paper.total_marks} marks ·{" "}
+            {paper.board} · {paper.grade} · {paper.subject_name} ·{" "}
+            {(paper.exam_type || "unit_test").replace(/_/g, " ")} · {paper.total_marks} marks ·{" "}
             {paper.duration_minutes} min{paper.ai_model ? ` · ${paper.ai_model}` : ""}
           </div>
 
@@ -763,6 +664,22 @@ function AiPapersPageInner() {
             grounded={paper.grounded}
             groundedAt={paper.grounded_at}
           />
+
+          {paper.ungrounded_reason && (
+            <div
+              role="alert"
+              style={{
+                border: "1px solid var(--warning)",
+                background: "var(--warning-light)",
+                borderRadius: "var(--radius-md)",
+                padding: "10px 12px",
+                marginBottom: 12,
+                fontSize: 13,
+              }}
+            >
+              <strong>Manual-review exception:</strong> {paper.ungrounded_reason}
+            </div>
+          )}
 
           {paper.grounded && paper.grounding_sources && paper.grounding_sources.length > 0 && (
             <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>
@@ -806,6 +723,9 @@ function AiPapersPageInner() {
             </button>
             <button type="button" className="btn btn-outline" onClick={() => openPdf(true)} disabled={openingDoc} style={btnSm}>
               <KeyRound size={15} /> Answer key (teacher)
+            </button>
+            <button type="button" className="btn btn-outline" onClick={openBlueprint} disabled={openingDoc} style={btnSm}>
+              <Network size={15} /> Blueprint
             </button>
             <button className="btn btn-ghost" onClick={() => setShowAnswers((v) => !v)} style={btnSm}>
               {showAnswers ? "Hide answers" : "Show answers inline"}
@@ -875,6 +795,7 @@ function AiPapersPageInner() {
                     <textarea
                       value={q.text}
                       onChange={(e) => updateQuestion(si, qi, e.target.value)}
+                      disabled={!canEdit}
                       rows={Math.max(1, Math.ceil(q.text.length / 90))}
                       style={{
                         width: "100%",
@@ -893,6 +814,13 @@ function AiPapersPageInner() {
                         ))}
                       </div>
                     )}
+                    {(q.chapter || q.bloom) && (
+                      <div style={{ marginTop: 5, color: "var(--text-muted)", fontSize: 11 }}>
+                        {q.chapter ? `Chapter: ${q.chapter}` : ""}
+                        {q.chapter && q.bloom ? " · " : ""}
+                        {q.bloom ? `Objective: ${q.bloom.replace(/_/g, " ")}` : ""}
+                      </div>
+                    )}
                     {showAnswers && q.answer_key && (
                       <div style={{ marginTop: 4, color: "var(--primary)", fontSize: 13 }}>
                         <b>Ans:</b> {q.answer_key}
@@ -906,6 +834,70 @@ function AiPapersPageInner() {
               ))}
             </div>
           ))}
+
+          <div
+            style={{
+              background: "var(--bg)",
+              border: "1px solid var(--border-light)",
+              borderRadius: "var(--radius-md)",
+              marginTop: 24,
+              padding: 18,
+            }}
+          >
+            <fieldset style={{ border: 0, margin: 0, padding: 0 }} disabled={feedbackRecorded}>
+              <legend style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>
+                Was this paper relevant to your configuration?
+              </legend>
+              <p style={{ color: "var(--text-muted)", fontSize: 12, margin: "0 0 12px" }}>
+                Your quality signal helps improve generation; it never changes this paper or its approval status.
+              </p>
+              <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                <button
+                  type="button"
+                  className={feedbackRating === "up" ? "btn btn-primary" : "btn btn-outline"}
+                  aria-pressed={feedbackRating === "up"}
+                  onClick={() => setFeedbackRating("up")}
+                  style={btnSm}
+                >
+                  <ThumbsUp size={15} /> Relevant
+                </button>
+                <button
+                  type="button"
+                  className={feedbackRating === "down" ? "btn btn-primary" : "btn btn-outline"}
+                  aria-pressed={feedbackRating === "down"}
+                  onClick={() => setFeedbackRating("down")}
+                  style={btnSm}
+                >
+                  <ThumbsDown size={15} /> Needs improvement
+                </button>
+              </div>
+              <label className="stat-label" htmlFor="question-paper-feedback">Optional feedback</label>
+              <textarea
+                id="question-paper-feedback"
+                className="form-input"
+                value={feedbackNote}
+                maxLength={2000}
+                rows={3}
+                onChange={(event) => setFeedbackNote(event.target.value)}
+                placeholder="Tell us what matched—or what should improve."
+                style={{ ...selStyle, fontFamily: "inherit", resize: "vertical" }}
+              />
+              <button
+                type="button"
+                className="btn btn-outline"
+                disabled={!feedbackRating || feedbackBusy}
+                onClick={submitPaperFeedback}
+                style={{ ...btnSm, marginTop: 10 }}
+              >
+                {feedbackBusy ? "Recording…" : "Submit feedback"}
+              </button>
+            </fieldset>
+            {feedbackRecorded && (
+              <div style={{ color: "var(--success)", fontSize: 13 }} role="status">
+                Feedback recorded. Thank you.
+              </div>
+            )}
+          </div>
         </div>
       )}
 

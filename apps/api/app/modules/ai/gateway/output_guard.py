@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import uuid
 
 from app.modules.ai.gateway.input_guard import (
     _CONTROL_CHARS,
@@ -33,6 +34,19 @@ def _apply_question_metadata(src: dict, item: dict) -> None:
     1-based indices into the paper's ``grounding_sources`` — coerced to positive ints so the
     trace can never carry arbitrary strings.
     """
+    chapter = sanitize_prompt_text(
+        src.get("chapter"), max_length=200, field_name="chapter", reject_injection=False
+    )
+    if chapter:
+        item["chapter"] = chapter
+
+    chapter_id = src.get("chapter_id")
+    if chapter_id:
+        try:
+            item["chapter_id"] = str(uuid.UUID(str(chapter_id)))
+        except (TypeError, ValueError):
+            pass
+
     bloom = sanitize_prompt_text(
         src.get("bloom"), max_length=40, field_name="bloom", reject_injection=False
     )

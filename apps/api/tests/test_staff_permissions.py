@@ -3,8 +3,6 @@ from __future__ import annotations
 
 import uuid
 
-import pytest
-
 from app.core.staff_permissions import StaffScope
 from app.db.models.question_paper import PaperStatus, QuestionPaper
 from app.db.models.report_card import ReportCard, ReportStatus
@@ -54,6 +52,24 @@ def test_class_incharge_can_approve_subject_teacher_draft() -> None:
     )
     paper = _paper(class_id, subject_id, subject_teacher)
     assert scope.can_approve_question_paper(paper)
+
+
+def test_ungrounded_exception_requires_submit_before_approval() -> None:
+    class_id = uuid.uuid4()
+    subject_id = uuid.uuid4()
+    incharge = StaffScope(
+        user_id=uuid.uuid4(),
+        role="class_incharge",
+        is_admin=False,
+        incharge_class_ids={class_id},
+    )
+    paper = _paper(class_id, subject_id, uuid.uuid4())
+    paper.ungrounded_reason = "Approved pack unavailable; every item requires manual review."
+
+    assert incharge.can_generate_ungrounded_question_paper(class_id)
+    assert not incharge.can_approve_question_paper(paper)
+    paper.status = PaperStatus.PENDING_APPROVAL
+    assert incharge.can_approve_question_paper(paper)
 
 
 def test_class_incharge_can_reject_pending_paper() -> None:

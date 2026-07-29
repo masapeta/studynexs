@@ -29,7 +29,9 @@ from app.core.staff_permissions import (
     assert_report_cards,
     get_staff_scope,
 )
+from app.db.models.ai_feedback import AIFeedback
 from app.db.models.ai_usage import AIUsage
+from app.db.models.examination import ExamType
 from app.db.models.question_bank import QuestionBankItem
 from app.db.models.question_paper import PaperStatus, QuestionPaper
 from app.db.models.report_card import ReportCard, ReportStatus
@@ -47,6 +49,7 @@ from app.modules.ai.schemas.question_paper import (
     BankSummaryOut,
     DuplicatePaperRequest,
     GenerateRequest,
+    QuestionPaperFeedbackRequest,
     QuestionPaperOut,
     RejectPaperRequest,
     UpdatePaperRequest,
@@ -68,7 +71,7 @@ from app.modules.ai.services.ai_credits import (
     month_start_for_school,
     set_principal_override,
 )
-from app.modules.ai.services.paper_pdf import generate_paper_pdf
+from app.modules.ai.services.paper_pdf import generate_blueprint_pdf, generate_paper_pdf
 from app.modules.ai.services.question_bank_service import (
     BankIngestError,
     count_compose_candidates,
@@ -354,6 +357,7 @@ def _to_out(
         board=p.board,
         grade=p.grade,
         subject_name=p.subject_name,
+        exam_type=getattr(p, "exam_type", ExamType.UNIT_TEST),
         total_marks=float(p.total_marks),
         duration_minutes=p.duration_minutes,
         general_instructions=p.general_instructions,
@@ -369,6 +373,7 @@ def _to_out(
         grounded=p.grounded,
         grounding_sources=p.grounding_sources,
         grounded_at=grounded_at,
+        ungrounded_reason=getattr(p, "ungrounded_reason", None),
         can_approve=can_approve,
         can_edit=can_edit,
         can_submit=can_submit,
@@ -449,6 +454,35 @@ async def _get_owned_paper(db: AsyncSession, school_id: str, paper_id: uuid.UUID
     return paper
 
 
+def _assert_studio_curriculum_posture(body: GenerateRequest, scope: StaffScope) -> None:
+    """Fail before credits/LLM when a Studio request bypasses approved curriculum.
+
+    Legacy callers without the new exact ``section_plan`` remain API-compatible. The new Studio
+    contract is stricter: only an explicitly enabled class authority may create an ungrounded
+    draft, with acknowledgement and an auditable reason. Approval remains a separate action.
+    """
+    if body.section_plan is None or body.pack_id is not None:
+        return
+    if not settings.QUESTION_PAPER_UNGROUNDED_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Question Paper Studio requires an approved curriculum pack. "
+                "The ungrounded manual-review exception is disabled."
+            ),
+        )
+    if not scope.can_generate_ungrounded_question_paper(body.class_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only an administrator or class incharge may authorize an ungrounded draft.",
+        )
+    if not body.ungrounded_acknowledged or not body.ungrounded_reason:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="A manual-review acknowledgement and reason are required.",
+        )
+
+
 @router.post(
     "/question-papers/generate",
     response_model=QuestionPaperOut,
@@ -459,9 +493,12 @@ async def generate_question_paper(
     current_user: CurrentUser = Depends(require_roles(*_TEACH_ROLES)),
     db: AsyncSession = Depends(get_db),
 ) -> QuestionPaperOut:
-    """Generate a DRAFT paper. With a ``pack_id`` it is grounded in the approved CurriculumPack
-    (every question cited); otherwise it falls back to free-text topics. Teacher reviews + approves
-    before use — AI never publishes."""
+    """Generate a DRAFT paper.
+
+    Studio requests require an approved CurriculumPack unless the default-off, authorized,
+    auditable manual-review exception is active. Legacy non-Studio callers retain their existing
+    free-topic behavior. AI never approves or publishes a paper.
+    """
     bind_ai_context(
         school_id=current_user.school_id,
         user_id=current_user.id,
@@ -469,6 +506,7 @@ async def generate_question_paper(
     )
     scope = await get_staff_scope(db, current_user)
     assert_qp_generate(scope, body.class_id, body.subject_id)
+    _assert_studio_curriculum_posture(body, scope)
     credits = await _enforce_monthly_cap(
         db,
         uuid.UUID(current_user.school_id),
@@ -488,11 +526,23 @@ async def generate_question_paper(
             total_marks=body.total_marks,
             duration_minutes=body.duration_minutes,
             difficulty=body.difficulty,
+            exam_type=body.exam_type,
             title=body.title,
+            ungrounded_reason=body.ungrounded_reason,
             role=current_user.role,
             purpose_tag="qp_full",
             credits_charged=credits,
             pack_id=body.pack_id,
+            section_plan=(
+                [section.as_service_plan() for section in body.section_plan]
+                if body.section_plan
+                else None
+            ),
+            blueprint_slots=(
+                [slot.model_dump() for slot in body.blueprint_slots]
+                if body.blueprint_slots
+                else None
+            ),
         )
     except Exception as exc:
         raise_http_for_llm_error(
@@ -595,10 +645,21 @@ async def generate_question_paper_from_bank(
             total_marks=body.total_marks,
             duration_minutes=body.duration_minutes,
             difficulty=body.difficulty,
+            exam_type=body.exam_type,
             title=body.title,
             role=current_user.role,
             purpose_tag="qp_from_bank",
             credits_charged=credits,
+            section_plan=(
+                [section.as_service_plan() for section in body.section_plan]
+                if body.section_plan
+                else None
+            ),
+            blueprint_slots=(
+                [slot.model_dump() for slot in body.blueprint_slots]
+                if body.blueprint_slots
+                else None
+            ),
         )
     except Exception as exc:
         raise_http_for_llm_error(
@@ -809,6 +870,57 @@ async def download_question_paper(
         media_type=media_type,
         headers={"Content-Disposition": f"inline; filename={filename}"},
     )
+
+
+@router.get("/question-papers/{paper_id}/blueprint.pdf")
+async def download_question_paper_blueprint(
+    paper_id: uuid.UUID,
+    current_user: CurrentUser = Depends(require_roles(*_TEACH_ROLES)),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """Render the tenant-scoped, saved blueprint used by this draft/approved paper."""
+    scope = await get_staff_scope(db, current_user)
+    paper = await _get_owned_paper(db, current_user.school_id, paper_id)
+    assert_qp_download(scope, paper)
+    school = (
+        await db.execute(select(School).where(School.id == paper.school_id))
+    ).scalar_one_or_none()
+    content, media_type = await run_in_threadpool(
+        generate_blueprint_pdf,
+        paper,
+        school_name=(school.name if school else None),
+    )
+    filename = f"{paper.subject_name}_{paper.grade}_blueprint.pdf".replace(" ", "_")
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={"Content-Disposition": f"inline; filename={filename}"},
+    )
+
+
+@router.post("/question-papers/{paper_id}/feedback", status_code=status.HTTP_201_CREATED)
+async def record_question_paper_feedback(
+    paper_id: uuid.UUID,
+    body: QuestionPaperFeedbackRequest,
+    current_user: CurrentUser = Depends(require_roles(*_TEACH_ROLES)),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, str]:
+    """Record tenant-scoped teacher feedback without changing paper status or content."""
+    paper = await _get_owned_paper(db, current_user.school_id, paper_id)
+    scope = await get_staff_scope(db, current_user)
+    assert_qp_download(scope, paper)
+    db.add(
+        AIFeedback(
+            school_id=uuid.UUID(current_user.school_id),
+            user_id=uuid.UUID(current_user.id),
+            feature="question_paper_generation",
+            ref_type="question_paper",
+            ref_id=str(paper.id),
+            rating=body.rating,
+            note=body.note,
+        )
+    )
+    return {"status": "recorded"}
 
 
 # ---------------------------------------------------------------------------

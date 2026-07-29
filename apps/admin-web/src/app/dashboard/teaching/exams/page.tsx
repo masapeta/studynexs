@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { api, getApiErrorMessage } from "@/lib/api";
@@ -9,17 +9,43 @@ import { AppSelect } from "@/components/ui/AppSelect";
 import MarksGrid from "./MarksGrid";
 import QuestionSchemaEditor from "./QuestionSchemaEditor";
 import { TEACHING } from "@/lib/dashboard-routes";
+import { EXAM_TYPE_OPTIONS, examTypeLabel } from "@/lib/exam-types";
 
-const EXAM_TYPES = [
-  "slip_test", "unit_test", "quarterly", "half_yearly", "mid_term", "final", "assignment", "quiz",
-];
-const pretty = (s: string) => s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+type ClassSummary = { id: string; grade: string; section: string };
+type SubjectSummary = { id: string; name: string };
+type ExamSummary = {
+  id: string;
+  class_id: string;
+  subject_id: string;
+  exam_type: string;
+  title: string;
+  total_marks: number | string;
+  topic?: string | null;
+  has_question_schema: boolean;
+  can_evaluate_sheets: boolean;
+};
+type StudentSummary = {
+  id: string;
+  roll_no?: string | null;
+  student_name?: string | null;
+};
+type QuestionSummary = { no: string; max_marks: number; topic?: string | null };
+type ExamMarkSummary = {
+  student_id: string;
+  marks_obtained: number | string;
+  question_marks?: Record<string, number> | null;
+};
+type ListResponse<T> = T[] | { items?: T[]; data?: T[] };
+
+function responseItems<T>(response: ListResponse<T>): T[] {
+  return Array.isArray(response) ? response : response.items || response.data || [];
+}
 
 export default function ExamsPage() {
-  const [classes, setClasses] = useState<any[]>([]);
-  const [subjects, setSubjects] = useState<any[]>([]);
+  const [classes, setClasses] = useState<ClassSummary[]>([]);
+  const [subjects, setSubjects] = useState<SubjectSummary[]>([]);
   const [classId, setClassId] = useState("");
-  const [exams, setExams] = useState<any[]>([]);
+  const [exams, setExams] = useState<ExamSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -34,45 +60,47 @@ export default function ExamsPage() {
   });
   const [creating, setCreating] = useState(false);
 
-  const [activeExam, setActiveExam] = useState<any>(null);
-  const [schemaExam, setSchemaExam] = useState<any>(null);
-  const [students, setStudents] = useState<any[]>([]);
+  const [activeExam, setActiveExam] = useState<ExamSummary | null>(null);
+  const [schemaExam, setSchemaExam] = useState<ExamSummary | null>(null);
+  const [students, setStudents] = useState<StudentSummary[]>([]);
   const [marks, setMarks] = useState<Record<string, string>>({});
-  const [questions, setQuestions] = useState<any[]>([]);
+  const [questions, setQuestions] = useState<QuestionSummary[]>([]);
   const [questionMarks, setQuestionMarks] = useState<Record<string, Record<string, number>>>({});
   const [savingMarks, setSavingMarks] = useState(false);
 
+  const loadExams = useCallback(() => {
+    if (!classId) return;
+    api<{ data?: ExamSummary[] }>(`/api/v1/exams?class_id=${classId}`)
+      .then((response) => setExams(response.data || []))
+      .catch((caught) => setError(getApiErrorMessage(caught, "Failed to load exams")))
+      .finally(() => setLoading(false));
+  }, [classId]);
+
   useEffect(() => {
-    api("/api/v1/academic/classes?page_size=100")
-      .then((r) => {
-        const raw: any[] = r.items || r.data || [];
+    api<ListResponse<ClassSummary>>("/api/v1/academic/classes?page_size=100")
+      .then((response) => {
+        const raw = responseItems(response);
         const items = sortClasses(raw);
         setClasses(items);
-        if (items[0]) setClassId(items[0].id);
+        if (items[0]) {
+          setLoading(true);
+          setClassId(items[0].id);
+        }
       })
       .catch((e) => console.error(e));
   }, []);
 
   useEffect(() => {
     if (!classId) return;
-    setActiveExam(null);
-    api(`/api/v1/academic/subjects?class_id=${classId}`)
-      .then((r) => {
-        const items = r.items || r.data || (Array.isArray(r) ? r : []);
+    api<ListResponse<SubjectSummary>>(`/api/v1/academic/subjects?class_id=${classId}`)
+      .then((response) => {
+        const items = responseItems(response);
         setSubjects(items);
         setForm((f) => ({ ...f, subject_id: items[0]?.id || "" }));
       })
       .catch((e) => console.error(e));
     loadExams();
-  }, [classId]);
-
-  function loadExams() {
-    setLoading(true);
-    api(`/api/v1/exams?class_id=${classId}`)
-      .then((r) => setExams(r.data || []))
-      .catch((e) => setError(getApiErrorMessage(e, "Failed to load exams")))
-      .finally(() => setLoading(false));
-  }
+  }, [classId, loadExams]);
 
   async function createExam() {
     if (!form.subject_id || !form.title) {
@@ -96,6 +124,7 @@ export default function ExamsPage() {
       });
       setShowCreate(false);
       setForm((f) => ({ ...f, title: "", topic: "" }));
+      setLoading(true);
       loadExams();
     } catch (e) {
       setError(getApiErrorMessage(e, "Failed to create exam"));
@@ -104,31 +133,35 @@ export default function ExamsPage() {
     }
   }
 
-  async function openMarks(exam: any) {
+  async function openMarks(exam: ExamSummary) {
     setActiveExam(exam);
     setSchemaExam(null);
     setError("");
     try {
-      const stuRes = await api(`/api/v1/academic/students?class_id=${exam.class_id}&page_size=100`);
-      const stus = stuRes.items || stuRes.data || [];
+      const stuRes = await api<ListResponse<StudentSummary>>(
+        `/api/v1/academic/students?class_id=${exam.class_id}&page_size=100`
+      );
+      const stus = responseItems(stuRes);
       setStudents(stus);
 
-      const mkRes = await api(`/api/v1/exams/${exam.id}/marks`);
+      const mkRes = await api<{ data?: ExamMarkSummary[] }>(`/api/v1/exams/${exam.id}/marks`);
       const existing = mkRes.data || [];
 
       if (exam.has_question_schema) {
-        const qRes = await api(`/api/v1/exams/${exam.id}/questions`);
+        const qRes = await api<{ data?: QuestionSummary[] }>(
+          `/api/v1/exams/${exam.id}/questions`
+        );
         setQuestions(qRes.data || []);
         const qm: Record<string, Record<string, number>> = {};
-        existing.forEach((x: any) => {
+        existing.forEach((x) => {
           if (x.question_marks) qm[x.student_id] = x.question_marks;
         });
         setQuestionMarks(qm);
       } else {
         setQuestions([]);
         const map: Record<string, string> = {};
-        stus.forEach((s: any) => {
-          const m = existing.find((x: any) => x.student_id === s.id);
+        stus.forEach((s) => {
+          const m = existing.find((x) => x.student_id === s.id);
           map[s.id] = m ? String(m.marks_obtained) : "";
         });
         setMarks(map);
@@ -190,7 +223,12 @@ export default function ExamsPage() {
           <AppSelect
             variant="pill"
             value={classId}
-            onChange={setClassId}
+            onChange={(nextClassId) => {
+              setActiveExam(null);
+              setSchemaExam(null);
+              setLoading(true);
+              setClassId(nextClassId);
+            }}
             aria-label="Select class and section"
             options={classes.map((c) => ({
               value: c.id,
@@ -250,7 +288,7 @@ export default function ExamsPage() {
               value={form.exam_type}
               onChange={(v) => setForm({ ...form, exam_type: v })}
               aria-label="Exam type"
-              options={EXAM_TYPES.map((t) => ({ value: t, label: pretty(t) }))}
+              options={EXAM_TYPE_OPTIONS}
             />
           </div>
           <div>
@@ -284,7 +322,7 @@ export default function ExamsPage() {
             <div>
               <div style={{ fontWeight: 700 }}>{activeExam.title}</div>
               <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-                {pretty(activeExam.exam_type)} · {subjName(activeExam.subject_id)} · Max {activeExam.total_marks}
+                {examTypeLabel(activeExam.exam_type)} · {subjName(activeExam.subject_id)} · Max {activeExam.total_marks}
                 {activeExam.topic ? ` · ${activeExam.topic}` : ""}
                 {activeExam.has_question_schema ? " · per-question" : ""}
               </div>
@@ -341,7 +379,7 @@ export default function ExamsPage() {
               ) : exams.map((e) => (
                 <tr key={e.id}>
                   <td style={{ fontWeight: 600 }}>{e.title}</td>
-                  <td>{pretty(e.exam_type)}</td>
+                  <td>{examTypeLabel(e.exam_type)}</td>
                   <td>{subjName(e.subject_id)}</td>
                   <td>{e.total_marks}</td>
                   <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>

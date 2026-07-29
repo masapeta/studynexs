@@ -1,0 +1,373 @@
+.studio {
+  margin-bottom: 24px;
+  overflow: hidden;
+  padding: 0;
+}
+
+.stepHeader {
+  align-items: stretch;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 7%, white), white);
+  border-bottom: 1px solid var(--border-light);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding: 0 24px;
+}
+
+.stepButton {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  gap: 10px;
+  min-height: 72px;
+  padding: 12px 16px;
+  text-align: left;
+}
+
+.stepButton:focus-visible {
+  border-radius: var(--radius-sm);
+  outline: 3px solid color-mix(in srgb, var(--primary) 25%, transparent);
+  outline-offset: -3px;
+}
+
+.stepButtonActive {
+  border-bottom-color: var(--primary);
+  color: var(--text-primary);
+}
+
+.stepNumber {
+  align-items: center;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 800;
+  height: 30px;
+  justify-content: center;
+  width: 30px;
+}
+
+.stepButtonActive .stepNumber {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+.stepTitle {
+  display: block;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.stepDescription {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.body {
+  padding: 24px;
+}
+
+.intro {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.intro h2 {
+  font-size: 18px;
+  margin: 0 0 5px;
+}
+
+.intro p {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin: 0;
+  max-width: 720px;
+}
+
+.grid2,
+.grid3,
+.grid4 {
+  display: grid;
+  gap: 16px;
+}
+
+.grid2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.grid3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.grid4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.field {
+  min-width: 0;
+}
+
+.fieldHint {
+  color: var(--text-muted);
+  font-size: 11px;
+  margin: 4px 0 0;
+}
+
+.sectionBlock {
+  border-top: 1px solid var(--border-light);
+  margin-top: 20px;
+  padding-top: 20px;
+}
+
+.sectionHeading {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.sectionHeading h3 {
+  font-size: 14px;
+  margin: 0;
+}
+
+.chapterPicker {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-height: 240px;
+  overflow: auto;
+  padding: 2px;
+}
+
+.checkRow {
+  align-items: center;
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  font-size: 13px;
+  gap: 9px;
+  padding: 9px 11px;
+}
+
+.checkRow:has(input:checked) {
+  background: color-mix(in srgb, var(--primary) 7%, white);
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+}
+
+.allocationTable,
+.templateTable,
+.blueprintTable {
+  border-collapse: collapse;
+  font-size: 13px;
+  width: 100%;
+}
+
+.allocationTable th,
+.allocationTable td,
+.templateTable th,
+.templateTable td,
+.blueprintTable th,
+.blueprintTable td {
+  border-bottom: 1px solid var(--border-light);
+  padding: 10px 8px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.allocationTable th,
+.templateTable th,
+.blueprintTable th {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.compactInput {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font: inherit;
+  max-width: 110px;
+  padding: 7px 9px;
+  width: 100%;
+}
+
+.titleInput {
+  max-width: 220px;
+}
+
+.allocationBar {
+  background: var(--border-light);
+  border-radius: var(--radius-full);
+  height: 6px;
+  margin-top: 5px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.allocationFill {
+  background: var(--primary);
+  border-radius: inherit;
+  height: 100%;
+}
+
+.summaryStrip {
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 16px 0;
+  padding: 14px;
+}
+
+.summaryValue {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.summaryLabel {
+  color: var(--text-muted);
+  display: block;
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.notice,
+.warning,
+.error {
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  margin-top: 14px;
+  padding: 10px 12px;
+}
+
+.notice {
+  background: color-mix(in srgb, var(--primary) 7%, white);
+  border: 1px solid color-mix(in srgb, var(--primary) 25%, var(--border));
+  color: var(--text-secondary);
+}
+
+.warning {
+  background: color-mix(in srgb, var(--warning) 8%, white);
+  border: 1px solid color-mix(in srgb, var(--warning) 30%, var(--border));
+  color: var(--text-secondary);
+}
+
+.error {
+  background: color-mix(in srgb, var(--danger) 7%, white);
+  border: 1px solid color-mix(in srgb, var(--danger) 25%, var(--border));
+  color: var(--danger);
+}
+
+.footer {
+  align-items: center;
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  margin-top: 22px;
+  padding-top: 18px;
+}
+
+.footerActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.scrollArea {
+  max-height: 520px;
+  overflow: auto;
+}
+
+.empty {
+  align-items: center;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  display: flex;
+  font-size: 13px;
+  justify-content: center;
+  min-height: 120px;
+  padding: 20px;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .grid3,
+  .grid4,
+  .summaryStrip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stepDescription {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .stepHeader {
+    padding: 0 8px;
+  }
+
+  .stepButton {
+    justify-content: center;
+    min-height: 58px;
+    padding: 8px 4px;
+  }
+
+  .stepTitle {
+    display: none;
+  }
+
+  .body {
+    padding: 18px 14px;
+  }
+
+  .grid2,
+  .grid3,
+  .grid4,
+  .chapterPicker,
+  .summaryStrip {
+    grid-template-columns: 1fr;
+  }
+
+  .footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .footerActions {
+    justify-content: stretch;
+  }
+
+  .footerActions > * {
+    flex: 1;
+  }
+
+  .tableWrap {
+    overflow-x: auto;
+  }
+}

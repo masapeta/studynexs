@@ -5,15 +5,27 @@ import enum
 import uuid
 from datetime import date
 
-from sqlalchemy import Boolean, Date, Enum, ForeignKey, Index, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    Date,
+    Enum,
+    ForeignKey,
+    Index,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.models.base import BaseModel
 
 
 class ExamType(str, enum.Enum):
     UNIT_TEST = "unit_test"
+    FORMATIVE_ASSESSMENT = "formative_assessment"
+    SUMMATIVE_ASSESSMENT = "summative_assessment"
     MID_TERM = "mid_term"
     FINAL = "final"
     ASSIGNMENT = "assignment"

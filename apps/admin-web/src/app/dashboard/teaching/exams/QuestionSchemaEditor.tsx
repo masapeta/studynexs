@@ -5,28 +5,47 @@ import { api, getApiErrorMessage } from "@/lib/api";
 import { AppSelect } from "@/components/ui/AppSelect";
 
 type QuestionRow = { no: string; max_marks: string; topic: string };
+type QuestionSchemaItem = { no: string; max_marks: number | string; topic?: string | null };
+type ExamSummary = {
+  id: string;
+  class_id: string;
+  subject_id: string;
+  exam_type: string;
+  title: string;
+  total_marks: number | string;
+};
+type PaperSummary = {
+  id: string;
+  class_id: string;
+  subject_id: string;
+  exam_type?: string;
+  title: string;
+  total_marks: number | string;
+  status: string;
+};
+type ListResponse<T> = T[] | { items?: T[] };
 
 export default function QuestionSchemaEditor({
   exam,
   onSaved,
   onCancel,
 }: {
-  exam: any;
-  onSaved: (updatedExam: any) => void;
+  exam: ExamSummary;
+  onSaved: (updatedExam: ExamSummary) => void;
   onCancel: () => void;
 }) {
   const [rows, setRows] = useState<QuestionRow[]>([{ no: "1", max_marks: "", topic: "" }]);
-  const [papers, setPapers] = useState<any[]>([]);
+  const [papers, setPapers] = useState<PaperSummary[]>([]);
   const [knownTopics, setKnownTopics] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    api(`/api/v1/exams/${exam.id}/questions`)
+    api<{ data?: QuestionSchemaItem[] }>(`/api/v1/exams/${exam.id}/questions`)
       .then((r) => {
         const qs = r.data || [];
         if (qs.length > 0) {
-          setRows(qs.map((q: any) => ({
+          setRows(qs.map((q) => ({
             no: q.no,
             max_marks: String(q.max_marks),
             topic: q.topic || "",
@@ -35,17 +54,23 @@ export default function QuestionSchemaEditor({
       })
       .catch(() => {});
     // Approved AI papers for this class are importable as a question structure.
-    api("/api/v1/ai/question-papers")
+    api<ListResponse<PaperSummary>>("/api/v1/ai/question-papers")
       .then((r) => {
         const items = Array.isArray(r) ? r : r.items || [];
-        setPapers(items.filter((p: any) => p.status === "approved"));
+        setPapers(items.filter((p) =>
+          p.status === "approved" &&
+          p.class_id === exam.class_id &&
+          p.subject_id === exam.subject_id &&
+          (p.exam_type || "unit_test") === exam.exam_type &&
+          Number(p.total_marks) === Number(exam.total_marks)
+        ));
       })
       .catch(() => {});
     // Topic typeahead — endpoint ships with the mastery module; harmless 404 until then.
-    api(`/api/v1/mastery/topics?subject_id=${exam.subject_id}`)
+    api<{ data?: string[] }>(`/api/v1/mastery/topics?subject_id=${exam.subject_id}`)
       .then((r) => setKnownTopics(r.data || []))
       .catch(() => {});
-  }, [exam.id, exam.subject_id]);
+  }, [exam.class_id, exam.exam_type, exam.id, exam.subject_id, exam.total_marks]);
 
   const sumMax = rows.reduce((acc, r) => acc + (Number(r.max_marks) || 0), 0);
 
@@ -67,7 +92,7 @@ export default function QuestionSchemaEditor({
     setSaving(true);
     setError("");
     try {
-      const res = await api(`/api/v1/exams/${exam.id}/questions`, {
+      const res = await api<{ data: ExamSummary }>(`/api/v1/exams/${exam.id}/questions`, {
         method: "PUT",
         body: JSON.stringify({ source_paper_id: paperId }),
       });
@@ -94,7 +119,7 @@ export default function QuestionSchemaEditor({
     setSaving(true);
     setError("");
     try {
-      const res = await api(`/api/v1/exams/${exam.id}/questions`, {
+      const res = await api<{ data: ExamSummary }>(`/api/v1/exams/${exam.id}/questions`, {
         method: "PUT",
         body: JSON.stringify({ questions }),
       });

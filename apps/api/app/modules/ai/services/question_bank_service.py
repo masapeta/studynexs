@@ -57,7 +57,6 @@ async def ingest_from_paper(
     Raises ``BankIngestError`` when the paper has no ingestible questions.
     """
     from app.modules.ai.services.question_paper_service import normalize_sections
-
     from app.modules.knowledge_graph.services.question_concept_link_service import (
         QuestionConceptLinkService,
     )
@@ -103,6 +102,12 @@ async def ingest_from_paper(
                 number = f"{number}.{suffix}"
             seen_numbers.add((section_title, number))
 
+            question_chapter = str(question.get("chapter") or "").strip()
+            # A bank item used by the exact Question Paper Studio blueprint must carry
+            # question-specific scope. Older papers only have broad paper topics, so they
+            # remain usable by the legacy composer but are treated as ambiguous for exact
+            # chapter slots.
+            item_topics = [question_chapter] if question_chapter else paper.topics
             item = QuestionBankItem(
                 school_id=paper.school_id,
                 class_id=paper.class_id,
@@ -119,7 +124,7 @@ async def ingest_from_paper(
                 options=question.get("options"),
                 board=paper.board,
                 grade=paper.grade,
-                topics=paper.topics,
+                topics=item_topics,
                 source=source,
                 approval_status=BANK_STATUS_APPROVED,
                 content_fingerprint=content_fingerprint(
@@ -274,6 +279,16 @@ def _type_matches(bank_type: str, slot_type: str) -> bool:
     return False
 
 
+def _matches_exact_chapter(item: QuestionBankItem, chapter: str) -> bool:
+    """Return true only for an unambiguous, question-specific chapter match."""
+    item_topics = [
+        str(topic).strip().casefold()
+        for topic in (item.topics or [])
+        if str(topic).strip()
+    ]
+    return len(item_topics) == 1 and item_topics[0] == chapter.strip().casefold()
+
+
 def bank_item_to_question(
     item: QuestionBankItem,
     answer_key: str | None,
@@ -296,6 +311,8 @@ def bank_item_to_question(
 def compose_sections_from_plan(
     plan: list[dict],
     candidates: list[tuple[QuestionBankItem, str | None]],
+    *,
+    normalize_to_plan: bool = False,
 ) -> tuple[list[dict], list[uuid.UUID], list[dict]]:
     """Match bank items to blueprint slots. Returns sections, used item ids, gap specs."""
     used_ids: set[uuid.UUID] = set()
@@ -326,11 +343,16 @@ def compose_sections_from_plan(
             if matched:
                 item, answer_key = matched
                 used_ids.add(item.id)
-                questions.append(
-                    bank_item_to_question(
-                        item, answer_key, number=str(question_number)
-                    )
+                question = bank_item_to_question(
+                    item, answer_key, number=str(question_number)
                 )
+                if normalize_to_plan:
+                    # The exact slot contract is authoritative. `_marks_match` and
+                    # `_type_matches` already proved semantic compatibility; normalize the
+                    # representation (e.g. short -> very_short) only for custom plans.
+                    question["marks"] = marks
+                    question["type"] = qtype
+                questions.append(question)
                 question_number += 1
             else:
                 missing += 1
@@ -350,6 +372,149 @@ def compose_sections_from_plan(
         })
 
     return sections, list(used_ids), gaps
+
+
+def compose_exact_sections_from_plan(
+    plan: list[dict],
+    candidates: list[tuple[QuestionBankItem, str | None]],
+    blueprint_slots: dict[tuple[int, int], dict],
+) -> tuple[list[dict], list[uuid.UUID], list[dict]]:
+    """Compose exact blueprint slots without relabelling unrelated bank questions.
+
+    Existing bank rows whose topic metadata is missing or broad are intentionally treated as
+    gaps. A teacher-authored chapter/Bloom slot is evidence, not a label that may be overlaid on
+    an arbitrary marks/type match.
+    """
+    used_ids: set[uuid.UUID] = set()
+    sections: list[dict] = []
+    gaps: list[dict] = []
+    question_number = 1
+
+    for section_index, spec in enumerate(plan):
+        title = spec["title"]
+        instructions = spec.get("instructions")
+        marks = float(spec["marks_per_q"])
+        qtype = str(spec["type"])
+        questions: list[dict] = []
+
+        for question_index in range(int(spec["count"])):
+            slot = blueprint_slots[(section_index, question_index)]
+            matched: tuple[QuestionBankItem, str | None] | None = None
+            for item, answer_key in candidates:
+                if item.id in used_ids:
+                    continue
+                if not answer_key or not str(answer_key).strip():
+                    continue
+                if not _marks_match(item.marks, marks):
+                    continue
+                if not _type_matches(item.question_type, qtype):
+                    continue
+                if not _matches_exact_chapter(item, slot["chapter"]):
+                    continue
+                if qtype == "mcq" and (
+                    not isinstance(item.options, list)
+                    or len(item.options) != 4
+                    or any(not str(option).strip() for option in item.options)
+                ):
+                    continue
+                matched = (item, answer_key)
+                break
+
+            if matched:
+                item, answer_key = matched
+                used_ids.add(item.id)
+                question = bank_item_to_question(
+                    item, answer_key, number=str(question_number)
+                )
+                question["marks"] = marks
+                question["type"] = qtype
+                question["_blueprint_slot"] = [section_index, question_index]
+                questions.append(question)
+                question_number += 1
+            else:
+                gaps.append({
+                    "section_title": title,
+                    "section_index": section_index,
+                    "question_index": question_index,
+                    "instructions": instructions,
+                    "marks": marks,
+                    "type": qtype,
+                    "chapter": slot["chapter"],
+                    "bloom": slot["bloom"],
+                })
+
+        sections.append({
+            "title": title,
+            "instructions": instructions,
+            "questions": questions,
+        })
+
+    return sections, list(used_ids), gaps
+
+
+def merge_exact_gap_fill(
+    sections: list[dict],
+    fills: list[dict],
+    *,
+    plan: list[dict],
+    gaps: list[dict],
+) -> list[dict]:
+    """Merge coordinate-addressed fills and restore exact teacher blueprint order."""
+    expected_gap_coordinates = {
+        (int(gap["section_index"]), int(gap["question_index"])) for gap in gaps
+    }
+    by_coordinate: dict[tuple[int, int], dict] = {}
+
+    for section in sections:
+        for raw_question in section.get("questions") or []:
+            marker = raw_question.get("_blueprint_slot")
+            if not isinstance(marker, list) or len(marker) != 2:
+                raise ValueError("Bank question is missing its exact blueprint coordinate")
+            coordinate = (int(marker[0]), int(marker[1]))
+            question = dict(raw_question)
+            question.pop("_blueprint_slot", None)
+            by_coordinate[coordinate] = question
+
+    seen_fill_coordinates: set[tuple[int, int]] = set()
+    for fill in fills:
+        if not isinstance(fill, dict):
+            raise ValueError("Each exact gap fill must be an object")
+        try:
+            coordinate = (int(fill["section_index"]), int(fill["question_index"]))
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError(
+                "Exact gap fills require integer section/question coordinates"
+            ) from exc
+        if coordinate not in expected_gap_coordinates:
+            raise ValueError("AI returned an unexpected exact gap coordinate")
+        if coordinate in seen_fill_coordinates:
+            raise ValueError("AI returned a duplicate exact gap coordinate")
+        seen_fill_coordinates.add(coordinate)
+        question = {
+            "number": "",
+            "text": str(fill.get("text") or ""),
+            "marks": float(fill.get("marks", 0) or 0),
+            "type": str(fill.get("type") or "short"),
+        }
+        if fill.get("options") is not None:
+            question["options"] = list(fill.get("options") or [])
+        if fill.get("answer_key") is not None:
+            question["answer_key"] = str(fill.get("answer_key"))
+        by_coordinate[coordinate] = question
+
+    merged: list[dict] = []
+    for section_index, spec in enumerate(plan):
+        ordered_questions = [
+            by_coordinate[(section_index, question_index)]
+            for question_index in range(int(spec["count"]))
+            if (section_index, question_index) in by_coordinate
+        ]
+        merged.append({
+            "title": spec["title"],
+            "instructions": spec.get("instructions"),
+            "questions": ordered_questions,
+        })
+    return merged
 
 
 def merge_gap_fill(sections: list[dict], fills: list[dict]) -> list[dict]:
