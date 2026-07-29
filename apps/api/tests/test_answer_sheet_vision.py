@@ -31,10 +31,10 @@ def test_vision_primary_can_be_explicitly_configured(monkeypatch):
 def test_vision_models_are_separate_from_general_default(monkeypatch):
     monkeypatch.setattr(vision.settings, "AI_DEFAULT_PROVIDER", "ollama")
     monkeypatch.setattr(vision.settings, "AI_DEFAULT_MODEL", "gpt-4o-mini")
-    monkeypatch.setattr(vision.settings, "AI_VISION_PRIMARY_MODEL", "gemini-1.5-flash")
+    monkeypatch.setattr(vision.settings, "AI_VISION_PRIMARY_MODEL", "gemini-3.6-flash")
     monkeypatch.setattr(vision.settings, "AI_VISION_FALLBACK_MODEL", "gemma4:cloud")
 
-    assert vision._vision_model("gemini") == "gemini-1.5-flash"
+    assert vision._vision_model("gemini") == "gemini-3.6-flash"
     assert vision._vision_model("ollama", fallback=True) == "gemma4:cloud"
 
 

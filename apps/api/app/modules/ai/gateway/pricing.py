@@ -9,6 +9,7 @@ from decimal import Decimal
 
 # model -> (input_usd_per_1k, output_usd_per_1k)
 PRICING: dict[str, tuple[Decimal, Decimal]] = {
+    "gemini-3.6-flash": (Decimal("0.00150"), Decimal("0.00750")),
     "gemini-1.5-flash": (Decimal("0.000075"), Decimal("0.00030")),
     "gemini-1.5-pro": (Decimal("0.00125"), Decimal("0.00500")),
     "claude-haiku-4-5": (Decimal("0.00100"), Decimal("0.00500")),

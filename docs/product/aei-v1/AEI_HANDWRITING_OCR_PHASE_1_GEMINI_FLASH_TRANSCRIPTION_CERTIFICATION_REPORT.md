@@ -111,7 +111,7 @@ Certified OCR profile:
 
 ```text
 AI_VISION_PRIMARY_PROVIDER=gemini
-AI_VISION_PRIMARY_MODEL=gemini-1.5-flash
+AI_VISION_PRIMARY_MODEL=gemini-3.6-flash
 AI_VISION_FALLBACK_PROVIDER=ollama
 AI_VISION_FALLBACK_MODEL=gemma4:cloud
 ```
@@ -343,4 +343,3 @@ Suggested tag: aei-handwriting-ocr-phase1-gemini-transcription-certified
 
 Post-publication, update `docs/STATUS.md` separately as a docs-only status
 commit.
-

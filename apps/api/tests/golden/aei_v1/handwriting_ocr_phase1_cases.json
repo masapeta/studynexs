@@ -16,7 +16,7 @@
       "input_type": "answer_sheet_image",
       "mime_type": "image/jpeg",
       "expected_provider": "gemini",
-      "expected_model": "gemini-1.5-flash",
+      "expected_model": "gemini-3.6-flash",
       "expected_behavior": "sanitized_per_question_transcription",
       "notes": "Gemini is OCR-only and must be invoked through the StudyNexs AI Gateway."
     },

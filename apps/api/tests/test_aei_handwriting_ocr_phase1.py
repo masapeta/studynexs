@@ -48,7 +48,7 @@ async def test_phase1_flag_off_does_not_invoke_gateway(monkeypatch):
 async def test_phase1_flag_on_invokes_gateway_with_gemini_model(monkeypatch):
     monkeypatch.setattr(vision.settings, "AEI_HANDWRITING_OCR_PHASE1_ENABLED", True)
     monkeypatch.setattr(vision.settings, "AI_VISION_PRIMARY_PROVIDER", "gemini")
-    monkeypatch.setattr(vision.settings, "AI_VISION_PRIMARY_MODEL", "gemini-1.5-flash")
+    monkeypatch.setattr(vision.settings, "AI_VISION_PRIMARY_MODEL", "gemini-3.6-flash")
     monkeypatch.setattr(vision.settings, "AI_VISION_FALLBACK_PROVIDER", "")
     monkeypatch.setattr(vision.settings, "GEMINI_API_KEY", "configured")
 
@@ -59,7 +59,7 @@ async def test_phase1_flag_on_invokes_gateway_with_gemini_model(monkeypatch):
         return LLMResult(
             text='{"answers": {"1": "The SI unit is metre."}}',
             provider="gemini",
-            model="gemini-1.5-flash",
+            model="gemini-3.6-flash",
             tokens_in=12,
             tokens_out=18,
             latency_ms=90,
@@ -77,7 +77,7 @@ async def test_phase1_flag_on_invokes_gateway_with_gemini_model(monkeypatch):
     assert answers == {"1": "The SI unit is metre."}
     assert result is not None
     assert calls[0]["provider_name"] == "gemini"
-    assert calls[0]["model"] == "gemini-1.5-flash"
+    assert calls[0]["model"] == "gemini-3.6-flash"
     assert calls[0]["feature"] == "answer_sheet_vision"
     assert calls[0]["caller"] == "extract_answers_from_image"
 
@@ -110,7 +110,7 @@ async def test_malformed_gateway_json_returns_safe_empty_extraction(monkeypatch)
     monkeypatch.setattr(vision, "_vision_fallback_provider", lambda: None)
 
     async def fake_generate_llm(*_args, **_kwargs):
-        return LLMResult(text="not-json", provider="gemini", model="gemini-1.5-flash")
+        return LLMResult(text="not-json", provider="gemini", model="gemini-3.6-flash")
 
     monkeypatch.setattr(vision, "generate_llm", fake_generate_llm)
 

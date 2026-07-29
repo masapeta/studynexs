@@ -9,7 +9,7 @@ from app.modules.ai.gateway.base import LLMProvider
 settings = get_settings()
 
 _DEFAULT_MODELS = {
-    "gemini": "gemini-1.5-flash",
+    "gemini": "gemini-3.6-flash",
     "anthropic": "claude-haiku-4-5",
     "openai": "gpt-4o-mini",
     "ollama": "gemma4:cloud",

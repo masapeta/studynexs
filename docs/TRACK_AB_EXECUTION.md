@@ -153,7 +153,7 @@ node e2e-smoke.cjs
 
 ### B4 — AI cost benchmark
 
-Run representative tasks on **2–3 providers** (e.g. gpt-4o-mini, gemini-1.5-flash, claude-haiku):
+Run representative tasks on **2–3 providers** (e.g. gpt-4o-mini, gemini-3.6-flash, claude-haiku):
 
 | Task | Tokens in/out | Cost INR | Notes |
 |------|---------------|----------|-------|

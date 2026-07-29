@@ -236,7 +236,7 @@ class Settings(BaseSettings):
     # Answer-sheet OCR / vision routing is intentionally separate from general reasoning.
     # Empty → Gemini when configured, else a vision-capable provider.
     AI_VISION_PRIMARY_PROVIDER: str = ""
-    AI_VISION_PRIMARY_MODEL: str = ""  # e.g. gemini-1.5-flash
+    AI_VISION_PRIMARY_MODEL: str = ""  # e.g. gemini-3.6-flash
     AI_VISION_FALLBACK_PROVIDER: str = ""
     AI_VISION_FALLBACK_MODEL: str = ""  # e.g. gemma4:cloud
     OLLAMA_BASE_URL: str = ""  # e.g. http://host.docker.internal:11434 (Docker → host Ollama)

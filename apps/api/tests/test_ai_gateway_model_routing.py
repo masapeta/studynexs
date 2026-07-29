@@ -10,7 +10,7 @@ def test_default_model_does_not_leak_general_model_to_other_providers(monkeypatc
     monkeypatch.setattr(factory.settings, "OLLAMA_MODEL", "gemma4:cloud")
 
     assert factory.default_model("ollama") == "gemma4:cloud"
-    assert factory.default_model("gemini") == "gemini-1.5-flash"
+    assert factory.default_model("gemini") == "gemini-3.6-flash"
     assert factory.default_model("openai") == "gpt-4o-mini"
 
 
@@ -19,7 +19,7 @@ def test_default_provider_can_have_explicit_general_model(monkeypatch):
     monkeypatch.setattr(factory.settings, "AI_DEFAULT_MODEL", "gpt-4o")
 
     assert factory.default_model("openai") == "gpt-4o"
-    assert factory.default_model("gemini") == "gemini-1.5-flash"
+    assert factory.default_model("gemini") == "gemini-3.6-flash"
 
 
 def test_general_fallback_model_uses_explicit_config(monkeypatch):
