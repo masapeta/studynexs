@@ -80,6 +80,7 @@ canonical roadmap names are:
 | AEI v1.0 Teacher Evaluation UX-D - Supported-scope assist panels | Complete / certified / published |
 | AEI v1.0 Teacher Evaluation UX-E - Final teacher evaluation experience certification | Complete / certified / published |
 | Teacher Evaluation Page Lint Cleanup | Complete / validated / published |
+| AI Gateway Config Hardening - General vs vision model routing | Complete / validated / published |
 | Stabilization Gate 1 - Production Safety | Complete / certified / published |
 | Operational Proof | Complete / certified / published |
 | AEI Activation / Trust | Complete / certified / published |
@@ -380,30 +381,35 @@ UX-E certification caveat:
 The latest completed published gate is:
 
 ```text
-AEI v1.0 Teacher Evaluation UX-E - Final teacher evaluation experience certification
+AI Gateway Config Hardening - General vs vision model routing
 ```
 
 Publication baseline:
 
-- commit `3b07b05da83bb7fbbd265258f6074777b86d13a2`;
-- tag `aei-v1-teacher-evaluation-experience-certified`.
+- commit `b9d8f0b5f82fde6d361458ecfbe547ab422cbe80`;
+- no annotated tag was created because this is an infrastructure/config
+  hardening gate, not a product capability certification milestone.
 
-Teacher Evaluation UX-E certifies the assembled AEI v1.0 teacher evaluation
-experience across UX-A through UX-D and AEI Activation / Trust. It is a
-docs/proof certification gate with no product behavior changes.
+AI Gateway Config Hardening separates general reasoning model routing from
+answer-sheet OCR / vision routing. It lets StudyNexs run general AI through
+Ollama gemma4 cloud with OpenAI fallback while using Gemini Flash as an
+OCR-specialist provider for answer-sheet transcription. OCR remains
+transcription-only; AEI still evaluates and teachers remain final.
 
 No implementation gate is currently active. The next recommended product-facing
 gate should be selected from the product completion roadmap under a separate
 ARM design or implementation authorization.
 
-Ordered candidate gates after Teacher Evaluation UX-E:
+Ordered candidate gates after AI Gateway Config Hardening:
 
-1. Topic-ID / Mastery Spine Phase B additive schema readiness design - future
+1. AEI Handwriting OCR Phase 1 design / implementation authorization - Gemini
+   Flash answer-sheet transcription through the gateway only; not authorized.
+2. Topic-ID / Mastery Spine Phase B additive schema readiness design - future
    learning-intelligence plumbing only if ARM chooses deeper spine persistence;
    not authorized.
-2. Next product-facing completion workstream from the roadmap; not authorized.
+3. Next product-facing completion workstream from the roadmap; not authorized.
 
-Completion of Teacher Evaluation UX-E does not authorize any later gate.
+Completion of AI Gateway Config Hardening does not authorize any later gate.
 
 EUI Phase 7 remains closed at Phase 7E. Phase 7F source adoption is deferred
 future scope, not the next active implementation milestone.
@@ -506,10 +512,12 @@ persistence/source adoption, and public capability claim expansion require
 separate ARM authorization. Production Safety, Operational Proof, AEI
 Activation / Trust, Topic-ID / Mastery Spine Phase A, Teacher Evaluation UX-D,
 Teacher Evaluation Page Lint Cleanup, and Teacher Evaluation UX-E are now
-published. UX-E is the latest product-trust certification milestone and the
-lint cleanup remains the code-health gate that resolved the pre-existing page
-lint debt. The next product-facing gate is not active until ARM authorizes it
-under a separate design or implementation contract.
+published. AI Gateway Config Hardening is also published and separates general
+AI model routing from answer-sheet OCR / vision model routing. UX-E remains the
+latest product-trust certification milestone and the lint cleanup remains the
+code-health gate that resolved the pre-existing page lint debt. The next
+product-facing gate is not active until ARM authorizes it under a separate
+design or implementation contract.
 
 ---
 
@@ -586,6 +594,35 @@ Evidence:
 - git diff --check: PASS
 - No backend/API/schema/marks/routing/ledger/source-switch behavior changes:
   PASS
+
+Latest published AI infrastructure hardening gate:
+
+```text
+AI Gateway Config Hardening - General vs vision model routing
+```
+
+Status: **Complete / validated / published**
+
+Commit: `b9d8f0b5f82fde6d361458ecfbe547ab422cbe80`
+
+Scope:
+
+- added explicit general fallback model config via `AI_FALLBACK_MODEL`;
+- added explicit OCR / vision routing config via `AI_VISION_PRIMARY_PROVIDER`,
+  `AI_VISION_PRIMARY_MODEL`, `AI_VISION_FALLBACK_PROVIDER`, and
+  `AI_VISION_FALLBACK_MODEL`;
+- restricted `AI_DEFAULT_MODEL` so it applies only to the configured default
+  provider and does not leak into Gemini OCR calls;
+- kept answer-sheet OCR as transcription-only through the gateway;
+- preserved AEI evaluation, teacher approval, marks, routing, schema, API, and
+  UI behavior.
+
+Validation:
+
+- Focused gateway / answer-sheet vision / fallback / telemetry tests: 14 passed
+- Focused ruff on changed API files and tests: PASS
+- `app.main` import: PASS
+- `git diff --check`: PASS
 
 ---
 
