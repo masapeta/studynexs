@@ -37,6 +37,17 @@ For a managed production deployment where Docker Compose is not the runtime:
 python scripts/production_ops_check.py --skip-docker --base-url https://<api-host>
 ```
 
+For the Operational Proof production-like Compose profile, run the check
+against the proxy entry point and include the metrics token:
+
+```powershell
+cd apps/api
+python scripts/production_ops_check.py `
+  --compose-file ../../infra/docker/docker-compose.prod.yml `
+  --base-url http://localhost:8080 `
+  --metrics-token <synthetic-proof-token>
+```
+
 ## 3. Backup verification
 
 Create a PostgreSQL custom-format backup to a secure location outside Git:
@@ -52,12 +63,19 @@ Verify the backup is readable:
 python scripts/verify_postgres_backup.py "$env:TEMP\studynexs-prepilot.dump"
 ```
 
+Operational Proof also requires a restore drill into a clean target:
+
+```powershell
+python scripts/restore_postgres_backup.py "$env:TEMP\studynexs-prepilot.dump"
+```
+
 Pass criteria:
 
 - backup file exists
 - size is non-zero
 - `pg_restore -l` succeeds
 - restore listing contains schema/table entries
+- restore drill succeeds against the synthetic restore target
 
 Production note: for managed databases, use the managed backup facility, then
 perform the equivalent restore-list/readability verification.

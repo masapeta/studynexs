@@ -1,0 +1,125 @@
+name: studynexs-production-proof
+
+services:
+  postgres:
+    image: postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
+    container_name: studynexs-prod-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-studynexs}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-studynexs_ops_local_pw}
+      POSTGRES_DB: ${POSTGRES_DB:-studynexs}
+    volumes:
+      - prod_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99
+    container_name: studynexs-prod-redis
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  qdrant:
+    image: qdrant/qdrant:v1.18.3@sha256:0bd98fa7977f1e75694779359ca4e212822e5a71334e28421182f72f209d5286
+    container_name: studynexs-prod-qdrant
+    volumes:
+      - prod_qdrantdata:/qdrant/storage
+
+  api:
+    image: studynexs-api:${STUDYNEXS_IMAGE_TAG:-operational-proof}
+    build:
+      context: ../../apps/api
+      dockerfile: Dockerfile
+    container_name: studynexs-prod-api
+    environment: &api_environment
+      ENVIRONMENT: production
+      DEBUG: "false"
+      APP_NAME: StudyNexs API
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-ops-proof-jwt-secret-32-chars-minimum-local}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:-ops-proof-webhook-secret-local}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER:-studynexs}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-studynexs_ops_local_pw}
+      POSTGRES_DB: ${POSTGRES_DB:-studynexs}
+      REDIS_URL: redis://redis:6379/0
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: "6333"
+      ALLOWED_ORIGINS: '["https://demo.studynexs.com"]'
+      COOKIE_SECURE: "true"
+      TENANT_BASE_DOMAIN: studynexs.com
+      DEFAULT_TENANT_SLUG: reference
+      AADHAAR_ENCRYPTION_KEYS: '["${AADHAAR_ENCRYPTION_KEY:-Egn1gWzhbGc2LD_iHxI0-GlHlo4JHOARBynuHgqTzKs=}"]'
+      AI_DEFAULT_PROVIDER: ollama
+      OLLAMA_BASE_URL: http://ollama:11434
+      EMBEDDING_PROVIDER: ollama
+      EMBEDDING_MODEL: nomic-embed-text
+      METRICS_TOKEN: ${METRICS_TOKEN:-studynexs-local-operational-proof-token}
+      OUTBOX_WORKER_ENABLED: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ${STUDYNEXS_UPLOADS_DIR:-../../ops-artifacts/operational-proof/uploads}:/app/uploads
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+  worker:
+    image: studynexs-api:${STUDYNEXS_IMAGE_TAG:-operational-proof}
+    build:
+      context: ../../apps/api
+      dockerfile: Dockerfile
+    container_name: studynexs-prod-worker
+    environment:
+      <<: *api_environment
+      OUTBOX_WORKER_ENABLED: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ${STUDYNEXS_UPLOADS_DIR:-../../ops-artifacts/operational-proof/uploads}:/app/uploads
+    healthcheck:
+      disable: true
+    command: arq app.core.jobs.worker.WorkerSettings
+
+  nginx:
+    image: nginx:alpine@sha256:4a73073bd557c65b759505da037898b61f1be6cbcc3c2c3aeac22d2a470c1752
+    container_name: studynexs-prod-nginx
+    ports:
+      - "${STUDYNEXS_NGINX_BIND:-127.0.0.1}:${STUDYNEXS_NGINX_PORT:-8080}:80"
+    volumes:
+      - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: studynexs-prod-prometheus
+    profiles: ["observability"]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+    volumes:
+      - ../observability/prometheus.prod.yml:/etc/prometheus/prometheus.yml:ro
+      - ../observability/prometheus-alerts.yml:/etc/prometheus/alerts.yml:ro
+      - ${STUDYNEXS_METRICS_TOKEN_FILE:-../../ops-artifacts/operational-proof/secrets/metrics_token}:/etc/prometheus/secrets/metrics_token:ro
+      - prod_prometheusdata:/prometheus
+    ports:
+      - "${STUDYNEXS_PROMETHEUS_BIND:-127.0.0.1}:${STUDYNEXS_PROMETHEUS_PORT:-9090}:9090"
+    depends_on:
+      - api
+
+volumes:
+  prod_pgdata:
+  prod_qdrantdata:
+  prod_prometheusdata:

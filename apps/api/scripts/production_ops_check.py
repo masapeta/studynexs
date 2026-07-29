@@ -64,11 +64,17 @@ def _http_json(url: str, *, timeout: int = 5) -> tuple[dict[str, Any] | None, st
         return None, str(exc)
 
 
-def _http_text(url: str, *, timeout: int = 5) -> tuple[str | None, str | None]:
+def _http_text(
+    url: str,
+    *,
+    timeout: int = 5,
+    headers: dict[str, str] | None = None,
+) -> tuple[str | None, str | None]:
     try:
-        with urllib.request.urlopen(url, timeout=timeout) as response:
+        request = urllib.request.Request(url, headers=headers or {})
+        with urllib.request.urlopen(request, timeout=timeout) as response:
             return response.read().decode("utf-8"), None
-    except (urllib.error.URLError, TimeoutError) as exc:
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError) as exc:
         return None, str(exc)
 
 
@@ -159,7 +165,42 @@ def check_metrics(base_url: str, *, max_job_age_seconds: int) -> Check:
     text, error = _http_text(f"{base_url.rstrip('/')}/metrics")
     if error:
         return Check("platform_metrics", "fail", error)
-    samples = parse_prometheus_samples(text or "")
+    return _check_metrics_text(text or "", max_job_age_seconds=max_job_age_seconds)
+
+
+def check_metrics_auth(base_url: str, *, token: str, max_job_age_seconds: int) -> Check:
+    """Verify production-style metrics auth and then run the normal metrics check."""
+
+    if not token:
+        return Check("platform_metrics_auth", "fail", "metrics token is required")
+
+    _, unauth_error = _http_text(f"{base_url.rstrip('/')}/metrics")
+    if unauth_error is None or "401" not in unauth_error:
+        return Check(
+            "platform_metrics_auth",
+            "fail",
+            "unauthenticated metrics scrape did not fail with 401",
+        )
+
+    text, auth_error = _http_text(
+        f"{base_url.rstrip('/')}/metrics",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    if auth_error:
+        return Check("platform_metrics_auth", "fail", auth_error)
+
+    metrics_result = _check_metrics_text(text or "", max_job_age_seconds=max_job_age_seconds)
+    if metrics_result.status != "pass":
+        return Check("platform_metrics_auth", "fail", metrics_result.detail)
+    return Check(
+        "platform_metrics_auth",
+        "pass",
+        "unauthenticated scrape rejected; authenticated scrape passed",
+    )
+
+
+def _check_metrics_text(text: str, *, max_job_age_seconds: int) -> Check:
+    samples = parse_prometheus_samples(text)
 
     scrape_errors = [
         sample
@@ -224,6 +265,11 @@ def _parse_args() -> argparse.Namespace:
         default=1800,
         help="Queued/running job age threshold before failing preflight.",
     )
+    parser.add_argument(
+        "--metrics-token",
+        default="",
+        help="When set, verify unauthenticated metrics fail and bearer-token scrape succeeds.",
+    )
     parser.add_argument("--skip-git", action="store_true", help="Skip git synchronization check.")
     parser.add_argument(
         "--skip-docker",
@@ -246,7 +292,16 @@ def main() -> int:
         )
         checks.append(check_docker_services(Path(args.compose_file), required))
     checks.append(check_ready(args.base_url))
-    checks.append(check_metrics(args.base_url, max_job_age_seconds=args.max_job_age_seconds))
+    if args.metrics_token:
+        checks.append(
+            check_metrics_auth(
+                args.base_url,
+                token=args.metrics_token,
+                max_job_age_seconds=args.max_job_age_seconds,
+            )
+        )
+    else:
+        checks.append(check_metrics(args.base_url, max_job_age_seconds=args.max_job_age_seconds))
 
     overall = _overall(checks)
     payload = {"status": overall, "checks": [check.as_dict() for check in checks]}

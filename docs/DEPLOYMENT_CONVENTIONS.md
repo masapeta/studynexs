@@ -109,7 +109,7 @@ Canonical compose files live in **Git:** `infra/docker/`. On the VM they are syn
 | Layer | File (Git: `infra/docker/`) | VM: `deploy/compose/` |
 |-------|----------------------------|------------------------|
 | **Base stack** | `docker-compose.dev.yml` | Reference for Gate 1A |
-| **Production** | `docker-compose.prod.yml` | *Add at Gate 1A hardening* — image-only API, prod env |
+| **Production** | `docker-compose.prod.yml` | Operational Proof profile — image-only API, prod env, private API binding |
 | **Observability** | `docker-compose.observability.yml` | Gate 2+ overlay |
 
 **Command pattern (production):**
