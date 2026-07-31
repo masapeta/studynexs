@@ -575,6 +575,9 @@ async def test_eval_create_and_approve(
     assert float(marks.marks_obtained) == 5  # 2 + 1 + 2
     assert marks.ai_graded is True
     assert marks.question_marks["3"] == 2
+    # Provenance: the authoritative mark must trace back to its approved
+    # HITL evaluation (DM-1 — evidence-ledger continuity).
+    assert str(marks.source_evaluation_id) == eval_id
 
 
 @pytest.mark.asyncio

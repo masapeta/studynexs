@@ -87,6 +87,14 @@ class ExamMark(BaseModel):
     remarks: Mapped[str | None] = mapped_column(Text)
     ai_feedback: Mapped[str | None] = mapped_column(Text)
     ai_graded: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Provenance: the approved answer-sheet evaluation this mark was finalized from.
+    # Nullable — manually entered marks have no evaluation. Links the authoritative
+    # mark back to its full HITL trail (AI suggestions, teacher overrides, approver).
+    source_evaluation_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("answer_sheet_evaluations.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     __table_args__ = (
         UniqueConstraint("exam_id", "student_id", name="uq_exam_student"),

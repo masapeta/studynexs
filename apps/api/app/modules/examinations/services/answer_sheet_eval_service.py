@@ -943,6 +943,8 @@ class AnswerSheetEvalService:
         if mark_row:
             mark_row.ai_graded = True
             mark_row.ai_feedback = row.correction_summary or "\n".join(feedback_lines[:10])
+            # Provenance: link the authoritative mark to its approved HITL evaluation.
+            mark_row.source_evaluation_id = row.id
 
         await extract_from_evaluation(
             self.db, evaluation=row, exam=exam, approved_by=approved_by
