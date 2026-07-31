@@ -32,6 +32,30 @@ const AuthContext = createContext<AuthState>({
   logout: async () => {},
 });
 
+// Non-sensitive hint that a session may exist. The refresh token is an
+// HttpOnly cookie invisible to JS, so without this flag every anonymous
+// visit would POST /auth/refresh, guaranteeing 401 noise and consuming
+// auth rate-limit budget for nothing.
+const SESSION_HINT_KEY = "sn_has_session";
+
+function hasSessionHint(): boolean {
+  try {
+    return typeof localStorage !== "undefined" && localStorage.getItem(SESSION_HINT_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function setSessionHint(on: boolean) {
+  try {
+    if (typeof localStorage === "undefined") return;
+    if (on) localStorage.setItem(SESSION_HINT_KEY, "1");
+    else localStorage.removeItem(SESSION_HINT_KEY);
+  } catch {
+    // Storage unavailable (private mode) — refresh-on-mount stays as fallback.
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [permissions, setPermissions] = useState<UserPermissions | null>(null);
@@ -49,19 +73,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Try to restore session on mount
   useEffect(() => {
     async function init() {
-      try {
-        const res = await api<Record<string, unknown>>("/api/v1/auth/refresh", {
-          method: "POST",
-        });
-        const token = getAccessTokenFromAuthResponse(res);
-        if (token) {
-          setAccessToken(token);
-        }
-      } catch {
-        // Refresh can fail cross-origin (localhost web → 127.0.0.1 API) while the
-        // access token in sessionStorage is still valid — do not wipe it.
-        if (!getAccessToken()) {
-          setAccessToken(null);
+      // Only attempt a refresh when a prior session plausibly exists —
+      // anonymous visitors skip the guaranteed-401 round trip entirely.
+      if (hasSessionHint() || getAccessToken()) {
+        try {
+          const res = await api<Record<string, unknown>>("/api/v1/auth/refresh", {
+            method: "POST",
+          });
+          const token = getAccessTokenFromAuthResponse(res);
+          if (token) {
+            setAccessToken(token);
+            setSessionHint(true);
+          }
+        } catch {
+          // Refresh can fail cross-origin (localhost web → 127.0.0.1 API) while the
+          // access token in sessionStorage is still valid — do not wipe it.
+          if (!getAccessToken()) {
+            setAccessToken(null);
+            setSessionHint(false);
+          }
         }
       }
 
@@ -82,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithTokens = async (tokens: { access_token: string }) => {
     setAccessToken(tokens.access_token);
+    setSessionHint(true);
     await loadProfile();
   };
 
@@ -102,6 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await api("/api/v1/auth/logout", { method: "POST" });
     } catch {}
     setAccessToken(null);
+    setSessionHint(false);
     clearProspectTenantSlug();
     setDemoSessionToken(null);
     setUser(null);
