@@ -19,17 +19,24 @@ interface StudentRow {
   parent_phone?: string | null;
 }
 
+interface ClassOption {
+  id: string;
+  grade: string;
+  section: string;
+}
+
 const btnSm: React.CSSProperties = { width: "auto", padding: "8px 18px", borderRadius: "var(--radius-full)", fontSize: 13 };
 const EMPTY = { full_name: "", mobile: "", class_id: "", admission_no: "", roll_no: "" };
 
 export default function StudentsPage() {
   const [students, setStudents] = useState<StudentRow[]>([]);
-  const [classes, setClasses] = useState<any[]>([]);
+  const [classes, setClasses] = useState<ClassOption[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [listError, setListError] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ ...EMPTY });
   const [saving, setSaving] = useState(false);
@@ -49,6 +56,7 @@ export default function StudentsPage() {
 
   const fetchStudents = useCallback(async () => {
     setLoading(true);
+    setListError("");
     try {
       const params = new URLSearchParams({ page: String(page), page_size: "20" });
       if (debouncedSearch) params.set("search", debouncedSearch);
@@ -56,7 +64,7 @@ export default function StudentsPage() {
       setStudents(res.items || res.data || []);
       setTotal(res.total || 0);
     } catch (err) {
-      console.error("Fetch students error:", err);
+      setListError(getApiErrorMessage(err, "Couldn't load students. Please try again."));
     } finally {
       setLoading(false);
     }
@@ -68,7 +76,7 @@ export default function StudentsPage() {
 
   useEffect(() => {
     api("/api/v1/academic/classes?page_size=100")
-      .then((r) => setClasses(sortClasses<any>(r.items || r.data || [])))
+      .then((r) => setClasses(sortClasses<ClassOption>(r.items || r.data || [])))
       .catch(() => {});
   }, []);
 
@@ -185,6 +193,20 @@ export default function StudentsPage() {
               <tr>
                 <td colSpan={6} className="students-table-empty">
                   <div className="spinner" style={{ margin: "0 auto" }} />
+                </td>
+              </tr>
+            ) : listError ? (
+              <tr>
+                <td colSpan={6} className="students-table-empty" role="alert">
+                  <span style={{ color: "var(--danger)" }}>{listError}</span>{" "}
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    style={{ ...btnSm, marginLeft: 12 }}
+                    onClick={() => fetchStudents()}
+                  >
+                    Retry
+                  </button>
                 </td>
               </tr>
             ) : students.length === 0 ? (
