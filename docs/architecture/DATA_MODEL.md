@@ -702,3 +702,61 @@ erDiagram
    `history`, `stage_details`); fields that become query targets at scale
    (e.g. `question_bank_items.topics`) are candidates for promotion to real
    columns.
+
+---
+
+## DM-4 design brief — Subject identity (design-only, 2026-07-31)
+
+Status: **Proposed — implementation folded into Topic-ID/Mastery Spine Phase B.**
+No code or migration is authorized by this brief.
+
+### Problem
+
+`subjects` rows are scoped to a single class (`class_id` FK), and classes are
+scoped to a single academic year. "Mathematics" therefore fragments into a
+distinct row per **section per year**: Grade 8A 2026–27 Mathematics,
+Grade 8B 2026–27 Mathematics, and Grade 8A 2027–28 Mathematics are three
+unrelated UUIDs. Nine tables key on `subject_id` (packs, exams, mastery,
+misconceptions, question bank, papers, lesson plans, timetable, teacher
+mappings), so every longitudinal or cross-section question — "how is
+Mathematics mastery trending across Grade 8?", "reuse last year's approved
+Mathematics items" — currently requires name string-matching, the same defect
+class as the free-text topic spine (C.4).
+
+### Proposed shape (expand-then-contract)
+
+1. **Expand:** add a school-scoped `subject_catalog` table
+   (`school_id`, `name`, `code`, optional board-subject mapping;
+   unique on `(school_id, name)`), and a nullable
+   `subjects.catalog_id` FK → `subject_catalog.id`.
+2. **Backfill:** normalize existing `subjects.name` values per school
+   (trim/case-fold), create one catalog row per distinct name, link every
+   subject row. Ambiguities (e.g. "Maths" vs "Mathematics") are surfaced for
+   human resolution, never auto-merged.
+3. **Dual-write:** subject creation paths set `catalog_id` (creating the
+   catalog row on first use). Per-class `subjects` rows remain — they are the
+   correct grain for timetable/teacher mapping; the catalog is the identity
+   layer above them.
+4. **Switch reads:** longitudinal consumers (mastery aggregation, question-bank
+   retrieval, pack lineage, analytics) group by `catalog_id` instead of
+   name matching.
+5. **Contract (much later):** enforce `catalog_id NOT NULL` once all writers
+   are dual-writing and the backfill is verified per tenant.
+
+### Why folded into Spine Phase B
+
+The topic spine (`exam.topic` → `topic_id`) and subject identity are the same
+disease — string identity where the model needs stable IDs — and share the
+same consumers (mastery, retrieval, analytics). Fixing them in one Phase B
+batch avoids touching the mastery unique constraints
+(`student_id, subject_id, academic_year_id, topic`) twice.
+
+### Risks / open questions for Phase B
+
+- Mastery unique constraints embed `subject_id`; re-keying reads to
+  `catalog_id` must not merge mastery rows across sections silently —
+  aggregation happens at read time, storage grain stays per-class.
+- Cross-year concept mapping (pack versioning) should reference `catalog_id`
+  so a book-edition change doesn't orphan subject lineage.
+- Tenant-scoped throughout; catalog rows carry `school_id` like every other
+  tenant-owned table.
