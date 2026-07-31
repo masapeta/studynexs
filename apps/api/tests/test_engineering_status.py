@@ -27,11 +27,13 @@ async def test_engineering_status_admin_ok(client, admin_user):
     )
     assert res.status_code == 200
     body = res.json()["data"]
-    assert body["schema_version"] == 2
+    assert body["schema_version"] == 3
     assert body["architecture_version"]
     assert "capability_matrix" in body
     assert body["capability_matrix"][0].get("verified")
     assert len(body["capability_matrix"]) >= 10
     assert body["modules"][0].get("depends_on") is not None
-    assert body["next_milestone"]["title"] == "Gate 1A — Demo Online"
+    # Milestone titles live in docs/engineering/roadmap.json and change per
+    # governance batch — assert shape, not the current value.
+    assert body["next_milestone"]["title"]
     assert body["runtime"]["git_commit"]

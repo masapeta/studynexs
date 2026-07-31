@@ -40,7 +40,7 @@ def _load_snapshot() -> dict[str, Any]:
 
     if not platform and not modules_file:
         return {
-            "schema_version": 2,
+            "schema_version": 3,
             "architecture_version": "unknown",
             "updated_at": "",
             "branch": "unknown",

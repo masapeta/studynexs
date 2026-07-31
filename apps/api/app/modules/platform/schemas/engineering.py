@@ -31,7 +31,7 @@ class NextMilestoneOut(BaseModel):
 
 
 class EngineeringStatusOut(BaseModel):
-    schema_version: int = 2
+    schema_version: int = 3
     architecture_version: str = "unknown"
     updated_at: str = ""
     last_engineering_batch: int | None = None
