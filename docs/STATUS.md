@@ -1,7 +1,7 @@
 # StudyNexs — Master Status
 
 > **Owner:** Avinash Reddy Masapeta (ARM)
-> **As of:** 2026-07-29
+> **As of:** 2026-07-31
 > **Status role:** Current project anchor for architecture, runtime milestones, and next engineering gate.
 
 ---
@@ -107,6 +107,8 @@ canonical roadmap names are:
 | Operational Proof | Complete / certified / published |
 | AEI Activation / Trust | Complete / certified / published |
 | Topic-ID / Mastery Spine Phase A - Passive resolution | Complete / certified / published |
+| Data Model Hardening DM-1 - Exam-mark provenance FK | Complete / validated / published |
+| Data Model Hardening DM-2 - Model hygiene (annotations, per-link parent relationship, FK convention) | Complete / validated / published |
 | EUI v1 architecture | Frozen / accepted |
 | EUI Runtime Roadmap v1 | Accepted planning baseline |
 | Phase 0 - Engineering Preparation | Complete / certified / published |
@@ -762,10 +764,42 @@ UX-E certification caveat:
 The latest completed published gate is:
 
 ```text
-Assessment Intelligence v1.0 Question Paper Studio - Governed Generation Workspace
+Data Model Hardening DM-1 / DM-2
 ```
 
 Publication baseline:
+
+- DM-1 commit `4ba5f01d726faf027e6c11d018d51c6e6b2751f5` — exam-mark
+  provenance FK (`exam_marks.source_evaluation_id`, migration
+  `a3c5e7f9d1b4`, reversible, backfilled);
+- DM-2 commit `f23f6ad1cc8614e1418cb525cb863969ddbec4c3` — model hygiene:
+  date/time annotation corrections, per-link parent relationship
+  (`student_parent_map.relationship_type`, migration `b6d8f0a2c4e6`,
+  expand phase, dual-write), teacher-FK convention documentation, and a
+  constraint audit confirming all suspected-missing uniques already exist.
+
+Validation: both migrations cycle upgrade/downgrade/upgrade; full main
+suite 922 passed (the six unrelated failures are a local Windows
+WeasyPrint/GTK environment issue, a pre-existing stale
+`engineering-status` schema-version test, a cwd-dependent collection
+artifact, and three `tests_security` cases that require their dedicated
+guards-on harness).
+
+Deliberately deferred from this gate:
+
+- DM-2 contract phase — dropping `parents.relationship_type` after all
+  reads switch to the link-level value (`ops_service` parent directory
+  still reads the legacy column);
+- DM-3 — enrollments table + student lifecycle status; must land before
+  the April 2027 year rollover (target: January 2027);
+- DM-4 — subject identity refactor design brief, folded into the
+  Topic-ID / Mastery Spine Phase B design.
+
+The previous completed gate was:
+
+```text
+Assessment Intelligence v1.0 Question Paper Studio - Governed Generation Workspace
+```
 
 - commit `6b4a280a6f6bba273e3f11b192e649a8cfa3fa17`;
 - annotated tag `assessment-intelligence-v1-question-paper-studio-certified`.
