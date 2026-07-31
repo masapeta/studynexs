@@ -6,7 +6,7 @@ services:
     container_name: studynexs-prod-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-studynexs}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-studynexs_ops_local_pw}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       POSTGRES_DB: ${POSTGRES_DB:-studynexs}
     volumes:
       - prod_pgdata:/var/lib/postgresql/data
@@ -42,12 +42,15 @@ services:
       ENVIRONMENT: production
       DEBUG: "false"
       APP_NAME: StudyNexs API
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-ops-proof-jwt-secret-32-chars-minimum-local}
-      WEBHOOK_SECRET: ${WEBHOOK_SECRET:-ops-proof-webhook-secret-local}
+      # Secrets have NO defaults: compose fails loudly if they are not provided
+      # via the shell environment. Defaults here would be public in git history
+      # and pass the boot guardrail — a bootable-with-known-keys production stack.
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set (>=32 chars)}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:?WEBHOOK_SECRET must be set}
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       POSTGRES_USER: ${POSTGRES_USER:-studynexs}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-studynexs_ops_local_pw}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       POSTGRES_DB: ${POSTGRES_DB:-studynexs}
       REDIS_URL: redis://redis:6379/0
       QDRANT_HOST: qdrant
@@ -56,12 +59,12 @@ services:
       COOKIE_SECURE: "true"
       TENANT_BASE_DOMAIN: studynexs.com
       DEFAULT_TENANT_SLUG: reference
-      AADHAAR_ENCRYPTION_KEYS: '["${AADHAAR_ENCRYPTION_KEY:-Egn1gWzhbGc2LD_iHxI0-GlHlo4JHOARBynuHgqTzKs=}"]'
+      AADHAAR_ENCRYPTION_KEYS: '["${AADHAAR_ENCRYPTION_KEY:?AADHAAR_ENCRYPTION_KEY must be set (Fernet key)}"]'
       AI_DEFAULT_PROVIDER: ollama
       OLLAMA_BASE_URL: http://ollama:11434
       EMBEDDING_PROVIDER: ollama
       EMBEDDING_MODEL: nomic-embed-text
-      METRICS_TOKEN: ${METRICS_TOKEN:-studynexs-local-operational-proof-token}
+      METRICS_TOKEN: ${METRICS_TOKEN:?METRICS_TOKEN must be set}
       OUTBOX_WORKER_ENABLED: "false"
     depends_on:
       postgres:

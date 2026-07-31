@@ -32,11 +32,31 @@ def test_prod_compose_uses_synthetic_proof_settings_without_real_secret_files():
     text = PROD_COMPOSE.read_text(encoding="utf-8")
 
     assert "AI_DEFAULT_PROVIDER: ollama" in text
-    assert "METRICS_TOKEN: ${METRICS_TOKEN:-studynexs-local-operational-proof-token}" in text
     assert "../observability/prometheus.prod.yml:/etc/prometheus/prometheus.yml:ro" in text
     assert "/etc/prometheus/secrets/metrics_token:ro" in text
     assert "env_file:" not in text
     assert ".env" not in text
+
+
+def test_prod_compose_requires_secrets_with_no_bootable_defaults():
+    """Secrets must fail loudly when unset — a git-public default that passes the
+    boot guardrail would yield a production stack signed with known keys."""
+    text = PROD_COMPOSE.read_text(encoding="utf-8")
+
+    assert "${JWT_SECRET_KEY:?" in text
+    assert "${WEBHOOK_SECRET:?" in text
+    assert "${AADHAAR_ENCRYPTION_KEY:?" in text
+    assert "${METRICS_TOKEN:?" in text
+    assert "${POSTGRES_PASSWORD:?" in text
+    # No secret may carry a :- fallback value.
+    for var in (
+        "JWT_SECRET_KEY:-",
+        "WEBHOOK_SECRET:-",
+        "AADHAAR_ENCRYPTION_KEY:-",
+        "METRICS_TOKEN:-",
+        "POSTGRES_PASSWORD:-",
+    ):
+        assert var not in text, f"secret {var.rstrip(':-')} must not have a default"
 
 
 def test_prod_prometheus_uses_metrics_token_file():
