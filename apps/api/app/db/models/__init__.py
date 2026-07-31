@@ -3,7 +3,14 @@ from app.db.models.base import Base  # noqa: F401
 from app.db.models.school import School  # noqa: F401
 from app.db.models.user import User  # noqa: F401
 from app.db.models.academic import AcademicYear, Class, Subject, TeacherSubjectMapping  # noqa: F401
-from app.db.models.student import Student, Parent, StudentParentMap  # noqa: F401
+from app.db.models.student import (  # noqa: F401
+    Enrollment,
+    EnrollmentStatus,
+    Parent,
+    Student,
+    StudentParentMap,
+    StudentStatus,
+)
 from app.db.models.teacher import Teacher  # noqa: F401
 from app.db.models.attendance import Attendance  # noqa: F401
 from app.db.models.examination import Exam, ExamMark  # noqa: F401

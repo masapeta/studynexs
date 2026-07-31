@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import re
 import uuid
+from datetime import date
 from decimal import Decimal
 
 from fastapi import HTTPException
@@ -16,7 +17,7 @@ from app.db.models.examination import Exam, ExamMark
 from app.db.models.fee import StudentFeeRecord
 from app.db.models.residential import ResidentialBlock, RoomAllocation
 from app.db.models.school_ops import StudentTransport, TransportRoute
-from app.db.models.student import Parent, Relationship, Student, StudentParentMap
+from app.db.models.student import Enrollment, Parent, Relationship, Student, StudentParentMap
 from app.db.models.user import User
 from app.modules.academic.schemas.academic import (
     ClassCreate,
@@ -342,7 +343,7 @@ class AcademicService:
     async def enroll_student(self, school_id: uuid.UUID, data: StudentEnroll) -> Student:
         scope = TenantScope(self.db, school_id)
         await scope.user_in_school(data.user_id)
-        await scope.school_class(data.class_id)
+        cls = await scope.school_class(data.class_id)
         student = Student(
             school_id=school_id,
             user_id=data.user_id,
@@ -353,6 +354,19 @@ class AcademicService:
             gender=data.gender,
         )
         self.db.add(student)
+        await self.db.flush()
+        # DM-3: per-year history record. students.class_id stays the current
+        # pointer; year rollover closes this row and inserts the next year's.
+        self.db.add(
+            Enrollment(
+                school_id=school_id,
+                student_id=student.id,
+                class_id=data.class_id,
+                academic_year_id=cls.academic_year_id,
+                roll_no=data.roll_no,
+                enrolled_on=date.today(),
+            )
+        )
         await self.db.flush()
         return student
 
