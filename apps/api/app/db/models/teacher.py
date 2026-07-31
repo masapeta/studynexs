@@ -1,4 +1,10 @@
-"""Teacher model — extends User with professional details."""
+"""Teacher model — extends User with professional details.
+
+CONVENTION: scheduling/authorization tables (timetable_slots.teacher_id,
+teacher_subject_mappings.teacher_id, classes.class_incharge_id) FK to
+``users.id`` — NOT to this table. ``teachers`` is an HR/profile extension of
+the user row. Do not add FKs to teachers.id for academic workflows.
+"""
 from __future__ import annotations
 
 import uuid

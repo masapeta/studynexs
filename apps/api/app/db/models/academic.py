@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date
 
-from sqlalchemy import Boolean, Date, ForeignKey, Index, Integer, String, UniqueConstraint, text
+from sqlalchemy import Boolean, Date, ForeignKey, Index, String, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -17,8 +18,8 @@ class AcademicYear(BaseModel):
         UUID(as_uuid=True), ForeignKey("schools.id"), nullable=False
     )
     year_label: Mapped[str] = mapped_column(String(20), nullable=False)  # "2026-2027"
-    start_date: Mapped[str] = mapped_column(Date, nullable=False)
-    end_date: Mapped[str] = mapped_column(Date, nullable=False)
+    start_date: Mapped[date] = mapped_column(Date, nullable=False)
+    end_date: Mapped[date] = mapped_column(Date, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     __table_args__ = (

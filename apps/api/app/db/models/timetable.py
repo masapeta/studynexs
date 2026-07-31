@@ -3,8 +3,9 @@ from __future__ import annotations
 
 import enum
 import uuid
+from datetime import time
 
-from sqlalchemy import Enum, ForeignKey, Integer, String, Time, UniqueConstraint
+from sqlalchemy import Enum, ForeignKey, Integer, Time, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -37,8 +38,8 @@ class TimetableSlot(BaseModel):
     )
     day_of_week: Mapped[DayOfWeek] = mapped_column(Enum(DayOfWeek), nullable=False)
     period_number: Mapped[int] = mapped_column(Integer, nullable=False)
-    start_time: Mapped[str] = mapped_column(Time, nullable=False)
-    end_time: Mapped[str] = mapped_column(Time, nullable=False)
+    start_time: Mapped[time] = mapped_column(Time, nullable=False)
+    end_time: Mapped[time] = mapped_column(Time, nullable=False)
 
     __table_args__ = (
         UniqueConstraint(

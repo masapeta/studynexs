@@ -86,6 +86,12 @@ class StudentParentMap(BaseModel):
         UUID(as_uuid=True), ForeignKey("parents.id"), nullable=False
     )
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Per-link relationship (expand-then-contract from Parent.relationship_type):
+    # a user can be "father" to one student and "guardian" to another. Nullable
+    # during migration; reads prefer this and fall back to Parent.relationship_type.
+    relationship_type: Mapped[Relationship | None] = mapped_column(
+        Enum(Relationship), nullable=True
+    )
 
     # Relationships
     student = relationship("Student", back_populates="parents", lazy="selectin")
