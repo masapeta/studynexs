@@ -21,8 +21,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [modules, setModules] = useState<Record<string, boolean>>({});
-  const [schoolName, setSchoolName] = useState("Greenwood Public School");
-  const [academicLabel, setAcademicLabel] = useState("Academic year 2025–26 · Term 1");
+  // Empty until /school/profile responds — never show a fabricated school
+  // name or academic year in a real tenant.
+  const [schoolName, setSchoolName] = useState("");
+  const [academicLabel, setAcademicLabel] = useState("");
 
   const isPortalUser = permissions ? PORTAL_ROLES.has(permissions.role) : false;
 
@@ -92,10 +94,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   if (!user) return null;
 
-  const nameParts = schoolName.split(" ");
-  const line1 = nameParts.slice(0, 1).join(" ") || "Greenwood";
-  const line2 = nameParts.slice(1).join(" ") || "Public School";
-  const schoolDisplayName = schoolName.trim() || `${line1} ${line2}`.trim();
+  const schoolDisplayName = schoolName.trim();
 
   return (
     <div className="sn-app">
