@@ -15,20 +15,27 @@ from app.core.database import get_db
 from app.core.dependencies import CurrentUser, get_current_user, require_roles
 from app.core.rate_limit import rate_limit
 from app.core.staff_permissions import assert_class_access, assert_class_roster, get_staff_scope
+from app.db.models.student import StudentStatus
 from app.modules.academic.schemas.academic import (
+    ClassChangeRequest,
     ClassCreate,
     ClassOut,
     ClassRosterStudentOut,
+    EnrollmentOut,
     ParentLinkOut,
     ParentLinkRequest,
     StudentEnroll,
+    StudentExitRequest,
+    StudentLifecycleOut,
     StudentOut,
+    StudentReadmitRequest,
     SubjectCreate,
     SubjectOut,
     TeacherMappingCreate,
     TeacherMappingOut,
 )
 from app.modules.academic.services.academic_service import AcademicService
+from app.modules.academic.services.student_lifecycle_service import StudentLifecycleService
 from app.shared.schemas.common import APIResponse, PaginatedResponse
 
 settings = get_settings()
@@ -254,6 +261,164 @@ async def get_student_profile(
     if profile is None:
         raise HTTPException(status_code=404, detail="Student not found")
     return APIResponse(data=profile)
+
+
+# ── Student Lifecycle (DM-3b) ────────────────────────────────────────────────
+#
+# Admin/principal only: these are consequential administrative actions, fully
+# audited. Class changes update the current enrollment only — attendance,
+# marks, and receipts keep pointing at the class they were recorded against.
+# Unpaid dues are never mutated; a mismatch is flagged for admin review.
+
+
+def _lifecycle_out(result: dict) -> StudentLifecycleOut:
+    student = result["student"]
+    enrollment = result.get("enrollment")
+    return StudentLifecycleOut(
+        student_id=student.id,
+        student_status=student.status.value,
+        class_id=student.class_id,
+        current_enrollment=(
+            EnrollmentOut.model_validate(enrollment) if enrollment is not None else None
+        ),
+        fee_review_required=result.get("fee_review_required", False),
+        fee_review_note=result.get("fee_review_note"),
+    )
+
+
+@router.get(
+    "/students/{student_id}/enrollments",
+    response_model=APIResponse[list[EnrollmentOut]],
+)
+async def list_student_enrollments(
+    student_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Per-year enrollment history for a student, newest year first."""
+    await assert_can_access_student(current_user, db, student_id)
+    rows = await StudentLifecycleService(db).enrollment_history(
+        uuid.UUID(current_user.school_id), student_id
+    )
+    items: list[EnrollmentOut] = []
+    for enrollment, cls in rows:
+        out = EnrollmentOut.model_validate(enrollment)
+        out.status = enrollment.status.value
+        if cls is not None:
+            out.class_name = f"{cls.grade}-{cls.section}"
+        items.append(out)
+    return APIResponse(data=items)
+
+
+@router.post(
+    "/students/{student_id}/change-class",
+    response_model=APIResponse[StudentLifecycleOut],
+)
+async def change_student_class(
+    student_id: uuid.UUID,
+    body: ClassChangeRequest,
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Section rebalance or grade correction within the same academic year."""
+    result = await StudentLifecycleService(db).change_class(
+        school_id=uuid.UUID(current_user.school_id),
+        actor_id=uuid.UUID(current_user.id),
+        student_id=student_id,
+        new_class_id=body.class_id,
+        reason=body.reason,
+        roll_no=body.roll_no,
+    )
+    return APIResponse(data=_lifecycle_out(result), message="Class updated")
+
+
+@router.post(
+    "/students/{student_id}/transfer-out",
+    response_model=APIResponse[StudentLifecycleOut],
+)
+async def transfer_student_out(
+    student_id: uuid.UUID,
+    body: StudentExitRequest,
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Student is leaving for another school."""
+    result = await StudentLifecycleService(db).exit_student(
+        school_id=uuid.UUID(current_user.school_id),
+        actor_id=uuid.UUID(current_user.id),
+        student_id=student_id,
+        new_status=StudentStatus.TRANSFERRED,
+        reason=body.reason,
+        effective_date=body.effective_date,
+    )
+    return APIResponse(data=_lifecycle_out(result), message="Student transferred out")
+
+
+@router.post(
+    "/students/{student_id}/withdraw",
+    response_model=APIResponse[StudentLifecycleOut],
+)
+async def withdraw_student(
+    student_id: uuid.UUID,
+    body: StudentExitRequest,
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Student has dropped out / been removed from the roll."""
+    result = await StudentLifecycleService(db).exit_student(
+        school_id=uuid.UUID(current_user.school_id),
+        actor_id=uuid.UUID(current_user.id),
+        student_id=student_id,
+        new_status=StudentStatus.WITHDRAWN,
+        reason=body.reason,
+        effective_date=body.effective_date,
+    )
+    return APIResponse(data=_lifecycle_out(result), message="Student withdrawn")
+
+
+@router.post(
+    "/students/{student_id}/mark-alumni",
+    response_model=APIResponse[StudentLifecycleOut],
+)
+async def mark_student_alumni(
+    student_id: uuid.UUID,
+    body: StudentExitRequest,
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Student completed the school's final grade."""
+    result = await StudentLifecycleService(db).exit_student(
+        school_id=uuid.UUID(current_user.school_id),
+        actor_id=uuid.UUID(current_user.id),
+        student_id=student_id,
+        new_status=StudentStatus.ALUMNI,
+        reason=body.reason,
+        effective_date=body.effective_date,
+    )
+    return APIResponse(data=_lifecycle_out(result), message="Student marked as alumni")
+
+
+@router.post(
+    "/students/{student_id}/readmit",
+    response_model=APIResponse[StudentLifecycleOut],
+)
+async def readmit_student(
+    student_id: uuid.UUID,
+    body: StudentReadmitRequest,
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Bring a previously exited student back onto the roll."""
+    result = await StudentLifecycleService(db).readmit_student(
+        school_id=uuid.UUID(current_user.school_id),
+        actor_id=uuid.UUID(current_user.id),
+        student_id=student_id,
+        class_id=body.class_id,
+        reason=body.reason,
+        roll_no=body.roll_no,
+        effective_date=body.effective_date,
+    )
+    return APIResponse(data=_lifecycle_out(result), message="Student re-admitted")
 
 
 # ── Teacher Mapping ──────────────────────────────────────────────────────────

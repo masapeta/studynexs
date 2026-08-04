@@ -110,3 +110,58 @@ class TeacherMappingOut(BaseModel):
     class_id: uuid.UUID
     is_primary: bool
     model_config = ConfigDict(from_attributes=True)
+
+
+# ── Student Lifecycle (DM-3b) ────────────────────────────────────────────────
+
+class EnrollmentOut(BaseModel):
+    """One student x academic-year membership record."""
+    id: uuid.UUID
+    student_id: uuid.UUID
+    class_id: uuid.UUID
+    academic_year_id: uuid.UUID
+    status: str
+    roll_no: str | None = None
+    enrolled_on: date | None = None
+    ended_on: date | None = None
+    class_name: str | None = None
+    academic_year_label: str | None = None
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ClassChangeRequest(BaseModel):
+    """
+    Move a student to a different class within the SAME academic year —
+    section rebalancing (8A -> 8B) or correcting a wrong admission class.
+
+    Updates the current enrollment in place: one enrollment per student per
+    year is preserved, and no historical attendance, marks, or receipts are
+    touched.
+    """
+    class_id: uuid.UUID
+    reason: str = Field(..., min_length=3, max_length=300)
+    roll_no: str | None = Field(default=None, max_length=20)
+
+
+class StudentExitRequest(BaseModel):
+    """Transfer out / withdraw / mark alumni — closes the current enrollment."""
+    reason: str = Field(..., min_length=3, max_length=300)
+    effective_date: date | None = None
+
+
+class StudentReadmitRequest(BaseModel):
+    """Re-admit a previously exited student into a class for the current year."""
+    class_id: uuid.UUID
+    reason: str = Field(..., min_length=3, max_length=300)
+    roll_no: str | None = Field(default=None, max_length=20)
+    effective_date: date | None = None
+
+
+class StudentLifecycleOut(BaseModel):
+    """Result of a lifecycle transition."""
+    student_id: uuid.UUID
+    student_status: str
+    class_id: uuid.UUID
+    current_enrollment: EnrollmentOut | None = None
+    fee_review_required: bool = False
+    fee_review_note: str | None = None
