@@ -581,6 +581,9 @@ class AcademicService:
             "id": str(student.id),
             "admission_no": student.admission_no,
             "roll_no": student.roll_no,
+            # Lifecycle state (DM-3b) — drives which actions the admin UI offers.
+            "status": student.status.value,
+            "class_id": str(student.class_id),
             "student_name": user.full_name if user else "—",
             "mobile": user.mobile if user else None,
             "email": user.email if user else None,

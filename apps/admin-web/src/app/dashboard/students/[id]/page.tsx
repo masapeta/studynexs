@@ -1,10 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api, getApiErrorMessage } from "@/lib/api";
-import { ArrowLeft, Phone, Mail, Users, ClipboardCheck, Wallet, Bus, BedDouble } from "lucide-react";
+import { ArrowLeft, Phone, Mail, Users, ClipboardCheck, Wallet, Bus, BedDouble, History } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+import {
+  StudentLifecycleModal,
+  type LifecycleAction,
+  type LifecycleClassOption,
+} from "@/components/students/StudentLifecycleModal";
 import TopicMasterySection from "./TopicMasterySection";
+
+type EnrollmentRow = {
+  id: string;
+  class_id: string;
+  academic_year_id: string;
+  status: string;
+  roll_no: string | null;
+  enrolled_on: string | null;
+  ended_on: string | null;
+  class_name: string | null;
+};
+
+const STATUS_BADGE: Record<string, string> = {
+  active: "badge-success",
+  promoted: "badge-info",
+  detained: "badge-warning",
+  transferred: "badge-info",
+  withdrawn: "badge-warning",
+  completed: "badge-info",
+};
 
 const sectionH: React.CSSProperties = {
   fontSize: 14, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5,
@@ -23,11 +49,19 @@ function Stat({ label, value }: { label: string; value: React.ReactNode }) {
 export default function StudentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { permissions } = useAuth();
   const [p, setP] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [enrollments, setEnrollments] = useState<EnrollmentRow[] | null>(null);
+  const [classes, setClasses] = useState<LifecycleClassOption[]>([]);
+  const [action, setAction] = useState<LifecycleAction | null>(null);
+  const [notice, setNotice] = useState<string>("");
+  const [feeNotice, setFeeNotice] = useState<string>("");
 
-  useEffect(() => {
+  const canManage = Boolean(permissions?.can_manage_students);
+
+  const loadProfile = useCallback(() => {
     if (!id) return;
     api(`/api/v1/academic/students/${id}/profile`)
       .then((r) => setP(r.data))
@@ -35,12 +69,50 @@ export default function StudentDetailPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  const loadEnrollments = useCallback(() => {
+    if (!id) return;
+    api<{ data: EnrollmentRow[] }>(`/api/v1/academic/students/${id}/enrollments`)
+      .then((r) => setEnrollments(r.data || []))
+      .catch(() => setEnrollments([]));
+  }, [id]);
+
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
+
+  useEffect(() => {
+    loadEnrollments();
+  }, [loadEnrollments]);
+
+  useEffect(() => {
+    if (!canManage) return;
+    api("/api/v1/academic/classes?page_size=100")
+      .then((r) => setClasses((r.items || r.data || []) as LifecycleClassOption[]))
+      .catch(() => {});
+  }, [canManage]);
+
+  function handleLifecycleDone(result: {
+    student_status: string;
+    fee_review_required: boolean;
+    fee_review_note: string | null;
+  }) {
+    setAction(null);
+    setNotice(`Student is now ${result.student_status}.`);
+    setFeeNotice(result.fee_review_required ? result.fee_review_note || "" : "");
+    loadProfile();
+    loadEnrollments();
+  }
+
   if (loading) {
     return <div className="loading-screen" style={{ minHeight: "50vh" }}><div className="spinner" /></div>;
   }
   if (error || !p) {
     return <div className="card" style={{ padding: 24, color: "var(--danger)" }}>{error || "Student not found"}</div>;
   }
+
+  // Older profile payloads had no status field; absent means active.
+  const studentStatus: string = p.status || "active";
+  const isActive = studentStatus === "active";
 
   const info: [string, React.ReactNode][] = [
     ["Roll No", p.roll_no], ["Admission No", p.admission_no], ["Class", p.class_name],
@@ -66,7 +138,46 @@ export default function StudentDetailPage() {
             {p.class_name} · Adm. {p.admission_no}{p.roll_no ? ` · Roll ${p.roll_no}` : ""}
           </div>
         </div>
+        {canManage && (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            {isActive ? (
+              <>
+                <button className="btn btn-outline btn-sm" onClick={() => setAction("change-class")}>
+                  Change class
+                </button>
+                <button className="btn btn-outline btn-sm" onClick={() => setAction("transfer-out")}>
+                  Transfer out
+                </button>
+                <button className="btn btn-outline btn-sm" onClick={() => setAction("withdraw")}>
+                  Withdraw
+                </button>
+                <button className="btn btn-outline btn-sm" onClick={() => setAction("mark-alumni")}>
+                  Mark alumni
+                </button>
+              </>
+            ) : (
+              <button className="btn btn-primary btn-sm" onClick={() => setAction("readmit")}>
+                Re-admit
+              </button>
+            )}
+          </div>
+        )}
       </div>
+
+      {notice && (
+        <div className="gw-alert gw-alert-info" style={{ marginBottom: 16 }} role="status">
+          {notice}
+        </div>
+      )}
+      {feeNotice && (
+        <div
+          className="gw-alert gw-alert-error"
+          style={{ marginBottom: 16 }}
+          role="alert"
+        >
+          {feeNotice}
+        </div>
+      )}
 
       {/* Summary stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
@@ -115,6 +226,52 @@ export default function StudentDetailPage() {
                   {g.mobile && <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><Phone size={13} /> {g.mobile}</span>}
                   {g.email && <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><Mail size={13} /> {g.email}</span>}
                 </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Enrollment history (DM-3): per-year record, newest first */}
+        <div className="card" style={{ padding: 24 }}>
+          <h2 style={sectionH}>
+            <History size={14} style={{ verticalAlign: -2, marginRight: 6 }} />
+            Enrollment History
+          </h2>
+          {enrollments === null ? (
+            <div className="spinner" style={{ margin: "0 auto" }} />
+          ) : enrollments.length === 0 ? (
+            <div style={{ color: "var(--text-muted)", fontSize: 13 }}>
+              No enrollment records yet.
+            </div>
+          ) : (
+            enrollments.map((e, i) => (
+              <div
+                key={e.id}
+                style={{
+                  padding: "12px 0",
+                  borderTop: i ? "1px solid var(--border-light)" : "none",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  flexWrap: "wrap",
+                }}
+              >
+                <span style={{ fontWeight: 600 }}>{e.class_name || "—"}</span>
+                <span
+                  className={`badge ${STATUS_BADGE[e.status] || "badge-info"}`}
+                  style={{ textTransform: "capitalize" }}
+                >
+                  {e.status}
+                </span>
+                {e.roll_no && (
+                  <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+                    Roll {e.roll_no}
+                  </span>
+                )}
+                <span style={{ fontSize: 13, color: "var(--text-muted)", marginLeft: "auto" }}>
+                  {e.enrolled_on || "—"}
+                  {e.ended_on ? ` → ${e.ended_on}` : ""}
+                </span>
               </div>
             ))
           )}
@@ -179,6 +336,17 @@ export default function StudentDetailPage() {
           </div>
         )}
       </div>
+
+      <StudentLifecycleModal
+        open={action !== null}
+        action={action}
+        studentId={id}
+        studentName={p.student_name}
+        currentClassId={p.class_id}
+        classes={classes}
+        onClose={() => setAction(null)}
+        onDone={handleLifecycleDone}
+      />
     </>
   );
 }
