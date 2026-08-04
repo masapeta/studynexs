@@ -560,11 +560,13 @@ async def seed_parents(db, school: School) -> tuple[int, int]:
         fp = Parent(
             school_id=school.id,
             user_id=father.id,
-            relationship_type=Relationship.FATHER,
         )
         db.add(fp)
         await db.flush()
-        db.add(StudentParentMap(student_id=stu.id, parent_id=fp.id, is_primary=True))
+        db.add(StudentParentMap(
+            student_id=stu.id, parent_id=fp.id, is_primary=True,
+            relationship_type=Relationship.FATHER,
+        ))
         n_parents += 1
         n_links += 1
 
@@ -583,11 +585,13 @@ async def seed_parents(db, school: School) -> tuple[int, int]:
             mp = Parent(
                 school_id=school.id,
                 user_id=mother.id,
-                relationship_type=Relationship.MOTHER,
             )
             db.add(mp)
             await db.flush()
-            db.add(StudentParentMap(student_id=stu.id, parent_id=mp.id, is_primary=False))
+            db.add(StudentParentMap(
+                student_id=stu.id, parent_id=mp.id, is_primary=False,
+                relationship_type=Relationship.MOTHER,
+            ))
             n_parents += 1
             n_links += 1
 

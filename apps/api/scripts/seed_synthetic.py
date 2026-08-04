@@ -412,12 +412,10 @@ async def seed_school(session: AsyncSession, school_def: dict) -> None:
         father_parent = Parent(
             school_id=school_id,
             user_id=father_user.id,
-            relationship_type=Relationship.FATHER,
         )
         mother_parent = Parent(
             school_id=school_id,
             user_id=mother_user.id,
-            relationship_type=Relationship.MOTHER,
         )
         session.add_all([father_parent, mother_parent])
         await session.flush()
@@ -469,16 +467,18 @@ async def seed_school(session: AsyncSession, school_def: dict) -> None:
                 enrolled_on=student.admission_date,
             ))
 
-            # Link to both parents
+            # Link to both parents (relationship lives on the link, DM-2c)
             session.add(StudentParentMap(
                 student_id=student.id,
                 parent_id=father_parent.id,
                 is_primary=True,
+                relationship_type=Relationship.FATHER,
             ))
             session.add(StudentParentMap(
                 student_id=student.id,
                 parent_id=mother_parent.id,
                 is_primary=False,
+                relationship_type=Relationship.MOTHER,
             ))
             student_count += 1
 

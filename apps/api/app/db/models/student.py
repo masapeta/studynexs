@@ -127,6 +127,13 @@ class Enrollment(BaseModel):
 
 
 class Parent(BaseModel):
+    """A guardian identity within a school.
+
+    The relationship (father/mother/guardian) lives on StudentParentMap — it
+    is a property of the parent↔student LINK, not of the parent: the same
+    user can be "father" to one student and "guardian" to another (DM-2c).
+    """
+
     __tablename__ = "parents"
 
     school_id: Mapped[uuid.UUID] = mapped_column(
@@ -135,7 +142,6 @@ class Parent(BaseModel):
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), unique=True, nullable=False
     )
-    relationship_type: Mapped[Relationship] = mapped_column(Enum(Relationship), nullable=False)
 
     # Relationships
     user = relationship("User", lazy="selectin")
@@ -157,11 +163,10 @@ class StudentParentMap(BaseModel):
         UUID(as_uuid=True), ForeignKey("parents.id"), nullable=False
     )
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False)
-    # Per-link relationship (expand-then-contract from Parent.relationship_type):
-    # a user can be "father" to one student and "guardian" to another. Nullable
-    # during migration; reads prefer this and fall back to Parent.relationship_type.
-    relationship_type: Mapped[Relationship | None] = mapped_column(
-        Enum(Relationship), nullable=True
+    # The canonical relationship for this parent↔student pair (DM-2c contract
+    # phase complete: the legacy parent-level column is gone).
+    relationship_type: Mapped[Relationship] = mapped_column(
+        Enum(Relationship), nullable=False
     )
 
     # Relationships

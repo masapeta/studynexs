@@ -177,7 +177,6 @@ async def main() -> None:
         parent = Parent(
             school_id=school.id,
             user_id=parent_user.id,
-            relationship_type=Relationship.FATHER,
         )
         db.add(parent)
         await db.flush()
@@ -226,6 +225,7 @@ async def main() -> None:
                 student_id=students[0].id,
                 parent_id=parent.id,
                 is_primary=True,
+                relationship_type=Relationship.FATHER,
             )
         )
 

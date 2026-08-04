@@ -350,7 +350,6 @@ async def parent_user(db_session: AsyncSession, test_school: School, student_use
     parent = Parent(
         school_id=test_school.id,
         user_id=user.id,
-        relationship_type=Relationship.FATHER,
     )
     db_session.add(parent)
     await db_session.flush()
@@ -358,6 +357,11 @@ async def parent_user(db_session: AsyncSession, test_school: School, student_use
     student = (
         await db_session.execute(select(Student).where(Student.user_id == student_user.id))
     ).scalar_one()
-    db_session.add(StudentParentMap(student_id=student.id, parent_id=parent.id, is_primary=True))
+    db_session.add(StudentParentMap(
+        student_id=student.id,
+        parent_id=parent.id,
+        is_primary=True,
+        relationship_type=Relationship.FATHER,
+    ))
     await db_session.flush()
     return user

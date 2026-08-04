@@ -400,7 +400,6 @@ class AcademicService:
             parent = Parent(
                 school_id=school_id,
                 user_id=data.parent_user_id,
-                relationship_type=Relationship(data.relationship),
             )
             self.db.add(parent)
             await self.db.flush()
@@ -409,8 +408,7 @@ class AcademicService:
             student_id=student_id,
             parent_id=parent.id,
             is_primary=data.is_primary,
-            # Per-link relationship (DM-2c): the same user may relate differently
-            # to different children; Parent.relationship_type is legacy dual-write.
+            # The relationship belongs to this specific parent↔student link.
             relationship_type=Relationship(data.relationship),
         )
         self.db.add(link)
@@ -491,8 +489,7 @@ class AcademicService:
             ).scalar_one_or_none()
             parents.append({
                 "name": pu.full_name if pu else "—",
-                # Prefer the per-link relationship; fall back to the legacy parent-level value.
-                "relationship": (m.relationship_type or parent.relationship_type).value,
+                "relationship": m.relationship_type.value,
                 "mobile": pu.mobile if pu else None,
                 "email": pu.email if pu else None,
                 "is_primary": m.is_primary,

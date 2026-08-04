@@ -68,13 +68,13 @@ async def main() -> None:
             )
             db.add(father)
             await db.flush()
-            fp = Parent(
-                school_id=school.id, user_id=father.id,
-                relationship_type=Relationship.FATHER,
-            )
+            fp = Parent(school_id=school.id, user_id=father.id)
             db.add(fp)
             await db.flush()
-            db.add(StudentParentMap(student_id=stu.id, parent_id=fp.id, is_primary=True))
+            db.add(StudentParentMap(
+                student_id=stu.id, parent_id=fp.id, is_primary=True,
+                relationship_type=Relationship.FATHER,
+            ))
             n_parents += 1
             n_links += 1
 
@@ -87,13 +87,13 @@ async def main() -> None:
                 )
                 db.add(mother)
                 await db.flush()
-                mp = Parent(
-                    school_id=school.id, user_id=mother.id,
-                    relationship_type=Relationship.MOTHER,
-                )
+                mp = Parent(school_id=school.id, user_id=mother.id)
                 db.add(mp)
                 await db.flush()
-                db.add(StudentParentMap(student_id=stu.id, parent_id=mp.id, is_primary=False))
+                db.add(StudentParentMap(
+                    student_id=stu.id, parent_id=mp.id, is_primary=False,
+                    relationship_type=Relationship.MOTHER,
+                ))
                 n_parents += 1
                 n_links += 1
 

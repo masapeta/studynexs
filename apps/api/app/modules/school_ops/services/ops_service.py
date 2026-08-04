@@ -1223,15 +1223,21 @@ class SchoolOpsService:
         parent_ids = [p.id for p, _ in rows]
         child_rows = (
             await self.db.execute(
-                select(StudentParentMap.parent_id, Student, User)
+                select(StudentParentMap, Student, User)
                 .join(Student, Student.id == StudentParentMap.student_id)
                 .join(User, User.id == Student.user_id)
                 .where(StudentParentMap.parent_id.in_(parent_ids))
+                .order_by(StudentParentMap.is_primary.desc(), StudentParentMap.created_at)
             )
         ).all()
         children_map: dict[uuid.UUID, list[str]] = {}
-        for parent_id, _student, student_user in child_rows:
-            children_map.setdefault(parent_id, []).append(student_user.full_name)
+        # DM-2c: relationship lives on the link. The directory shows one line
+        # per parent, so we surface the primary link's relationship (first row
+        # per parent thanks to the ORDER BY above).
+        relationship_map: dict[uuid.UUID, str] = {}
+        for link, _student, student_user in child_rows:
+            children_map.setdefault(link.parent_id, []).append(student_user.full_name)
+            relationship_map.setdefault(link.parent_id, link.relationship_type.value)
 
         result: list[dict] = []
         for parent, user in rows:
@@ -1243,7 +1249,7 @@ class SchoolOpsService:
                     "name": user.full_name,
                     "email": user.email,
                     "mobile": user.mobile,
-                    "relationship": parent.relationship_type.value,
+                    "relationship": relationship_map.get(parent.id, "guardian"),
                     "children": kids,
                     "child_label": ", ".join(kids) if kids else "No linked students",
                 }
