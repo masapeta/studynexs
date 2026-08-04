@@ -84,6 +84,8 @@ export const NAV_PERMISSION: Record<string, NavGate | undefined> = {
   "/dashboard/students": "can_manage_students",
   "/dashboard/staff": "can_manage_staff",
   "/dashboard/classes": "can_view_classes",
+  // Promotion is an administrative act; the longer prefix outranks /classes.
+  "/dashboard/classes/promote": "can_manage_students",
   "/dashboard/attendance": "can_use_attendance",
   "/dashboard/timetable": "can_view_timetable",
   "/dashboard/finance": "can_use_finance",

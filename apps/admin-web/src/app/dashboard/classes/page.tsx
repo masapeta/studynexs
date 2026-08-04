@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { GraduationCap } from "lucide-react";
 import { api, getApiErrorMessage } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 import { PageHeaderCard } from "@/components/layout/PageHeaderCard";
 import { AppSelect } from "@/components/ui/AppSelect";
 import { PersonMono } from "@/components/briefing/PersonMono";
@@ -19,6 +21,8 @@ export default function ClassesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+  const { permissions } = useAuth();
+  const canPromote = Boolean(permissions?.can_manage_students);
 
   function load() {
     setLoading(true);
@@ -70,6 +74,16 @@ export default function ClassesPage() {
   return (
     <>
       <PageHeaderCard title="Classes" subtitle="Grades, sections, and homeroom assignments.">
+        {canPromote && (
+          <button
+            type="button"
+            className="btn btn-outline"
+            style={{ width: "auto", padding: "10px 20px", display: "flex", alignItems: "center", gap: 8 }}
+            onClick={() => router.push("/dashboard/classes/promote")}
+          >
+            <GraduationCap size={16} /> Promote year
+          </button>
+        )}
         <button type="button" className="btn btn-primary" style={{ width: "auto", padding: "10px 20px" }} onClick={() => setShowAdd((v) => !v)}>
           {showAdd ? "Cancel" : "+ Add Class"}
         </button>
