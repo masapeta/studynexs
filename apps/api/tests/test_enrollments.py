@@ -106,6 +106,74 @@ async def test_one_enrollment_per_student_per_year(
 
 
 @pytest.mark.asyncio
+async def test_one_active_enrollment_across_years(
+    student_user: User,
+    test_school: School,
+    test_class: Class,
+    db_session: AsyncSession,
+):
+    """A second ACTIVE enrollment in a DIFFERENT year is rejected.
+
+    uq_enrollment_student_year only guards within one year; without the partial
+    unique index a student could be simultaneously "current" in two years and
+    the lifecycle service's scalar_one_or_none() lookups would 500.
+    """
+    student = (
+        await db_session.execute(
+            select(Student).where(Student.user_id == student_user.id)
+        )
+    ).scalar_one()
+
+    next_year = AcademicYear(
+        school_id=test_school.id,
+        year_label="2027-2028",
+        start_date=date(2027, 6, 1),
+        end_date=date(2028, 5, 31),
+        is_active=False,
+    )
+    db_session.add(next_year)
+    await db_session.flush()
+    next_class = Class(
+        school_id=test_school.id,
+        grade="Grade 2",
+        section="A",
+        academic_year_id=next_year.id,
+    )
+    db_session.add(next_class)
+    await db_session.flush()
+
+    # The fixture's enrollment for the current year is ACTIVE; opening a second
+    # ACTIVE row in the next year must hit uq_one_active_enrollment_per_student.
+    # SAVEPOINT so the failure doesn't roll back next_year/next_class.
+    with pytest.raises(IntegrityError):
+        async with db_session.begin_nested():
+            db_session.add(
+                Enrollment(
+                    school_id=test_school.id,
+                    student_id=student.id,
+                    class_id=next_class.id,
+                    academic_year_id=next_year.id,
+                    status=EnrollmentStatus.ACTIVE,
+                )
+            )
+            await db_session.flush()
+
+    # But a CLOSED row in another year is fine — that is exactly what
+    # promotion writes (close old year, open new year).
+    db_session.add(
+        Enrollment(
+            school_id=test_school.id,
+            student_id=student.id,
+            class_id=next_class.id,
+            academic_year_id=next_year.id,
+            status=EnrollmentStatus.PROMOTED,
+            ended_on=date(2028, 4, 30),
+        )
+    )
+    await db_session.flush()
+
+
+@pytest.mark.asyncio
 async def test_read_helpers_return_current_and_full_history(
     student_user: User,
     test_school: School,

@@ -57,6 +57,11 @@ class Notice(BaseModel):
 class NoticeReadReceipt(BaseModel):
     __tablename__ = "notice_read_receipts"
 
+    # Defense-in-depth tenancy (§22): scoped through the notice too, but every
+    # tenant-owned row carries its own school_id.
+    school_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("schools.id"), nullable=False
+    )
     notice_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("notices.id"), nullable=False
     )

@@ -8,6 +8,7 @@ from __future__ import annotations
 import enum
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -91,7 +92,7 @@ class QuestionPaper(BaseModel):
     exam_type: Mapped[ExamType] = mapped_column(
         Enum(ExamType), nullable=False, default=ExamType.UNIT_TEST
     )
-    total_marks: Mapped[float] = mapped_column(Numeric(6, 2), nullable=False)
+    total_marks: Mapped[Decimal] = mapped_column(Numeric(6, 2), nullable=False)
     duration_minutes: Mapped[int | None] = mapped_column(Integer)
     topics: Mapped[list | None] = mapped_column(JSONB)            # list[str]
     difficulty_mix: Mapped[dict | None] = mapped_column(JSONB)   # {"easy":40,"medium":40,"hard":20}

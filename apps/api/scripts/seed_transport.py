@@ -69,7 +69,9 @@ async def main() -> None:
                 continue
             route = routes[i % len(routes)]
             stop = random.choice(route.stops)
-            db.add(StudentTransport(student_id=stu.id, route_id=route.id, boarding_stop=stop))
+            db.add(StudentTransport(
+                school_id=school.id, student_id=stu.id, route_id=route.id, boarding_stop=stop,
+            ))
             n_assigned += 1
 
         await db.commit()

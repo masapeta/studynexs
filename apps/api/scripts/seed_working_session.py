@@ -564,6 +564,7 @@ async def seed_parents(db, school: School) -> tuple[int, int]:
         db.add(fp)
         await db.flush()
         db.add(StudentParentMap(
+            school_id=school.id,
             student_id=stu.id, parent_id=fp.id, is_primary=True,
             relationship_type=Relationship.FATHER,
         ))
@@ -589,6 +590,7 @@ async def seed_parents(db, school: School) -> tuple[int, int]:
             db.add(mp)
             await db.flush()
             db.add(StudentParentMap(
+                school_id=school.id,
                 student_id=stu.id, parent_id=mp.id, is_primary=False,
                 relationship_type=Relationship.MOTHER,
             ))
@@ -624,6 +626,7 @@ async def seed_transport(db, school: School) -> tuple[int, int]:
         stop = random.choice(route.stops or ["Main Gate"])
         db.add(
             StudentTransport(
+                school_id=school.id,
                 student_id=stu.id,
                 route_id=route.id,
                 boarding_stop=stop,

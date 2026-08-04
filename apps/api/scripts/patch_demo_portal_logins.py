@@ -120,6 +120,7 @@ async def main() -> None:
         if existing_link is None:
             db.add(
                 StudentParentMap(
+                    school_id=school.id,
                     student_id=stu.id,
                     parent_id=parent_row.id,
                     is_primary=True,

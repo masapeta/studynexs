@@ -188,6 +188,7 @@ class NoticeService:
         if not existing.scalar_one_or_none():
             self.db.add(
                 NoticeReadReceipt(
+                    school_id=school_id,
                     notice_id=notice_id,
                     user_id=user_id,
                     read_at=datetime.now(timezone.utc),

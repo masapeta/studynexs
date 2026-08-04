@@ -4,8 +4,19 @@ from __future__ import annotations
 import enum
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint, text
+from sqlalchemy import (
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -59,7 +70,7 @@ class QuestionBankItem(BaseModel):
     section_title: Mapped[str] = mapped_column(String(200), nullable=False)
     question_number: Mapped[str] = mapped_column(String(20), nullable=False)
     question_text: Mapped[str] = mapped_column(Text, nullable=False)
-    marks: Mapped[float] = mapped_column(Numeric(6, 2), nullable=False)
+    marks: Mapped[Decimal] = mapped_column(Numeric(6, 2), nullable=False)
     question_type: Mapped[str] = mapped_column(String(30), nullable=False, default="short")
     options: Mapped[list | None] = mapped_column(JSONB)  # MCQ options
 

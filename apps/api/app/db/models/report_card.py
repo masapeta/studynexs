@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import enum
 import uuid
+from decimal import Decimal
 
 from sqlalchemy import Enum, ForeignKey, Index, Numeric, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -42,11 +43,11 @@ class ReportCard(BaseModel):
     not_assessed: Mapped[list] = mapped_column(
         JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
     )
-    total_obtained: Mapped[float] = mapped_column(Numeric(8, 2), default=0)
-    total_max: Mapped[float] = mapped_column(Numeric(8, 2), default=0)
-    percentage: Mapped[float] = mapped_column(Numeric(5, 2), default=0)
+    total_obtained: Mapped[Decimal] = mapped_column(Numeric(8, 2), default=0)
+    total_max: Mapped[Decimal] = mapped_column(Numeric(8, 2), default=0)
+    percentage: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=0)
     overall_grade: Mapped[str | None] = mapped_column(String(5))
-    attendance_percentage: Mapped[float | None] = mapped_column(Numeric(5, 2))
+    attendance_percentage: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
     ai_remark: Mapped[str | None] = mapped_column(Text)
     status: Mapped[ReportStatus] = mapped_column(
         Enum(ReportStatus), default=ReportStatus.DRAFT, nullable=False

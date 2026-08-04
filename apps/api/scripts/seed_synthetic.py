@@ -469,12 +469,14 @@ async def seed_school(session: AsyncSession, school_def: dict) -> None:
 
             # Link to both parents (relationship lives on the link, DM-2c)
             session.add(StudentParentMap(
+                school_id=school_id,
                 student_id=student.id,
                 parent_id=father_parent.id,
                 is_primary=True,
                 relationship_type=Relationship.FATHER,
             ))
             session.add(StudentParentMap(
+                school_id=school_id,
                 student_id=student.id,
                 parent_id=mother_parent.id,
                 is_primary=False,

@@ -312,6 +312,7 @@ class SchoolOpsService:
             await self.db.flush()
             return existing
         st = StudentTransport(
+            school_id=school_id,
             student_id=data.student_id,
             route_id=data.route_id,
             boarding_stop=data.boarding_stop,

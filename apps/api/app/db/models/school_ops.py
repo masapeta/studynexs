@@ -44,6 +44,11 @@ class TransportRoute(BaseModel):
 class StudentTransport(BaseModel):
     __tablename__ = "student_transport"
 
+    # Defense-in-depth tenancy (§22): scoped through student/route too, but
+    # every tenant-owned row carries its own school_id.
+    school_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("schools.id"), nullable=False
+    )
     student_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("students.id"), nullable=False
     )

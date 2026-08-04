@@ -405,6 +405,7 @@ class AcademicService:
             await self.db.flush()
 
         link = StudentParentMap(
+            school_id=school_id,
             student_id=student_id,
             parent_id=parent.id,
             is_primary=data.is_primary,

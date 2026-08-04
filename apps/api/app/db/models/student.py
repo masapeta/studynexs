@@ -5,7 +5,16 @@ import enum
 import uuid
 from datetime import date
 
-from sqlalchemy import Boolean, Date, Enum, ForeignKey, Index, String, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    Date,
+    Enum,
+    ForeignKey,
+    Index,
+    String,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -121,6 +130,17 @@ class Enrollment(BaseModel):
     __table_args__ = (
         # One enrollment per student per academic year.
         UniqueConstraint("student_id", "academic_year_id", name="uq_enrollment_student_year"),
+        # At most one OPEN enrollment per student across all years. The
+        # lifecycle service resolves "the current enrollment" with
+        # scalar_one_or_none(); without this guard a student holding ACTIVE
+        # rows in two years would turn that lookup into a 500 and block
+        # promotion. Same pattern as uq_one_active_year_per_school.
+        Index(
+            "uq_one_active_enrollment_per_student",
+            "student_id",
+            unique=True,
+            postgresql_where=text("status = 'ACTIVE'"),
+        ),
         Index("ix_enrollments_school_class", "school_id", "class_id"),
         Index("ix_enrollments_student", "student_id"),
     )
@@ -156,6 +176,11 @@ class StudentParentMap(BaseModel):
     """
     __tablename__ = "student_parent_map"
 
+    # Defense-in-depth tenancy (§22): scoped through student/parent joins too,
+    # but every tenant-owned row carries its own school_id.
+    school_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("schools.id"), nullable=False
+    )
     student_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("students.id"), nullable=False
     )

@@ -222,6 +222,7 @@ async def main() -> None:
 
         db.add(
             StudentParentMap(
+                school_id=school.id,
                 student_id=students[0].id,
                 parent_id=parent.id,
                 is_primary=True,

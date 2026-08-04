@@ -4,6 +4,7 @@ from __future__ import annotations
 import enum
 import uuid
 from datetime import date
+from decimal import Decimal
 
 from sqlalchemy import (
     Boolean,
@@ -50,7 +51,7 @@ class Exam(BaseModel):
     )
     exam_type: Mapped[ExamType] = mapped_column(Enum(ExamType), nullable=False)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
-    total_marks: Mapped[float] = mapped_column(Numeric(6, 2), nullable=False)
+    total_marks: Mapped[Decimal] = mapped_column(Numeric(6, 2), nullable=False)
     date: Mapped[date | None] = mapped_column(Date)
     # Whole-exam chapter/topic tag — slip/unit tests map 1:1 to a chapter.
     topic: Mapped[str | None] = mapped_column(String(120))
@@ -79,7 +80,7 @@ class ExamMark(BaseModel):
     student_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("students.id"), nullable=False
     )
-    marks_obtained: Mapped[float] = mapped_column(Numeric(6, 2), nullable=False)
+    marks_obtained: Mapped[Decimal] = mapped_column(Numeric(6, 2), nullable=False)
     # {"1": 3.5, "2": 4} question-no -> marks; absent key = unattempted (internal
     # choice). When present, marks_obtained is server-derived as the sum.
     question_marks: Mapped[dict | None] = mapped_column(JSONB)

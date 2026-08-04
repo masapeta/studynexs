@@ -358,6 +358,7 @@ async def parent_user(db_session: AsyncSession, test_school: School, student_use
         await db_session.execute(select(Student).where(Student.user_id == student_user.id))
     ).scalar_one()
     db_session.add(StudentParentMap(
+        school_id=test_school.id,
         student_id=student.id,
         parent_id=parent.id,
         is_primary=True,

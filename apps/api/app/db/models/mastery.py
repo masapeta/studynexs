@@ -10,6 +10,7 @@ from __future__ import annotations
 import enum
 import uuid
 from datetime import date, datetime
+from decimal import Decimal
 
 from sqlalchemy import (
     Date,
@@ -60,9 +61,9 @@ class StudentTopicMastery(BaseModel):
     topic: Mapped[str] = mapped_column(String(120), nullable=False)
     topic_display: Mapped[str] = mapped_column(String(120), nullable=False)
     # Weighted by exam type, recency-decayed (half-life 90 days).
-    mastery_pct: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False)
+    mastery_pct: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
     # Class average for the same topic, snapshotted in the same recompute pass.
-    class_avg_pct: Mapped[float | None] = mapped_column(Numeric(5, 2))
+    class_avg_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
     assessments_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_assessed_on: Mapped[date | None] = mapped_column(Date)
     trend: Mapped[MasteryTrend] = mapped_column(

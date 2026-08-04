@@ -72,6 +72,7 @@ async def main() -> None:
             db.add(fp)
             await db.flush()
             db.add(StudentParentMap(
+                school_id=school.id,
                 student_id=stu.id, parent_id=fp.id, is_primary=True,
                 relationship_type=Relationship.FATHER,
             ))
@@ -91,6 +92,7 @@ async def main() -> None:
                 db.add(mp)
                 await db.flush()
                 db.add(StudentParentMap(
+                    school_id=school.id,
                     student_id=stu.id, parent_id=mp.id, is_primary=False,
                     relationship_type=Relationship.MOTHER,
                 ))
