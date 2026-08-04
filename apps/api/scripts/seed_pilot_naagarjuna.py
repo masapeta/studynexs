@@ -19,7 +19,14 @@ from app.core.database import async_session_factory
 from app.core.security import hash_password
 from app.db.models.academic import AcademicYear, Class, Subject, TeacherSubjectMapping
 from app.db.models.school import School
-from app.db.models.student import Gender, Parent, Relationship, Student, StudentParentMap
+from app.db.models.student import (
+    Enrollment,
+    Gender,
+    Parent,
+    Relationship,
+    Student,
+    StudentParentMap,
+)
 from app.db.models.user import User, UserRole
 from app.modules.ai.services.ai_credits import DEFAULT_AI_BUDGET
 
@@ -199,6 +206,18 @@ async def main() -> None:
                 gender=gender,
             )
             db.add(stu)
+            await db.flush()
+            # DM-3: per-year enrollment history alongside the current-class pointer.
+            db.add(
+                Enrollment(
+                    school_id=school.id,
+                    student_id=stu.id,
+                    class_id=cls.id,
+                    academic_year_id=ay.id,
+                    roll_no=str(roll),
+                    enrolled_on=date(2026, 6, 1),
+                )
+            )
             await db.flush()
             students.append(stu)
 

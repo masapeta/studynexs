@@ -1,6 +1,7 @@
 """Tests — Enrollments & student lifecycle (DM-3 expand phase)."""
 
 import uuid
+from datetime import date
 
 import pytest
 from httpx import AsyncClient
@@ -13,6 +14,7 @@ from app.db.models.academic import AcademicYear, Class
 from app.db.models.school import School
 from app.db.models.student import Enrollment, EnrollmentStatus, Student, StudentStatus
 from app.db.models.user import User, UserRole
+from app.modules.academic.services.academic_service import AcademicService
 from tests.conftest import auth_headers, get_auth_token
 
 
@@ -88,16 +90,8 @@ async def test_one_enrollment_per_student_per_year(
         )
     ).scalar_one()
 
-    db_session.add(
-        Enrollment(
-            school_id=test_school.id,
-            student_id=student.id,
-            class_id=test_class.id,
-            academic_year_id=academic_year.id,
-        )
-    )
-    await db_session.flush()
-
+    # The fixture already created this student's enrollment for the active year,
+    # so a second one for the same year must violate the constraint.
     db_session.add(
         Enrollment(
             school_id=test_school.id,
@@ -109,6 +103,85 @@ async def test_one_enrollment_per_student_per_year(
     with pytest.raises(IntegrityError):
         await db_session.flush()
     await db_session.rollback()
+
+
+@pytest.mark.asyncio
+async def test_read_helpers_return_current_and_full_history(
+    student_user: User,
+    test_school: School,
+    test_class: Class,
+    academic_year: AcademicYear,
+    db_session: AsyncSession,
+):
+    """current_enrollment returns the open row; history is newest year first."""
+    student = (
+        await db_session.execute(
+            select(Student).where(Student.user_id == student_user.id)
+        )
+    ).scalar_one()
+
+    # The fixture already created this year's ACTIVE enrollment. Add a closed
+    # prior year so ordering and history depth are both exercised.
+    prior_year = AcademicYear(
+        school_id=test_school.id,
+        year_label="2025-2026",
+        start_date=date(2025, 6, 1),
+        end_date=date(2026, 5, 31),
+        is_active=False,
+    )
+    db_session.add(prior_year)
+    await db_session.flush()
+    prior_class = Class(
+        school_id=test_school.id,
+        grade="Grade 0",
+        section="A",
+        academic_year_id=prior_year.id,
+    )
+    db_session.add(prior_class)
+    await db_session.flush()
+    db_session.add(
+        Enrollment(
+            school_id=test_school.id,
+            student_id=student.id,
+            class_id=prior_class.id,
+            academic_year_id=prior_year.id,
+            status=EnrollmentStatus.PROMOTED,
+            ended_on=date(2026, 5, 31),
+        )
+    )
+    await db_session.flush()
+
+    service = AcademicService(db_session)
+
+    current = await service.current_enrollment(test_school.id, student.id)
+    assert current is not None
+    assert current.academic_year_id == academic_year.id
+    assert current.status == EnrollmentStatus.ACTIVE
+
+    history = await service.enrollments_for_student(test_school.id, student.id)
+    assert [e.academic_year_id for e in history] == [academic_year.id, prior_year.id]
+    # History must stay history: the closed row keeps its own class and outcome.
+    assert history[1].class_id == prior_class.id
+    assert history[1].status == EnrollmentStatus.PROMOTED
+
+
+@pytest.mark.asyncio
+async def test_read_helpers_do_not_leak_across_tenants(
+    student_user: User,
+    test_school: School,
+    db_session: AsyncSession,
+):
+    """Helpers are school-scoped: another tenant's id sees nothing."""
+    student = (
+        await db_session.execute(
+            select(Student).where(Student.user_id == student_user.id)
+        )
+    ).scalar_one()
+    service = AcademicService(db_session)
+
+    other_school_id = uuid.uuid4()
+    assert await service.current_enrollment(other_school_id, student.id) is None
+    assert await service.enrollments_for_student(other_school_id, student.id) == []
 
 
 @pytest.mark.asyncio
@@ -125,15 +198,7 @@ async def test_enrollments_are_tenant_scoped(
             select(Student).where(Student.user_id == student_user.id)
         )
     ).scalar_one()
-    db_session.add(
-        Enrollment(
-            school_id=test_school.id,
-            student_id=student.id,
-            class_id=test_class.id,
-            academic_year_id=academic_year.id,
-        )
-    )
-    await db_session.flush()
+    # Enrollment comes from the fixture — one per student per year.
 
     other_school_id = uuid.uuid4()
     rows = (

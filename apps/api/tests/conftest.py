@@ -23,7 +23,13 @@ from app.db.models.academic import AcademicYear, Class
 from app.db.models.base import Base
 from app.db.models.fee import FeeFrequency, FeeStructure, FeeType, ReceiptCounter
 from app.db.models.school import School
-from app.db.models.student import Parent, Relationship, Student, StudentParentMap
+from app.db.models.student import (
+    Enrollment,
+    Parent,
+    Relationship,
+    Student,
+    StudentParentMap,
+)
 from app.db.models.user import User, UserRole
 from app.main import app
 
@@ -311,6 +317,17 @@ async def student_user(db_session: AsyncSession, test_school: School, test_class
         roll_no="1",
     )
     db_session.add(student)
+    await db_session.flush()
+    # DM-3: every student has a per-year enrollment in production, so the
+    # fixture must mirror that or tests start from an impossible state.
+    db_session.add(
+        Enrollment(
+            school_id=test_school.id,
+            student_id=student.id,
+            class_id=test_class.id,
+            academic_year_id=test_class.academic_year_id,
+        )
+    )
     await db_session.flush()
     return user
 

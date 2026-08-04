@@ -32,7 +32,14 @@ from app.db.models.base import Base
 from app.db.models.school import School
 from app.db.models.user import User, UserRole
 from app.db.models.academic import AcademicYear, Class, Subject, TeacherSubjectMapping
-from app.db.models.student import Student, Parent, StudentParentMap, Gender, Relationship
+from app.db.models.student import (
+    Enrollment,
+    Gender,
+    Parent,
+    Relationship,
+    Student,
+    StudentParentMap,
+)
 from app.db.models.teacher import Teacher
 from app.db.models.attendance import Attendance, AttendanceStatus
 from app.db.models.examination import Exam, ExamMark, ExamType
@@ -451,6 +458,16 @@ async def seed_school(session: AsyncSession, school_def: dict) -> None:
             )
             session.add(student)
             await session.flush()
+
+            # DM-3: per-year enrollment history alongside the current-class pointer.
+            session.add(Enrollment(
+                school_id=school_id,
+                student_id=student.id,
+                class_id=s_data["class_id"],
+                academic_year_id=academic_year.id,
+                roll_no=student.roll_no,
+                enrolled_on=student.admission_date,
+            ))
 
             # Link to both parents
             session.add(StudentParentMap(

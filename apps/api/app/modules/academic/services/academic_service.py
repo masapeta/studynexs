@@ -11,13 +11,20 @@ from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenant_scope import TenantScope
-from app.db.models.academic import Class, Subject, TeacherSubjectMapping
+from app.db.models.academic import AcademicYear, Class, Subject, TeacherSubjectMapping
 from app.db.models.attendance import Attendance, AttendanceStatus
 from app.db.models.examination import Exam, ExamMark
 from app.db.models.fee import StudentFeeRecord
 from app.db.models.residential import ResidentialBlock, RoomAllocation
 from app.db.models.school_ops import StudentTransport, TransportRoute
-from app.db.models.student import Enrollment, Parent, Relationship, Student, StudentParentMap
+from app.db.models.student import (
+    Enrollment,
+    EnrollmentStatus,
+    Parent,
+    Relationship,
+    Student,
+    StudentParentMap,
+)
 from app.db.models.user import User
 from app.modules.academic.schemas.academic import (
     ClassCreate,
@@ -417,6 +424,37 @@ class AcademicService:
             select(Student).where(Student.id == student_id, Student.school_id == school_id)
         )
         return result.scalar_one_or_none()
+
+    # ── Enrollment history (DM-3) ────────────────────────────────
+
+    async def current_enrollment(
+        self, school_id: uuid.UUID, student_id: uuid.UUID
+    ) -> Enrollment | None:
+        """The student's open (ACTIVE) enrollment, if any."""
+        result = await self.db.execute(
+            select(Enrollment).where(
+                Enrollment.school_id == school_id,
+                Enrollment.student_id == student_id,
+                Enrollment.status == EnrollmentStatus.ACTIVE,
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def enrollments_for_student(
+        self, school_id: uuid.UUID, student_id: uuid.UUID, limit: int = 50
+    ) -> list[Enrollment]:
+        """Full enrollment history, newest academic year first."""
+        result = await self.db.execute(
+            select(Enrollment)
+            .join(AcademicYear, AcademicYear.id == Enrollment.academic_year_id)
+            .where(
+                Enrollment.school_id == school_id,
+                Enrollment.student_id == student_id,
+            )
+            .order_by(AcademicYear.start_date.desc())
+            .limit(limit)
+        )
+        return list(result.scalars().all())
 
     async def get_student_parents(
         self, school_id: uuid.UUID, student_id: uuid.UUID

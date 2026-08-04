@@ -38,7 +38,7 @@ from app.db.models.fee import (
     StudentFeeRecord,
 )
 from app.db.models.school import School
-from app.db.models.student import Gender, Student
+from app.db.models.student import Enrollment, Gender, Student
 from app.db.models.user import User, UserRole
 from reference_school_config import DEMO_PASSWORD, SCHOOL_BOARD, SCHOOL_CODE, SCHOOL_NAME, TENANT_SLUG
 
@@ -228,6 +228,12 @@ async def main() -> None:
                     gender=gender,
                 )
                 db.add(stu)
+                await db.flush()
+                # DM-3: per-year enrollment history alongside the current-class pointer.
+                db.add(Enrollment(
+                    school_id=school.id, student_id=stu.id, class_id=c.id,
+                    academic_year_id=ay.id, roll_no=str(roll),
+                ))
                 await db.flush()
                 total_students += 1
 
