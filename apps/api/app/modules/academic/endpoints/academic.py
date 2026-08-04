@@ -17,6 +17,8 @@ from app.core.rate_limit import rate_limit
 from app.core.staff_permissions import assert_class_access, assert_class_roster, get_staff_scope
 from app.db.models.student import StudentStatus
 from app.modules.academic.schemas.academic import (
+    BulkClassChangeOut,
+    BulkClassChangeRequest,
     ClassChangeRequest,
     ClassCreate,
     ClassOut,
@@ -24,6 +26,9 @@ from app.modules.academic.schemas.academic import (
     EnrollmentOut,
     ParentLinkOut,
     ParentLinkRequest,
+    PromotionCommitRequest,
+    PromotionPlanOut,
+    PromotionPreviewRequest,
     StudentEnroll,
     StudentExitRequest,
     StudentLifecycleOut,
@@ -35,6 +40,7 @@ from app.modules.academic.schemas.academic import (
     TeacherMappingOut,
 )
 from app.modules.academic.services.academic_service import AcademicService
+from app.modules.academic.services.promotion_service import PromotionService
 from app.modules.academic.services.student_lifecycle_service import StudentLifecycleService
 from app.shared.schemas.common import APIResponse, PaginatedResponse
 
@@ -419,6 +425,85 @@ async def readmit_student(
         effective_date=body.effective_date,
     )
     return APIResponse(data=_lifecycle_out(result), message="Student re-admitted")
+
+
+# ── Bulk enrollment: promotion + section moves (DM-3c) ───────────────────────
+#
+# Year rollover touches every student at once, so it is deliberately a
+# two-step action: preview the plan, then commit it. Commit rebuilds the plan
+# from live data and returns the same shape, so an admin can confirm that what
+# happened matches what they approved.
+
+
+@router.post(
+    "/enrollments/promote/preview",
+    response_model=APIResponse[PromotionPlanOut],
+)
+async def preview_promotion(
+    body: PromotionPreviewRequest,
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Show exactly what promoting this class would do. Changes nothing."""
+    plan = await PromotionService(db).preview_promotion(
+        school_id=uuid.UUID(current_user.school_id),
+        from_class_id=body.from_class_id,
+        to_class_id=body.to_class_id,
+        exclusions=body.exclusions,
+    )
+    return APIResponse(data=PromotionPlanOut.model_validate(plan))
+
+
+@router.post(
+    "/enrollments/promote",
+    response_model=APIResponse[PromotionPlanOut],
+)
+async def commit_promotion(
+    body: PromotionCommitRequest,
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Close this year's enrollments and open next year's. Fully audited."""
+    plan = await PromotionService(db).commit_promotion(
+        school_id=uuid.UUID(current_user.school_id),
+        actor_id=uuid.UUID(current_user.id),
+        from_class_id=body.from_class_id,
+        to_class_id=body.to_class_id,
+        exclusions=body.exclusions,
+        reason=body.reason,
+    )
+    summary = plan["summary"]
+    return APIResponse(
+        data=PromotionPlanOut.model_validate(plan),
+        message=(
+            f"{summary['promoted']} promoted, {summary['detained']} detained, "
+            f"{summary['graduated']} graduated, {summary['skipped']} skipped"
+        ),
+    )
+
+
+@router.post(
+    "/enrollments/bulk-change-class",
+    response_model=APIResponse[BulkClassChangeOut],
+)
+async def bulk_change_class(
+    body: BulkClassChangeRequest,
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Move a group of students between sections of the same academic year."""
+    result = await PromotionService(db).bulk_change_class(
+        school_id=uuid.UUID(current_user.school_id),
+        actor_id=uuid.UUID(current_user.id),
+        from_class_id=body.from_class_id,
+        to_class_id=body.to_class_id,
+        student_ids=body.student_ids,
+        reason=body.reason,
+    )
+    return APIResponse(
+        data=BulkClassChangeOut.model_validate(result),
+        message=f"{len(result['moved'])} student(s) moved",
+    )
 
 
 # ── Teacher Mapping ──────────────────────────────────────────────────────────

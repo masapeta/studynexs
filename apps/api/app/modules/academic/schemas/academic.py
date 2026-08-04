@@ -2,9 +2,9 @@
 
 import uuid
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
-
 
 # ── Class ────────────────────────────────────────────────────────────────────
 
@@ -164,4 +164,99 @@ class StudentLifecycleOut(BaseModel):
     class_id: uuid.UUID
     current_enrollment: EnrollmentOut | None = None
     fee_review_required: bool = False
+    fee_review_note: str | None = None
+
+
+# ── Bulk enrollment: promotion + section moves (DM-3c) ───────────────────────
+
+PromotionOutcome = Literal["promoted", "detained", "graduated"]
+
+
+class PromotionExclusion(BaseModel):
+    """
+    A student who does not follow the default "everyone moves up" rule.
+
+    Detained students repeat the year, so they need an explicit
+    ``target_class_id`` — the class they will repeat in. Graduating students
+    take no target: they leave as alumni.
+    """
+    student_id: uuid.UUID
+    outcome: PromotionOutcome
+    target_class_id: uuid.UUID | None = None
+
+
+class PromotionPreviewRequest(BaseModel):
+    """Ask what a rollover would do, without doing it."""
+    from_class_id: uuid.UUID
+    to_class_id: uuid.UUID
+    exclusions: list[PromotionExclusion] = Field(default_factory=list, max_length=500)
+
+
+class PromotionCommitRequest(PromotionPreviewRequest):
+    """Apply the rollover. Same inputs as the preview, plus a reason for the audit."""
+    reason: str = Field(..., min_length=3, max_length=300)
+
+
+class PromotionCandidateOut(BaseModel):
+    """What will happen to one student — including why they were skipped."""
+    student_id: uuid.UUID
+    student_name: str | None = None
+    admission_no: str | None = None
+    roll_no: str | None = None
+    outcome: str
+    target_class_id: uuid.UUID | None = None
+    target_class_label: str | None = None
+    has_unsettled_dues: bool = False
+    warnings: list[str] = Field(default_factory=list)
+
+
+class PromotionPlanOut(BaseModel):
+    """
+    The rollover plan. ``commit`` returns the same shape as ``preview`` so an
+    admin can compare what they approved with what actually happened.
+    """
+    from_class_id: uuid.UUID
+    from_class_label: str
+    from_year_label: str
+    to_class_id: uuid.UUID
+    to_class_label: str
+    to_year_label: str
+    candidates: list[PromotionCandidateOut] = Field(default_factory=list)
+    summary: dict[str, int] = Field(default_factory=dict)
+    # Present on commit only.
+    enrollments_created: int | None = None
+    enrollments_closed: int | None = None
+
+
+class BulkClassChangeRequest(BaseModel):
+    """
+    Move students between sections of the same academic year.
+    ``student_ids`` omitted means the whole class moves.
+    """
+    from_class_id: uuid.UUID
+    to_class_id: uuid.UUID
+    student_ids: list[uuid.UUID] | None = Field(default=None, max_length=500)
+    reason: str = Field(..., min_length=3, max_length=300)
+
+
+class BulkMovedStudentOut(BaseModel):
+    student_id: uuid.UUID
+    student_name: str | None = None
+    fee_review_required: bool = False
+
+
+class BulkSkippedStudentOut(BaseModel):
+    student_id: uuid.UUID
+    student_name: str | None = None
+    reason: str
+
+
+class BulkClassChangeOut(BaseModel):
+    from_class_id: uuid.UUID
+    from_class_label: str
+    to_class_id: uuid.UUID
+    to_class_label: str
+    moved: list[BulkMovedStudentOut] = Field(default_factory=list)
+    skipped: list[BulkSkippedStudentOut] = Field(default_factory=list)
+    fee_review_required_count: int = 0
     fee_review_note: str | None = None

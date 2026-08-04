@@ -77,13 +77,16 @@ class StudentLifecycleService:
         )
         return result.scalar_one_or_none()
 
-    async def _fee_structures_differ(
+    async def fee_structures_differ(
         self, school_id: uuid.UUID, from_class_id: uuid.UUID, to_class_id: uuid.UUID
     ) -> bool:
         """
         True when the two classes have different fee structures, meaning the
         student's unpaid dues may no longer match their new class. We only
         report this — we never change dues (see module docstring).
+
+        Public because bulk class moves (DM-3c) apply the same rule; the check
+        lives here so single and bulk paths can never drift apart.
         """
         if from_class_id == to_class_id:
             return False
@@ -193,7 +196,7 @@ class StudentLifecycleService:
         if roll_no is not None:
             student.roll_no = roll_no
 
-        fee_review = await self._fee_structures_differ(
+        fee_review = await self.fee_structures_differ(
             school_id, old_class_id, new_class_id
         ) and await self._has_unsettled_dues(school_id, student_id)
 
