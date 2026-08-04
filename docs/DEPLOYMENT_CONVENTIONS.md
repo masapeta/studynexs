@@ -123,7 +123,11 @@ docker compose -f docker-compose.prod.yml -f docker-compose.observability.yml up
 
 Compose must reference:
 
-- `env_file: ../env/api.env` (relative to compose dir) **or** absolute `/opt/studynexs/deploy/env/api.env`
+- The env file via the CLI flag: `docker compose --env-file ../env/api.env -f docker-compose.prod.yml …`.
+  The compose file itself deliberately contains **no** `env_file:` attribute and no secret
+  defaults — secrets interpolate as `${VAR:?}` and fail loudly when missing (guarded by
+  `test_operational_proof_compose.py`). The `--env-file` flag supplies interpolation values
+  without weakening that guard. `bootstrap_oci_vm.sh` / `deploy.sh` already pass it.
 - Nginx volume: `../nginx/nginx.conf:/etc/nginx/nginx.conf:ro`
 
 ### 4.2 Service rules
@@ -229,21 +233,28 @@ These do not change without ARM approval and a conventions doc update:
 
 ## 9. Gate 1A VM bootstrap sequence
 
+**Automated:** steps 1–6 are performed by
+[`infra/scripts/bootstrap_oci_vm.sh`](../infra/scripts/bootstrap_oci_vm.sh)
+(idempotent; never regenerates an existing `api.env`). Steps 8–10 are printed
+by the script as copy-paste commands; subsequent releases use
+[`infra/scripts/deploy.sh`](../infra/scripts/deploy.sh)
+(pull → sync → build → migrate → restart → verify → record).
+
 ```
-1. Create /opt/studynexs/{repo,runtime,data,backups,deploy,monitoring}
-2. Create deploy/{compose,env,nginx,scripts,ssl}
-3. git clone → /opt/studynexs/repo
-4. Sync repo/infra/docker → deploy/compose/
-5. Sync repo/infra/nginx → deploy/nginx/
-6. Create deploy/env/api.env (chmod 600)
-7. Install Docker + Compose
-8. cd deploy/compose && docker compose build && up (healthchecks green)
-9. cd repo/apps/api && alembic upgrade head && demo seed
-10. Verify /health and /ready via Nginx
+1. Create /opt/studynexs/{repo,runtime,data,backups,deploy,monitoring}   ┐
+2. Create deploy/{compose,env,nginx,scripts,ssl}                         │
+3. git clone → /opt/studynexs/repo                                       │ bootstrap_oci_vm.sh
+4. Sync repo/infra/docker → deploy/compose/                              │
+5. Sync repo/infra/nginx → deploy/nginx/                                 │
+6. Create deploy/env/api.env (chmod 600, secrets generated)              ┘
+7. Install Docker + Compose (script checks and instructs)
+8. cd deploy/compose && docker compose --env-file ../env/api.env build && up (healthchecks green)
+9. alembic upgrade head + demo seed (via `compose run --rm api …`)
+10. Verify /health and /ready via Nginx (127.0.0.1:8080 until edge opens)
 11. DNS api.studynexs.com → VM
 12. Cloudflare Pages → demo.studynexs.com
 13. HTTPS smokes green
-14. Write runtime/current.json (image tag, sha, timestamp)
+14. Write runtime/current.json (image tag, sha, timestamp) — deploy.sh does this
 15. Apply document freeze protocol (§12) → commit (ARM approval)
 ```
 
