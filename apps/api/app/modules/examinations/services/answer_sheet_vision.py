@@ -95,7 +95,13 @@ def is_image_mime(mime: str) -> bool:
     return normalize_mime(mime) in IMAGE_MIMES
 
 
-def _question_prompt(question_schema: list[dict], rubrics: dict[str, dict]) -> str:
+def transcription_prompt(question_schema: list[dict], rubrics: dict[str, dict]) -> str:
+    """The production transcription prompt.
+
+    Public so the Track-A benchmark runner exercises the exact prompt shape
+    production uses — benchmarking a bespoke prompt would measure the wrong
+    thing.
+    """
     lines = [
         "Transcribe the student's handwritten or typed answers from this answer sheet.",
         "Return JSON only: {\"answers\": {\"<question_number>\": \"<transcribed text>\"}}",
@@ -111,6 +117,15 @@ def _question_prompt(question_schema: list[dict], rubrics: dict[str, dict]) -> s
         qtext = qtext.replace("\n", " ")
         lines.append(f"- Q{qno} ({q.get('max_marks')} marks): {qtext}")
     return "\n".join(lines)
+
+
+# Internal alias kept for the production call path below.
+_question_prompt = transcription_prompt
+
+
+def parse_vision_answers(text: str) -> dict[str, str]:
+    """Parse + sanitize a vision model's answers JSON (public for the benchmark)."""
+    return _parse_answers_json(text)
 
 
 def _parse_answers_json(text: str) -> dict[str, str]:

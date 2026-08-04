@@ -8,6 +8,36 @@ See [`../README.md`](../README.md) for document precedence.
 
 ---
 
+## 2026-08-04 — AEI v1.0 pilot activation Stages 1–2 authorized
+
+**Decision:** ARM authorizes enabling the certified AEI v1.0 Stage 1 and
+Stage 2 capabilities for the pilot school:
+
+- Stage 1: `AEI_V1_MATH_NORMALIZATION_ENABLED`, `AEI_V1_REVIEW_POLICY_ENABLED`
+- Stage 2: `AEI_V1_EVIDENCE_LEDGER_METADATA_ENABLED`,
+  `AEI_V1_LANGUAGE_OCR_ASSIST_ENABLED`, `AEI_V1_VISUAL_SCIENCE_ASSIST_ENABLED`
+
+**Reason:** All five capabilities are certified, published, default-off, and
+additive: Stage 1 is deterministic normalization plus review-posture labels;
+Stage 2 is metadata on the same teacher workflow. Marks behavior, teacher
+authority, and the certified product-claim boundary are unchanged. Activating
+them requires nothing collected from the school and starts producing real
+teacher-trust evidence immediately.
+
+**Procedure:** [`../runbooks/aei-pilot-activation.md`](../runbooks/aei-pilot-activation.md)
+— set the flags in the pilot deployment environment, restart API + worker,
+run the post-stage verification. Rollback is flags-off + restart.
+
+**Scope boundary:** This decision does not authorize Stage 3 (manual-review
+acknowledgement enforcement), Stage 4 (handwriting OCR), the Track-A live
+benchmark run start (its contract prerequisites must still be confirmed), any
+production OCR routing change, or any product-claim expansion. Each requires
+separate ARM authorization.
+
+**Status:** Active
+
+---
+
 ## 2026-07-28 — Production Safety Gate 1 accepted
 
 **Decision:** Accept and authorize publication of Stabilization Gate 1 —
