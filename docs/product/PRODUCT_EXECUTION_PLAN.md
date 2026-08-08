@@ -3,10 +3,15 @@
 > **Living document** — update this file when product execution batches are accepted or re-prioritized.
 > **Constitutional priority:** [`PRODUCT_EXECUTION_CONSTITUTION.md`](./PRODUCT_EXECUTION_CONSTITUTION.md)
 
-**Last updated:** 2026-07-28
+**Last updated:** 2026-08-08
 **Current governance state:** Batch 1, Batch 2, and Batch 3 remain accepted and
-frozen. Production Safety is accepted and publication-authorized. No
-implementation gate is active; Operational Proof is planned and not authorized.
+frozen. The stabilization program is complete: Production Safety, Operational
+Proof, AEI Activation / Trust, Topic-ID / Mastery Spine Phase A, Data Model
+Hardening (DM-1, DM-2 expand+contract, DM-3, DM-4 design brief), schema
+integrity hardening, nginx gateway hardening, the Gate 1A deploy kit, and the
+AEI pilot-activation kit are all published. No implementation gate is active.
+The next milestone is operational, not engineering: **Gate 1A deployment to the
+pilot VM, then real-school pilot usage.** Spine Phase B waits for pilot data.
 
 ---
 
@@ -16,21 +21,33 @@ This current decision supersedes earlier statements that there is no active
 batch or that Teacher Evaluation UX-D is the next implementation target. It
 does not alter or delete the accepted release history below.
 
-Execution order:
+Execution order (status as of 2026-08-08):
 
 1. Governance-source reconciliation and correction of the July 2026 technical
-   audit.
-2. **Production Safety Batch** — completed, certified, and publication
-   authorized.
-3. **Operational Proof** — planned; not authorized.
-4. **AEI Activation/Trust** — planned; not authorized.
-5. **Topic-ID/mastery spine unification design** — planned design gate; not
-   authorized for implementation.
-6. **Teacher Evaluation UX-D** — deferred until supported capabilities execute
-   with runtime evidence; not authorized.
+   audit — **complete**.
+2. **Production Safety Batch** — **complete, certified, published**.
+3. **Operational Proof** — **complete, certified, published**.
+4. **AEI Activation/Trust** — **complete, certified, published**. Stage 1-2
+   runtime activation on the pilot deployment was authorized by ARM on
+   2026-08-04 (`docs/decisions/DECISION_LOG.md`); Stage 3/4 and the live OCR
+   Track-A benchmark run each still require separate ARM authorization.
+5. **Topic-ID/mastery spine unification** — Phase A (passive resolution)
+   **complete, certified, published**; Phase B (additive schema) deliberately
+   deferred until real pilot data exists; not authorized.
+6. **Teacher Evaluation UX-D/UX-E** — **complete, certified, published**.
 
-Later gates do not inherit authorization from the completed Production Safety
-Batch. Each requires its own review and explicit ARM authorization.
+Additional completed hardening published after the stabilization override
+(2026-07-30 → 2026-08-04): Data Model Hardening DM-1 (exam-mark provenance),
+DM-2 expand + contract (per-link parent relationship), DM-3 (per-year
+enrollments, student lifecycle service/API/UI, bulk promotion + year rollover),
+DM-4 design brief, schema-integrity N-batch (active-enrollment guard, Decimal
+mark annotations, join-table tenancy), nginx security-header hardening, audit
+follow-up fixes (compose fail-loud secrets, loading states, `.env.example`,
+students error handling), the Gate 1A deploy kit (`bootstrap_oci_vm.sh` +
+`deploy.sh`), and the AEI pilot-activation runbook + OCR Track-A live runner.
+
+Later gates do not inherit authorization from completed gates. Each requires
+its own review and explicit ARM authorization.
 
 ---
 
@@ -56,14 +73,14 @@ Only one batch may have status **AUTHORIZED** at any time.
 | Field | Value |
 |---|---|
 | **Release** | Stabilization program |
-| **Batch** | Gate 1 |
-| **Title** | Production Safety Batch |
-| **Status** | **COMPLETED / CERTIFIED / PUBLICATION AUTHORIZED** |
+| **Batch** | Stabilization + hardening stream (Gates 1 → Gate 1A readiness) |
+| **Title** | Production Safety → Operational Proof → AEI Activation/Trust → Data Model Hardening → Gate 1A deploy kit |
+| **Status** | **COMPLETED / PUBLISHED** (engineering side) |
 | **Authorized by** | ARM |
-| **Authorization date** | 2026-07-28 |
-| **Implementation posture** | ARM accepted; commit, tag, and publication authorized |
-| **Previous published product-facing slice** | AEI v1.0 Teacher Evaluation UX-C (**Published / Certified**) |
-| **Next gate** | Operational Proof — Planned / Not Authorized |
+| **Authorization date** | 2026-07-28 → 2026-08-04 (per-gate) |
+| **Implementation posture** | All gates committed and pushed to `develop` through `e5321f9` |
+| **Previous published product-facing slice** | AEI v1.0 Teacher Evaluation UX-E + Question Paper Studio (**Published / Certified**) |
+| **Next gate** | **Gate 1A — Deploy + pilot (operational, ARM-side)**; Spine Phase B deferred pending pilot data |
 
 All other batches must be one of: Planned, Frozen, Deferred, or Completed.
 
@@ -71,16 +88,31 @@ All other batches must be one of: Planned, Frozen, Deferred, or Completed.
 
 ## Current phase
 
-**Stabilization Gate 1 — Production Safety Batch (completed)**
+**Gate 1A — Deploy + pilot (operational)**
 
 ### Status
 
-**Accepted and certified. No implementation gate is currently active.**
+**All authorized engineering gates are complete and published. No
+implementation gate is currently active.**
 
-Certification evidence:
-[`PRODUCTION_SAFETY_BATCH_CERTIFICATION_REPORT.md`](./PRODUCTION_SAFETY_BATCH_CERTIFICATION_REPORT.md).
-Operational Proof remains planned and not authorized; no later-gate
-authorization is implied.
+Product development for the pilot scope is complete: the platform covers SMS
+core (students, staff, classes, fees, attendance, exams, report cards, student
+lifecycle, year rollover), governed AI question-paper generation, AI-assisted
+evaluation with teacher authority, curriculum grounding, and the four portals.
+What remains before pilot is **operational**, not code:
+
+1. Stand up the OCI VM (`infra/scripts/bootstrap_oci_vm.sh`), deploy via
+   `infra/scripts/deploy.sh`, verify `/health` + `/ready`.
+2. Enable AEI Stage 1-2 flags per
+   [`../runbooks/aei-pilot-activation.md`](../runbooks/aei-pilot-activation.md)
+   (ARM-authorized 2026-08-04).
+3. Run the pilot with the real school; collect 50-100 teacher-verified answer
+   sheets, which unblocks the OCR Track-A live benchmark and informs Spine
+   Phase B.
+
+Certification evidence for the stabilization gates:
+[`PRODUCTION_SAFETY_BATCH_CERTIFICATION_REPORT.md`](./PRODUCTION_SAFETY_BATCH_CERTIFICATION_REPORT.md)
+and the per-gate records in [`../STATUS.md`](../STATUS.md).
 
 ### Objective
 

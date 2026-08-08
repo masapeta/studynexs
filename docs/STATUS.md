@@ -1,7 +1,7 @@
 # StudyNexs — Master Status
 
 > **Owner:** Avinash Reddy Masapeta (ARM)
-> **As of:** 2026-07-31
+> **As of:** 2026-08-08
 > **Status role:** Current project anchor for architecture, runtime milestones, and next engineering gate.
 
 ---
@@ -109,6 +109,13 @@ canonical roadmap names are:
 | Topic-ID / Mastery Spine Phase A - Passive resolution | Complete / certified / published |
 | Data Model Hardening DM-1 - Exam-mark provenance FK | Complete / validated / published |
 | Data Model Hardening DM-2 - Model hygiene (annotations, per-link parent relationship, FK convention) | Complete / validated / published |
+| Data Model Hardening DM-2 Contract - Drop parents.relationship_type | Complete / validated / published |
+| Data Model Hardening DM-3 - Enrollments, student lifecycle, promotion / year rollover | Complete / validated / published |
+| Data Model Hardening DM-4 - Subject identity design brief (design-only) | Complete / published |
+| Schema Integrity Hardening - Active-enrollment guard, Decimal marks, join-table tenancy | Complete / validated / published |
+| Nginx Gateway Hardening - Security headers, private /metrics | Complete / validated / published |
+| Gate 1A Deploy Kit - VM bootstrap + release scripts | Complete / validated / published |
+| AEI Pilot Activation Kit - Staged runbook + OCR Track-A live benchmark runner | Complete / validated / published |
 | EUI v1 architecture | Frozen / accepted |
 | EUI Runtime Roadmap v1 | Accepted planning baseline |
 | Phase 0 - Engineering Preparation | Complete / certified / published |
@@ -764,6 +771,46 @@ UX-E certification caveat:
 The latest completed published gate is:
 
 ```text
+Schema Integrity Hardening (N-batch) — commit e5321f9
+```
+
+All authorized engineering work is complete and pushed to `develop`. The next
+milestone is **Gate 1A — deploy + pilot** (operational, ARM-side): bootstrap
+the OCI VM (`infra/scripts/bootstrap_oci_vm.sh`), release via
+`infra/scripts/deploy.sh`, enable AEI Stage 1-2 flags per
+[`runbooks/aei-pilot-activation.md`](./runbooks/aei-pilot-activation.md)
+(ARM-authorized 2026-08-04), and begin real-school usage.
+
+Gates published since the DM-1/DM-2 baseline below (2026-07-31 → 2026-08-04):
+
+| Gate | Commits | Scope |
+|---|---|---|
+| Audit follow-up fixes | `e5f2485`, `d811161`, `3fe7b77`, `9809b6d`, `ec38abb`, `9bcd16a` | Compose fail-loud secrets, fake-school-name removal + pinch zoom, schema_version alignment, students error state, anonymous-refresh skip + portal loading states, `.env.example` |
+| DM-3 - Enrollments + student lifecycle | `262c7a9`, `800b5b6`, `bbbb2ef`, `0abc5c2`, `29caa22`, `ff19c3b` | Per-year enrollments (migration `c7e9a1b3d5f7`), lifecycle service/API (change-class, transfer, withdraw, alumni, readmit), admin UI, bulk promotion + year-rollover service/UI/runbook |
+| DM-4 design brief | `b126f07` | Subject-identity refactor brief folded into Spine Phase B (design-only) |
+| AEI pilot activation + Track-A runner | `9e4c4cf` | Staged activation runbook, live OCR benchmark runner with production prompt/parser, privacy guards, compose flag pass-throughs |
+| Gate 1A deploy kit | `7181e21` | `bootstrap_oci_vm.sh` (idempotent VM standup + api.env generation) and `deploy.sh` (pull → build → migrate → verify) |
+| DM-2 contract phase | `9644433` | `parents.relationship_type` dropped (migration `e2a4c6d8f0b2`); link-level relationship is now the single source |
+| Nginx hardening | `0a2c6b8` | Security headers on all responses, HSTS via forwarded-proto map, `/metrics` network-restricted |
+| Schema integrity N-batch | `e5321f9` | One-ACTIVE-enrollment partial unique index (migration `f4b6d8a0c2e4`), `Mapped[Decimal]` on 10 mark columns, `school_id` on 3 join tables (migration `a6c8e0b2d4f6`) |
+
+Migration head: `a6c8e0b2d4f6`. Regression: 121 tests across 13 touched suites
+green; full main suite 922 passed as of DM-3b-1 (sole failure is the known
+local Windows WeasyPrint/GTK environment issue).
+
+Deliberately deferred (awaiting pilot data or separate authorization):
+
+- Topic-ID / Mastery Spine Phase B (additive schema; needs real pilot data);
+- AEI Stage 3/4 activation and the live OCR Track-A benchmark run (need 50-100
+  teacher-verified sheets from the pilot; separate ARM authorization each);
+- bulk section-move UI (API exists);
+- frontend unit-test + e2e CI gate.
+
+---
+
+### Historical gate record — Data Model Hardening DM-1 / DM-2
+
+```text
 Data Model Hardening DM-1 / DM-2
 ```
 
@@ -785,15 +832,10 @@ WeasyPrint/GTK environment issue, a pre-existing stale
 artifact, and three `tests_security` cases that require their dedicated
 guards-on harness).
 
-Deliberately deferred from this gate:
-
-- DM-2 contract phase — dropping `parents.relationship_type` after all
-  reads switch to the link-level value (`ops_service` parent directory
-  still reads the legacy column);
-- DM-3 — enrollments table + student lifecycle status; must land before
-  the April 2027 year rollover (target: January 2027);
-- DM-4 — subject identity refactor design brief, folded into the
-  Topic-ID / Mastery Spine Phase B design.
+Deferred items from this gate — all since delivered (see the current-gate
+table above): DM-2 contract phase (`9644433`), DM-3 enrollments + lifecycle
+(landed 2026-08-04, well ahead of the January 2027 target), and the DM-4
+design brief (`b126f07`).
 
 The previous completed gate was:
 
