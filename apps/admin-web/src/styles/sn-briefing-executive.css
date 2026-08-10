@@ -151,23 +151,25 @@
 
 .briefing-page--executive .briefing-glass-chip {
   border-radius: var(--exec-chip-radius);
-  border: 1px solid color-mix(in srgb, #64748b 24%, rgba(255, 255, 255, 0.42) 76%);
-  background: var(--sn-vision-surface, rgba(255, 255, 255, 0.16));
-  backdrop-filter: var(--sn-vision-blur, blur(20px) saturate(1.35));
-  -webkit-backdrop-filter: var(--sn-vision-blur, blur(20px) saturate(1.35));
-  box-shadow: var(--sn-vision-specular), 0 4px 24px rgba(15, 23, 42, 0.06);
+  border: 1px solid var(--sn-vision-border, rgba(15, 23, 42, 0.07));
+  background: var(--sn-vision-surface, rgba(255, 255, 255, 0.92));
+  backdrop-filter: var(--sn-vision-blur, blur(12px) saturate(1.05));
+  -webkit-backdrop-filter: var(--sn-vision-blur, blur(12px) saturate(1.05));
+  box-shadow: var(--shadow-card, 0 1px 2px rgba(15, 23, 42, 0.03), 0 8px 24px rgba(15, 23, 42, 0.05));
   display: flex;
   flex-direction: column;
   transition:
     background var(--platform-transition-medium),
     border-color var(--platform-transition-medium),
+    box-shadow var(--platform-transition-medium),
     transform var(--platform-duration-fast) var(--platform-ease);
 }
 
 .briefing-page--executive .briefing-glass-chip:hover {
-  background: var(--sn-vision-surface-hover, rgba(255, 255, 255, 0.24));
-  border-color: color-mix(in srgb, #64748b 32%, rgba(255, 255, 255, 0.55) 68%);
-  transform: translateY(-1px);
+  background: var(--sn-vision-surface-hover, #ffffff);
+  border-color: rgba(15, 23, 42, 0.1);
+  box-shadow: var(--shadow-md, 0 2px 6px rgba(15, 23, 42, 0.04), 0 16px 40px rgba(15, 23, 42, 0.07));
+  transform: translateY(-2px);
 }
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
@@ -181,8 +183,8 @@
 }
 
 .briefing-page--executive .briefing-title {
-  font-size: 1.375rem;
-  font-weight: 700;
+  font-size: 1.55rem;
+  font-weight: 800;
   letter-spacing: -0.03em;
 }
 

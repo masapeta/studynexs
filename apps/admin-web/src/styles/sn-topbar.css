@@ -2,11 +2,10 @@
    Resolves cascade conflicts with globals.css + app-responsive.css */
 
 .sn-app .header.topbar {
-  --topbar-glass-bg: rgba(255, 255, 255, 0.16);
-  --topbar-glass-bg-hover: rgba(255, 255, 255, 0.26);
-  --topbar-glass-border: rgba(100, 116, 139, 0.28);
-  --topbar-glass-specular: inset 0 1px 0 rgba(255, 255, 255, 0.58),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+  --topbar-glass-bg: rgba(255, 255, 255, 0.9);
+  --topbar-glass-bg-hover: #ffffff;
+  --topbar-glass-border: rgba(15, 23, 42, 0.07);
+  --topbar-glass-specular: inset 0 1px 0 rgba(255, 255, 255, 0.9);
 
   display: grid;
   /* auto side columns size to content; the centre flexes and can shrink to 0 —
