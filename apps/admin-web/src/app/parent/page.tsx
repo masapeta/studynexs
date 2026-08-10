@@ -27,6 +27,24 @@ function safeParentNotificationLink(link: string | null | undefined): string | u
   return undefined;
 }
 
+/** Deterministic one-line story for the child card — no AI call, no cost. */
+function childInsight(child: Child): { text: string; tone: "success" | "warning" | "danger" } {
+  const att = child.attendance_pct;
+  if (child.fee_pending > 0 && att != null && att < 75) {
+    return { text: "Needs attention — attendance is low and fees are due.", tone: "danger" };
+  }
+  if (att != null && att < 75) {
+    return { text: `Attendance needs a push — ${att}% this term.`, tone: "warning" };
+  }
+  if (child.weak_topic_count > 0) {
+    return {
+      text: `Doing well overall — ${child.weak_topic_count} topic${child.weak_topic_count === 1 ? "" : "s"} could use practice at home.`,
+      tone: "warning",
+    };
+  }
+  return { text: "On track — attendance and learning both look healthy.", tone: "success" };
+}
+
 function Avatar({ name }: { name: string }) {
   return (
     <div
@@ -151,9 +169,10 @@ export default function ParentHomePage() {
             const attTone = att == null ? "default" : att >= 75 ? "success" : att >= 50 ? "warning" : "danger";
             const feeTone = child.fee_pending > 0 ? "danger" : "success";
             const weakTone = child.weak_topic_count > 0 ? "warning" : "success";
+            const insight = childInsight(child);
             return (
               <Card key={child.student_id} onClick={() => router.push(`/parent/child/${child.student_id}`)}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
                   <Avatar name={child.name} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700, fontSize: 16 }}>{child.name}</div>
@@ -163,6 +182,9 @@ export default function ParentHomePage() {
                   </div>
                   <ChevronRight size={18} style={{ color: "var(--text-muted)" }} />
                 </div>
+                <p className={`parent-child-insight parent-child-insight--${insight.tone}`}>
+                  {insight.text}
+                </p>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
                   <StatTile icon={CalendarCheck} label="Attendance" tone={attTone} value={att != null ? `${att}%` : "—"} />
                   <StatTile icon={Wallet} label="Fees due" tone={feeTone} value={child.fee_pending > 0 ? `₹${child.fee_pending.toLocaleString("en-IN")}` : "Paid"} />
