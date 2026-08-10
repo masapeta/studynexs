@@ -131,7 +131,10 @@ export function ClassAttendanceChart({ data }: Props) {
                       {item.percentage > 0 ? (
                         <span
                           className="class-attendance-chart__fill"
-                          style={{ height: `${item.percentage}%` }}
+                          style={{
+                            height: `${item.percentage}%`,
+                            ["--bar-index" as string]: index,
+                          }}
                           aria-hidden
                         />
                       ) : null}

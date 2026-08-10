@@ -192,11 +192,94 @@
   grid-column: span 3;
   padding: var(--exec-chip-pad);
   gap: 3px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Tone ribbon — a slim accent bar that gives each KPI an identity at a glance */
+.briefing-exec-kpi::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10%;
+  bottom: 10%;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: color-mix(in srgb, #64748b 40%, transparent);
+  transition: top 0.25s var(--platform-ease), bottom 0.25s var(--platform-ease);
+}
+
+.briefing-exec-kpi--accent::before {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent, #2563eb) 85%, #ffffff 15%),
+    color-mix(in srgb, var(--accent, #2563eb) 60%, transparent)
+  );
+}
+
+.briefing-exec-kpi--sage::before {
+  background: linear-gradient(180deg, #34d399, color-mix(in srgb, #34d399 55%, transparent));
+}
+
+.briefing-exec-kpi--brass::before {
+  background: linear-gradient(180deg, #f59e0b, color-mix(in srgb, #f59e0b 55%, transparent));
+}
+
+.briefing-exec-kpi:hover::before {
+  top: 4%;
+  bottom: 4%;
+}
+
+.briefing-exec-kpi .briefing-exec-kpi-value {
+  font-variant-numeric: tabular-nums;
 }
 
 .briefing-exec-kpi-hint--warn {
   color: #ef4444;
   font-weight: 600;
+}
+
+/* ── Staggered entrance — rows cascade in on first paint ─────────────────── */
+
+@keyframes briefing-exec-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.briefing-page--executive > .briefing-exec-header {
+  animation: briefing-exec-rise 0.5s var(--platform-ease, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+.briefing-page--executive > .briefing-exec-row,
+.briefing-page--executive > .briefing-exec-insights,
+.briefing-page--executive > section {
+  animation: briefing-exec-rise 0.55s var(--platform-ease, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+.briefing-page--executive > :nth-child(2) { animation-delay: 0.06s; }
+.briefing-page--executive > :nth-child(3) { animation-delay: 0.12s; }
+.briefing-page--executive > :nth-child(4) { animation-delay: 0.18s; }
+.briefing-page--executive > :nth-child(5) { animation-delay: 0.24s; }
+.briefing-page--executive > :nth-child(6) { animation-delay: 0.3s; }
+.briefing-page--executive > :nth-child(n + 7) { animation-delay: 0.36s; }
+
+/* KPI chips cascade individually within row 1 */
+.briefing-exec-row--kpis > .briefing-exec-kpi {
+  animation: briefing-exec-rise 0.5s var(--platform-ease, cubic-bezier(0.22, 1, 0.36, 1)) both;
+  animation-delay: calc(0.08s + var(--kpi-index, 0) * 0.06s);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .briefing-page--executive > *,
+  .briefing-exec-row--kpis > .briefing-exec-kpi {
+    animation: none;
+  }
 }
 
 /* ── Row 2: Schedule · Priority · Notice — 4 + 5 + 3 ───────────────────── */
@@ -656,6 +739,18 @@
     0 0 8px color-mix(in srgb, var(--accent, #38bdf8) 42%, transparent);
   transition: box-shadow 0.18s ease;
   pointer-events: none;
+  transform-origin: bottom;
+  animation: class-attendance-bar-rise 0.7s var(--platform-ease, cubic-bezier(0.22, 1, 0.36, 1)) both;
+  animation-delay: calc(0.25s + var(--bar-index, 0) * 0.05s);
+}
+
+@keyframes class-attendance-bar-rise {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
 }
 
 .class-attendance-chart__track:hover,
@@ -754,6 +849,7 @@
   .class-attendance-chart__fill,
   .class-attendance-chart__track {
     transition: none;
+    animation: none;
   }
 }
 

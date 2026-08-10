@@ -133,6 +133,24 @@
 .ui-greeting-hi { font-size: 22px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.3px; }
 .ui-greeting-sub { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
 
+/* Portal content cascades in on first paint — same language as the dashboard */
+@keyframes portal-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.portal-main > * {
+  animation: portal-rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.portal-main > :nth-child(1) { animation-delay: 0s; }
+.portal-main > :nth-child(2) { animation-delay: 0.05s; }
+.portal-main > :nth-child(3) { animation-delay: 0.1s; }
+.portal-main > :nth-child(4) { animation-delay: 0.15s; }
+.portal-main > :nth-child(5) { animation-delay: 0.2s; }
+.portal-main > :nth-child(n + 6) { animation-delay: 0.25s; }
+@media (prefers-reduced-motion: reduce) {
+  .portal-main > * { animation: none; }
+}
+
 /* Bottom nav upgrade — icons + ≥44px tap targets (higher specificity to win) */
 .portal-bottom-nav .portal-nav-item {
   display: flex; flex-direction: column; align-items: center; justify-content: center;

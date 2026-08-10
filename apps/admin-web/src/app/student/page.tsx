@@ -38,6 +38,10 @@ export default function StudentHomePage() {
         <p>No student profile linked to this account.</p>
       ) : (
         <>
+          <div className="ui-greeting">
+            <div className="ui-greeting-hi">Hi, {(me.name || "there").split(" ")[0]} 👋</div>
+            <div className="ui-greeting-sub">Ready to learn something new today?</div>
+          </div>
           {dailyPlan?.status === "ready" ? (
             <Link
               href={`/student/tutor?lesson=${dailyPlan.lesson_key}`}

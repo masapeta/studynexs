@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { CheckCircle2, ChevronRight, Megaphone } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
+import { CountUp } from "./CountUp";
 import { DashboardWidgets } from "./DashboardWidgets";
 import { DashboardAnalytics } from "./DashboardAnalytics";
 import { SchoolDayPanel } from "./SchoolDayPanel";
@@ -90,6 +91,7 @@ type KpiItem = {
   value: React.ReactNode;
   hint?: string;
   hintWarn?: boolean;
+  tone?: "accent" | "sage" | "brass" | "neutral";
 };
 
 type PriorityAlert = {
@@ -104,8 +106,13 @@ type PriorityAlert = {
 function ExecutiveKpiBar({ items }: { items: KpiItem[] }) {
   return (
     <div className="briefing-exec-row briefing-exec-row--kpis" role="list">
-      {items.map((item) => (
-        <div key={item.label} className="briefing-glass-chip briefing-exec-kpi" role="listitem">
+      {items.map((item, index) => (
+        <div
+          key={item.label}
+          className={`briefing-glass-chip briefing-exec-kpi briefing-exec-kpi--${item.tone ?? "neutral"}`}
+          role="listitem"
+          style={{ ["--kpi-index" as string]: index }}
+        >
           <span className="briefing-exec-kpi-label">{item.label}</span>
           <span className="briefing-exec-kpi-value">{item.value}</span>
           {item.hint ? (
@@ -163,49 +170,71 @@ export function MorningBriefing({
   );
 
   const adminKpis: KpiItem[] = [
-    { label: "Students", value: summary.total_students ?? 0 },
+    {
+      label: "Students",
+      value: <CountUp value={summary.total_students ?? 0} />,
+      tone: "accent",
+    },
     (() => {
       if (attStatus === "not_recorded") {
         return {
           label: "Present today",
           value: "—",
           hint: "Not recorded yet",
+          tone: "neutral" as const,
         };
       }
       if (attStatus === "in_progress") {
         return {
           label: "Present today",
-          value: att != null ? `${att}%` : "—",
+          value: att != null ? <CountUp value={att} format={(n) => `${Math.round(n)}%`} /> : "—",
           hint: `Roll in progress · ${markedToday}/${enrolledToday} marked`,
+          tone: "brass" as const,
         };
       }
       if (attStatus === "attention_needed") {
         return {
           label: "Present today",
-          value: att != null ? `${att}%` : "—",
+          value: att != null ? <CountUp value={att} format={(n) => `${Math.round(n)}%`} /> : "—",
           hint: "Below target",
           hintWarn: true,
+          tone: "brass" as const,
         };
       }
       return {
         label: "Present today",
-        value: att != null ? `${att}%` : "—",
+        value: att != null ? <CountUp value={att} format={(n) => `${Math.round(n)}%`} /> : "—",
         hint: "On track",
+        tone: "sage" as const,
       };
     })(),
     {
       label: "Fees collected",
-      value: inr(collected),
+      value: <CountUp value={collected} format={(n) => inr(Math.round(n))} />,
       hint: collectionRate > 0 ? `${collectionRate}% of target` : undefined,
+      tone: "sage",
     },
-    { label: "Admissions", value: pipeline, hint: pipeline > 0 ? "In pipeline" : undefined },
+    {
+      label: "Admissions",
+      value: <CountUp value={pipeline} />,
+      hint: pipeline > 0 ? "In pipeline" : undefined,
+      tone: "accent",
+    },
   ];
 
   const inchargeKpis: KpiItem[] = [
-    { label: "Your classes", value: summary.incharge_classes?.length ?? 0 },
-    { label: "Papers to approve", value: qpPending },
-    { label: "Events this term", value: eventsCount },
-    { label: "Quick link", value: "Mastery" },
+    {
+      label: "Your classes",
+      value: <CountUp value={summary.incharge_classes?.length ?? 0} />,
+      tone: "accent",
+    },
+    {
+      label: "Papers to approve",
+      value: <CountUp value={qpPending} />,
+      tone: qpPending > 0 ? "brass" : "sage",
+    },
+    { label: "Events this term", value: <CountUp value={eventsCount} />, tone: "accent" },
+    { label: "Quick link", value: "Mastery", tone: "neutral" },
   ];
 
   const priorityAlerts: PriorityAlert[] = [];
