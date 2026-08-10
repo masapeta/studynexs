@@ -34,7 +34,6 @@ export default function PortalShell({
     <div className="sn-app portal-device-stage">
       <AppBackground />
       <div className="portal-device-frame">
-        <div className="portal-device-notch" aria-hidden />
         <div className="portal-shell">
           <DemoDataBanner />
           <header className="portal-header">

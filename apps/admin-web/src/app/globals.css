@@ -673,7 +673,9 @@ textarea.form-input { resize: vertical; line-height: 1.5; }
   padding: var(--space-table-head-y) var(--space-table-x);
   font-size: 12px;
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--text-secondary);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
   border-bottom: 1px solid var(--border-light);
   background: var(--bg);
   line-height: 1.25;
@@ -1615,8 +1617,8 @@ textarea.form-input { resize: vertical; line-height: 1.5; }
 .briefing-badge-green { background: var(--sage-soft); color: var(--sage); }
 .briefing-badge-red { background: var(--coral-soft); color: var(--coral); }
 .briefing-badge-brass { background: var(--brass-soft); color: var(--brass); }
-.briefing-badge-gray { background: #eceae3; color: var(--text-muted); }
-.briefing-badge-blue { background: #e6ecf7; color: #3a5a9a; }
+.briefing-badge-gray { background: #e4e2d9; color: var(--text-secondary); }
+.briefing-badge-blue { background: #dde6f5; color: #2f4d8c; }
 
 .sidebar-logo img {
   filter: brightness(0) invert(1);

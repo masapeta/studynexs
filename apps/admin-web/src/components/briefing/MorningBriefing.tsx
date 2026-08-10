@@ -136,6 +136,8 @@ export function MorningBriefing({
   eventsCount = 0,
 }: Props) {
   const first = userName.split(" ")[0] || "there";
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   const isAdmin = summary.persona === "admin";
   const attStatus = summary.school_attendance_status ?? "not_recorded";
   const att =
@@ -302,7 +304,7 @@ export function MorningBriefing({
   return (
     <div className="briefing-page briefing-page--executive">
       <header className="briefing-header briefing-exec-header">
-        <h1 className="briefing-title">Good morning, {first}</h1>
+        <h1 className="briefing-title">{greeting}, {first}</h1>
         <p className="briefing-subtitle">{summary.subtitle}</p>
         {isAdmin ? <p className="briefing-exec-story">{storyLine}</p> : null}
       </header>
@@ -394,7 +396,9 @@ export function MorningBriefing({
                 <div key={c.class_id} className="briefing-class-row">
                   <span className="briefing-class-name">{c.class_label}</span>
                   <span className="briefing-class-stat">
-                    {c.attendance_percent ?? "—"}% present
+                    {c.attendance_percent != null
+                      ? `${c.attendance_percent}% present`
+                      : "Attendance not recorded"}
                   </span>
                   {c.pending_qp_approvals > 0 && (
                     <StatusBadge tone="brass">{c.pending_qp_approvals} QP</StatusBadge>

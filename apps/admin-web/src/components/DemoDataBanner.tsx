@@ -23,8 +23,18 @@ function shouldShowBanner(): boolean {
 }
 
 export function DemoDataBanner({ variant = "app" }: Props) {
-  const [visible, setVisible] = useState(shouldShowBanner);
+  // Start hidden on both server and client render, then reveal after mount —
+  // reading sessionStorage in the useState initializer caused a hydration mismatch.
+  const [visible, setVisible] = useState(false);
   const [hiding, setHiding] = useState(false);
+
+  useEffect(() => {
+    // Deferred reveal keeps server and first client render identical.
+    const revealTimer = window.setTimeout(() => {
+      if (shouldShowBanner()) setVisible(true);
+    }, 0);
+    return () => window.clearTimeout(revealTimer);
+  }, []);
 
   useEffect(() => {
     if (!visible) return;

@@ -9,7 +9,9 @@
     inset 0 -1px 0 rgba(255, 255, 255, 0.08);
 
   display: grid;
-  grid-template-columns: 1fr minmax(0, 36rem) 1fr;
+  /* auto side columns size to content; the centre flexes and can shrink to 0 —
+     prevents the left chips overlapping the search at narrow widths */
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   flex-wrap: nowrap;
@@ -18,7 +20,7 @@
   padding: 8px 16px;
   min-height: 52px;
   height: auto;
-  width: 100%;
+  width: auto;
   box-sizing: border-box;
   border-radius: 0;
   border: none;

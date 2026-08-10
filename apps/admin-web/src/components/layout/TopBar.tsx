@@ -123,10 +123,12 @@ export function TopBar({ userName, userRole, academicLabel, showSettings = true,
     <>
       <header className={`header topbar${scrolled ? " topbar--scrolled" : ""}`}>
         <div className="topbar-left">
-          <div className="topbar-chip topbar-chip--static topbar-context-chip">
-            <GraduationCap size={14} aria-hidden />
-            <span className="topbar-context">{academicLabel}</span>
-          </div>
+          {academicLabel ? (
+            <div className="topbar-chip topbar-chip--static topbar-context-chip">
+              <GraduationCap size={14} aria-hidden />
+              <span className="topbar-context">{academicLabel}</span>
+            </div>
+          ) : null}
           <div className="topbar-chip topbar-chip--static topbar-date-chip topbar-date-chip--inline">
             <Calendar size={14} aria-hidden />
             <span>{todayCompact()}</span>

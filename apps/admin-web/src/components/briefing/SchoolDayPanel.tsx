@@ -50,12 +50,17 @@ function SchoolDayTimeline({ periods }: { periods: TimetablePeriod[] }) {
 
   if (!periods.length) {
     return (
-      <p className="briefing-muted-text">
-        No periods scheduled for today.{" "}
-        <Link href="/dashboard/timetable" className="briefing-link">
+      <div className="briefing-exec-empty-state">
+        <Clock size={18} className="briefing-exec-empty-state__icon" aria-hidden />
+        <p className="briefing-exec-empty-state__title">No periods scheduled today</p>
+        <span className="briefing-exec-empty-state__hint">
+          Once the timetable is set up, the day&apos;s periods appear here with a live
+          &ldquo;in session&rdquo; marker.
+        </span>
+        <Link href="/dashboard/timetable" className="briefing-exec-empty-state__link">
           Set up timetable →
         </Link>
-      </p>
+      </div>
     );
   }
 

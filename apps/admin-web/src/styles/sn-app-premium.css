@@ -391,16 +391,6 @@
     overflow: hidden;
   }
 
-  .sn-app .portal-device-notch {
-    display: block;
-    width: 100px;
-    height: 28px;
-    background: var(--sn-navy);
-    border-radius: 0 0 18px 18px;
-    margin: 0 auto;
-    opacity: 0.85;
-  }
-
   .sn-app .portal-device-caption {
     display: block;
     text-align: center;
@@ -1018,12 +1008,12 @@
   --students-action-inner: 52px;
 }
 
-.sn-app table.students-table .students-col-adm { width: 14%; }
-.sn-app table.students-table .students-col-name { width: 28%; }
-.sn-app table.students-table .students-col-class { width: 14%; }
-.sn-app table.students-table .students-col-dob { width: 14%; }
-.sn-app table.students-table .students-col-phone { width: 18%; }
-.sn-app table.students-table .students-col-action { width: 12%; }
+.sn-app table.students-table .students-col-adm { width: 17%; }
+.sn-app table.students-table .students-col-name { width: 27%; }
+.sn-app table.students-table .students-col-class { width: 13%; }
+.sn-app table.students-table .students-col-dob { width: 15%; }
+.sn-app table.students-table .students-col-phone { width: 17%; }
+.sn-app table.students-table .students-col-action { width: 11%; }
 
 .sn-app table.attendance-table .attendance-col-adm { width: 14%; }
 .sn-app table.attendance-table .attendance-col-name { width: 30%; }
@@ -1079,12 +1069,14 @@
   padding-top: var(--space-table-head-y);
   padding-bottom: var(--space-table-head-y);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   background: rgba(255, 255, 255, 0.45);
   font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .sn-app table.students-table tbody tr.students-table-row {

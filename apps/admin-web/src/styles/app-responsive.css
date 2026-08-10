@@ -217,3 +217,15 @@ html {
   overflow-wrap: anywhere;
   word-break: break-word;
 }
+
+/* Tables opt out of aggressive word breaking — headers must never split mid-word
+   (“SUBJEC T” / “MA X”). Cells wrap between words only. */
+.sn-app .page-content table th,
+.sn-app .page-content table td {
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.sn-app .page-content table th {
+  white-space: nowrap;
+}
