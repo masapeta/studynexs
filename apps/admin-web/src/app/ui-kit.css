@@ -133,6 +133,61 @@
 .ui-greeting-hi { font-size: 22px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.3px; }
 .ui-greeting-sub { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
 
+/* Student mastery page — progress hero + subject breakdown */
+.mastery-hero {
+  display: flex; align-items: center; gap: 16px;
+  margin-bottom: 14px;
+}
+.mastery-hero .ui-ring { --tone: var(--accent); }
+.mastery-hero-copy { flex: 1; min-width: 0; }
+.mastery-hero-title {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 18px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.2px;
+}
+.mastery-hero-spark { color: var(--brass, #f59e0b); }
+.mastery-hero-sub { font-size: 13px; color: var(--text-muted); margin: 2px 0 0; }
+.mastery-hero-best {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin: 8px 0 0; padding: 3px 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 600;
+  background: var(--sage-soft, #dcfce7); color: var(--sage, #16a34a);
+}
+.mastery-subject { margin-bottom: 12px; }
+.mastery-subject-head {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+}
+.mastery-subject-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 8px;
+  background: var(--accent-50, #eff6ff); color: var(--accent, #2563eb);
+  flex-shrink: 0;
+}
+.mastery-subject-name { flex: 1; min-width: 0; font-weight: 700; font-size: 15px; color: var(--text-primary); }
+.mastery-subject-avg {
+  font-size: 14px; font-weight: 800; color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.mastery-topic-list { display: flex; flex-direction: column; gap: 8px; }
+.mastery-topic-row {
+  display: grid; grid-template-columns: minmax(0, 42%) 1fr 40px;
+  align-items: center; gap: 10px;
+}
+.mastery-topic-name {
+  font-size: 12.5px; color: var(--text-secondary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mastery-topic-bar { min-width: 0; }
+.mastery-topic-pct {
+  font-size: 12px; font-weight: 700; color: var(--text-primary);
+  text-align: right; font-variant-numeric: tabular-nums;
+}
+.mastery-subject-cta {
+  display: inline-block; margin-top: 10px;
+  font-size: 12.5px; font-weight: 700; color: var(--accent);
+  text-decoration: none;
+}
+.mastery-subject-cta:hover { text-decoration: underline; }
+
 /* Portal content cascades in on first paint — same language as the dashboard */
 @keyframes portal-rise {
   from { opacity: 0; transform: translateY(12px); }
