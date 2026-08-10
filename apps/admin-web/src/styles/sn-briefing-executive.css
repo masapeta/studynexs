@@ -264,6 +264,15 @@
   gap: 0.5rem;
 }
 
+/* When a chip only has an empty state, let it fill the chip and centre itself
+   instead of leaving a dead zone below. */
+.briefing-exec-insight-chip > .briefing-exec-empty-state {
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
 .briefing-exec-insight-chip__head {
   display: flex;
   align-items: center;

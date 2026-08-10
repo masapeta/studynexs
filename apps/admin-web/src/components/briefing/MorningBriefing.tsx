@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, Megaphone } from "lucide-react";
+import { CheckCircle2, ChevronRight, Megaphone } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
 import { DashboardWidgets } from "./DashboardWidgets";
 import { DashboardAnalytics } from "./DashboardAnalytics";
@@ -329,7 +329,14 @@ export function MorningBriefing({
           {allClear ? (
             <p className="briefing-exec-all-clear">All clear — school operations look healthy today.</p>
           ) : topAlerts.length === 0 ? (
-            <p className="briefing-muted-text">No urgent items right now.</p>
+            <div className="briefing-exec-empty-state briefing-exec-empty-state--compact">
+              <CheckCircle2 size={18} className="briefing-exec-empty-state__icon" aria-hidden />
+              <p className="briefing-exec-empty-state__title">All caught up</p>
+              <span className="briefing-exec-empty-state__hint">
+                Nothing needs your attention right now — new approvals, attendance gaps,
+                and fee follow-ups will appear here.
+              </span>
+            </div>
           ) : (
             <div className="briefing-exec-priority-list">
               {topAlerts.map((alert, index) => (
@@ -354,14 +361,15 @@ export function MorningBriefing({
             </div>
           )}
 
-          <div className="briefing-exec-quicklinks" aria-label="Quick links">
-            {isAdmin &&
-              QUICK_LINKS.map((link) => (
+          {isAdmin && (
+            <div className="briefing-exec-quicklinks" aria-label="Quick links">
+              {QUICK_LINKS.map((link) => (
                 <Link key={link.href} href={link.href} className="briefing-exec-quicklink">
                   {link.label}
                 </Link>
               ))}
-          </div>
+            </div>
+          )}
         </div>
 
         {notice && (
