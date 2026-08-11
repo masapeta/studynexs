@@ -106,17 +106,9 @@
   border-radius: 0;
   border: none;
   box-shadow: none;
-  overflow: hidden;
-  transition: width 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+  /* Individual pills must be free to grow past the rail's edge */
+  overflow: visible;
   z-index: 55;
-}
-
-/* Expand on hover / keyboard focus — circles grow into labeled pills.
-   Negative margin keeps the page layout from shifting: the rail overlays. */
-.sn-app .sidebar.sidebar--rail:hover,
-.sn-app .sidebar.sidebar--rail:focus-within {
-  width: 216px;
-  margin-right: -144px;
 }
 
 .sn-app .sidebar--rail .rail-brand {
@@ -146,8 +138,9 @@
   gap: 9px;
   padding: 6px 0 14px;
   width: 100%;
-  overflow-y: auto;
-  overflow-x: visible;
+  /* No scroll clipping — an expanding pill must overlay the page content.
+     The rail is sticky full-height; nav fits at all supported heights. */
+  overflow: visible;
   scrollbar-width: none;
 }
 
@@ -163,11 +156,7 @@
   width: 100%;
 }
 
-.sn-app .sidebar--rail:hover .rail-group,
-.sn-app .sidebar--rail:focus-within .rail-group {
-  align-items: flex-start;
-  padding-left: 13px;
-}
+/* Groups stay centred — only the hovered pill grows */
 
 /* No dividers between separated circles — the gap is the separator */
 .sn-app .sidebar--rail .rail-divider {
@@ -201,15 +190,21 @@
   flex-shrink: 0;
 }
 
-.sn-app .sidebar--rail:hover .rail-item,
-.sn-app .sidebar--rail:focus-within .rail-item {
-  width: 192px;
-}
-
-.sn-app .sidebar--rail .rail-item:hover {
+/* Only the hovered/focused pill grows — it overlays the page content
+   without shifting siblings (width grows rightward from the circle). */
+.sn-app .sidebar--rail .rail-item:hover,
+.sn-app .sidebar--rail .rail-item:focus-visible {
+  width: 176px;
   background: #ffffff;
   color: var(--text-secondary);
-  box-shadow: 0 6px 18px rgba(23, 26, 45, 0.1);
+  box-shadow: 0 6px 18px rgba(23, 26, 45, 0.12);
+  z-index: 60;
+}
+
+.sn-app .sidebar--rail .rail-item.active:hover,
+.sn-app .sidebar--rail .rail-item.active:focus-visible {
+  background: color-mix(in srgb, var(--accent) 78%, #0f172a 22%);
+  color: #fff;
 }
 
 .sn-app .sidebar--rail .rail-item.active {
@@ -225,7 +220,7 @@
     0 0 0 4px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
-/* Inline label — hidden at rest, revealed when the rail expands */
+/* Inline label — hidden at rest, revealed when ITS pill expands */
 .sn-app .sidebar--rail .rail-tooltip {
   font-size: 13px;
   font-weight: 600;
@@ -233,12 +228,12 @@
   color: inherit;
   opacity: 0;
   transform: translateX(-6px);
-  transition: opacity 0.18s ease 0.05s, transform 0.18s ease 0.05s;
+  transition: opacity 0.16s ease 0.06s, transform 0.16s ease 0.06s;
   pointer-events: none;
 }
 
-.sn-app .sidebar--rail:hover .rail-tooltip,
-.sn-app .sidebar--rail:focus-within .rail-tooltip {
+.sn-app .sidebar--rail .rail-item:hover .rail-tooltip,
+.sn-app .sidebar--rail .rail-item:focus-visible .rail-tooltip {
   opacity: 1;
   transform: translateX(0);
 }
