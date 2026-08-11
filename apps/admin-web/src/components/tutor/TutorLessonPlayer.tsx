@@ -165,7 +165,9 @@ export default function TutorLessonPlayer({ lesson }: { lesson: TutorLesson }) {
     : "Teacher voice is off — you can still read the lesson steps below.";
 
   return (
-    <div className="tutor-player">
+    <div className="tutor-player tutor-player--split">
+      {/* Left column — lesson narrative and controls */}
+      <div className="tutor-player__lesson">
       <div className="tutor-player-meta">
         <span className="tutor-badge">{lesson.subject_name}</span>
         {lesson.mastery_pct != null && (
@@ -176,8 +178,6 @@ export default function TutorLessonPlayer({ lesson }: { lesson: TutorLesson }) {
       {lesson.mistake_summary && (
         <p className="tutor-mistake-hint">From your exam: {lesson.mistake_summary}</p>
       )}
-
-      <TutorVisual kind={step.visual_kind} caption={step.caption} />
 
       <div className="tutor-step-dots">
         {steps.map((s, i) => (
@@ -249,6 +249,32 @@ export default function TutorLessonPlayer({ lesson }: { lesson: TutorLesson }) {
         <Volume2 size={14} style={{ verticalAlign: "middle", marginRight: 4 }} />
         {voiceHint}
       </p>
+      </div>
+
+      {/* Right column — the visual explanation stage (reference: figure panel) */}
+      <aside className="tutor-player__stage" aria-label="Visual explanation">
+        <div className="tutor-stage-card">
+          <div className="tutor-stage-head">
+            <span className="tutor-stage-kicker">Visual explanation</span>
+            <span className="tutor-stage-step">
+              Step {stepIndex + 1}/{steps.length}
+            </span>
+          </div>
+          <TutorVisual kind={step.visual_kind} caption={step.caption} />
+          {lesson.mastery_pct != null && (
+            <div className="tutor-stage-mastery">
+              <span className="tutor-stage-mastery__label">Your mastery on this topic</span>
+              <div className="tutor-stage-mastery__bar">
+                <span
+                  className="tutor-stage-mastery__fill"
+                  style={{ width: `${Math.max(2, Math.min(100, lesson.mastery_pct))}%` }}
+                />
+              </div>
+              <span className="tutor-stage-mastery__pct">{lesson.mastery_pct.toFixed(0)}%</span>
+            </div>
+          )}
+        </div>
+      </aside>
     </div>
   );
 }

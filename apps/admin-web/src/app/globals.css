@@ -1070,6 +1070,61 @@ textarea.form-input { resize: vertical; line-height: 1.5; }
 .tutor-voice-hint--warn { color: #b45309; margin-bottom: 0.35rem; }
 .tutor-rec-card.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-50); }
 
+/* ── Tutor split layout — lesson left, visual stage right (reference: figure panel) ── */
+.tutor-player--split {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.tutor-player__lesson { min-width: 0; }
+.tutor-player__stage { min-width: 0; }
+.tutor-stage-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  box-shadow: var(--shadow-card, 0 8px 24px rgba(15, 23, 42, 0.05));
+}
+.tutor-stage-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.tutor-stage-kicker {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--text-muted);
+}
+.tutor-stage-step {
+  font-size: 11.5px; font-weight: 700; color: var(--accent);
+  padding: 2px 9px; border-radius: 999px; background: var(--accent-50);
+}
+/* Inside the stage the visual owns the card — drop the nested border */
+.tutor-stage-card .tutor-visual-wrap { border: none; padding: 4px 0 0; margin-bottom: 4px; background: transparent; }
+.tutor-stage-mastery {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 12px; padding-top: 12px;
+  border-top: 1px solid var(--border-light);
+}
+.tutor-stage-mastery__label { font-size: 11.5px; color: var(--text-muted); flex-shrink: 0; }
+.tutor-stage-mastery__bar {
+  flex: 1; height: 7px; border-radius: 999px; background: var(--border-light); overflow: hidden;
+}
+.tutor-stage-mastery__fill {
+  display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 70%, #0f172a));
+  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.tutor-stage-mastery__pct {
+  font-size: 12.5px; font-weight: 800; color: var(--text-primary);
+  font-variant-numeric: tabular-nums; flex-shrink: 0;
+}
+
+/* Desktop split columns for the tutor (frame width handled after the phone-frame rules) */
+@media (min-width: 900px) {
+  .tutor-player--split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .tutor-player__stage { position: sticky; top: 12px; }
+}
+
 /* Laptop / projector: show portals inside a phone frame */
 @media (min-width: 900px) {
   .portal-device-stage {
@@ -1130,6 +1185,14 @@ textarea.form-input { resize: vertical; line-height: 1.5; }
     left: 0;
     right: 0;
     bottom: 0;
+  }
+
+  /* Wide learning surfaces (AI Tutor) escape the phone frame into a tablet-
+     width canvas — the visual stage needs room beside the lesson. */
+  .portal-device-frame--wide {
+    width: min(92vw, 880px);
+    height: min(844px, calc(100dvh - 80px));
+    border-radius: 32px;
   }
 }
 

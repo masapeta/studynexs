@@ -120,7 +120,7 @@ export default function StudentTutorPage() {
   }
 
   return (
-    <PortalShell title="AI Tutor" subtitle="Learn like your teacher explains" nav={STUDENT_NAV}>
+    <PortalShell title="AI Tutor" subtitle="Learn like your teacher explains" nav={STUDENT_NAV} wide>
       <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>
         Mistake Recovery - grounded in your curriculum. Ask a question or follow a lesson.
       </p>

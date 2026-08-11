@@ -391,6 +391,13 @@
     overflow: hidden;
   }
 
+  /* Wide learning surfaces (AI Tutor) get a tablet-width canvas */
+  .sn-app .portal-device-frame--wide {
+    max-width: min(92vw, 880px);
+    width: min(92vw, 880px);
+    border-radius: 28px;
+  }
+
   .sn-app .portal-device-caption {
     display: block;
     text-align: center;

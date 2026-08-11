@@ -14,11 +14,14 @@ export default function PortalShell({
   title,
   subtitle,
   nav,
+  wide = false,
   children,
 }: {
   title: string;
   subtitle?: string;
   nav: NavItem[];
+  /** Desktop: widen the device frame for two-panel learning surfaces (AI Tutor). */
+  wide?: boolean;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -33,7 +36,7 @@ export default function PortalShell({
   return (
     <div className="sn-app portal-device-stage">
       <AppBackground />
-      <div className="portal-device-frame">
+      <div className={`portal-device-frame${wide ? " portal-device-frame--wide" : ""}`}>
         <div className="portal-shell">
           <DemoDataBanner />
           <header className="portal-header">
