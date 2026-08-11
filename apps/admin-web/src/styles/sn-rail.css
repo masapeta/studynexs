@@ -104,7 +104,19 @@
   border-radius: 24px;
   border: 1px solid rgba(15, 23, 42, 0.06);
   box-shadow: 0 8px 32px rgba(15, 23, 42, 0.06);
-  overflow: visible; /* tooltips must escape */
+  overflow: hidden;
+  transition: width 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: 55;
+}
+
+/* Expand on hover / keyboard focus — labels appear inline beside icons.
+   Negative margin keeps the page layout from shifting: the rail overlays. */
+.sn-app .sidebar.sidebar--rail:hover,
+.sn-app .sidebar.sidebar--rail:focus-within {
+  width: 216px;
+  margin-right: -144px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 16px 48px rgba(15, 23, 42, 0.12);
 }
 
 .sn-app .sidebar--rail .rail-brand {
@@ -151,6 +163,12 @@
   width: 100%;
 }
 
+.sn-app .sidebar--rail:hover .rail-group,
+.sn-app .sidebar--rail:focus-within .rail-group {
+  align-items: flex-start;
+  padding-left: 13px;
+}
+
 .sn-app .sidebar--rail .rail-divider {
   width: 26px;
   height: 1px;
@@ -162,16 +180,29 @@
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  gap: 12px;
   width: 46px;
   height: 46px;
+  padding: 0 13px;
   border-radius: 15px;
   color: var(--text-muted);
   text-decoration: none;
+  overflow: hidden;
   transition:
+    width 0.22s cubic-bezier(0.22, 1, 0.36, 1),
     background var(--platform-transition-ui, 0.15s ease),
     color var(--platform-transition-ui, 0.15s ease),
     box-shadow var(--platform-transition-ui, 0.15s ease);
+}
+
+.sn-app .sidebar--rail .rail-item svg {
+  flex-shrink: 0;
+}
+
+.sn-app .sidebar--rail:hover .rail-item,
+.sn-app .sidebar--rail:focus-within .rail-item {
+  width: 192px;
 }
 
 .sn-app .sidebar--rail .rail-item:hover {
@@ -192,32 +223,27 @@
     0 0 0 4px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
-/* Hover tooltip — the label lives here now */
+/* Inline label — hidden at rest, revealed when the rail expands */
 .sn-app .sidebar--rail .rail-tooltip {
-  position: absolute;
-  left: calc(100% + 12px);
-  top: 50%;
-  transform: translateY(-50%) translateX(-4px);
-  padding: 5px 11px;
-  border-radius: 9px;
-  background: #0f172a;
-  color: #fff;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
-  pointer-events: none;
+  color: inherit;
   opacity: 0;
-  transition: opacity 0.14s ease, transform 0.14s ease;
-  z-index: 60;
+  transform: translateX(-6px);
+  transition: opacity 0.18s ease 0.05s, transform 0.18s ease 0.05s;
+  pointer-events: none;
 }
 
-.sn-app .sidebar--rail .rail-item:hover .rail-tooltip,
-.sn-app .sidebar--rail .rail-item:focus-visible .rail-tooltip {
+.sn-app .sidebar--rail:hover .rail-tooltip,
+.sn-app .sidebar--rail:focus-within .rail-tooltip {
   opacity: 1;
-  transform: translateY(-50%) translateX(0);
+  transform: translateX(0);
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .sn-app .sidebar.sidebar--rail,
+  .sn-app .sidebar--rail .rail-item,
   .sn-app .sidebar--rail .rail-tooltip {
     transition: none;
   }
