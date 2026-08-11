@@ -1,7 +1,9 @@
 // Per-school theming: the whole UI derives from --accent on :root.
 // applyThemeColor() sets --accent + --accent-rgb so CSS can use rgb(var(--accent-rgb) / α).
 
-export const DEFAULT_ACCENT = "#ee6c4d";
+// Platform default: StudyNexs blue-violet (soft-glass redesign, ARM 2026-08-11).
+// Schools still override via their saved brand colour at runtime.
+export const DEFAULT_ACCENT = "#5b6cf5";
 const THEME_STORAGE_KEY = "sn-brand-color";
 
 const HEX_RE = /^#?([0-9a-fA-F]{6})$/;

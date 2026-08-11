@@ -3,9 +3,9 @@
    look like empty glass. Rearranged for a professional command layout. */
 
 .briefing-page--executive {
-  --exec-gap: 0.75rem;
-  --exec-chip-radius: 18px;
-  --exec-chip-pad: 0.85rem 1rem;
+  --exec-gap: 0.85rem;
+  --exec-chip-radius: 22px;
+  --exec-chip-pad: 1rem 1.15rem;
   --exec-font-section: 0.875rem;
   --exec-font-title: 0.8125rem;
   --exec-font-label: 0.6875rem;

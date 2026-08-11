@@ -1,4 +1,97 @@
-/* ── Icon rail sidebar — fintech-reference layout (loaded last) ──────────
+/* ── Soft-glass finishing layer (loaded last) ────────────────────────────
+   Fintech-reference visual language: warm off-white field, elevated white
+   panels, blue-violet gradient primaries, pill buttons, soft diffuse
+   shadows, generous radii. Token-level so every page inherits. */
+
+.sn-app {
+  /* Softer, larger-radius, lower-contrast surface language */
+  --sn-vision-border: rgba(15, 23, 42, 0.055);
+  --sn-vision-border-soft: rgba(15, 23, 42, 0.04);
+  --shadow-card: 0 1px 2px rgba(23, 26, 45, 0.02), 0 10px 30px rgba(23, 26, 45, 0.05);
+  --shadow-md: 0 2px 6px rgba(23, 26, 45, 0.03), 0 18px 44px rgba(23, 26, 45, 0.07);
+  --radius-lg: 18px;
+  --radius-xl: 22px;
+}
+
+/* Warm off-white field (reference: #F3F4F7) — accent whispers, never tints */
+.sn-app .sn-app-bg {
+  background:
+    radial-gradient(ellipse 55% 34% at 50% -6%, color-mix(in srgb, var(--accent) 7%, white), transparent 60%),
+    linear-gradient(180deg, #f7f8fb 0%, #f4f5f9 50%, #f1f2f7 100%);
+}
+
+/* Primary buttons — blue-violet gradient pill with soft glow.
+   (The action-pill primary variant gets the gradient where it is defined
+   below — same-file source order would override a rule placed here.) */
+.sn-app .btn-primary {
+  background: linear-gradient(120deg, var(--accent-grad-from, var(--accent)) 0%, var(--accent-grad-to, var(--accent)) 100%);
+  border: none;
+  border-radius: 999px;
+  color: #fff;
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.sn-app .btn-primary:hover {
+  background: linear-gradient(120deg,
+    color-mix(in srgb, var(--accent-grad-from, var(--accent)) 92%, #0f172a 8%) 0%,
+    color-mix(in srgb, var(--accent-grad-to, var(--accent)) 92%, #0f172a 8%) 100%);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--accent) 36%, transparent);
+}
+
+/* Secondary buttons — white pills, subtle shadow */
+.sn-app .btn-outline,
+.sn-app .btn-ghost {
+  border-radius: 999px;
+}
+
+.sn-app .btn-outline {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  box-shadow: 0 2px 10px rgba(23, 26, 45, 0.04);
+}
+
+.sn-app .btn-outline:hover {
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(23, 26, 45, 0.07);
+}
+
+/* Inputs — rounded, soft inset feel */
+.sn-app .form-input,
+.sn-app textarea.form-input,
+.sn-app select.form-input {
+  border-radius: 13px;
+  background: rgba(246, 248, 251, 0.9);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: inset 0 1px 3px rgba(23, 26, 45, 0.04);
+}
+
+.sn-app .form-input:focus,
+.sn-app .form-input:focus-visible {
+  background: #fff;
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow:
+    inset 0 1px 2px rgba(23, 26, 45, 0.03),
+    0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+  outline: none;
+}
+
+/* Tables — lightweight rows, whisper separators */
+.sn-app .data-table td,
+.sn-app table.students-table td,
+.sn-app table.attendance-table td {
+  border-bottom-color: rgba(15, 23, 42, 0.045);
+}
+
+/* Badges — pastel, readable */
+.sn-app .briefing-badge,
+.sn-app .badge {
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+/* ── Icon rail sidebar — fintech-reference layout ─────────────────────────
    Floating icon-only rail with hover tooltips. Replaces the wide labeled
    sidebar for the admin/teaching dashboard shell. */
 
@@ -173,15 +266,18 @@
 }
 
 .sn-app .briefing-action-pill--primary {
-  background: color-mix(in srgb, var(--accent) 75%, #0f172a 25%);
+  background: linear-gradient(120deg, var(--accent-grad-from, var(--accent)) 0%, var(--accent-grad-to, var(--accent)) 100%);
   border-color: transparent;
   color: #fff;
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 28%, transparent);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .sn-app .briefing-action-pill--primary:hover {
-  background: color-mix(in srgb, var(--accent) 82%, #0f172a 18%);
+  background: linear-gradient(120deg,
+    color-mix(in srgb, var(--accent-grad-from, var(--accent)) 92%, #0f172a 8%) 0%,
+    color-mix(in srgb, var(--accent-grad-to, var(--accent)) 92%, #0f172a 8%) 100%);
   color: #fff;
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--accent) 36%, transparent);
 }
 
 .sn-app .briefing-header.briefing-exec-header--row,

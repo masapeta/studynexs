@@ -29,13 +29,18 @@
   --coral-soft: #f6e3de;
   --font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
 
-  /* Accent = the school's brand colour (set --accent at runtime; shades derive from it). */
-  --accent: #ee6c4d;
-  --accent-rgb: 238 108 77;
+  /* Accent = the school's brand colour (set --accent at runtime; shades derive from it).
+     Platform default: StudyNexs blue-violet (soft-glass redesign). */
+  --accent: #5b6cf5;
+  --accent-rgb: 91 108 245;
   --accent-light: color-mix(in srgb, var(--accent) 78%, white);
   --accent-dark: color-mix(in srgb, var(--accent) 82%, black);
   --accent-50: color-mix(in srgb, var(--accent) 9%, white);
   --accent-100: color-mix(in srgb, var(--accent) 18%, white);
+  /* Gradient pair for primary actions — derives from the school accent so
+     runtime theming keeps working. Default accent gives blue → violet. */
+  --accent-grad-from: var(--accent);
+  --accent-grad-to: color-mix(in srgb, var(--accent) 62%, #8b5cf6 38%);
 
   /* Semantic */
   --success: #0f9d6e;
