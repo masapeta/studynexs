@@ -81,6 +81,8 @@ class DashboardSummaryOut(BaseModel):
     admissions_pipeline: int | None = None
     expenses_this_month: float | None = None
     class_performance: list[dict] = Field(default_factory=list)
+    # Last 7 recorded school days of school-wide present %, oldest first (sparkline)
+    attendance_trend: list[float] = Field(default_factory=list)
     pending_qp_approvals: int | None = None
     # Class incharge
     incharge_classes: list[InchargeClassSummaryOut] = Field(default_factory=list)

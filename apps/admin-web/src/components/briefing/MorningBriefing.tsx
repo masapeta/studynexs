@@ -4,6 +4,7 @@ import Link from "next/link";
 import { CheckCircle2, ChevronRight, Megaphone } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
 import { CountUp } from "./CountUp";
+import { Sparkline } from "./Sparkline";
 import { DashboardWidgets } from "./DashboardWidgets";
 import { DashboardAnalytics } from "./DashboardAnalytics";
 import { SchoolDayPanel } from "./SchoolDayPanel";
@@ -36,6 +37,7 @@ export type BriefingSummary = {
     attendance_percent?: number | null;
     pending_qp_approvals: number;
   }[];
+  attendance_trend?: number[];
   admissions_pipeline?: number | null;
   expenses_this_month?: number | null;
   class_performance?: {
@@ -92,6 +94,8 @@ type KpiItem = {
   hint?: string;
   hintWarn?: boolean;
   tone?: "accent" | "sage" | "brass" | "neutral";
+  /** Optional trend series (oldest first) rendered as a mini sparkline. */
+  trend?: number[];
 };
 
 type PriorityAlert = {
@@ -101,6 +105,13 @@ type PriorityAlert = {
   body: string;
   action: string;
   tone: "coral" | "brass" | "neutral";
+};
+
+const KPI_SPARK_STROKE: Record<string, string> = {
+  accent: "var(--accent)",
+  sage: "#34d399",
+  brass: "#f59e0b",
+  neutral: "#94a3b8",
 };
 
 function ExecutiveKpiBar({ items }: { items: KpiItem[] }) {
@@ -121,6 +132,12 @@ function ExecutiveKpiBar({ items }: { items: KpiItem[] }) {
             >
               {item.hint}
             </span>
+          ) : null}
+          {item.trend && item.trend.length >= 2 ? (
+            <Sparkline
+              data={item.trend}
+              stroke={KPI_SPARK_STROKE[item.tone ?? "neutral"]}
+            />
           ) : null}
         </div>
       ))}
@@ -182,6 +199,7 @@ export function MorningBriefing({
           value: "—",
           hint: "Not recorded yet",
           tone: "neutral" as const,
+          trend: summary.attendance_trend,
         };
       }
       if (attStatus === "in_progress") {
@@ -190,6 +208,7 @@ export function MorningBriefing({
           value: att != null ? <CountUp value={att} format={(n) => `${Math.round(n)}%`} /> : "—",
           hint: `Roll in progress · ${markedToday}/${enrolledToday} marked`,
           tone: "brass" as const,
+          trend: summary.attendance_trend,
         };
       }
       if (attStatus === "attention_needed") {
@@ -199,6 +218,7 @@ export function MorningBriefing({
           hint: "Below target",
           hintWarn: true,
           tone: "brass" as const,
+          trend: summary.attendance_trend,
         };
       }
       return {
@@ -206,6 +226,7 @@ export function MorningBriefing({
         value: att != null ? <CountUp value={att} format={(n) => `${Math.round(n)}%`} /> : "—",
         hint: "On track",
         tone: "sage" as const,
+        trend: summary.attendance_trend,
       };
     })(),
     {

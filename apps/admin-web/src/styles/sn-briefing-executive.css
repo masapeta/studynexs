@@ -236,6 +236,15 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Mini trend sparkline anchored bottom-right of the KPI card */
+.briefing-exec-kpi .briefing-sparkline {
+  position: absolute;
+  right: 0.6rem;
+  bottom: 0.45rem;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
 .briefing-exec-kpi-hint--warn {
   color: #ef4444;
   font-weight: 600;

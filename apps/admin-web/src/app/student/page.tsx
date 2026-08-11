@@ -45,38 +45,33 @@ export default function StudentHomePage() {
           {dailyPlan?.status === "ready" ? (
             <Link
               href={`/student/tutor?lesson=${dailyPlan.lesson_key}`}
-              className="portal-card"
+              className="portal-cta-band"
               data-testid="student-daily-plan"
-              style={{ display: "block", textDecoration: "none", color: "inherit", marginBottom: 16, borderColor: "var(--accent)" }}
             >
-              <div style={{ fontSize: 12, fontWeight: 800, color: "var(--text-muted)", marginBottom: 6 }}>
-                Study this today
-              </div>
-              <div style={{ fontWeight: 800, fontSize: 17, color: "var(--accent-dark)" }}>{dailyPlan.title}</div>
-              <p style={{ fontSize: 14, color: "var(--text-muted)", margin: "8px 0 0" }}>
-                {dailyPlan.reason}
-              </p>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10, fontSize: 12 }}>
-                <span className={`badge ${dailyPlan.grounded && !dailyPlan.fallback ? "badge-success" : "badge-warning"}`}>
+              <div className="portal-cta-band__kicker">Study this today</div>
+              <div className="portal-cta-band__title">{dailyPlan.title}</div>
+              <p className="portal-cta-band__body">{dailyPlan.reason}</p>
+              <div className="portal-cta-band__chips">
+                <span className="portal-cta-band__chip">
                   {dailyPlan.grounded && !dailyPlan.fallback ? "Evidence verified" : "Needs teacher evidence"}
                 </span>
                 {dailyPlan.mastery_pct != null && (
-                  <span className="badge badge-warning">{Math.round(dailyPlan.mastery_pct)}% mastery</span>
+                  <span className="portal-cta-band__chip">{Math.round(dailyPlan.mastery_pct)}% mastery</span>
                 )}
                 {dailyPlan.mastery_topic ? (
-                  <span className="badge badge-info">From {dailyPlan.mastery_topic}</span>
+                  <span className="portal-cta-band__chip">From {dailyPlan.mastery_topic}</span>
                 ) : null}
               </div>
             </Link>
           ) : (
             <Link
               href="/student/tutor"
-              className="portal-card"
+              className="portal-cta-band"
               data-testid="student-daily-plan-empty"
-              style={{ display: "block", textDecoration: "none", color: "inherit", marginBottom: 16, borderColor: "var(--accent)" }}
             >
-              <div style={{ fontWeight: 800, fontSize: 17, color: "var(--accent-dark)" }}>AI Tutor - start here</div>
-              <p style={{ fontSize: 14, color: "var(--text-muted)", margin: "8px 0 0" }}>
+              <div className="portal-cta-band__kicker">AI Tutor</div>
+              <div className="portal-cta-band__title">Start here</div>
+              <p className="portal-cta-band__body">
                 Teacher-style explanations unlock after your first assessed weak topic.
               </p>
             </Link>

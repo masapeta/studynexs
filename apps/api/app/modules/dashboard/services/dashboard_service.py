@@ -122,6 +122,8 @@ class DashboardService:
                 school_id, limit=6, chart_date=today
             )
 
+        attendance_trend = await self._attendance_trend(school_id, days=7)
+
         pending_qp = await self.db.scalar(
             select(func.count())
             .select_from(QuestionPaper)
@@ -145,6 +147,7 @@ class DashboardService:
             admissions_pipeline=pipeline_count or 0,
             expenses_this_month=expenses_month,
             class_performance=class_perf,
+            attendance_trend=attendance_trend,
             pending_qp_approvals=pending_qp or 0,
             principal_interventions=await self._principal_interventions(school_id),
             quick_actions=[
@@ -356,6 +359,33 @@ class DashboardService:
         if pct < 90.0:
             return "attention_needed", pct, marked_i, enrolled
         return "healthy", pct, marked_i, enrolled
+
+    async def _attendance_trend(self, school_id: uuid.UUID, *, days: int = 7) -> list[float]:
+        """School-wide present % for the last `days` recorded days, oldest first.
+
+        Only days with actual records appear — holidays/weekends are skipped,
+        so the sparkline never shows a fake 0%.
+        """
+        rows = (
+            await self.db.execute(
+                select(
+                    Attendance.date,
+                    func.count().filter(Attendance.status == AttendanceStatus.PRESENT),
+                    func.count(func.distinct(Attendance.student_id)),
+                )
+                .where(Attendance.school_id == school_id)
+                .group_by(Attendance.date)
+                .order_by(Attendance.date.desc())
+                .limit(days)
+            )
+        ).all()
+        trend = [
+            round((int(present or 0) / int(marked)) * 100, 1)
+            for _day, present, marked in rows
+            if int(marked or 0) > 0
+        ]
+        trend.reverse()  # oldest first for left-to-right sparkline
+        return trend
 
     @staticmethod
     def _admin_subtitle(att_status: str) -> str:
