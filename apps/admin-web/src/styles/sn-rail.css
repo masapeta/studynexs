@@ -95,28 +95,28 @@
    Floating icon-only rail with hover tooltips. Replaces the wide labeled
    sidebar for the admin/teaching dashboard shell. */
 
+/* Individual floating circles (reference #1): the container is invisible —
+   each icon is its own soft white disc. */
 .sn-app .sidebar.sidebar--rail {
   width: 72px;
   min-width: 72px;
   padding: 0;
   align-items: center;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 24px;
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.06);
+  background: transparent;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
   overflow: hidden;
   transition: width 0.22s cubic-bezier(0.22, 1, 0.36, 1);
   z-index: 55;
 }
 
-/* Expand on hover / keyboard focus — labels appear inline beside icons.
+/* Expand on hover / keyboard focus — circles grow into labeled pills.
    Negative margin keeps the page layout from shifting: the rail overlays. */
 .sn-app .sidebar.sidebar--rail:hover,
 .sn-app .sidebar.sidebar--rail:focus-within {
   width: 216px;
   margin-right: -144px;
-  background: rgba(255, 255, 255, 0.97);
-  box-shadow: 0 16px 48px rgba(15, 23, 42, 0.12);
 }
 
 .sn-app .sidebar--rail .rail-brand {
@@ -143,7 +143,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 9px;
   padding: 6px 0 14px;
   width: 100%;
   overflow-y: auto;
@@ -159,7 +159,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 9px;
   width: 100%;
 }
 
@@ -169,11 +169,9 @@
   padding-left: 13px;
 }
 
+/* No dividers between separated circles — the gap is the separator */
 .sn-app .sidebar--rail .rail-divider {
-  width: 26px;
-  height: 1px;
-  background: rgba(15, 23, 42, 0.07);
-  margin: 7px 0;
+  display: none;
 }
 
 .sn-app .sidebar--rail .rail-item {
@@ -185,7 +183,10 @@
   width: 46px;
   height: 46px;
   padding: 0 13px;
-  border-radius: 15px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.05);
+  box-shadow: 0 3px 12px rgba(23, 26, 45, 0.06);
   color: var(--text-muted);
   text-decoration: none;
   overflow: hidden;
@@ -206,8 +207,9 @@
 }
 
 .sn-app .sidebar--rail .rail-item:hover {
-  background: rgba(15, 23, 42, 0.05);
+  background: #ffffff;
   color: var(--text-secondary);
+  box-shadow: 0 6px 18px rgba(23, 26, 45, 0.1);
 }
 
 .sn-app .sidebar--rail .rail-item.active {
