@@ -37,7 +37,27 @@ export default function PortalShell({
     <div className="sn-app portal-device-stage">
       <AppBackground />
       <div className={`portal-device-frame${wide ? " portal-device-frame--wide" : ""}`}>
-        <div className="portal-shell">
+        <div className="portal-shell portal-shell--railed">
+          {/* Desktop-only icon rail (reference layout); hidden on mobile via CSS */}
+          <nav className="portal-rail" aria-label="Portal navigation">
+            {nav.map((item) => {
+              const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`portal-rail-item${active ? " active" : ""}`}
+                  aria-label={item.label}
+                  aria-current={active ? "page" : undefined}
+                  title={item.label}
+                >
+                  {Icon && <Icon size={20} strokeWidth={active ? 2.4 : 2} aria-hidden />}
+                </Link>
+              );
+            })}
+          </nav>
+          <div className="portal-body">
           <DemoDataBanner />
           <header className="portal-header">
             <div>
@@ -100,6 +120,7 @@ export default function PortalShell({
               );
             })}
           </nav>
+          </div>
         </div>
       </div>
       <p className="portal-device-caption">StudyNexs portal</p>

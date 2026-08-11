@@ -102,28 +102,34 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       <AppBackground />
       <DemoDataBanner />
       <div className="app-layout sn-app-enter">
-        <aside className="sidebar">
-          <StudyNexsBrandMark schoolName={schoolDisplayName} compact />
+        <aside className="sidebar sidebar--rail" aria-label="Main navigation">
+          <div className="rail-brand" title={schoolDisplayName || undefined}>
+            <StudyNexsBrandMark compact />
+          </div>
 
-          <nav className="sidebar-nav" aria-label="Main navigation">
-            {NAV_GROUPS.map((group) => {
+          <nav className="rail-nav">
+            {NAV_GROUPS.map((group, groupIndex) => {
               const items = group.items.filter(
                 (item) => moduleVisible(item.module) && itemVisible(item)
               );
               if (!items.length) return null;
               return (
-                <div key={group.label} className="sidebar-nav-group">
-                  <div className="sidebar-nav-group-label">{group.label}</div>
+                <div key={group.label} className="rail-group" role="group" aria-label={group.label}>
+                  {groupIndex > 0 && <div className="rail-divider" aria-hidden />}
                   {items.map((item) => {
                     const Icon = item.icon;
                     return (
                       <Link
                         key={item.href}
                         href={item.href}
-                        className={`nav-item ${isActive(item.href) ? "active" : ""}`}
+                        className={`rail-item${isActive(item.href) ? " active" : ""}`}
+                        aria-label={item.label}
+                        aria-current={isActive(item.href) ? "page" : undefined}
                       >
-                        <Icon className="nav-icon" size={19} strokeWidth={1.9} />
-                        {item.label}
+                        <Icon size={20} strokeWidth={1.9} aria-hidden />
+                        <span className="rail-tooltip" role="presentation">
+                          {item.label}
+                        </span>
                       </Link>
                     );
                   })}

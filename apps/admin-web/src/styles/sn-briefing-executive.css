@@ -182,6 +182,22 @@
   width: 100%;
 }
 
+/* Row variant — greeting left, quick-action pills right (fintech reference) */
+.briefing-page--executive .briefing-exec-header.briefing-exec-header--row {
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.briefing-page--executive .briefing-exec-header--row .briefing-exec-header__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
 .briefing-page--executive .briefing-title {
   font-size: 1.55rem;
   font-weight: 800;

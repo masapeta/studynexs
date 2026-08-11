@@ -351,12 +351,40 @@ export function MorningBriefing({
       })()
     : summary.subtitle;
 
+  const actionPills = isAdmin
+    ? [
+        { label: "Mark attendance", href: "/dashboard/attendance", primary: true },
+        { label: "Record payment", href: FINANCE.fees },
+        { label: "Add student", href: STUDENTS.root },
+        { label: "Post notice", href: "/dashboard/notices" },
+        { label: "Approve papers", href: TEACHING.aiPapers },
+      ]
+    : [
+        { label: "Mark attendance", href: "/dashboard/attendance", primary: true },
+        { label: "Generate paper", href: TEACHING.aiPapers },
+        { label: "Enter marks", href: TEACHING.exams },
+        { label: "Mastery", href: TEACHING.mastery },
+      ];
+
   return (
     <div className="briefing-page briefing-page--executive">
-      <header className="briefing-header briefing-exec-header">
-        <h1 className="briefing-title">{greeting}, {first}</h1>
-        <p className="briefing-subtitle">{summary.subtitle}</p>
-        {isAdmin ? <p className="briefing-exec-story">{storyLine}</p> : null}
+      <header className="briefing-header briefing-exec-header briefing-exec-header--row">
+        <div className="briefing-exec-header__text">
+          <h1 className="briefing-title">{greeting}, {first}</h1>
+          <p className="briefing-subtitle">{summary.subtitle}</p>
+          {isAdmin ? <p className="briefing-exec-story">{storyLine}</p> : null}
+        </div>
+        <div className="briefing-actions-row" aria-label="Quick actions">
+          {actionPills.map((pill) => (
+            <Link
+              key={pill.href + pill.label}
+              href={pill.href}
+              className={`briefing-action-pill${pill.primary ? " briefing-action-pill--primary" : ""}`}
+            >
+              {pill.label}
+            </Link>
+          ))}
+        </div>
       </header>
 
       <ExecutiveKpiBar items={isAdmin ? adminKpis : inchargeKpis} />

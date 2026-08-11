@@ -1,0 +1,263 @@
+/* ── Icon rail sidebar — fintech-reference layout (loaded last) ──────────
+   Floating icon-only rail with hover tooltips. Replaces the wide labeled
+   sidebar for the admin/teaching dashboard shell. */
+
+.sn-app .sidebar.sidebar--rail {
+  width: 72px;
+  min-width: 72px;
+  padding: 0;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 24px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.06);
+  overflow: visible; /* tooltips must escape */
+}
+
+.sn-app .sidebar--rail .rail-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 0 10px;
+  width: 100%;
+}
+
+/* Brand mark only — hide the text lines inside the rail */
+.sn-app .sidebar--rail .rail-brand .sidebar-brand {
+  padding: 0;
+  border: none;
+  justify-content: center;
+}
+
+.sn-app .sidebar--rail .rail-brand .sidebar-brand-text {
+  display: none;
+}
+
+.sn-app .sidebar--rail .rail-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 0 14px;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: visible;
+  scrollbar-width: none;
+}
+
+.sn-app .sidebar--rail .rail-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.sn-app .sidebar--rail .rail-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+}
+
+.sn-app .sidebar--rail .rail-divider {
+  width: 26px;
+  height: 1px;
+  background: rgba(15, 23, 42, 0.07);
+  margin: 7px 0;
+}
+
+.sn-app .sidebar--rail .rail-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 15px;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition:
+    background var(--platform-transition-ui, 0.15s ease),
+    color var(--platform-transition-ui, 0.15s ease),
+    box-shadow var(--platform-transition-ui, 0.15s ease);
+}
+
+.sn-app .sidebar--rail .rail-item:hover {
+  background: rgba(15, 23, 42, 0.05);
+  color: var(--text-secondary);
+}
+
+.sn-app .sidebar--rail .rail-item.active {
+  background: color-mix(in srgb, var(--accent) 75%, #0f172a 25%);
+  color: #fff;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.sn-app .sidebar--rail .rail-item:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 4px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+/* Hover tooltip — the label lives here now */
+.sn-app .sidebar--rail .rail-tooltip {
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+  padding: 5px 11px;
+  border-radius: 9px;
+  background: #0f172a;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.14s ease, transform 0.14s ease;
+  z-index: 60;
+}
+
+.sn-app .sidebar--rail .rail-item:hover .rail-tooltip,
+.sn-app .sidebar--rail .rail-item:focus-visible .rail-tooltip {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sn-app .sidebar--rail .rail-tooltip {
+    transition: none;
+  }
+}
+
+/* Mobile — rail hidden like the old sidebar (topbar/portal nav carries) */
+@media (max-width: 768px) {
+  .sn-app .sidebar.sidebar--rail {
+    display: none;
+  }
+}
+
+/* ── Greeting action row — reference's Send/Request/Transfer pills ─────── */
+
+.sn-app .briefing-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sn-app .briefing-action-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background var(--platform-transition-ui, 0.15s ease),
+    box-shadow var(--platform-transition-ui, 0.15s ease),
+    transform var(--platform-transition-ui, 0.15s ease);
+}
+
+.sn-app .briefing-action-pill:hover {
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+
+.sn-app .briefing-action-pill--primary {
+  background: color-mix(in srgb, var(--accent) 75%, #0f172a 25%);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.sn-app .briefing-action-pill--primary:hover {
+  background: color-mix(in srgb, var(--accent) 82%, #0f172a 18%);
+  color: #fff;
+}
+
+.sn-app .briefing-header.briefing-exec-header--row,
+.briefing-page--executive .briefing-exec-header.briefing-exec-header--row {
+  display: flex;
+  flex-direction: row; /* the base exec-header is a column — force the row */
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.sn-app .briefing-exec-header--row .briefing-exec-header__text {
+  min-width: 0;
+}
+
+/* ── Portal desktop rail — student/parent portals on wide screens ──────── */
+
+/* Mobile default: rail hidden, bottom nav carries navigation */
+.sn-app .portal-rail {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .sn-app .portal-device-frame:not(.portal-device-frame--wide) {
+    max-width: 720px;
+    width: min(92vw, 720px);
+    border-radius: 28px;
+  }
+
+  .sn-app .portal-shell--railed {
+    flex-direction: row;
+  }
+
+  .sn-app .portal-shell--railed .portal-rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 18px 10px;
+    border-right: 1px solid rgba(15, 23, 42, 0.06);
+    flex-shrink: 0;
+  }
+
+  .sn-app .portal-shell--railed .portal-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sn-app .portal-shell--railed .portal-rail .portal-rail-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    color: var(--text-muted);
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .sn-app .portal-shell--railed .portal-rail .portal-rail-item:hover {
+    background: rgba(15, 23, 42, 0.05);
+    color: var(--text-secondary);
+  }
+
+  .sn-app .portal-shell--railed .portal-rail .portal-rail-item.active {
+    background: color-mix(in srgb, var(--accent) 75%, #0f172a 25%);
+    color: #fff;
+    box-shadow: 0 5px 14px color-mix(in srgb, var(--accent) 28%, transparent);
+  }
+
+  /* With the rail present, hide the bottom nav on desktop */
+  .sn-app .portal-shell--railed ~ .portal-bottom-nav,
+  .sn-app .portal-shell--railed .portal-bottom-nav {
+    display: none;
+  }
+}
