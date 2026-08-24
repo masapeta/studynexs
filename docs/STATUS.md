@@ -116,6 +116,10 @@ canonical roadmap names are:
 | Nginx Gateway Hardening - Security headers, private /metrics | Complete / validated / published |
 | Gate 1A Deploy Kit - VM bootstrap + release scripts | Complete / validated / published |
 | AEI Pilot Activation Kit - Staged runbook + OCR Track-A live benchmark runner | Complete / validated / published |
+| Gate S Phase 0 - Canonical runtime integrity (P0-ENV-001) | Complete / verified in running product |
+| Gate S Phase 1 - Fee privacy authorization (P0-SEC-001) | Complete / verified in running product |
+| Gate S Phase 2 - LLM structured-output parsing (P1-AI-001/002) | Complete / verified in running product |
+| Gate S Phase 3a - Attendance follows a class change (P1-DATA-001) | Complete / verified in running product |
 | EUI v1 architecture | Frozen / accepted |
 | EUI Runtime Roadmap v1 | Accepted planning baseline |
 | Phase 0 - Engineering Preparation | Complete / certified / published |
@@ -127,6 +131,99 @@ canonical roadmap names are:
 | Phase 6 - Trust Framework | Trust Report foundation complete / certified / published |
 | Phase 7 - Consumer Migration | Closed at Phase 7E; 7F source adoption deferred / future scope |
 | Runtime consumer migration | AEI passive dual-read with rich internal EUI evidence, internal divergence readiness review, narrow internal source-readiness candidate foundation, and internal source-readiness trial foundation published; source-of-truth switch not authorized |
+
+---
+
+## Gate S — Production-trust remediation (in progress)
+
+Remediation of the Production Trust Audit
+([`docs/reviews/PRODUCTION_TRUST_AUDIT_2026-08.md`](reviews/PRODUCTION_TRUST_AUDIT_2026-08.md)),
+which returned **ORANGE / 5.0-of-10** and blocked a real school term.
+
+**Status wording rule adopted for this gate:** an item is only marked *verified* when the
+failure was first **reproduced in the running product** and the fix **re-verified there** —
+not when unit tests pass. The audit proved a 970-test green suite can coexist with every P1
+still reproducible, so unit-test-only evidence no longer earns a status here.
+
+| Phase | Finding | Status | Live verification |
+|---|---|---|---|
+| 0 | P0-ENV-001 — runtime served the archived `academix-platform` build (140 routes, not 182) | ✅ Fixed / verified | `uvicorn` from a neutral cwd with no `PYTHONPATH` now serves **182** paths; all 5 canary routes present |
+| 1 | P0-SEC-001 — `GET /fees/recent` admitted `role=teacher`, exposing every family's payments | ✅ Fixed / verified | `teacher` **200 → 403** on real fee data (was 50 receipts / 49 households / ₹125,000); `admin` + `super_admin` retain 200 |
+| 2 | P1-AI-001/002 — fenced-JSON parse failures break Tutor, QP generation, Teacher Copilot | ✅ Fixed / verified | Live repro **10-of-14 → 0-of-14 failing**. Student Tutor answered in-browser (`200`, `grounded: true`, 2 citations) where it previously rendered `Copilot returned invalid JSON`; QP generation `400 → 200` (41 marks / 4 sections / 11 questions, ×2); Teacher Copilot feedback `400 → 200` with citations. All 4 controls still pass |
+| 3a | P1-DATA-001 — attendance filed to a stale class after a class change | ✅ Fixed / verified | Live: row now **moves** to the receiving class. Before: `Grade 1 B` kept the row while `Grade 1 C` marked the student — C's register showed nothing, B counted a student who had left. After (clean slate): exactly **one** row, on C; B summary `total: 0`, C `present: 1` |
+| 3b–3e | P1-DATA-002/003/004, P1-VAL-001 — marks bounds, report-card scoping, impossible percentages | ⏳ Not started | — |
+| 4 | P1-UX-002 — evaluation stale state (wrong-student attribution) | ⏳ Not started | — |
+| 5 | P1-PDF-001 — all 5 PDF surfaces return 503 (WeasyPrint/libgobject) | ⏳ Not started | Known-failing: `tests/test_authorization.py::test_receipt_download_object_level_access` (`assert 503 == 200`) |
+
+### Phase 0 notes — why the test suite could not have caught it
+
+pytest inserts its rootdir (`apps/api`) at `sys.path[0]` (no `tests/__init__.py`), and a real
+directory outranks an editable-install finder. So **pytest always imported the local `app/`
+regardless of the broken install**, while `uvicorn` — which does not touch `sys.path` — served
+the archived copy. A guard asserting on `app.__file__` is therefore a false negative; the new
+guard inspects the *installed distribution record* instead. Verified by reproducing the bad
+install and watching the guard fail, then pass after repair.
+
+New hard CI gate: `pytest tests/test_canonical_runtime.py` (runs before lint, which stays
+report-only). See the correction appended to
+[`CANONICAL_REPOSITORY.md`](../CANONICAL_REPOSITORY.md).
+
+### Phase 1 notes
+
+`/fees/recent` was the only fee route granting a teaching role; `/stats` and `/roster` were
+already correct, so this was a copy-paste slip rather than a policy. The frontend already
+gated the call behind `isAdmin`, so removing the role is additive-safe with no UI change.
+`class_incharge` was already correctly denied — which is exactly why a sweep that tests one
+role per tier missed the bug.
+
+### Phase 2 notes — one missing utility, three broken features
+
+There was no tolerant JSON parser. Nine call sites each did bare `json.loads(result.text)`,
+and the configured provider (`gemma4:cloud`) returns **markdown-fenced** JSON for structured
+prompts (`` ```json\n{...}\n``` ``) and bare JSON only for trivial ones. So the failure was
+100% reproducible on exactly the three highest-value AI surfaces and invisible everywhere
+else. All nine sites now route through `app/modules/ai/gateway/json_parse.py::parse_llm_json`.
+
+Deliberate design choices:
+
+- **It recovers decoration, never repairs malformed JSON.** A silently "fixed" exam paper or
+  grade is worse than a clean failure, so truncated JSON still raises.
+- **Brace slicing is string-literal aware.** A naive `find('{')`/`rfind('}')` mis-slices when
+  braces appear inside generated question text.
+- **Raw model output is no longer logged.** Tutor / parent-copilot / evaluation replies carry
+  student PII (names, mobiles, answers, marks); the parser logs only a structural fingerprint
+  (`fence=yes braces=1/0 …`) plus length. This *tightened* two pre-existing `raw=` log lines
+  in `question_paper_service` and `evaluation_engine`.
+- **Students no longer see developer strings.** `"Copilot returned invalid JSON"` was rendered
+  directly in the student tutor; it is now a calm, generic message (also satisfies Phase 6).
+- **Parent copilot and curriculum extraction keep their graceful fallbacks** — which is why
+  they appeared to "work" before and masked how broad the defect was.
+
+Regression tests are call-site-level on purpose, since a utility test would not have caught
+the original bug: an AST guard bans `json.loads(<llm result>.text)` anywhere in `app/`, and a
+`capsys` guard-the-guard test proves log capture works (a `caplog` assertion silently passes
+against structlog's stdout, which false-passed on the first attempt).
+
+### Phase 3a notes — attendance and the one-row-per-day constraint
+
+`uq_attendance_student_date` is `(school_id, student_id, date)` — deliberately **one row per
+student per day** — so a mid-day class change must *move* that row. `mark_bulk`'s
+`ON CONFLICT … set_` updated `status`, `remarks` and `marked_by` but **not `class_id`**, so the
+row stayed on the old class while the API answered *"Attendance marked for 1 students"*.
+
+Both registers then contradicted each other: the receiving teacher saw an empty register, and
+the class the student had **left** still counted them. Neither teacher had any signal that
+anything was wrong — the failure is silent and it corrupts the attendance record every time a
+student changes class.
+
+Audit of the sibling upserts: `mastery_service` already updates `class_id` on conflict, and
+`ExamMark` has no `class_id` at all (class comes via the exam), so **attendance was the only
+site with this defect** — an oversight rather than a policy.
+
+Fix is one line (`"class_id": stmt.excluded.class_id`). Regression tests assert on the
+**register and summary a teacher actually sees**, not just the stored row, because the row
+alone would not have exposed the double-counting. A third test pins the ordinary
+same-class correction path so the fix cannot over-correct into duplicate rows.
 
 ---
 

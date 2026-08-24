@@ -8,6 +8,133 @@ See [`../README.md`](../README.md) for document precedence.
 
 ---
 
+## 2026-08-24 — Verification standard: "reproduce in the running product, or it isn't fixed"
+
+**Decision:** For Gate S production-trust remediation, an item may only be marked fixed when
+the failure was **reproduced in the running product first** and the fix **re-verified there**.
+Unit tests are necessary but never sufficient evidence. Each fix additionally ships a
+regression test proven to fail before it and pass after (red→green demonstrated, not assumed).
+
+**Reason:** The Production Trust Audit found a 970-test green suite coexisting with every P1
+still reproducible by hand. Phase 0 then produced a concrete mechanism for that gap: pytest
+inserts its rootdir (`apps/api`) at `sys.path[0]`, and a real directory outranks an
+editable-install finder — so **pytest always imported the local `app/` even while the editable
+install pointed at the archived `academix-platform` repo**, which is what `uvicorn` actually
+served. The obvious guard (`assert "academix-platform" not in app.__file__`) was verified to
+*pass while the bug was active*. Test-suite green is therefore not evidence of runtime health.
+
+**Consequence:** guards for environment-class defects must assert on the **installed
+distribution record**, not the imported module. `tests/test_canonical_runtime.py` is a hard CI
+gate. Any future "certified" claim in `STATUS.md` requires a live-verification column entry.
+
+**Alternatives considered:** (a) trust the existing suite — rejected, empirically disproven;
+(b) assert a route *count* (182) — rejected, breaks on every new endpoint, so pinned five
+canary routes instead.
+
+**Rollback:** none needed; additive test + docs only.
+
+---
+
+## 2026-08-25 — Attendance upserts must move the row to the marking class (P1-DATA-001)
+
+**Decision:** `mark_bulk`'s `ON CONFLICT … set_` now updates `class_id`. Whenever a uniqueness
+constraint deliberately collapses a fact to one row, **every column that identifies the
+context of that fact must appear in the update clause** — otherwise the row silently keeps a
+stale context.
+
+**Reason:** `uq_attendance_student_date` is `(school_id, student_id, date)` — one row per
+student per day, by design. `class_id` was omitted from the update, so a student who changed
+class mid-day kept the row on the *old* class. Verified live: the receiving teacher marked the
+student present, got *"Attendance marked for 1 students"*, and their register showed nothing —
+while the class the student had left still counted them. Two teachers' screens contradicted
+each other with no error anywhere.
+
+**Why this class of bug is dangerous:** it is a **silent** data-correctness failure on a daily
+workflow. Attendance feeds report cards and parent communication, so a wrong row propagates.
+No exception, no log, no user-visible signal.
+
+**Scope checked:** the two sibling upserts are correct — `mastery_service` already updates
+`class_id`, and `ExamMark` has no `class_id` (class is reached via the exam). `mark_bulk` is
+also the only attendance write path, so this was an isolated oversight, not a policy.
+
+**Prevention:** `tests/test_attendance_class_change.py` asserts on the **register and summary a
+teacher sees**, not merely the stored row — the row alone would not have revealed the
+double-counting. A third test pins the same-class correction path (update in place, never a
+duplicate) so the fix cannot over-correct.
+
+**Rollback:** drop `"class_id": stmt.excluded.class_id` — this reopens silent corruption.
+
+---
+
+## 2026-08-24 — One tolerant LLM JSON parser; raw model output is never logged (P1-AI-001/002)
+
+**Decision:** All LLM structured output is parsed by exactly one utility,
+`app/modules/ai/gateway/json_parse.py::parse_llm_json`. Bare `json.loads(<llm result>.text)`
+is banned in `app/` and enforced by an AST-based test. The parser recovers well-formed JSON
+from decoration (markdown fences, surrounding prose) but **never repairs malformed JSON**.
+Separately: **raw model output must not be logged** — only a structural fingerprint.
+
+**Reason:** Nine call sites each parsed provider text by hand, and the configured provider
+(`gemma4:cloud`) returns markdown-fenced JSON for structured prompts. The result was a 100%
+failure rate on the Student Tutor, question-paper generation and Teacher Copilot, reproduced
+live at 10-of-14 probes failing — while the unit suite stayed green, because no test exercised
+a realistic provider payload. Students were shown the developer string
+`"Copilot returned invalid JSON"`.
+
+**Why not repair malformed JSON:** a silently "fixed" exam paper or grade is worse than a
+clean failure, so truncated/invalid JSON raises `LLMJsonError` and the feature declines.
+Grounded-and-absent beats confidently-wrong (§109.1).
+
+**Why raw output is not logged:** consolidating nine sites onto one parser would have widened
+two pre-existing `raw=(result.text)[:400]` log lines to *all* AI surfaces — including tutor,
+parent-copilot and evaluation replies, which contain student names, mobiles, answers and marks
+(§31, §43, §62.5). The parser logs `feature`, `raw_len` and a content-free shape
+(`starts=… fence=yes braces=1/0 …`), which is sufficient to spot a provider regression.
+
+**Tradeoff accepted:** losing the raw text costs some debuggability on novel provider quirks.
+Mitigated by the shape fingerprint and by `llm_json_recovered` telemetry, which reveals a
+format drift *before* it becomes a failure.
+
+**Prevention:** call-site-level tests (a utility-only test would not have caught the original
+bug) — `test_llm_json_call_sites.py` (AST guard + per-module feature tags),
+`test_llm_json_parse.py` (27, incl. a verbatim captured provider payload), and
+`test_llm_json_no_leak_endpoint.py` (hostile payloads never reach users; PII never reaches
+logs). The last file also carries a **guard-the-guard** test: structlog writes to stdout, so a
+`caplog`-based leak assertion silently passes against an empty string — it false-passed on the
+first attempt and now uses `capsys`.
+
+**Rollback:** revert the nine call sites to `json.loads`; this reintroduces total failure
+against the current provider.
+
+---
+
+## 2026-08-24 — Fee aggregates are admin-only (P0-SEC-001)
+
+**Decision:** School-wide fee aggregate endpoints (`/fees/recent`, `/fees/roster`,
+`/fees/stats`) are restricted to `admin` and `super_admin`. `teacher` was removed from
+`GET /fees/recent`. Teaching roles read a single child's fees only via
+`/fees/student/{id}`, which is object-authorized by `assert_can_access_student`.
+
+**Reason:** `require_roles("admin", "super_admin", "teacher")` let any subject teacher
+enumerate every family's payment history — verified live at 50 receipts across 49 households
+(₹125,000), including student name, class, amount, mode, and receipt number. Under DPDP that
+is a reportable disclosure of guardians' financial data. `/stats` and `/roster` already omitted
+`teacher`, so this was a copy-paste slip, not a policy choice; `class_incharge` was already
+correctly denied.
+
+**Tradeoff accepted:** none material. The only caller
+(`admin-web/src/components/briefing/DashboardWidgets.tsx`) already gates the request behind
+`isAdmin`, so the change is additive-safe with no UI regression.
+
+**Prevention:** `tests/test_fee_authorization_matrix.py` asserts **every** `UserRole` against
+every fee aggregate on **seeded real payment data** (a `200` with `[]` is explicitly rejected
+as an authorization pass), plus a static guard that fails if any fee route ever names a
+teaching/portal role in `require_roles`.
+
+**Rollback:** re-add `"teacher"` to the decorator — but this would reopen the disclosure.
+
+---
+
 ## 2026-08-04 — AEI v1.0 pilot activation Stages 1–2 authorized
 
 **Decision:** ARM authorizes enabling the certified AEI v1.0 Stage 1 and

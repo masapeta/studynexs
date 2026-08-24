@@ -1075,4 +1075,184 @@ Public signup, tenant cloning, TTL cleanup, digital assessment, parent automatio
 
 ---
 
-## Machine-readable snapshot (read this first)
+# Engineering Session 12 — Gate S production-trust remediation, Phases 0–3a (2026-08-24)
+
+**Authorization:** ARM — remediate the Production Trust Audit
+([`reviews/PRODUCTION_TRUST_AUDIT_2026-08.md`](./reviews/PRODUCTION_TRUST_AUDIT_2026-08.md),
+ORANGE / 5.0-of-10) in strict priority order. **No new features.** Uncommitted.
+
+## Engineering context (the *why*)
+
+The audit's central finding was not any single bug: it was that **970 passing tests coexisted
+with every P1 still reproducible by hand**. Phase 0 found the mechanism. pytest inserts its
+rootdir (`apps/api`) at `sys.path[0]` because `tests/` has no `__init__.py`, and a real
+directory outranks an editable-install finder — so pytest imported the *local* `app/` while
+the editable install pointed at the archived `academix-platform` repo, which is what `uvicorn`
+actually served (140 routes vs 182). **I verified that the obvious guard —
+`assert "academix-platform" not in app.__file__` — passes while the bug is active.**
+
+Consequence for the rest of this gate: every phase is verified against the **running API**,
+not pytest alone, and each fix's regression test is proven red before green. Recorded as a
+standing decision in `decisions/DECISION_LOG.md` (2026-08-24).
+
+## Done
+
+### Phase 0 — canonical runtime (P0-ENV-001)
+
+- Uninstalled the stale editable install (`app` → `D:/Projects/academix-platform/apps/api/app`)
+  and reinstalled from canonical `apps/api`.
+- **`tests/test_canonical_runtime.py`** (new, 3 tests). The load-bearing assertion reads the
+  *installed distribution record* (setuptools `__editable___*_finder.MAPPING`, falling back to
+  PEP 610 `direct_url.json`) — not `app.__file__`, which pytest masks. Note
+  `Distribution.from_name` can resolve to a local `studynexs_api.egg-info` in the source tree,
+  which also hides a bad install, so the finder is checked first. Route canaries pin 5
+  endpoints instead of a count so new endpoints don't break the test.
+- CI: added a **hard gate** step (`pytest tests/test_canonical_runtime.py`) before the
+  report-only lint step in `.github/workflows/ci.yml`.
+- Corrected the stale "Runtime path references to `academix-platform` — ✅ None" row in
+  `CANONICAL_REPOSITORY.md` (it was true for the Docker bind mount, false for local dev).
+
+### Phase 1 — fee privacy (P0-SEC-001)
+
+- `app/modules/fees/endpoints/fee.py`: removed `"teacher"` from `GET /fees/recent`
+  (`require_roles("admin", "super_admin")`), matching `/stats` and `/roster`.
+- **`tests/test_fee_authorization_matrix.py`** (new, 26 tests): every `UserRole` × every fee
+  aggregate, on **seeded real payment data**. Encodes two audit lessons — a `200` with `[]` is
+  not an authorization pass (a guard test asserts the seed is visible to admin first, so the
+  deny-cases can't be vacuous), and every role is enumerated rather than one per tier. Plus a
+  static guard that fails if any fee route ever names a teaching/portal role in `require_roles`.
+
+### Phase 2 — LLM structured-output parsing (P1-AI-001/002)
+
+Root cause: **there was no JSON parser.** Nine sites each called bare
+`json.loads(result.text)`, and `gemma4:cloud` returns markdown-fenced JSON for structured
+prompts and bare JSON only for trivial ones (confirmed by capturing both shapes live). Hence
+a 100% failure rate on precisely the three flagship AI surfaces, and nowhere else.
+
+- **`app/modules/ai/gateway/json_parse.py`** (new): `parse_llm_json(raw, *, feature, expect)`
+  tries exact → whitespace-stripped → fence-stripped → prose-sliced, validates the top-level
+  container type, and raises `LLMJsonError` otherwise. Brace slicing is **string-literal
+  aware** (a naive `find`/`rfind` mis-slices on braces inside generated question text). It
+  **does not repair malformed JSON** — a silently "fixed" paper or grade is worse than a clean
+  failure, so truncated JSON still raises.
+- Wired into all 9 sites (tutor, QP, evaluation engine, 3× teacher copilot, curriculum
+  extraction, 2× parent copilot). Each site keeps its own user-facing message and log event;
+  `except (json.JSONDecodeError, TypeError)` → `except LLMJsonError`. The parent-copilot and
+  curriculum-extraction **graceful fallbacks are preserved** — those degrade quietly, which is
+  why they masked how widespread the defect was.
+- **Privacy tightening (not in the original scope, but required by §31/§43/§62.5):** two
+  pre-existing log lines (`question_paper_service`, `evaluation_engine`) logged raw provider
+  text via `raw=(result.text or "")[:400]`. Routing tutor/parent/evaluation output through one
+  parser would have widened that to **all nine** sites — i.e. student names, mobiles, answers
+  and marks into the log store. The parser now logs only a structural fingerprint
+  (`starts=… fence=yes braces=1/0 …`) plus length. No raw model output is logged anywhere.
+- **Student-facing copy:** `"Copilot returned invalid JSON"` was rendered verbatim in the
+  student tutor. Now `"The tutor could not put that into words just now. Please try again."`
+  (this also discharges part of Phase 6).
+
+Regression tests are **call-site level**, because a utility-only test would not have caught the
+original bug:
+
+- `tests/test_llm_json_parse.py` (27) — parser behaviour, incl. a verbatim captured provider
+  payload, braces inside strings, and "truncated JSON is *not* repaired".
+- `tests/test_llm_json_call_sites.py` (16) — asserts each module calls `parse_llm_json` with
+  its feature tag, plus an **AST guard** banning `json.loads(<llm result>.text)` anywhere in
+  `app/`. (A first attempt used string matching and false-positived on the anti-pattern
+  documented in the parser's own docstring; the AST walk is immune to prose.)
+- `tests/test_llm_json_no_leak_endpoint.py` (20) — hostile payloads (traceback, API key, DSN,
+  system prompt, HTML 502) never reach a user message; PII never reaches the logs; diagnostics
+  are still present. Includes a **guard-the-guard** test: `caplog` is empty for structlog
+  (stdout), so the first PII assertion passed against `''` — a false green of exactly the kind
+  this audit is about. Switched to `capsys` and proved it red.
+
+### Phase 3a — attendance follows a class change (P1-DATA-001)
+
+- `app/modules/attendance/services/attendance_service.py`: added
+  `"class_id": stmt.excluded.class_id` to `mark_bulk`'s `ON CONFLICT … set_`.
+  `uq_attendance_student_date` is `(school_id, student_id, date)` — one row per student per
+  day — so a mid-day class change must **move** the row. It didn't, so the receiving teacher
+  got "Attendance marked for 1 students" while their register stayed empty and the class the
+  student had **left** kept counting them. Silent, and it corrupts the record every time.
+- **Checked the sibling upserts before assuming this was isolated:** `mastery_service` already
+  updates `class_id` on conflict, and `ExamMark` has no `class_id` (class comes via the exam).
+  Attendance was the only defective site — an oversight, not a policy. Also confirmed
+  `mark_bulk` is the *only* attendance write path.
+- **`tests/test_attendance_class_change.py`** (new, 3 tests). Two assert on the **register and
+  summary a teacher actually sees** — the stored row alone would not have exposed the
+  double-counting. The third pins the ordinary same-class correction path (one row updated in
+  place, no duplicate) so the fix cannot over-correct.
+
+## Verification
+
+| Check | Result |
+|-------|--------|
+| `app.__file__` from a neutral cwd, no `PYTHONPATH` | canonical `studynexs-dev/apps/api/app` |
+| `/openapi.json` served paths (plain `uvicorn`) | **182** (was 140); 5/5 canaries present |
+| Phase 0 guard — bug reintroduced | **FAILED** as designed, then 3 passed after repair |
+| Live: `teacher` → `GET /fees/recent` | **200 → 403** (was 50 receipts / 49 families / ₹125,000) |
+| Live: `admin` / `super_admin` → all 3 aggregates | 200 retained (no over-tightening) |
+| Phase 1 suite — bug reintroduced | **3 FAILED** as designed (live probe + payload + static) |
+| `pytest tests/test_fee_authorization_matrix.py` | 26 passed |
+| Affected suites (fees, authorization, staff perms, runtime) | **51 passed, 1 failed** |
+| Live Phase 2 repro (`tmp/qa-audit/p2_repro.py`) | **10-of-14 failing → 0-of-14** |
+| Live: Student Tutor `/ask` × 7 hostile+normal prompts | `400 → 200` all 7; `grounded: true`, citations present |
+| Live: Student Tutor **in the browser** | grounded answer + 2 sources rendered where `Copilot returned invalid JSON` used to appear |
+| Live: QP generate × 2 | `400 → 200`; 41 marks / 4 sections / 11 questions |
+| Live: Teacher Copilot feedback-draft | `400 → 200`; grounded feedback + `citation_sources` |
+| Live controls (parent briefing / parent ask / lesson plan / onboarding) | 200 / 200 / 201 / 201 — unchanged |
+| Phase 2 tests — call site reverted to `json.loads` | **2 FAILED** as designed (feature-tag + AST guard, named file:line) |
+| Phase 2 tests — raw logging reintroduced | **1 FAILED** as designed (caught a student name + mobile in logs) |
+| `pytest` Phase 2 files (3 new files) | 63 passed |
+| Directly-affected suites (student/teacher/parent copilot, tutor, QP, evaluation engine) | **36 passed** |
+| Wider AI + curriculum suites (credits, routing, hardening, telemetry, governance, bank, policy, golden harness, grounding) | **80 passed** |
+| QP studio / bank compose+ingest / exam questions / tutor speech+TTS / AEI readiness | **61 passed, 1 skipped** |
+| Answer-sheet evaluation (consumes the parser) | **23 passed** |
+| Fee matrix + curriculum pack | **29 passed** |
+| Live Phase 3a repro, **before** fix | row stayed on `Grade 1 B` after `Grade 1 C` marked the student; C's register **empty**, B counted a departed student |
+| Live Phase 3a, **after** fix (clean slate) | exactly **one** row, on `Grade 1 C`; A summary `total: 0`, C `present: 1` |
+| Phase 3a tests \u2014 `class_id` removed from `set_` | **2 FAILED** as designed (register empty for the marking teacher); the over-correction control still passed |
+| `pytest` attendance suites (new + existing + dashboard state) | **8 passed** |
+| `ruff` on changed files | clean (2 pre-existing issues untouched: 4 E501s in `teacher_copilot_service` prompt strings \u2014 4 on HEAD, 4 now \u2014 and an unused `AttendanceStatus` import that predates this session) |
+
+**Full-suite note (honest):** the complete suite was **not** run to green in this session. Its
+DB-backed AI tests average ~6 s each (measured: 29 tests / 162 s; 23 tests / 156 s), so a full
+pass exceeds an hour. Two concurrent runs early on collided on the shared test database and
+produced a misleading `E`/`F` storm — **that was a harness artifact, not a code regression**;
+re-running single-threaded produced all dots. I verified 229 tests across every suite touching
+the changed modules instead. A clean full-suite run is still outstanding.
+
+**The 1 failure is pre-existing and unrelated:**
+`test_authorization.py::test_receipt_download_object_level_access` → `assert 503 == 200`,
+the WeasyPrint/`libgobject` PDF defect the audit already recorded. Deferred to Phase 5.
+
+## Known-failing / deferred (do not re-diagnose)
+
+- **P1-PDF-001** — all 5 PDF surfaces 503 (WeasyPrint cannot load `libgobject-2.0-0.dll`,
+  resolving it from a Tesseract-OCR directory). Phase 5.
+- Phases 3–7 not started: academic data safety (negative marks, exam `total_marks` bounds +
+  `Numeric(6,2)` overflow→500, attendance stale `class_id`, report-card period scoping,
+  −207.78% card), evaluation stale state, PDFs, remaining user-facing error copy,
+  12-journey verification.
+- **Deliberate residual test data — delete during Phase 3, it is the live evidence:** negative
+  marks on `Ansh Patel` (`06ea5682-5d82-4c1c-9eea-6a8789905447`, `-100.00` on a 20-mark slip
+  test) and the **−207.78%** report card in tenant `sia` (P1-DATA-002 / P1-DATA-004).
+
+## Environment notes for the next agent
+
+- **Always confirm `pytest tests/test_canonical_runtime.py` passes first.** If it fails, the
+  runtime is serving the wrong repo and every other result is meaningless.
+- `uvicorn app.main:app` now works from any cwd with **no `PYTHONPATH`**. If you find yourself
+  needing `PYTHONPATH`, the install has regressed.
+- Audit probe scripts live in `tmp/qa-audit/` (untracked). `qa.py` must use
+  `http://127.0.0.1:8000` — `localhost` adds ~2 s/request via IPv6 fallback on Windows and
+  produced a false "everything is over budget" reading during the audit.
+- Residual audit test data left deliberately: negative marks on `Ansh Patel` and the
+  −207.78% report card in `sia` are the live evidence for Phase 3. Delete after fixing.
+
+## Stop point
+
+**Phases 0–1 complete and verified in the running product.** Phase 2 (shared
+`parse_llm_json()`) awaiting go-ahead.
+
+---
+
