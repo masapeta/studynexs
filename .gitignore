@@ -52,6 +52,7 @@ uploads/
 memory_samples.jsonl
 apps/api/scripts/seed_credentials.json
 ops-artifacts/
+tmp/
 *.dump
 
 # ── Local agent & editor settings ──
