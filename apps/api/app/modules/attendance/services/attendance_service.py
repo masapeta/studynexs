@@ -44,6 +44,12 @@ class AttendanceService:
         stmt = stmt.on_conflict_do_update(
             constraint="uq_attendance_student_date",
             set_={
+                # The constraint is (school_id, student_id, date) — one row per student per
+                # day — so a student who changed class must have the row *moved*. Omitting
+                # class_id left it on the old class: the new teacher's mark reported success
+                # but the student vanished from their register and still counted against the
+                # class they had left. (audit P1-DATA-001)
+                "class_id": stmt.excluded.class_id,
                 "status": stmt.excluded.status,
                 "remarks": stmt.excluded.remarks,
                 "marked_by": stmt.excluded.marked_by,
