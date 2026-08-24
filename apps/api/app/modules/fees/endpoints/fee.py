@@ -46,7 +46,10 @@ async def get_fee_roster(
 @router.get("/recent", response_model=APIResponse[list[ReceiptOut]])
 async def get_recent_payments(
     limit: int = 10,
-    current_user: CurrentUser = Depends(require_roles("admin", "super_admin", "teacher")),
+    # School-wide payment history is finance data: admin/super_admin only, matching
+    # /stats and /roster. Teaching roles read a single child via /student/{id}, which
+    # is object-authorized. (audit P0-SEC-001)
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
     db: AsyncSession = Depends(get_db),
 ):
     service = FeeService(db)
