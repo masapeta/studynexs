@@ -5,7 +5,6 @@ Prompts minimize PII — refer to \"your child\" rather than names (DPDP-aware).
 """
 from __future__ import annotations
 
-import json
 import uuid
 from dataclasses import dataclass
 
@@ -20,6 +19,7 @@ from app.db.models.student import Student
 from app.modules.ai.embeddings import EmbeddingService
 from app.modules.ai.gateway import LLMMessage, generate_llm, record_usage
 from app.modules.ai.gateway.input_guard import sanitize_prompt_text
+from app.modules.ai.gateway.json_parse import LLMJsonError, parse_llm_json
 from app.modules.ai.gateway.output_guard import sanitize_llm_plain_text
 from app.modules.ai.rag import HybridRetrievalOptions, HybridRetrievalService, RagService
 from app.modules.ai.rag.service import RagService as RagSvc
@@ -538,8 +538,8 @@ class ParentCopilotService:
         )
 
         try:
-            payload = json.loads(result.text)
-        except json.JSONDecodeError:
+            payload = parse_llm_json(result.text, feature="parent_copilot_briefing")
+        except LLMJsonError:
             return self._deterministic_briefing(
                 student_id=student_id,
                 grade=grade,
@@ -693,8 +693,8 @@ class ParentCopilotService:
         )
 
         try:
-            payload = json.loads(result.text)
-        except json.JSONDecodeError:
+            payload = parse_llm_json(result.text, feature="parent_copilot_ask")
+        except LLMJsonError:
             return self._deterministic_ask(
                 question=question,
                 focus_areas=focus_areas,

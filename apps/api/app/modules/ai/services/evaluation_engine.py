@@ -18,12 +18,12 @@ deterministic key-matching and never comes here (DECISION_LOG §3.6).
 """
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 
 import structlog
 
 from app.modules.ai.gateway import LLMMessage, LLMResult, generate_llm
+from app.modules.ai.gateway.json_parse import LLMJsonError, parse_llm_json
 from app.modules.ai.services.assessment_grounding import GroundingContext
 
 logger = structlog.get_logger()
@@ -238,9 +238,8 @@ async def evaluate_subjective(
     )
 
     try:
-        data = json.loads(result.text)
-    except (json.JSONDecodeError, TypeError) as exc:
-        logger.error("evaluation_parse_failed", raw=(result.text or "")[:400])
+        data = parse_llm_json(result.text, feature="answer_sheet_evaluation")
+    except LLMJsonError as exc:
         raise ValueError("The AI returned an unreadable evaluation.") from exc
 
     by_number: dict[str, dict] = {}

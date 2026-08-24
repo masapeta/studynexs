@@ -21,6 +21,7 @@ from app.db.models.lesson_plan import LessonPlan, LessonPlanStatus
 from app.db.models.question_paper import QuestionPaper
 from app.modules.ai.embeddings import EmbeddingService
 from app.modules.ai.gateway import LLMMessage, LLMResult, generate_llm, record_usage
+from app.modules.ai.gateway.json_parse import LLMJsonError, parse_llm_json
 from app.modules.ai.services.ai_credits import credits_for_purpose, reserve_ai_credits
 from app.modules.ai.services.assessment_grounding import (
     GroundingContext,
@@ -309,9 +310,8 @@ class TeacherCopilotService:
         )
 
         try:
-            data = json.loads(result.text)
-        except (json.JSONDecodeError, TypeError) as exc:
-            logger.error("lesson_plan_parse_failed", error=str(exc))
+            data = parse_llm_json(result.text, feature="copilot_lesson_plan")
+        except LLMJsonError as exc:
             raise ValueError(
                 "The AI returned an unreadable lesson plan. Please try again."
             ) from exc
@@ -425,9 +425,8 @@ class TeacherCopilotService:
         )
 
         try:
-            data = json.loads(result.text)
-        except (json.JSONDecodeError, TypeError) as exc:
-            logger.error("qp_review_parse_failed", error=str(exc))
+            data = parse_llm_json(result.text, feature="copilot_qp_review")
+        except LLMJsonError as exc:
             raise ValueError(
                 "The AI returned an unreadable review. Please try again."
             ) from exc
@@ -545,9 +544,8 @@ class TeacherCopilotService:
         )
 
         try:
-            data = json.loads(result.text)
-        except (json.JSONDecodeError, TypeError) as exc:
-            logger.error("feedback_draft_parse_failed", error=str(exc))
+            data = parse_llm_json(result.text, feature="copilot_feedback_draft")
+        except LLMJsonError as exc:
             raise ValueError(
                 "The AI returned unreadable feedback. Please try again."
             ) from exc

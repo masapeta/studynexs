@@ -5,7 +5,6 @@ File upload is deferred — paste structured curriculum text only.
 """
 from __future__ import annotations
 
-import json
 import re
 import uuid
 from typing import Optional
@@ -19,6 +18,7 @@ from app.db.models.file import FileCategory
 from app.db.models.school import School
 from app.modules.ai.gateway import LLMMessage, generate_llm, record_usage
 from app.modules.ai.gateway.input_guard import sanitize_prompt_text
+from app.modules.ai.gateway.json_parse import LLMJsonError, parse_llm_json
 from app.modules.ai.services.ai_credits import credits_for_purpose, reserve_ai_credits
 from app.modules.curriculum.schemas.onboarding import (
     CurriculumInputType,
@@ -220,9 +220,9 @@ class CurriculumExtractionService:
             )
             credits_used = reserved.credits_charged or cost
         try:
-            raw = json.loads(result.text)
+            raw = parse_llm_json(result.text, feature="curriculum_extraction")
             parsed = _ExtractionResult.model_validate(raw)
-        except (json.JSONDecodeError, ValidationError) as exc:
+        except (LLMJsonError, ValidationError) as exc:
             logger.warning("curriculum_extraction_parse_failed", error=str(exc))
             parsed = _ExtractionResult(
                 chapters=[],

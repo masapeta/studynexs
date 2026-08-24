@@ -5,7 +5,6 @@ LLM output is supportive draft guidance — not authoritative grades or report c
 """
 from __future__ import annotations
 
-import json
 import uuid
 
 import structlog
@@ -18,6 +17,7 @@ from app.db.models.student import Student
 from app.modules.ai.embeddings import EmbeddingService
 from app.modules.ai.gateway import LLMMessage, generate_llm, record_usage
 from app.modules.ai.gateway.input_guard import sanitize_prompt_text
+from app.modules.ai.gateway.json_parse import LLMJsonError, parse_llm_json
 from app.modules.ai.gateway.output_guard import sanitize_llm_plain_text
 from app.modules.ai.rag import HybridRetrievalOptions, HybridRetrievalService, RagService
 from app.modules.ai.rag.service import RagService as RagSvc
@@ -401,9 +401,11 @@ class StudentCopilotService:
         )
 
         try:
-            payload = json.loads(result.text)
-        except json.JSONDecodeError as exc:
-            raise ValueError("Copilot returned invalid JSON") from exc
+            payload = parse_llm_json(result.text, feature="student_copilot")
+        except LLMJsonError as exc:
+            raise ValueError(
+                "The tutor could not put that into words just now. Please try again."
+            ) from exc
 
         answer = sanitize_llm_plain_text(str(payload.get("answer", "")), max_length=1200)
         if not answer:

@@ -25,6 +25,7 @@ from app.db.models.question_paper import PaperStatus, QuestionPaper
 from app.modules.ai.embeddings import EmbeddingService
 from app.modules.ai.gateway import LLMMessage, LLMResult, generate_llm, record_usage
 from app.modules.ai.gateway.input_guard import sanitize_prompt_text
+from app.modules.ai.gateway.json_parse import LLMJsonError, parse_llm_json
 from app.modules.ai.gateway.output_guard import sanitize_paper_sections
 from app.modules.ai.question_paper_constraints import (
     QUESTION_OUTPUT_TOKEN_BUDGET,
@@ -811,10 +812,11 @@ async def generate_paper(
     ) if reserved else None
 
     try:
-        data = json.loads(result.text)
-    except (json.JSONDecodeError, TypeError) as exc:
-        logger.error("question_paper_parse_failed", error=str(exc), raw=(result.text or "")[:400])
-        raise ValueError("The AI returned an unreadable paper. Please try generating again.")
+        data = parse_llm_json(result.text, feature="question_paper")
+    except LLMJsonError as exc:
+        raise ValueError(
+            "The AI returned an unreadable paper. Please try generating again."
+        ) from exc
 
     sections = (
         validate_exact_sections(data.get("sections", []), plan=plan, blueprint_slots=slot_map)
