@@ -56,6 +56,8 @@ jobs:
           cache-dependency-path: apps/api/pyproject.toml
       - name: Install (with dev + ai + observability extras)
         run: pip install -e ".[dev,ai,observability]"
+      - name: Runtime provenance — `app` must come from THIS repo (audit P0-ENV-001)
+        run: pytest tests/test_canonical_runtime.py -q -p no:cacheprovider
       - name: Lint (ruff) — report-only (incremental hygiene, not a merge gate)
         continue-on-error: true
         run: ruff check .
