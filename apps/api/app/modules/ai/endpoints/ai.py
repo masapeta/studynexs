@@ -1000,6 +1000,8 @@ async def generate_report_card(
             created_by=uuid.UUID(current_user.id),
             student_id=body.student_id,
             title=body.title,
+            academic_year_id=body.academic_year_id,
+            exam_type=body.exam_type,
             role=current_user.role,
             credits_charged=credits,
         )
@@ -1080,6 +1082,20 @@ async def approve_report_card(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only class incharge can approve report cards",
+        )
+    if (
+        report.total_max is None
+        or report.total_max <= 0
+        or report.total_obtained is None
+        or report.total_obtained < 0
+        or report.total_obtained > report.total_max
+        or report.percentage is None
+        or report.percentage < 0
+        or report.percentage > 100
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Report card totals are outside the valid range",
         )
     report.status = ReportStatus.APPROVED
     await db.flush()

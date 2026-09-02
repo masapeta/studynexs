@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import date as date_type
+from decimal import Decimal
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -14,7 +15,7 @@ class ExamCreate(BaseModel):
     subject_id: uuid.UUID
     exam_type: ExamType
     title: str = Field(..., max_length=200)
-    total_marks: float
+    total_marks: Decimal = Field(..., gt=0, max_digits=6, decimal_places=2)
     exam_date: Optional[date_type] = None
     # Whole-exam chapter/topic tag (slip/unit tests map 1:1 to a chapter).
     topic: Optional[str] = Field(None, max_length=120)
@@ -57,7 +58,7 @@ class QuestionSchemaSet(BaseModel):
 
 class MarkEntry(BaseModel):
     student_id: uuid.UUID
-    marks_obtained: float = 0
+    marks_obtained: Decimal = Field(default=Decimal("0"), ge=0, max_digits=6, decimal_places=2)
     # {qno: marks}; requires the exam to have a question_schema. When present,
     # marks_obtained is derived server-side as the sum (client value ignored).
     question_marks: dict[str, float] | None = None

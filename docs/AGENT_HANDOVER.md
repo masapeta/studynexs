@@ -1075,7 +1075,7 @@ Public signup, tenant cloning, TTL cleanup, digital assessment, parent automatio
 
 ---
 
-# Engineering Session 12 — Gate S production-trust remediation, Phases 0–3a (2026-08-24)
+# Engineering Session 12 — Gate S production-trust remediation, Phases 0–3b (2026-08-24)
 
 **Authorization:** ARM — remediate the Production Trust Audit
 ([`reviews/PRODUCTION_TRUST_AUDIT_2026-08.md`](./reviews/PRODUCTION_TRUST_AUDIT_2026-08.md),

@@ -177,10 +177,10 @@ class ExamService:
                 # Single source of truth: the total is the sum of question marks.
                 e.marks_obtained = round(sum(e.question_marks.values()), 2)
 
-        # Data integrity (not a race): reject marks above the exam's max.
+        # Data integrity (not a race): reject marks outside the exam's range.
         for e in by_student.values():
-            if e.marks_obtained > exam.total_marks:
-                raise ValueError("marks_obtained exceeds exam total_marks")
+            if e.marks_obtained < 0 or e.marks_obtained > exam.total_marks:
+                raise ValueError("marks_obtained must be between 0 and exam total_marks")
 
         rows = [
             {

@@ -35,6 +35,29 @@ canary routes instead.
 
 ---
 
+## 2026-09-02 — Validate marks and database numeric bounds at the request boundary (P1-DATA-002 / P1-VAL-001)
+
+**Decision:** Exam totals and entered marks use Pydantic `Decimal` constraints that mirror the
+database's `Numeric(6,2)`. `total_marks` must satisfy `0 < total_marks <= 9999.99`, and
+`marks_obtained` must be non-negative. The service keeps a defensive `0 <= marks <= total`
+check for non-HTTP callers.
+
+**Reason:** Live baseline showed `-0.01`, `-1`, `-20`, and `-100` all returned `200` and
+persisted, while `total_marks=0` and `-1` returned `201`. Values such as `99999.99` reached
+PostgreSQL and returned `500` (`NumericValueOutOfRangeError`) because the request schema had
+no positive bound and was a `float` rather than a mirror of `Numeric(6,2)`. The existing upper
+marks check was asymmetric: it rejected marks above the exam maximum but accepted negative
+marks.
+
+**Outcome:** Invalid marks and totals now fail with `422` before persistence; the exact valid
+maximum `9999.99` remains accepted. Focused tests cover every audited boundary, and live probes
+confirmed the behavior after restarting the canonical API. Temporary QA exams were removed.
+
+**Prevention:** `test_exam_questions.py` pins the boundary matrix. The promoted
+`scripts/qa/repro_negative_marks.py` is write-gated and cleans up its temporary exam.
+
+---
+
 ## 2026-08-25 — Attendance upserts must move the row to the marking class (P1-DATA-001)
 
 **Decision:** `mark_bulk`'s `ON CONFLICT … set_` now updates `class_id`. Whenever a uniqueness

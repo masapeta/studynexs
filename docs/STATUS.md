@@ -151,7 +151,8 @@ still reproducible, so unit-test-only evidence no longer earns a status here.
 | 1 | P0-SEC-001 — `GET /fees/recent` admitted `role=teacher`, exposing every family's payments | ✅ Fixed / verified | `teacher` **200 → 403** on real fee data (was 50 receipts / 49 households / ₹125,000); `admin` + `super_admin` retain 200 |
 | 2 | P1-AI-001/002 — fenced-JSON parse failures break Tutor, QP generation, Teacher Copilot | ✅ Fixed / verified | Live repro **10-of-14 → 0-of-14 failing**. Student Tutor answered in-browser (`200`, `grounded: true`, 2 citations) where it previously rendered `Copilot returned invalid JSON`; QP generation `400 → 200` (41 marks / 4 sections / 11 questions, ×2); Teacher Copilot feedback `400 → 200` with citations. All 4 controls still pass |
 | 3a | P1-DATA-001 — attendance filed to a stale class after a class change | ✅ Fixed / verified | Live: row now **moves** to the receiving class. Before: `Grade 1 B` kept the row while `Grade 1 C` marked the student — C's register showed nothing, B counted a student who had left. After (clean slate): exactly **one** row, on C; B summary `total: 0`, C `present: 1` |
-| 3b–3e | P1-DATA-002/003/004, P1-VAL-001 — marks bounds, report-card scoping, impossible percentages | ⏳ Not started | — |
+| 3b | P1-DATA-002 / P1-VAL-001 — negative marks and invalid exam totals | ✅ Fixed / verified | Live: `-0.01`, `-1`, `-20`, `-100` changed **200 → 422**; `total_marks` `0`, `-1`, `9999.991`, `10000`, `99999.99` changed **201/500 → 422**; database-safe `9999.99` remains `201` |
+| 3c–3e | P1-DATA-003/004 — report-card scoping and impossible percentages | ⏳ Not started | — |
 | 4 | P1-UX-002 — evaluation stale state (wrong-student attribution) | ⏳ Not started | — |
 | 5 | P1-PDF-001 — all 5 PDF surfaces return 503 (WeasyPrint/libgobject) | ⏳ Not started | Known-failing: `tests/test_authorization.py::test_receipt_download_object_level_access` (`assert 503 == 200`) |
 
@@ -224,6 +225,25 @@ Fix is one line (`"class_id": stmt.excluded.class_id`). Regression tests assert 
 **register and summary a teacher actually sees**, not just the stored row, because the row
 alone would not have exposed the double-counting. A third test pins the ordinary
 same-class correction path so the fix cannot over-correct into duplicate rows.
+
+### Phase 3b notes — marks and exam-total boundaries
+
+The marks endpoint checked only the upper bound. Live baseline: `-0.01`, `-1`, `-20`, and
+`-100` all returned `200` and persisted; values above the exam total correctly returned
+`400`. Exam creation had no lower bound and no Pydantic mirror of the database's
+`Numeric(6,2)`: `total_marks=0` and `-1` returned `201`, while `99999.99` and `100000`
+reached PostgreSQL and returned `500` with `numeric field overflow`.
+
+`ExamCreate.total_marks` is now a positive `Decimal` constrained to `Numeric(6,2)`'s valid
+range (`0 < total_marks <= 9999.99`). `MarkEntry.marks_obtained` is also a non-negative
+`Decimal` with the same precision, and the service retains a defensive `0 <= marks <= total`
+check for callers that bypass request validation. Invalid input is rejected with `422` before
+it can corrupt the gradebook or reach the database; the exact valid maximum remains accepted.
+
+Regression tests cover all audited boundaries in `test_exam_questions.py`. Focused suite:
+**10 passed**. The promoted live repro confirmed the negative-mark boundaries now return
+`422`, and a separate live boundary probe confirmed the total-mark behavior. Temporary QA
+exams were deleted after verification.
 
 ---
 

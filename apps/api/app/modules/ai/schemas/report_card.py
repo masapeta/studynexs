@@ -5,12 +5,15 @@ import uuid
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.db.models.examination import ExamType
 from app.modules.ai.gateway.input_guard import sanitize_prompt_text
 
 
 class GenerateReportRequest(BaseModel):
     student_id: uuid.UUID
     title: str | None = Field(default=None, max_length=200)
+    academic_year_id: uuid.UUID | None = None
+    exam_type: ExamType | None = None
 
     @field_validator("title", mode="before")
     @classmethod

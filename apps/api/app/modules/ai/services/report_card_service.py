@@ -16,9 +16,9 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.db.models.academic import Subject
+from app.db.models.academic import Class, Subject
 from app.db.models.attendance import Attendance, AttendanceStatus
-from app.db.models.examination import Exam, ExamMark
+from app.db.models.examination import Exam, ExamMark, ExamType
 from app.db.models.report_card import ReportCard, ReportStatus
 from app.db.models.student import Student
 from app.modules.ai.gateway import LLMMessage, generate_llm, record_usage
@@ -43,23 +43,26 @@ def _grade(pct: float) -> str:
 
 
 async def _consolidate_marks(
-    db: AsyncSession, *, school_id: uuid.UUID, student_id: uuid.UUID
+    db: AsyncSession, *, school_id: uuid.UUID, student_id: uuid.UUID,
+    academic_year_id: uuid.UUID | None = None, exam_type: ExamType | None = None,
 ) -> list[dict]:
-    """Sum each subject's marks across all of that subject's exams for this student."""
-    rows = (
-        await db.execute(
-            select(
-                Subject.name,
-                func.sum(ExamMark.marks_obtained),
-                func.sum(Exam.total_marks),
-            )
-            .join(Exam, ExamMark.exam_id == Exam.id)
-            .join(Subject, Exam.subject_id == Subject.id)
-            .where(ExamMark.student_id == student_id, ExamMark.school_id == school_id)
-            .group_by(Subject.name)
-            .order_by(Subject.name)
+    """Sum marks for one academic year and optional exam type."""
+    query = (
+        select(
+            Subject.name,
+            func.sum(ExamMark.marks_obtained),
+            func.sum(Exam.total_marks),
         )
-    ).all()
+        .join(Exam, ExamMark.exam_id == Exam.id)
+        .join(Subject, Exam.subject_id == Subject.id)
+        .join(Class, Exam.class_id == Class.id)
+        .where(ExamMark.student_id == student_id, ExamMark.school_id == school_id)
+    )
+    if academic_year_id is not None:
+        query = query.where(Class.academic_year_id == academic_year_id)
+    if exam_type is not None:
+        query = query.where(Exam.exam_type == exam_type)
+    rows = (await db.execute(query.group_by(Subject.name).order_by(Subject.name))).all()
     return [
         {
             "subject": name,
@@ -71,7 +74,8 @@ async def _consolidate_marks(
 
 
 async def _not_assessed_subjects(
-    db: AsyncSession, *, school_id: uuid.UUID, student_id: uuid.UUID, class_id: uuid.UUID
+    db: AsyncSession, *, school_id: uuid.UUID, student_id: uuid.UUID, class_id: uuid.UUID,
+    academic_year_id: uuid.UUID | None = None, exam_type: ExamType | None = None,
 ) -> list[str]:
     """Subjects the student's class was examined in, but for which this student has no marks.
 
@@ -81,12 +85,18 @@ async def _not_assessed_subjects(
     assessed = (
         select(Exam.subject_id)
         .join(ExamMark, (ExamMark.exam_id == Exam.id) & (ExamMark.student_id == student_id))
+        .join(Class, Exam.class_id == Class.id)
         .where(Exam.class_id == class_id, Exam.school_id == school_id)
     )
+    if academic_year_id is not None:
+        assessed = assessed.where(Class.academic_year_id == academic_year_id)
+    if exam_type is not None:
+        assessed = assessed.where(Exam.exam_type == exam_type)
     rows = (
         await db.execute(
             select(Subject.name)
             .join(Exam, Exam.subject_id == Subject.id)
+            .join(Class, Exam.class_id == Class.id)
             .where(
                 Exam.class_id == class_id,
                 Exam.school_id == school_id,
@@ -100,13 +110,16 @@ async def _not_assessed_subjects(
 
 
 async def _attendance_percentage(
-    db: AsyncSession, *, school_id: uuid.UUID, student_id: uuid.UUID
+    db: AsyncSession, *, school_id: uuid.UUID, student_id: uuid.UUID,
+    academic_year_id: uuid.UUID,
 ) -> float | None:
     """Weighted attendance %: present/late = 1 day, half-day = 0.5, absent = 0."""
     rows = (
         await db.execute(
             select(Attendance.status, func.count())
+            .join(Class, Attendance.class_id == Class.id)
             .where(Attendance.student_id == student_id, Attendance.school_id == school_id)
+            .where(Class.academic_year_id == academic_year_id)
             .group_by(Attendance.status)
         )
     ).all()
@@ -163,6 +176,8 @@ async def generate_report_for_student(
     created_by: uuid.UUID,
     student_id: uuid.UUID,
     title: str | None = None,
+    academic_year_id: uuid.UUID | None = None,
+    exam_type: ExamType | None = None,
     role: str = "teacher",
     credits_charged: int | None = None,
 ) -> ReportCard:
@@ -175,19 +190,47 @@ async def generate_report_for_student(
     if student is None:
         raise ValueError("Student not found")
 
-    subjects = await _consolidate_marks(db, school_id=school_id, student_id=student_id)
+    if academic_year_id is None:
+        academic_year_id = (
+            await db.execute(
+                select(Class.academic_year_id).where(
+                    Class.id == student.class_id,
+                    Class.school_id == school_id,
+                )
+            )
+        ).scalar_one_or_none()
+    if academic_year_id is None:
+        raise ValueError("Student is not assigned to an academic year")
+
+    subjects = await _consolidate_marks(
+        db,
+        school_id=school_id,
+        student_id=student_id,
+        academic_year_id=academic_year_id,
+        exam_type=exam_type,
+    )
     if not subjects:
         raise ValueError("No exam marks recorded for this student yet — enter marks first.")
 
     total_obtained = sum(s["marks_obtained"] for s in subjects)
     total_max = sum(s["total_marks"] for s in subjects)
-    percentage = round(total_obtained / total_max * 100, 2) if total_max else 0.0
+    if total_max <= 0 or total_obtained < 0 or total_obtained > total_max:
+        raise ValueError("Report card totals are outside the valid range")
+    percentage = round(total_obtained / total_max * 100, 2)
     grade = _grade(percentage)
     attendance_pct = await _attendance_percentage(
-        db, school_id=school_id, student_id=student_id
+        db,
+        school_id=school_id,
+        student_id=student_id,
+        academic_year_id=academic_year_id,
     )
     not_assessed = await _not_assessed_subjects(
-        db, school_id=school_id, student_id=student_id, class_id=student.class_id
+        db,
+        school_id=school_id,
+        student_id=student_id,
+        class_id=student.class_id,
+        academic_year_id=academic_year_id,
+        exam_type=exam_type,
     )
 
     student_name = student.user.full_name if student.user else "Student"

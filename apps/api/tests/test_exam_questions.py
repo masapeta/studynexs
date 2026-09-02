@@ -63,6 +63,60 @@ async def test_exam_create_carries_topic_and_ssc_type(
 
 
 @pytest.mark.asyncio
+async def test_exam_total_marks_must_be_positive_and_fit_database_precision(
+    client: AsyncClient,
+    admin_user: User,
+    test_school: School,
+    test_class: Class,
+    db_session: AsyncSession,
+):
+    subject = await _subject(db_session, test_school, test_class)
+    token = await get_auth_token(client, "test_admin", "Admin@123")
+    payload = {
+        "class_id": str(test_class.id),
+        "subject_id": str(subject.id),
+        "exam_type": "slip_test",
+        "title": "Bounded exam",
+    }
+
+    for total_marks in (0, -1, 9999.991, 10000, 99999.99):
+        response = await client.post(
+            "/api/v1/exams",
+            headers=auth_headers(token),
+            json={**payload, "total_marks": total_marks},
+        )
+        assert response.status_code == 422, response.text
+
+
+@pytest.mark.asyncio
+async def test_exam_marks_cannot_be_negative(
+    client: AsyncClient,
+    admin_user: User,
+    student_user: User,
+    test_school: School,
+    test_class: Class,
+    db_session: AsyncSession,
+):
+    subject = await _subject(db_session, test_school, test_class)
+    student = (
+        await db_session.execute(select(Student).where(Student.user_id == student_user.id))
+    ).scalar_one()
+    token = await get_auth_token(client, "test_admin", "Admin@123")
+    exam = await _create_exam(client, token, test_class, subject, total_marks=20)
+
+    for marks in (-0.01, -1, -20, -100):
+        response = await client.post(
+            "/api/v1/exams/marks",
+            headers=auth_headers(token),
+            json={
+                "exam_id": exam["id"],
+                "entries": [{"student_id": str(student.id), "marks_obtained": marks}],
+            },
+        )
+        assert response.status_code == 422, response.text
+
+
+@pytest.mark.asyncio
 async def test_question_schema_validation(
     client: AsyncClient, admin_user: User, test_school: School, test_class: Class,
     db_session: AsyncSession,
