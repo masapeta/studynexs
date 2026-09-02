@@ -1,7 +1,7 @@
 # StudyNexs — Master Status
 
 > **Owner:** Avinash Reddy Masapeta (ARM)
-> **As of:** 2026-08-08
+> **As of:** 2026-09-02
 > **Status role:** Current project anchor for architecture, runtime milestones, and next engineering gate.
 
 ---
@@ -120,6 +120,13 @@ canonical roadmap names are:
 | Gate S Phase 1 - Fee privacy authorization (P0-SEC-001) | Complete / verified in running product |
 | Gate S Phase 2 - LLM structured-output parsing (P1-AI-001/002) | Complete / verified in running product |
 | Gate S Phase 3a - Attendance follows a class change (P1-DATA-001) | Complete / verified in running product |
+| Gate S Phase 3b - Exam marks and total-marks validation (P1-DATA-002 / P1-VAL-001) | Complete / verified in running product |
+| Gate S Phase 3c-3e - Report-card scoping and approval sanity guards (P1-DATA-003/004) | Complete / verified in running product |
+| Gate S Phase 4 - Evaluation stale-state reset (P1-UX-002) | Complete / regression-verified |
+| Gate S Phase 5 - PDF runtime fallback across protected surfaces (P1-PDF-001) | Complete / regression-verified |
+| Gate S Phase 6 - User-facing error-message hardening | Complete / regression-verified |
+| Gate S Phase 7 - Real workflow verification (cross-role journeys + focused harnesses) | Complete / verified in running product |
+| Gate S Phase 8/9 - Final regression sweep + status/handover closure | Complete / verified |
 | EUI v1 architecture | Frozen / accepted |
 | EUI Runtime Roadmap v1 | Accepted planning baseline |
 | Phase 0 - Engineering Preparation | Complete / certified / published |
@@ -134,11 +141,11 @@ canonical roadmap names are:
 
 ---
 
-## Gate S — Production-trust remediation (in progress)
+## Gate S — Production-trust remediation (completed)
 
 Remediation of the Production Trust Audit
 ([`docs/reviews/PRODUCTION_TRUST_AUDIT_2026-08.md`](reviews/PRODUCTION_TRUST_AUDIT_2026-08.md)),
-which returned **ORANGE / 5.0-of-10** and blocked a real school term.
+which returned **ORANGE / 5.0-of-10** and triggered this trust gate.
 
 **Status wording rule adopted for this gate:** an item is only marked *verified* when the
 failure was first **reproduced in the running product** and the fix **re-verified there** —
@@ -152,9 +159,12 @@ still reproducible, so unit-test-only evidence no longer earns a status here.
 | 2 | P1-AI-001/002 — fenced-JSON parse failures break Tutor, QP generation, Teacher Copilot | ✅ Fixed / verified | Live repro **10-of-14 → 0-of-14 failing**. Student Tutor answered in-browser (`200`, `grounded: true`, 2 citations) where it previously rendered `Copilot returned invalid JSON`; QP generation `400 → 200` (41 marks / 4 sections / 11 questions, ×2); Teacher Copilot feedback `400 → 200` with citations. All 4 controls still pass |
 | 3a | P1-DATA-001 — attendance filed to a stale class after a class change | ✅ Fixed / verified | Live: row now **moves** to the receiving class. Before: `Grade 1 B` kept the row while `Grade 1 C` marked the student — C's register showed nothing, B counted a student who had left. After (clean slate): exactly **one** row, on C; B summary `total: 0`, C `present: 1` |
 | 3b | P1-DATA-002 / P1-VAL-001 — negative marks and invalid exam totals | ✅ Fixed / verified | Live: `-0.01`, `-1`, `-20`, `-100` changed **200 → 422**; `total_marks` `0`, `-1`, `9999.991`, `10000`, `99999.99` changed **201/500 → 422**; database-safe `9999.99` remains `201` |
-| 3c–3e | P1-DATA-003/004 — report-card scoping and impossible percentages | ⏳ Not started | — |
-| 4 | P1-UX-002 — evaluation stale state (wrong-student attribution) | ⏳ Not started | — |
-| 5 | P1-PDF-001 — all 5 PDF surfaces return 503 (WeasyPrint/libgobject) | ⏳ Not started | Known-failing: `tests/test_authorization.py::test_receipt_download_object_level_access` (`assert 503 == 200`) |
+| 3c–3e | P1-DATA-003/004 — report-card scoping and impossible percentages | ✅ Fixed / verified | Live `scripts/qa/repro_report_card_scoping.py` (write-enabled) now reports scoped totals and blocks invalid legacy card approval: `HTTP 422` (`Report card totals are outside the valid range`) |
+| 4 | P1-UX-002 — evaluation stale state (wrong-student attribution) | ✅ Fixed / regression-verified | `apps/admin-web/src/app/dashboard/teaching/exams/[examId]/evaluate/page.tsx` state reset hardening shipped; guard test `tests/test_eval_state_reset_guard.py` passes in final sweep |
+| 5 | P1-PDF-001 — all 5 PDF surfaces return 503 (WeasyPrint/libgobject) | ✅ Fixed / regression-verified | Runtime fallback renderer shipped in `app/shared/pdf_renderer.py`; regression suite (`test_pdf_runtime.py`, `test_pdf_surfaces_runtime_fallback.py`, `test_pdf_endpoint_runtime_fallback.py`) passes |
+| 6 | User-facing technical error leakage on tutor/parent surfaces | ✅ Fixed / regression-verified | `user_error_messages.py` sanitization now applied from tutor/parent endpoints; hostile-detail masking tests pass (`test_student_copilot.py`, `test_parent_copilot.py`) |
+| 7 | Real workflow verification (12 journeys) | ✅ Fixed / verified | Focused + cross-role browser harnesses now all green (`learning 6/6`, `parent 7/7`, `student 6/6`, `assessment 18/18`, `reference journeys 18/18`) |
+| 8/9 | Regression tests + docs closure | ✅ Complete / verified | Final sweep on current `develop`: `29 passed, 1 skipped` (targeted backend) + all Gate S frontend harnesses green; commit `71dadb9` pushed before closure docs |
 
 ### Phase 0 notes — why the test suite could not have caught it
 
@@ -244,6 +254,47 @@ Regression tests cover all audited boundaries in `test_exam_questions.py`. Focus
 **10 passed**. The promoted live repro confirmed the negative-mark boundaries now return
 `422`, and a separate live boundary probe confirmed the total-mark behavior. Temporary QA
 exams were deleted after verification.
+
+### Phase 3c–3e notes — report-card scoping and approval sanity guards
+
+`Harden report card scoping and exam mark validation` (`e49771b`) completed the report-card
+trust path with period scoping and approval sanity checks in:
+
+- `app/modules/ai/endpoints/ai.py`
+- `app/modules/ai/schemas/report_card.py`
+- `app/modules/ai/services/report_card_service.py`
+
+Live re-verification used `scripts/qa/repro_report_card_scoping.py` with
+`QA_ALLOW_WRITE=1`, confirming:
+
+- scoped totals remain stable where expected,
+- old-year totals stay isolated from current-year cards,
+- invalid legacy-card approval is rejected with `HTTP 422`, and
+- QA fixtures are cleaned at the end.
+
+### Phases 4–7 notes — trust blocker closure
+
+- **Phase 4 (evaluation stale state):** UI state reset hardening shipped in
+  `apps/admin-web/src/app/dashboard/teaching/exams/[examId]/evaluate/page.tsx`, with
+  regression guard `tests/test_eval_state_reset_guard.py`.
+- **Phase 5 (PDF surfaces):** runtime fallback renderer in
+  `app/shared/pdf_renderer.py` now protects PDF endpoints when native WeasyPrint runtime
+  dependencies fail; regression coverage added at runtime, surface, and endpoint layers.
+- **Phase 6 (safe user messages):** technical exception details now flow through
+  `app/core/user_error_messages.py` and are masked in tutor/parent endpoints.
+- **Phase 7 (workflow verification):** focused browser proofs and broad cross-role journeys
+  are all green after allowlist correction in `apps/admin-web/e2e-harness-utils.cjs`, with
+  policy locked by `apps/admin-web/tests/e2e-harness-utils.test.mjs`.
+
+### Phase 8/9 closure notes — final sweep + publication
+
+Before documentation closure, Gate S final sweeps were re-run on `develop`:
+
+- Backend targeted trust regressions: `29 passed, 1 skipped`.
+- Frontend trust harness set: all green (`node --test` policy suite + 5 E2E harnesses).
+
+Checkpoint commit `71dadb9` (`Harden trust gates for phases 3c-7`) was pushed to
+`studynexs-github/develop` before this Phase 9 status publication.
 
 ---
 

@@ -1256,3 +1256,68 @@ the WeasyPrint/`libgobject` PDF defect the audit already recorded. Deferred to P
 
 ---
 
+# Engineering Session 13 — Gate S Phase 8/9 closure (2026-09-02)
+
+**Authorization:** ARM request: `commit and push then Gate S (Phase 8 and Phase 9)`.
+
+## Done
+
+- Confirmed trust-remediation checkpoint was committed and pushed:
+  - commit `71dadb9`
+  - branch `develop`
+  - remote `studynexs-github/develop`
+- Executed **Phase 8** final regression sweep across the published trust-fix surfaces.
+- Completed **Phase 9** status closure updates in:
+  - `docs/STATUS.md`
+  - `docs/AGENT_HANDOVER.md` (this entry)
+
+## Phase 8 verification evidence
+
+### Frontend trust harness sweep (all green)
+
+- `node --test tests/e2e-harness-utils.test.mjs` → `4 passed, 0 failed`
+- `node e2e-learning-intelligence.cjs` → `ALL GREEN (6 checks)`
+- `node e2e-parent-intelligence.cjs` → `ALL GREEN (7 checks)`
+- `node e2e-student-intelligence.cjs` → `ALL GREEN (6 checks)`
+- `node e2e-assessment-intelligence-v1.cjs` → `ALL GREEN (18 checks)`
+- `node e2e-reference-journeys.cjs` → `ALL GREEN (18 checks)`
+
+### Backend targeted trust regression sweep
+
+- `pytest` run:
+  - `tests/test_canonical_runtime.py`
+  - `tests/test_student_copilot.py`
+  - `tests/test_parent_copilot.py`
+  - `tests/test_pdf_runtime.py`
+  - `tests/test_pdf_surfaces_runtime_fallback.py`
+  - `tests/test_pdf_endpoint_runtime_fallback.py`
+  - `tests/test_eval_state_reset_guard.py`
+- Result: **`29 passed, 1 skipped`**
+
+### Live report-card scoping re-verification (Phase 3c–3e confirmation)
+
+- `scripts/qa/repro_report_card_scoping.py` with `QA_ALLOW_WRITE=1`:
+  - scoped totals reported correctly,
+  - old-year totals isolated,
+  - invalid legacy approval blocked (`HTTP 422`, `Report card totals are outside the valid range`),
+  - script confirms `PASS` and cleans QA fixtures.
+
+## Phase 9 closure state
+
+- Gate S status matrix now reflects completion through Phase 8/9 with explicit
+  evidence (live-verified vs regression-verified).
+- Historical stale wording in prior entries remains preserved for audit history;
+  this session is the current closure checkpoint.
+
+## Residual risk / next checkpoint
+
+- Full-repository pytest/lint sweep was not re-run in this closure step; this
+  pass was intentionally scoped to Gate S trust surfaces and runtime proofs.
+- Next natural checkpoint is a full-suite green run for release packaging.
+
+## Stop point
+
+**Gate S Phase 8/9 closure completed for the current trust-remediation batch.**
+
+---
+
