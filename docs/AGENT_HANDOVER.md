@@ -1256,7 +1256,7 @@ the WeasyPrint/`libgobject` PDF defect the audit already recorded. Deferred to P
 
 ---
 
-# Engineering Session 13 — Gate S Phase 8/9 closure (2026-09-02)
+# Engineering Session 13 — Gate S Phase 8/9 closure (2026-09-03)
 
 **Authorization:** ARM request: `commit and push then Gate S (Phase 8 and Phase 9)`.
 
@@ -1264,6 +1264,10 @@ the WeasyPrint/`libgobject` PDF defect the audit already recorded. Deferred to P
 
 - Confirmed trust-remediation checkpoint was committed and pushed:
   - commit `71dadb9`
+  - branch `develop`
+  - remote `studynexs-github/develop`
+- Confirmed closure-doc checkpoint was committed and pushed:
+  - commit `f1edbad`
   - branch `develop`
   - remote `studynexs-github/develop`
 - Executed **Phase 8** final regression sweep across the published trust-fix surfaces.

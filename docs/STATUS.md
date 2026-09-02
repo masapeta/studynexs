@@ -1,7 +1,7 @@
 # StudyNexs — Master Status
 
 > **Owner:** Avinash Reddy Masapeta (ARM)
-> **As of:** 2026-09-02
+> **As of:** 2026-09-03
 > **Status role:** Current project anchor for architecture, runtime milestones, and next engineering gate.
 
 ---
@@ -164,7 +164,7 @@ still reproducible, so unit-test-only evidence no longer earns a status here.
 | 5 | P1-PDF-001 — all 5 PDF surfaces return 503 (WeasyPrint/libgobject) | ✅ Fixed / regression-verified | Runtime fallback renderer shipped in `app/shared/pdf_renderer.py`; regression suite (`test_pdf_runtime.py`, `test_pdf_surfaces_runtime_fallback.py`, `test_pdf_endpoint_runtime_fallback.py`) passes |
 | 6 | User-facing technical error leakage on tutor/parent surfaces | ✅ Fixed / regression-verified | `user_error_messages.py` sanitization now applied from tutor/parent endpoints; hostile-detail masking tests pass (`test_student_copilot.py`, `test_parent_copilot.py`) |
 | 7 | Real workflow verification (12 journeys) | ✅ Fixed / verified | Focused + cross-role browser harnesses now all green (`learning 6/6`, `parent 7/7`, `student 6/6`, `assessment 18/18`, `reference journeys 18/18`) |
-| 8/9 | Regression tests + docs closure | ✅ Complete / verified | Final sweep on current `develop`: `29 passed, 1 skipped` (targeted backend) + all Gate S frontend harnesses green; commit `71dadb9` pushed before closure docs |
+| 8/9 | Regression tests + docs closure | ✅ Complete / verified | Final sweep on current `develop`: `29 passed, 1 skipped` (targeted backend) + all Gate S frontend harnesses green; trust-fix checkpoint `71dadb9` and closure-docs checkpoint `f1edbad` pushed |
 
 ### Phase 0 notes — why the test suite could not have caught it
 
@@ -293,8 +293,9 @@ Before documentation closure, Gate S final sweeps were re-run on `develop`:
 - Backend targeted trust regressions: `29 passed, 1 skipped`.
 - Frontend trust harness set: all green (`node --test` policy suite + 5 E2E harnesses).
 
-Checkpoint commit `71dadb9` (`Harden trust gates for phases 3c-7`) was pushed to
-`studynexs-github/develop` before this Phase 9 status publication.
+Checkpoint commit `71dadb9` (`Harden trust gates for phases 3c-7`) and
+closure-docs commit `f1edbad` (`Close Gate S phase 8/9 evidence`) were pushed
+to `studynexs-github/develop`.
 
 ---
 
