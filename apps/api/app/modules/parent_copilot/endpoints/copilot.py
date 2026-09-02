@@ -12,6 +12,7 @@ from app.core.authorization import assert_can_access_student
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, get_current_user
 from app.core.rate_limit import rate_limit
+from app.core.user_error_messages import user_error_detail
 from app.modules.parent_copilot.schemas.copilot import (
     ParentAnswerOut,
     ParentAskIn,
@@ -46,7 +47,13 @@ async def parent_briefing(
             role=current_user.role,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=400,
+            detail=user_error_detail(
+                exc,
+                fallback="Could not prepare the parent briefing right now. Please try again.",
+            ),
+        ) from exc
     return APIResponse(data=briefing)
 
 
@@ -72,5 +79,11 @@ async def parent_ask(
             role=current_user.role,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=400,
+            detail=user_error_detail(
+                exc,
+                fallback="Could not answer right now. Please try again.",
+            ),
+        ) from exc
     return APIResponse(data=answer)

@@ -19,6 +19,15 @@ function isAllowedConsoleError(message) {
   if (msg.includes("net::err_failed")) return false;
   if (msg.includes("/api/v1/auth/refresh")) return true;
   if (msg.includes("401") && msg.includes("refresh")) return true;
+  // UI login pages can emit a benign pre-auth 401 while probing session state.
+  if (
+    msg.includes("401") &&
+    msg.includes("unauthorized") &&
+    msg.includes("/login?portal=") &&
+    !msg.includes("/api/v1/")
+  ) {
+    return true;
+  }
   // Chrome omits the URL on the generic pre-auth refresh failure before login.
   if (
     msg.includes("401") &&

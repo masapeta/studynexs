@@ -35,6 +35,28 @@ def test_pdf_renderer_rejects_non_pdf_output(monkeypatch):
         render_pdf("<p>hello</p>", document_type="test")
 
 
+def test_pdf_renderer_falls_back_when_native_runtime_is_unavailable(monkeypatch):
+    class BrokenHTML:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            raise OSError("cannot load library 'libgobject-2.0-0.dll'")
+
+    monkeypatch.setitem(sys.modules, "weasyprint", SimpleNamespace(HTML=BrokenHTML))
+
+    content = render_pdf(
+        "<html><body><h1>Receipt</h1><p>Student: Ansh Patel</p></body></html>",
+        document_type="receipt",
+    )
+
+    assert content.startswith(b"%PDF-")
+
+    from pypdf import PdfReader
+
+    extracted = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(content)).pages)
+    assert "Receipt" in extracted
+    assert "Ansh Patel" in extracted
+
+
 @pytest.mark.asyncio
 async def test_pdf_render_failure_has_explicit_retryable_http_contract():
     handler = app.exception_handlers[PDFRenderError]

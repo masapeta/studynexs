@@ -14,6 +14,7 @@ from app.core.authorization import assert_can_access_student
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, get_current_user
 from app.core.rate_limit import rate_limit
+from app.core.user_error_messages import user_error_detail
 from app.modules.ai.gateway.input_guard import (
     sanitize_lesson_key,
     sanitize_prompt_text,
@@ -95,7 +96,13 @@ async def student_study_context(
             student_id=student_id,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=404,
+            detail=user_error_detail(
+                exc,
+                fallback="Study context is temporarily unavailable. Please try again.",
+            ),
+        ) from exc
     return APIResponse(data=ctx)
 
 
@@ -116,7 +123,13 @@ async def student_daily_plan(
             student_id=student_id,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=404,
+            detail=user_error_detail(
+                exc,
+                fallback="Daily plan is temporarily unavailable. Please try again.",
+            ),
+        ) from exc
     return APIResponse(data=plan)
 
 
@@ -142,7 +155,13 @@ async def student_copilot_ask(
             role=current_user.role,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=400,
+            detail=user_error_detail(
+                exc,
+                fallback="The tutor could not answer right now. Please try again.",
+            ),
+        ) from exc
     return APIResponse(data=answer)
 
 
@@ -178,7 +197,10 @@ async def tutor_lesson(
     try:
         safe_key = sanitize_lesson_key(lesson_key)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=400,
+            detail=user_error_detail(exc, fallback="Invalid lesson requested."),
+        ) from exc
     lesson = await get_lesson(
         db,
         school_id=uuid.UUID(current_user.school_id),

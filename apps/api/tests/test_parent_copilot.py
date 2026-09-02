@@ -240,6 +240,43 @@ async def test_parent_ask_api(
 
 
 @pytest.mark.asyncio
+async def test_parent_ask_masks_technical_error_details(
+    client: AsyncClient,
+    db_session,
+    parent_user,
+    student_user,
+    test_school,
+    test_class,
+    academic_year,
+    admin_user,
+    monkeypatch,
+):
+    ids = await _seed_parent_copilot(
+        db_session, parent_user, student_user, test_school, test_class, academic_year, admin_user
+    )
+
+    async def _boom(self, **_kwargs):
+        raise ValueError(
+            "Traceback (most recent call last): fastapi runtime failure at "
+            "127.0.0.1:8000 with asyncpg.exceptions.ConnectionDoesNotExistError"
+        )
+
+    monkeypatch.setattr(ParentCopilotService, "ask", _boom)
+
+    token = access_token_for(parent_user)
+    res = await client.post(
+        f"/api/v1/parent-copilot/students/{ids['student'].id}/ask",
+        json={"question": "How can I help this week?"},
+        headers=auth_headers(token),
+    )
+    assert res.status_code == 400
+    detail = res.json()["detail"]
+    assert detail == "Could not answer right now. Please try again."
+    assert "Traceback" not in detail
+    assert "asyncpg" not in detail
+
+
+@pytest.mark.asyncio
 async def test_parent_briefing_api(
     client: AsyncClient,
     db_session,

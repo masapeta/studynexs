@@ -293,9 +293,22 @@ export default function EvaluateExamPage() {
   function loadEval(ev: EvaluationRow) {
     setActiveEval(ev);
     setSelectedStudent(ev.student_id);
+    setSheetFile(null);
+    setAnswers(buildInitialAnswers(questions));
     setOverrides(buildOverrideMarks(ev));
     setOverrideReasons(buildOverrideReasons(ev));
     setManualReviewAcknowledgements(buildManualReviewAcknowledgements(ev));
+  }
+
+  function startNewEvaluation() {
+    setActiveEval(null);
+    setSelectedStudent("");
+    setSheetFile(null);
+    setAnswers(buildInitialAnswers(questions));
+    setOverrides({});
+    setOverrideReasons({});
+    setManualReviewAcknowledgements({});
+    setError("");
   }
 
   const studentName = (id: string) =>
@@ -553,7 +566,7 @@ export default function EvaluateExamPage() {
                   <button className="btn btn-primary" style={btn} onClick={approveEvaluation} disabled={approving}>
                     {approving ? "Saving…" : "Approve marks"}
                   </button>
-                  <button className="btn btn-ghost" style={btn} onClick={() => setActiveEval(null)}>New evaluation</button>
+                  <button className="btn btn-ghost" style={btn} onClick={startNewEvaluation}>New evaluation</button>
                 </div>
               )}
             </>

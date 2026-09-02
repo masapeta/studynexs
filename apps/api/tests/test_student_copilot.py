@@ -321,6 +321,56 @@ async def test_student_copilot_ask_api_uses_current_user_id(
 
 
 @pytest.mark.asyncio
+async def test_student_copilot_ask_masks_technical_error_details(
+    client: AsyncClient, db_session, monkeypatch
+):
+    ids = await _seed_copilot(db_session)
+    token = access_token_for(ids["student_user"])
+
+    async def _boom(self, **_kwargs):
+        raise ValueError(
+            "Traceback (most recent call last): sqlalchemy.exc.DBAPIError at "
+            "http://127.0.0.1:8000 with postgresql://user:pass@db:5432/app"
+        )
+
+    monkeypatch.setattr(StudentCopilotService, "ask", _boom)
+
+    res = await client.post(
+        f"/api/v1/tutor/students/{ids['student'].id}/ask",
+        headers=auth_headers(token),
+        json={"question": "What should I revise today?"},
+    )
+
+    assert res.status_code == 400
+    detail = res.json()["detail"]
+    assert detail == "The tutor could not answer right now. Please try again."
+    assert "Traceback" not in detail
+    assert "postgresql://" not in detail
+
+
+@pytest.mark.asyncio
+async def test_student_copilot_ask_keeps_safe_validation_message(
+    client: AsyncClient, db_session, monkeypatch
+):
+    ids = await _seed_copilot(db_session)
+    token = access_token_for(ids["student_user"])
+
+    async def _validation(self, **_kwargs):
+        raise ValueError("Question is required")
+
+    monkeypatch.setattr(StudentCopilotService, "ask", _validation)
+
+    res = await client.post(
+        f"/api/v1/tutor/students/{ids['student'].id}/ask",
+        headers=auth_headers(token),
+        json={"question": "What should I revise today?"},
+    )
+
+    assert res.status_code == 400
+    assert res.json()["detail"] == "Question is required"
+
+
+@pytest.mark.asyncio
 async def test_recommendations_prioritize_graph_weak_concepts(db_session):
     ids = await _seed_copilot(db_session)
     from app.modules.tutor.services.tutor_service import list_recommendations
