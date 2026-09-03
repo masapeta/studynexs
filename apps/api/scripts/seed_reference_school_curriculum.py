@@ -16,6 +16,11 @@ _scripts_dir = Path(__file__).resolve().parent
 if str(_scripts_dir) not in sys.path:
     sys.path.insert(0, str(_scripts_dir))
 
+from reference_school_config import (
+    LOGIN_CLASS_INCHARGE,
+    SCHOOL_BOARD,
+    TENANT_SLUG,
+)
 from sqlalchemy import select
 
 from app.core.database import async_session_factory
@@ -30,11 +35,6 @@ from app.modules.curriculum.schemas.pack import (
     TopicIn,
 )
 from app.modules.curriculum.services.pack_service import PackService
-from reference_school_config import (
-    LOGIN_CLASS_INCHARGE,
-    SCHOOL_BOARD,
-    TENANT_SLUG,
-)
 
 SSC_CLASS10_MATHS: list[tuple[str, str, list[str]]] = [
     ("1", "Real Numbers", ["Euclid's division lemma", "Fundamental theorem of arithmetic"]),

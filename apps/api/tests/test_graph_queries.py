@@ -14,7 +14,7 @@ from app.db.models.curriculum_pack import (
     CurriculumTopic,
     PackStatus,
 )
-from app.db.models.knowledge_graph import CurriculumConcept, KgEdge, KgEdgeType, KgNodeType
+from app.db.models.knowledge_graph import CurriculumConcept
 from app.db.models.school import School
 from app.db.models.user import User, UserRole
 from app.modules.knowledge_graph.services.graph_query_service import GraphQueryService

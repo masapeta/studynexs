@@ -22,7 +22,7 @@ const {
   reportConsoleErrors,
 } = require("./e2e-harness-utils.cjs");
 
-const BASE = process.env.E2E_BASE_URL || "http://127.0.0.1:3000";
+let BASE = process.env.E2E_BASE_URL || "http://127.0.0.1:3000";
 const API = process.env.E2E_API_URL || "http://127.0.0.1:8000";
 const TENANT =
   process.env.E2E_TENANT_SLUG || process.env.NEXT_PUBLIC_TENANT_SLUG || REFERENCE_TENANT;
@@ -46,6 +46,57 @@ const PAGES = [
   { url: "/dashboard/notices", name: "notices", expect: ["Notice"] },
   { url: "/dashboard/settings", name: "settings", expect: ["Settings", "School"] },
 ];
+
+async function canReachBase(baseUrl) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4000);
+  try {
+    const res = await fetch(`${baseUrl}/login`, {
+      method: "GET",
+      redirect: "manual",
+      signal: controller.signal,
+    });
+    return res.status >= 200 && res.status < 500;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function resolveBaseUrl() {
+  if (process.env.E2E_BASE_URL) {
+    return BASE;
+  }
+
+  const candidates = ["http://127.0.0.1:3000", "http://127.0.0.1:3002"];
+  for (const candidate of candidates) {
+    if (await canReachBase(candidate)) {
+      return candidate;
+    }
+  }
+
+  throw new Error(
+    "Unable to reach admin web at http://127.0.0.1:3000 or http://127.0.0.1:3002. " +
+      "Start Next.js (dev or prod) or set E2E_BASE_URL explicitly."
+  );
+}
+
+async function withTimeout(label, promise, ms = 60000) {
+  let timer;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timer = setTimeout(() => {
+          reject(new Error(`${label} timed out after ${ms}ms`));
+        }, ms);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 async function shot(page, name) {
   try {
@@ -162,6 +213,8 @@ async function openPasswordLogin(page, portal = "staff") {
 
 (async () => {
   fs.mkdirSync(SHOTS, { recursive: true });
+  BASE = await resolveBaseUrl();
+  console.log(`[smoke] base=${BASE} tenant=${TENANT}`);
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await ctx.newPage();
@@ -186,19 +239,26 @@ async function openPasswordLogin(page, portal = "staff") {
   // ── Walk every page ────────────────────────────────────────────────────
   for (const p of PAGES) {
     try {
-      await page.goto(BASE + p.url, { waitUntil: "domcontentloaded" });
-      await waitForPageReady(page);
-      const body = await assertNotLoginScreen(page, p.name);
-      const missing = p.expect.filter((t) => !body.includes(t));
-      let note = "";
-      if (p.rows) {
-        const n = await page.locator(p.rows).count();
-        note = `rows=${n}`;
-      }
-      // any expected anchor present (not all — pages vary) => rendered
-      const ok = p.expect.some((t) => body.includes(t)) && body.length > 200;
-      results.push([ok, `page ${p.name}`, ok ? note : `missing all of ${JSON.stringify(p.expect)}`]);
-      await shot(page, p.name);
+      console.log(`[smoke] page:start ${p.name}`);
+      await withTimeout(
+        `page ${p.name}`,
+        (async () => {
+          await page.goto(BASE + p.url, { waitUntil: "domcontentloaded" });
+          await waitForPageReady(page);
+          const body = await assertNotLoginScreen(page, p.name);
+          const missing = p.expect.filter((t) => !body.includes(t));
+          let note = "";
+          if (p.rows) {
+            const n = await page.locator(p.rows).count();
+            note = `rows=${n}`;
+          }
+          // any expected anchor present (not all — pages vary) => rendered
+          const ok = p.expect.some((t) => body.includes(t)) && body.length > 200;
+          results.push([ok, `page ${p.name}`, ok ? note : `missing all of ${JSON.stringify(p.expect)}`]);
+          await shot(page, p.name);
+        })(),
+        70000
+      );
     } catch (e) {
       results.push([false, `page ${p.name}`, e.message]);
       await shot(page, `${p.name}-FAIL`);
@@ -207,46 +267,53 @@ async function openPasswordLogin(page, portal = "staff") {
 
   // ── Real flow: open or generate a report card on Class 10 — A ───────────
   try {
-    await page.goto(BASE + "/dashboard/teaching/report-cards", { waitUntil: "domcontentloaded" });
-    await waitForPageReady(page);
-    await pickAppSelect(page, "Class", "Class 10 — A");
-    await waitForPageReady(page);
-    const rosterRows = await page.locator(".data-table tbody tr").count();
-    const openBtn = page.getByRole("button", { name: "Open" }).first();
-    if (await openBtn.count()) {
-      await openBtn.click();
-      results.push([true, "flow: open existing report card", `roster=${rosterRows}`]);
-    } else {
-      await page.getByRole("button", { name: "Generate", exact: true }).first().click();
-      results.push([true, "flow: generate report card (clicked)", `roster=${rosterRows}`]);
-    }
-    // Preview panel with remark textarea (works for Open or successful Generate).
-    const remarkPanel = page.locator("text=Class teacher's remark");
-    try {
-      await remarkPanel.waitFor({ state: "visible", timeout: 45000 });
-    } catch {
-      results.push([
-        true,
-        "flow: report card AI remark",
-        "skipped — live AI unavailable (run smoke_report_card.py or set GEMINI_API_KEY)",
-      ]);
-      await shot(page, "flow-report-card");
-    }
-    if (await remarkPanel.count()) {
-      await page.waitForTimeout(1500);
-      const remark = await page.locator("textarea").first().inputValue();
-      const ok = remark.trim().length > 5;
-      results.push([ok, "flow: report card remark visible", `remark_len=${remark.length}`]);
-      await shot(page, "flow-report-card");
-      const approveBtn = page.getByRole("button", { name: /Approve/ }).first();
-      if (await approveBtn.count()) {
-        await approveBtn.click();
-        await page.waitForTimeout(1200);
-        const approvedBadge = await page.locator("text=APPROVED").count();
-        results.push([approvedBadge > 0, "flow: approve report card", `approved_badge=${approvedBadge}`]);
-        await shot(page, "flow-report-card-approved");
-      }
-    }
+    console.log("[smoke] flow:start report-card");
+    await withTimeout(
+      "flow report-card",
+      (async () => {
+        await page.goto(BASE + "/dashboard/teaching/report-cards", { waitUntil: "domcontentloaded" });
+        await waitForPageReady(page);
+        await pickAppSelect(page, "Class", "Class 10 — A");
+        await waitForPageReady(page);
+        const rosterRows = await page.locator(".data-table tbody tr").count();
+        const openBtn = page.getByRole("button", { name: "Open" }).first();
+        if (await openBtn.count()) {
+          await openBtn.click();
+          results.push([true, "flow: open existing report card", `roster=${rosterRows}`]);
+        } else {
+          await page.getByRole("button", { name: "Generate", exact: true }).first().click();
+          results.push([true, "flow: generate report card (clicked)", `roster=${rosterRows}`]);
+        }
+        // Preview panel with remark textarea (works for Open or successful Generate).
+        const remarkPanel = page.locator("text=Class teacher's remark");
+        try {
+          await remarkPanel.waitFor({ state: "visible", timeout: 45000 });
+        } catch {
+          results.push([
+            true,
+            "flow: report card AI remark",
+            "skipped — live AI unavailable (run smoke_report_card.py or set GEMINI_API_KEY)",
+          ]);
+          await shot(page, "flow-report-card");
+        }
+        if (await remarkPanel.count()) {
+          await page.waitForTimeout(1500);
+          const remark = await page.locator("textarea").first().inputValue();
+          const ok = remark.trim().length > 5;
+          results.push([ok, "flow: report card remark visible", `remark_len=${remark.length}`]);
+          await shot(page, "flow-report-card");
+          const approveBtn = page.getByRole("button", { name: /Approve/ }).first();
+          if (await approveBtn.count()) {
+            await approveBtn.click();
+            await page.waitForTimeout(1200);
+            const approvedBadge = await page.locator("text=APPROVED").count();
+            results.push([approvedBadge > 0, "flow: approve report card", `approved_badge=${approvedBadge}`]);
+            await shot(page, "flow-report-card-approved");
+          }
+        }
+      })(),
+      120000
+    );
   } catch (e) {
     results.push([
       false,
@@ -258,35 +325,45 @@ async function openPasswordLogin(page, portal = "staff") {
 
   // ── Student AI Tutor (G1-02): Neerja voice path ───────────────────────
   try {
-    const studentCtx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-    const studentPage = await studentCtx.newPage();
-    const studentTenantTracker = attachTenantTracker(studentPage, TENANT);
-    attachConsoleGuard(studentPage, consoleBuckets);
-    attachApiFailureTracker(studentPage, consoleBuckets);
-    await authenticatePortal(studentPage, "student", "student_demo", "Demo@1234");
-    await studentPage.goto(`${BASE}/student/tutor`, { waitUntil: "domcontentloaded" });
-    await waitForPageReady(studentPage);
-    const body = await assertNotLoginScreen(studentPage, "student tutor");
-    const hasLesson =
-      body.includes("Mistake Recovery") ||
-      body.includes("Quadratic") ||
-      body.includes("Discriminant");
-    results.push([hasLesson, "flow: student tutor page", hasLesson ? "exam-derived lesson" : "no lesson text"]);
-    results.push(studentTenantTracker.assert("tenant student"));
-    await shot(studentPage, "flow-student-tutor");
-    const playBtn = studentPage.getByRole("button", { name: /Play voice|Resume/ });
-    if (await playBtn.count()) {
-      await playBtn.click();
-      await studentPage.waitForTimeout(2500);
-      const hint = await studentPage.locator(".tutor-voice-hint").last().innerText();
-      if (hint.includes("voice is off") || hint.includes("unavailable")) {
-        results.push([true, "flow: tutor Neerja hint", "skipped — voice unavailable in this environment"]);
-      } else {
-        const voiceOk = hint.includes("Neerja");
-        results.push([voiceOk, "flow: tutor Neerja hint", hint.slice(0, 80)]);
-      }
-    }
-    await studentCtx.close();
+    console.log("[smoke] flow:start student-tutor");
+    await withTimeout(
+      "flow student-tutor",
+      (async () => {
+        const studentCtx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+        try {
+          const studentPage = await studentCtx.newPage();
+          const studentTenantTracker = attachTenantTracker(studentPage, TENANT);
+          attachConsoleGuard(studentPage, consoleBuckets);
+          attachApiFailureTracker(studentPage, consoleBuckets);
+          await authenticatePortal(studentPage, "student", "student_demo", "Demo@1234");
+          await studentPage.goto(`${BASE}/student/tutor`, { waitUntil: "domcontentloaded" });
+          await waitForPageReady(studentPage);
+          const body = await assertNotLoginScreen(studentPage, "student tutor");
+          const hasLesson =
+            body.includes("Mistake Recovery") ||
+            body.includes("Quadratic") ||
+            body.includes("Discriminant");
+          results.push([hasLesson, "flow: student tutor page", hasLesson ? "exam-derived lesson" : "no lesson text"]);
+          results.push(studentTenantTracker.assert("tenant student"));
+          await shot(studentPage, "flow-student-tutor");
+          const playBtn = studentPage.getByRole("button", { name: /Play voice|Resume/ });
+          if (await playBtn.count()) {
+            await playBtn.click();
+            await studentPage.waitForTimeout(2500);
+            const hint = await studentPage.locator(".tutor-voice-hint").last().innerText();
+            if (hint.includes("voice is off") || hint.includes("unavailable")) {
+              results.push([true, "flow: tutor Neerja hint", "skipped — voice unavailable in this environment"]);
+            } else {
+              const voiceOk = hint.includes("Neerja");
+              results.push([voiceOk, "flow: tutor Neerja hint", hint.slice(0, 80)]);
+            }
+          }
+        } finally {
+          await studentCtx.close();
+        }
+      })(),
+      120000
+    );
   } catch (e) {
     results.push([false, "flow: student tutor", e.message]);
     await shot(page, "flow-student-tutor-FAIL");

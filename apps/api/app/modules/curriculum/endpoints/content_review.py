@@ -11,7 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.api_route import CommitOnSuccessRoute
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, require_roles
-from app.db.models.content_review import ContentReviewItemType, ContentReviewSource, ContentReviewStatus
+from app.db.models.content_review import (
+    ContentReviewItemType,
+    ContentReviewSource,
+    ContentReviewStatus,
+)
 from app.db.models.knowledge_graph import CurriculumConcept
 from app.modules.curriculum.schemas.content_review import (
     ContentReviewItemOut,
@@ -20,11 +24,11 @@ from app.modules.curriculum.schemas.content_review import (
     EnqueueConceptGapRequest,
     RejectContentReviewRequest,
 )
+from app.modules.curriculum.services.concept_card_service import ConceptCardError
 from app.modules.curriculum.services.content_review_service import (
     ContentReviewError,
     ContentReviewService,
 )
-from app.modules.curriculum.services.concept_card_service import ConceptCardError
 from app.modules.curriculum.services.pack_service import PackError
 from app.shared.schemas.common import APIResponse
 

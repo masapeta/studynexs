@@ -13,25 +13,28 @@ from __future__ import annotations
 import asyncio
 import json
 import random
-import uuid
-from datetime import date, datetime, timedelta, timezone
+
+# ── Bootstrap ────────────────────────────────────────────────────────────────
+import sys
+from datetime import date
 from pathlib import Path
 
 from faker import Faker
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-# ── Bootstrap ────────────────────────────────────────────────────────────────
-
-import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.core.config import get_settings
 from app.core.security import hash_password
-from app.db.models.base import Base
-from app.db.models.school import School
-from app.db.models.user import User, UserRole
 from app.db.models.academic import AcademicYear, Class, Subject, TeacherSubjectMapping
+from app.db.models.fee import (
+    FeeFrequency,
+    FeeStructure,
+    FeeType,
+    ReceiptCounter,
+)
+from app.db.models.school import School
 from app.db.models.student import (
     Enrollment,
     Gender,
@@ -41,12 +44,7 @@ from app.db.models.student import (
     StudentParentMap,
 )
 from app.db.models.teacher import Teacher
-from app.db.models.attendance import Attendance, AttendanceStatus
-from app.db.models.examination import Exam, ExamMark, ExamType
-from app.db.models.fee import (
-    FeeStructure, StudentFeeRecord, FeeReceipt, ReceiptCounter,
-    FeeType, FeeFrequency, FeeStatus, PaymentMode,
-)
+from app.db.models.user import User, UserRole
 
 settings = get_settings()
 fake = Faker("en_IN")
@@ -217,7 +215,7 @@ async def seed_school(session: AsyncSession, school_def: dict) -> None:
         "password": "Admin@123",
         "mobile": vice_principal.mobile,
     })
-    print(f"  ✓ 2 admins created")
+    print("  ✓ 2 admins created")
 
     # ── 4. Academic Year ─────────────────────────────────────────
     academic_year = AcademicYear(
@@ -332,8 +330,6 @@ async def seed_school(session: AsyncSession, school_def: dict) -> None:
 
     # ── 7. Students & Parents (with multi-child linking) ─────────
     # Build family pools: 65% single-child, 30% two-child, 5% three-child
-    total_students = num_classes * school_def["students_per_section"]
-
     # Distribute students across classes
     student_records: list[dict] = []
     for cls in all_classes:
@@ -514,7 +510,7 @@ async def seed_school(session: AsyncSession, school_def: dict) -> None:
     )
     session.add_all([tuition, transport, library])
     await session.flush()
-    print(f"  ✓ 3 fee structures (tuition/transport/library)")
+    print("  ✓ 3 fee structures (tuition/transport/library)")
 
     # ── 9. Commit ────────────────────────────────────────────────
     await session.commit()

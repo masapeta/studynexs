@@ -21,17 +21,17 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR.parent))
 sys.path.insert(0, str(_SCRIPT_DIR))
 
-from app.core.database import async_session_factory
-from app.db.models.school import School
-from app.db.models.school_ops import AdmissionStage
-from app.db.models.user import User, UserRole
+from reference_school_config import TENANT_SLUG
 from seed_working_session import (
     ADMISSION_MIN_PER_STAGE,
     admission_pipeline_counts,
     seed_admissions,
 )
 
-from reference_school_config import TENANT_SLUG
+from app.core.database import async_session_factory
+from app.db.models.school import School
+from app.db.models.school_ops import AdmissionStage
+from app.db.models.user import User, UserRole
 
 TENANT = TENANT_SLUG
 

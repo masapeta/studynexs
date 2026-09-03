@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.academic import Class
 from app.db.models.communication import Notice, NoticeAudience, NoticePriority
-from app.db.models.user import User, UserRole
+from app.db.models.user import User
 from tests.conftest import auth_headers, get_auth_token
 
 

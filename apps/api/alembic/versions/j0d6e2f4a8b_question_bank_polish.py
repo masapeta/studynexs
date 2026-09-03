@@ -8,6 +8,7 @@ No-op when i9c5d1e3f7a already created approval_status as varchar (fresh install
 from __future__ import annotations
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision = "j0d6e2f4a8b"

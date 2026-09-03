@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenant_scope import TenantScope
-from app.db.models.attendance import Attendance, AttendanceStatus
+from app.db.models.attendance import Attendance
 from app.modules.attendance.schemas.attendance import AttendanceEntry
 
 

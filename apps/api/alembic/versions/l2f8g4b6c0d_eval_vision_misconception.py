@@ -6,8 +6,9 @@ Revises: k1e7f3a5b9c
 from __future__ import annotations
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision = "l2f8g4b6c0d"
 down_revision = "k1e7f3a5b9c"

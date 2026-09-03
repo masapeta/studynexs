@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import uuid
 from collections import defaultdict
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,20 +11,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.staff_permissions import StaffScope
 from app.db.models.academic import Class, Subject
 from app.db.models.attendance import Attendance
-from app.db.models.communication import Notice, NoticeAudience
-from app.db.models.communication import NoticeReadReceipt
-from app.db.models.mastery import FlagStatus, MasteryFlag, StudentTopicMastery
+from app.db.models.communication import NoticeAudience, NoticeReadReceipt
 from app.db.models.lesson_plan import LessonPlan, LessonPlanStatus
+from app.db.models.mastery import FlagStatus, MasteryFlag, StudentTopicMastery
 from app.db.models.question_paper import (
-    PaperStatus,
-    QuestionPaper,
     _INCHARGE_REVIEW_STATUSES,
     _TEACHER_SUBMIT_STATUSES,
+    QuestionPaper,
 )
-from app.modules.curriculum.services.lesson_plan_service import LessonPlanService
 from app.db.models.student import Student
 from app.db.models.timetable import DayOfWeek, TimetableSlot
 from app.db.models.user import User
+from app.modules.curriculum.services.lesson_plan_service import LessonPlanService
 from app.modules.dashboard.schemas.teacher_home import (
     DashboardActionOut,
     LessonPlanPreviewOut,
@@ -99,7 +97,10 @@ class TeacherHomeService:
             s.id: s
             for s in (
                 await self.db.execute(
-                    select(Subject).where(Subject.school_id == school_id, Subject.id.in_(subject_ids))
+                    select(Subject).where(
+                        Subject.school_id == school_id,
+                        Subject.id.in_(subject_ids),
+                    )
                 )
             ).scalars().all()
         }
@@ -119,9 +120,10 @@ class TeacherHomeService:
         staff_notices, school_notices = await self._notices(
             school_id, scope
         )
+        greeting_period = "morning" if datetime.now().hour < 12 else "afternoon"
 
         return TeacherCommandCenterOut(
-            greeting=f"Good {'morning' if datetime.now().hour < 12 else 'afternoon'}, {teacher_name.split()[0]}",
+            greeting=f"Good {greeting_period}, {teacher_name.split()[0]}",
             today_classes=today_classes,
             pending_work=pending,
             lesson_plan=lesson_plan,
@@ -179,7 +181,7 @@ class TeacherHomeService:
                     0,
                     DashboardActionOut(
                         label="Mark Attendance",
-                        href=f"/dashboard/attendance",
+                        href="/dashboard/attendance",
                         variant="primary",
                     ),
                 )
@@ -188,7 +190,7 @@ class TeacherHomeService:
                     0,
                     DashboardActionOut(
                         label="View Mastery",
-                        href=f"/dashboard/mastery",
+                        href="/dashboard/mastery",
                         variant="primary",
                     ),
                 )
@@ -323,7 +325,10 @@ class TeacherHomeService:
             avg_mastery = avg_row.scalar()
             weak_rows = (
                 await self.db.execute(
-                    select(StudentTopicMastery.topic_display, func.avg(StudentTopicMastery.mastery_pct))
+                    select(
+                        StudentTopicMastery.topic_display,
+                        func.avg(StudentTopicMastery.mastery_pct),
+                    )
                     .where(
                         StudentTopicMastery.school_id == school_id,
                         StudentTopicMastery.class_id == class_id,

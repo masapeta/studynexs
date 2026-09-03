@@ -6,6 +6,7 @@ Revises: d4e8f0a2b6c3
 from __future__ import annotations
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision = "e5f9a1b3c7d4"

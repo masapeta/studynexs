@@ -8,7 +8,7 @@ import enum
 import uuid
 from datetime import date
 
-from sqlalchemy import Boolean, Date, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Date, Enum, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 

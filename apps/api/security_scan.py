@@ -1,6 +1,6 @@
 import asyncio
+
 import httpx
-import sys
 
 BASE_URL = "http://localhost:8000/api/v1"
 
@@ -21,7 +21,7 @@ async def run_security_check():
             "/attendance/class/" + str(httpx.QueryParams({"date": "2026-01-01"})),
             "/fees/pay"
         ]
-        
+
         for ep in endpoints:
             await check_unauthorized(client, ep)
 

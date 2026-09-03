@@ -47,7 +47,8 @@ def _build_lesson_plan_messages(
     chapter_line = f"Chapter: {chapter}.\n" if chapter else ""
     system = (
         f"You are an expert {board} {grade} {subject} teacher in India. "
-        "Create a practical single-period lesson plan grounded ONLY in the CURRICULUM CONTEXT below. "
+        "Create a practical single-period lesson plan grounded ONLY in the "
+        "CURRICULUM CONTEXT below. "
         "Every segment must cite at least one source number from the context. "
         "Return JSON only."
     )
@@ -59,7 +60,8 @@ def _build_lesson_plan_messages(
         f"Focus topic: {topic}.\n\n"
         "Return JSON:\n"
         '{"title": str, "segments": ['
-        '{"duration_min": int, "activity": str, "description": str, "notes": str, "citations": [int]}], '
+        '{"duration_min": int, "activity": str, "description": str, '
+        '"notes": str, "citations": [int]}], '
         '"learning_objectives": [str], "materials": [str], "notes": str}\n'
         "Provide 5–6 procedure steps totalling about 40–50 minutes. "
         "Use standard step names where appropriate (Introduction, Instructions, Guided Practice, "
@@ -82,7 +84,8 @@ def _build_qp_review_messages(
     system = (
         f"You are an experienced {board} board examiner reviewing a {grade} {subject} "
         "question paper. Use the curriculum context to judge syllabus alignment, clarity, "
-        "and difficulty balance. Provide constructive suggestions — do not rewrite the entire paper. "
+        "and difficulty balance. Provide constructive suggestions — do not rewrite "
+        "the entire paper. "
         "Return JSON only."
     )
     user = (
@@ -319,7 +322,11 @@ class TeacherCopilotService:
         segments = _normalize_lesson_segments(
             data.get("segments") or [], grounding.sources
         )
-        objectives = [str(o).strip() for o in (data.get("learning_objectives") or []) if str(o).strip()]
+        objectives = [
+            str(o).strip()
+            for o in (data.get("learning_objectives") or [])
+            if str(o).strip()
+        ]
         materials = [str(m).strip() for m in (data.get("materials") or []) if str(m).strip()]
         notes = str(data.get("notes") or "").strip() or None
 

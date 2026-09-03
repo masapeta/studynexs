@@ -23,6 +23,7 @@ if str(_api_root) not in sys.path:
     sys.path.insert(0, str(_api_root))
 
 import httpx
+from reference_school_config import DEMO_PASSWORD, LOGIN_PRINCIPAL, TENANT_SLUG
 from sqlalchemy import delete, select
 
 from app.core.database import async_session_factory
@@ -33,7 +34,6 @@ from app.db.models.file import UploadedFile
 from app.db.models.school import School
 from app.modules.ai.rag import RagService
 from app.modules.ai.vectorstore import get_vector_store
-from reference_school_config import DEMO_PASSWORD, LOGIN_PRINCIPAL, TENANT_SLUG
 
 BASE = os.environ.get("SMOKE_BASE_URL", "").rstrip("/") or "http://127.0.0.1:8000"
 H = {"X-Tenant-Slug": TENANT_SLUG}

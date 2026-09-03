@@ -231,7 +231,6 @@ async def _build_usage_snapshot(
         user_limit = int(budget.get("teacher_monthly_credits") or 25)
 
     user_used = await _sum_credits(db, school.id, user_id=user_id, since=since)
-    limits_cfg = budget.get("limits") or {}
     usage_counts = {
         "qp_full": await _count_purpose(db, school.id, "qp_full", since=since),
         "qp_regen_full": await _count_purpose(db, school.id, "qp_regen_full", since=since),

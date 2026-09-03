@@ -13,7 +13,6 @@ Requires API + Qdrant + provider key (same as Stage 2A rehearsal).
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 import sys
 import time

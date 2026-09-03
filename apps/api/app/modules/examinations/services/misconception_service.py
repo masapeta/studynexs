@@ -58,7 +58,10 @@ def _remedial_hint(
     if rubric_note and rubric_note.strip():
         return rubric_note.strip()[:500]
     if common_wrong and len(common_wrong) > 1:
-        return f"Review why '{common_wrong[0]}' is wrong; contrast with correct approach for {topic}."
+        return (
+            f"Review why '{common_wrong[0]}' is wrong; "
+            f"contrast with correct approach for {topic}."
+        )
     return f"Short revision activity on {topic} — worked examples + 3 practice questions."
 
 

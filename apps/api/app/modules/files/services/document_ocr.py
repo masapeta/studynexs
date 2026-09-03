@@ -42,8 +42,8 @@ def extract_text_from_image(file_data: bytes) -> str | None:
         logger.info("document_ocr_unavailable", reason="tesseract_not_installed")
         return None
 
-    from PIL import Image
     import pytesseract
+    from PIL import Image
 
     cmd = settings.TESSERACT_CMD or None
     if cmd:

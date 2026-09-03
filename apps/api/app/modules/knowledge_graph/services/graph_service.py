@@ -22,7 +22,7 @@ from app.db.models.knowledge_graph import (
     KgEdgeType,
     KgNodeType,
 )
-from app.modules.curriculum.services.pack_service import PackError, PackService
+from app.modules.curriculum.services.pack_service import PackService
 from app.modules.knowledge_graph.schemas.graph import (
     ChapterSpineOut,
     ConceptOut,

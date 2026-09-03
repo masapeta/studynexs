@@ -16,12 +16,12 @@ from app.db.models.curriculum_pack import (
     PackStatus,
 )
 from app.db.models.school import School
-from app.db.models.user import User, UserRole
+from app.db.models.user import User
+from app.modules.curriculum.schemas.concept_card import ConceptCardCreate
 from app.modules.curriculum.services.concept_card_service import (
     ConceptCardError,
     ConceptCardService,
 )
-from app.modules.curriculum.schemas.concept_card import ConceptCardCreate
 from app.modules.knowledge_graph.services.graph_service import KnowledgeGraphService
 from app.modules.tutor.services.tutor_service import get_lesson
 from tests.conftest import auth_headers, get_auth_token
@@ -86,8 +86,9 @@ async def test_create_and_approve_concept_card(
         year=academic_year,
         admin=admin_user,
     )
-    from app.db.models.knowledge_graph import CurriculumConcept
     from sqlalchemy import select
+
+    from app.db.models.knowledge_graph import CurriculumConcept
 
     concept = (
         await db_session.execute(
@@ -133,8 +134,9 @@ async def test_approved_card_is_immutable(
         year=academic_year,
         admin=admin_user,
     )
-    from app.db.models.knowledge_graph import CurriculumConcept
     from sqlalchemy import select
+
+    from app.db.models.knowledge_graph import CurriculumConcept
 
     concept = (
         await db_session.execute(
@@ -174,8 +176,9 @@ async def test_tutor_uses_approved_concept_card(
     admin_user: User,
     student_user: User,
 ):
-    from app.db.models.student import Student
     from sqlalchemy import select
+
+    from app.db.models.student import Student
 
     pack, slug = await _seed_approved_with_concept(
         db_session,
@@ -236,8 +239,9 @@ async def test_concept_card_api_lifecycle(
         year=academic_year,
         admin=admin_user,
     )
-    from app.db.models.knowledge_graph import CurriculumConcept
     from sqlalchemy import select
+
+    from app.db.models.knowledge_graph import CurriculumConcept
 
     concept = (
         await db_session.execute(

@@ -25,7 +25,8 @@ from app.db.models.base import BaseModel
 # Bank item approval states — string column (not PG enum) so draft/rejected can be added later
 # without a migration. Ingest on paper approve only creates ``approved`` rows today.
 BANK_STATUS_APPROVED = "approved"
-BANK_APPROVAL_STATUSES = frozenset({BANK_STATUS_APPROVED})  # extend when bank has draft/rejected rows
+# Extend this set when bank supports draft/rejected rows.
+BANK_APPROVAL_STATUSES = frozenset({BANK_STATUS_APPROVED})
 
 
 class QuestionSource(str, enum.Enum):

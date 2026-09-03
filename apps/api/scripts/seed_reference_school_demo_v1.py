@@ -24,6 +24,12 @@ _api_root = _scripts_dir.parent
 if str(_api_root) not in sys.path:
     sys.path.insert(0, str(_api_root))
 
+from reference_school_config import (
+    LOGIN_CLASS_INCHARGE,
+    LOGIN_TEACHER_MATHS,
+    SCHOOL_BOARD,
+    TENANT_SLUG,
+)
 from sqlalchemy import select
 
 from app.core.database import async_session_factory
@@ -33,12 +39,12 @@ from app.db.models.answer_sheet_evaluation import (
     EVAL_STATUS_SUGGESTED,
     AnswerSheetEvaluation,
 )
-from app.db.models.misconception import MisconceptionEntry
 from app.db.models.communication import Notice, NoticeAudience, NoticePriority
 from app.db.models.concept_card import ConceptCard, ConceptCardStatus
 from app.db.models.curriculum_pack import CurriculumPack, CurriculumTopic, PackStatus
 from app.db.models.examination import Exam, ExamType
 from app.db.models.knowledge_graph import CurriculumConcept
+from app.db.models.misconception import MisconceptionEntry
 from app.db.models.question_paper import PaperStatus, QuestionPaper
 from app.db.models.school import School
 from app.db.models.student import Student
@@ -50,12 +56,6 @@ from app.modules.examinations.schemas.evaluation import EvaluationApprove
 from app.modules.examinations.services.answer_sheet_eval_service import AnswerSheetEvalService
 from app.modules.knowledge_graph.services.graph_service import KnowledgeGraphService
 from app.modules.mastery.services.mastery_service import recompute_class_subject
-from reference_school_config import (
-    LOGIN_CLASS_INCHARGE,
-    LOGIN_TEACHER_MATHS,
-    SCHOOL_BOARD,
-    TENANT_SLUG,
-)
 
 APPROVED_PAPER_TITLE = "Class 10 Maths — Quadratic Equations (Demo)"
 PENDING_PAPER_TITLE = "Class 10 Maths — Progressions (Pending approval)"

@@ -24,7 +24,6 @@ if str(_scripts_dir) not in sys.path:
     sys.path.insert(0, str(_scripts_dir))
 
 import httpx
-
 from reference_school_config import (
     DEMO_PASSWORD,
     LOGIN_CLASS_INCHARGE,
@@ -181,7 +180,7 @@ def _poll_intelligence(client: httpx.Client, auth: dict, pack_id: str, timeout_s
 def _assert_real_llm_available() -> None:
     """Fail fast when the API would use the dev stub (no provider API key)."""
     from app.core.config import get_settings
-    from app.modules.ai.gateway.factory import get_provider, _provider_configured
+    from app.modules.ai.gateway.factory import _provider_configured, get_provider
 
     s = get_settings()
     primary = (s.AI_DEFAULT_PROVIDER or "gemini").lower()

@@ -23,7 +23,6 @@ from app.modules.ai.embeddings.stub_provider import StubEmbeddingProvider
 from app.modules.ai.gateway import LLMResult
 from app.modules.ai.services.question_paper_service import generate_paper
 from app.modules.ai.vectorstore.memory_store import InMemoryVectorStore
-from app.modules.curriculum.services.curriculum_grounding import CurriculumGrounding
 from app.modules.curriculum.services.lesson_plan_service import LessonPlanService
 
 _QP_LLM = "app.modules.ai.services.question_paper_service.generate_llm"

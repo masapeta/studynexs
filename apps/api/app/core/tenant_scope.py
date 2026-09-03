@@ -10,7 +10,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.academic import AcademicYear, Class, Subject, TeacherSubjectMapping
+from app.db.models.academic import AcademicYear, Class, Subject
 from app.db.models.examination import Exam
 from app.db.models.student import Student
 from app.db.models.user import User, UserRole

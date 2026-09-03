@@ -192,10 +192,9 @@ async def test_grounding_preview_endpoint(
     academic_year,
     db_session,
 ):
-    from tests.conftest import auth_headers, get_auth_token
-
     from app.modules.curriculum.schemas.pack import ChapterIn, PackCreate, TopicIn
     from app.modules.curriculum.services.pack_service import PackService
+    from tests.conftest import auth_headers, get_auth_token
 
     subject = Subject(school_id=test_school.id, class_id=test_class.id, name="Maths", code="M2")
     db_session.add(subject)

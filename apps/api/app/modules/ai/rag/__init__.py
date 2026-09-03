@@ -5,7 +5,7 @@ and retrieves tenant- and pack-scoped context with source citations. All academi
 generation, tutor, evaluation) retrieves through this service rather than embedding free text.
 """
 
-from app.modules.ai.rag.service import RagService, RetrievedChunk
 from app.modules.ai.rag.hybrid import HybridRetrievalOptions, HybridRetrievalService
+from app.modules.ai.rag.service import RagService, RetrievedChunk
 
 __all__ = ["RagService", "RetrievedChunk", "HybridRetrievalOptions", "HybridRetrievalService"]

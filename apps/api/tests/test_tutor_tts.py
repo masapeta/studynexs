@@ -1,8 +1,9 @@
 """Tutor TTS endpoints — Edge TTS by default; Azure Speech when configured."""
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from httpx import AsyncClient
-from unittest.mock import AsyncMock, patch
 
 from app.db.models.user import User
 from app.modules.tutor.services.tts_service import default_tts_voice

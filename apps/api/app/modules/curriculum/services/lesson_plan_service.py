@@ -12,7 +12,10 @@ from app.core.staff_permissions import StaffScope, assert_qp_generate
 from app.db.models.academic import Class, Subject
 from app.db.models.lesson_plan import LessonPlan, LessonPlanStatus
 from app.db.models.mastery import StudentTopicMastery
-from app.modules.curriculum.services.curriculum_grounding import CurriculumGrounding, ground_approved_pack
+from app.modules.curriculum.services.curriculum_grounding import (
+    CurriculumGrounding,
+    ground_approved_pack,
+)
 
 if TYPE_CHECKING:
     from app.modules.ai.embeddings import EmbeddingService

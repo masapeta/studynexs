@@ -1,7 +1,8 @@
-"""
-StudyNexs Platform — Tenant Resolution Middleware
+"""StudyNexs Platform — Tenant Resolution Middleware.
+
 Resolves subdomain slugs (e.g., sia.studynexs.com → school_id) to tenant context.
-Platform hosts (api, app, demo, …) never derive a tenant from the hostname — see URL_ARCHITECTURE.md.
+Platform hosts (api, app, demo, …) never derive a tenant from the hostname.
+See URL_ARCHITECTURE.md.
 """
 from __future__ import annotations
 
@@ -23,7 +24,8 @@ def subdomain_slug_from_host(hostname: str, base_domain: str) -> str | None:
     """
     Extract a school tenant slug from hostname, or None if the host is not a tenant host.
 
-    Returns None for apex hosts, platform reserved subdomains (api, app, …), and non-matching domains.
+    Returns None for apex hosts, platform reserved subdomains (api, app, …),
+    and non-matching domains.
     """
     host = hostname.split(":")[0].lower()
     base = base_domain.lower()

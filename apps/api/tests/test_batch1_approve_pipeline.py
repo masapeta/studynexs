@@ -25,7 +25,6 @@ from app.modules.ai.embeddings.stub_provider import StubEmbeddingProvider
 from app.modules.ai.rag.service import RagService
 from app.modules.ai.services.assessment_grounding import ground_for_pack
 from app.modules.ai.vectorstore.memory_store import InMemoryVectorStore
-from app.modules.curriculum.schemas.pack import ChapterIn, PackCreate, TopicIn
 from app.modules.curriculum.services.pack_audit import PackAuditEventType
 from app.modules.curriculum.services.pack_service import PackError, PackService
 from tests.conftest import auth_headers, get_auth_token

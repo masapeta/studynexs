@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends
 
 from app.core.api_route import CommitOnSuccessRoute
-from app.core.dependencies import get_current_user, require_roles
+from app.core.dependencies import require_roles
 from app.modules.platform.schemas.engineering import EngineeringStatusOut
 from app.modules.platform.services.engineering_status import get_engineering_status
 from app.shared.schemas.common import APIResponse

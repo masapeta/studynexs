@@ -1,7 +1,6 @@
 """User service — CRUD with pagination and caching."""
 from __future__ import annotations
 
-import math
 import uuid
 
 import redis.asyncio as redis

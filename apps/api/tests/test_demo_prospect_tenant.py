@@ -9,11 +9,11 @@ from httpx import AsyncClient
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.jobs.worker import register_job_handlers, run_job
 from app.db.models.job import Job, JobStatus
 from app.db.models.school import School
 from app.db.models.user import User
 from app.modules.demo import TENANT_KIND_PROSPECT_DEMO
-from app.core.jobs.worker import register_job_handlers, run_job
 from app.modules.demo.services.cleanup_service import TenantCleanupError, TenantCleanupService
 from app.modules.demo.services.demo_session_service import DemoSessionService
 from tests.conftest import auth_headers

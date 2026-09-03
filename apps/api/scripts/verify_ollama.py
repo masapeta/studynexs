@@ -18,7 +18,8 @@ _ENV_FILE = _API_ROOT / ".env"
 if str(_API_ROOT) not in sys.path:
     sys.path.insert(0, str(_API_ROOT))
 
-from app.core.config import Settings, _ENV_FILE as CONFIG_ENV_FILE
+from app.core.config import _ENV_FILE as CONFIG_ENV_FILE
+from app.core.config import Settings
 from app.modules.ai.gateway.base import LLMMessage
 from app.modules.ai.gateway.ollama import OllamaProvider
 

@@ -297,6 +297,56 @@ Checkpoint commit `71dadb9` (`Harden trust gates for phases 3c-7`) and
 closure-docs commit `f1edbad` (`Close Gate S phase 8/9 evidence`) were pushed
 to `studynexs-github/develop`.
 
+### Release-confidence sweep — full repo lint/test/build (2026-09-03)
+
+Final sweep commands were run across both apps after Gate S closure to capture
+current release confidence:
+
+- **API lint (`ruff check . --statistics`)**: ❌ failed with **488 errors**
+  (`181 E501`, `165 E402`, `68 I001`, `63 F401`, `5 F541`, `3 F841`,
+  `2 W293`, `1 W291`).
+- **API tests (`pytest`)**: ✅ passed with **`1074 passed, 1 skipped, 3 warnings`**
+  in **`11:08:48`** (`PYTEST_EXIT=0`).
+- **API import/build sanity (`python -c "import app.main"`)**: ✅ `IMPORT_EXIT=0`.
+- **Admin web lint (`npm run lint`)**: ❌ failed with
+  **`11826 problems (506 errors, 11320 warnings)`**.
+- **Admin web build (`npm run build`)**: ✅ pass (compiled successfully; static generation completed).
+- **Admin web smoke (`npm run e2e-smoke`)**: ❌ failed at default
+  `http://127.0.0.1:3000` with `ERR_CONNECTION_REFUSED` (`2 FAILED`).
+
+Environment note from the same pass:
+
+- `Test-NetConnection` confirmed `127.0.0.1:3000` unavailable and
+  `127.0.0.1:3002` reachable at run time.
+- A 3002 rerun was attempted, but terminal output did not return a completed
+  pass/fail record before the session timeout/cleanup window, so only the
+  definitive 3000 smoke failure is counted in this checkpoint.
+
+### Release-confidence corrective rerun — post-remediation closure (2026-09-03)
+
+After targeted lint and smoke-harness remediation, the full release-confidence
+suite was re-run end-to-end with deterministic output capture:
+
+- **API lint (`ruff check .`)**: ✅ `All checks passed!`
+- **API full tests (`pytest -q`)**: ✅ `1074 passed, 1 skipped, 3 warnings`
+  in `1636.22s (0:27:16)`
+- **API import sanity (`python -c "import app.main"`)**: ✅ `API_IMPORT_OK`
+- **Admin web lint (`npm run lint`)**: ✅ exit `0` with
+  `103 problems (0 errors, 103 warnings)`
+- **Admin web build (`npm run build`)**: ✅ Next.js production build completed
+  successfully (compile, type-check, static generation)
+- **Admin web smoke (`npm run e2e-smoke`)**: ✅ `ALL GREEN (20 checks, 0 disallowed console errors)`
+
+Smoke trust-proof details from the same rerun:
+
+- Runtime auto-detection selected the reachable production-started web runtime:
+  `[smoke] base=http://127.0.0.1:3002 tenant=reference`
+- 3000 remained unavailable while 3002 and 8000 were reachable during triage.
+- Browser console summary remained policy-clean (`15 total`, `0 disallowed`).
+
+**Release-confidence checkpoint status:** ✅ **GREEN** (with known non-blocking
+frontend warning backlog).
+
 ---
 
 ## Published AEI v1.0 product-completion milestones

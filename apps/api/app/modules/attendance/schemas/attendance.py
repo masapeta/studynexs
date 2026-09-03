@@ -3,7 +3,7 @@
 import uuid
 from datetime import date
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 from app.db.models.attendance import AttendanceStatus
 

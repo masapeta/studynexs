@@ -13,7 +13,6 @@ def test_classify_llm_error_timeout():
 
 
 def test_emit_llm_call_updates_metrics():
-    registry = AIMetricsRegistry()
     emit_llm_call(
         status="success",
         feature="question_paper",

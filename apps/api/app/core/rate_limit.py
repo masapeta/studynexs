@@ -3,8 +3,8 @@ API rate limiting — Redis sliding window, per user/school on authenticated rou
 """
 from __future__ import annotations
 
-from fastapi import Depends, HTTPException, Request, status
 import redis.asyncio as redis
+from fastapi import Depends, Request
 
 from app.core.config import Environment, get_settings
 from app.core.dependencies import CurrentUser, check_rate_limit, get_current_user, get_redis

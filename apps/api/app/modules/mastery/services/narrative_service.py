@@ -22,7 +22,12 @@ logger = structlog.get_logger()
 def _safe_evidence_str(value: object, *, max_length: int = 200) -> str:
     if value is None:
         return ""
-    cleaned = sanitize_prompt_text(str(value), max_length=max_length, field_name="evidence", reject_injection=True)
+    cleaned = sanitize_prompt_text(
+        str(value),
+        max_length=max_length,
+        field_name="evidence",
+        reject_injection=True,
+    )
     return cleaned or ""
 
 
@@ -67,7 +72,11 @@ async def draft_narrative(
     credits_charged: int | None = None,
 ) -> tuple[str, str]:
     """Draft the parent-facing note for an approved flag. Returns (text, model)."""
-    cost = credits_charged if credits_charged is not None else credits_for_purpose("mastery_narrative")
+    cost = (
+        credits_charged
+        if credits_charged is not None
+        else credits_for_purpose("mastery_narrative")
+    )
     reserved = None
     if cost > 0:
         reserved = await reserve_ai_credits(

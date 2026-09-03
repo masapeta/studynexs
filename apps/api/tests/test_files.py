@@ -4,11 +4,11 @@ from __future__ import annotations
 import pytest
 from httpx import AsyncClient
 
+from app.db.models.file import FileCategory
 from app.modules.files.services.file_validation import (
     read_file_bytes_bounded,
     validate_file_upload,
 )
-from app.db.models.file import FileCategory
 from tests.conftest import access_token_for, auth_headers
 
 # Minimal valid PDF and 1×1 PNG for sniff tests.

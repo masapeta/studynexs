@@ -1,8 +1,6 @@
 """Knowledge Graph — curriculum spine build and query (Batch 17)."""
 from __future__ import annotations
 
-import re
-
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import func, select

@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.db.models.fee import FeeStatus, FeeType, PaymentMode
+from app.db.models.fee import FeeStatus, PaymentMode
 
 
 class FeeRecordOut(BaseModel):

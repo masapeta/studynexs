@@ -9,7 +9,6 @@ from app.db.models.school import School
 from app.modules.ai.services.ai_credits import (
     FEATURE_DEFAULT_PURPOSE,
     check_ai_credits,
-    credits_for_purpose,
 )
 
 

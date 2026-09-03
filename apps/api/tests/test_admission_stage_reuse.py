@@ -4,8 +4,6 @@ from __future__ import annotations
 import uuid
 from datetime import date
 
-import pytest
-
 from app.db.models.school_ops import AdmissionCandidate, AdmissionStage
 from app.modules.school_ops.services.ops_service import SchoolOpsService
 

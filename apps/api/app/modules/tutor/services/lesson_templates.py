@@ -24,8 +24,10 @@ LESSON_TEMPLATES: dict[str, dict] = {
                 "title": "Teacher explains",
                 "narration": (
                     "Let me explain it like this. Picture a pizza cut into equal slices. "
-                    "One half means two slices out of four. One third is a different cut — different sized pieces. "
-                    "Before we add, we need equal slices. That's what finding a common denominator means."
+                    "One half means two slices out of four. One third is a different cut — "
+                    "different sized pieces. "
+                    "Before we add, we need equal slices. "
+                    "That's what finding a common denominator means."
                 ),
                 "visual_kind": "fraction_bars",
                 "caption": "Make equal parts first",
@@ -82,7 +84,8 @@ LESSON_TEMPLATES: dict[str, dict] = {
             {
                 "title": "Teacher explains",
                 "narration": (
-                    "For ax squared plus bx plus c equals zero, the discriminant is b squared minus four a c. "
+                    "For ax squared plus bx plus c equals zero, "
+                    "the discriminant is b squared minus four a c. "
                     "If it is positive, you get two distinct real roots. "
                     "If it is zero, one repeated root. "
                     "If it is negative, there are no real roots — only complex conjugate pairs."
@@ -94,7 +97,8 @@ LESSON_TEMPLATES: dict[str, dict] = {
                 "title": "See it visually",
                 "narration": (
                     "Take two x squared minus five x plus two equals zero. "
-                    "Factorise to two x minus one times x minus two equals zero, so x equals one half or two. "
+                    "Factorise to two x minus one times x minus two equals zero, "
+                    "so x equals one half or two. "
                     "Always substitute back to check both roots satisfy the original equation."
                 ),
                 "visual_kind": "equation",
@@ -167,8 +171,10 @@ LESSON_TEMPLATES: dict[str, dict] = {
                 "title": "What went wrong",
                 "narration": (
                     "Let's clear up a common mix-up. "
-                    "Plants don't eat soil like we eat food, and they don't breathe exactly like us either. "
-                    "They actually make their own sugar — using sunlight, water, and carbon dioxide from the air."
+                    "Plants don't eat soil like we eat food, and they don't breathe exactly "
+                    "like us either. "
+                    "They actually make their own sugar — using sunlight, water, "
+                    "and carbon dioxide from the air."
                 ),
                 "visual_kind": "photosynthesis",
                 "caption": "Inputs vs outputs",
@@ -188,7 +194,8 @@ LESSON_TEMPLATES: dict[str, dict] = {
                 "title": "See it visually",
                 "narration": (
                     "Now follow the arrows on the diagram. "
-                    "The plant builds glucose — that's its food — and releases oxygen as a by-product. "
+                    "The plant builds glucose — that's its food — "
+                    "and releases oxygen as a by-product. "
                     "That oxygen is what we breathe. "
                     "So the energy flows from the sun into sugar inside the leaf."
                 ),
@@ -198,7 +205,8 @@ LESSON_TEMPLATES: dict[str, dict] = {
             {
                 "title": "Remember",
                 "narration": (
-                    "Say it like a short story: sunlight and water and air go in; food and oxygen come out. "
+                    "Say it like a short story: sunlight and water and air go in; "
+                    "food and oxygen come out. "
                     "Replay until you can sketch the diagram from memory."
                 ),
                 "visual_kind": "photosynthesis",
@@ -214,8 +222,10 @@ LESSON_TEMPLATES: dict[str, dict] = {
                 "title": "What went wrong",
                 "narration": (
                     "Here's a mistake I see a lot. "
-                    "If two angles are fifty and sixty degrees, students sometimes guess the third is ninety. "
-                    "Don't guess — the three interior angles of any triangle always add to one hundred eighty degrees."
+                    "If two angles are fifty and sixty degrees, "
+                    "students sometimes guess the third is ninety. "
+                    "Don't guess — the three interior angles of any triangle "
+                    "always add to one hundred eighty degrees."
                 ),
                 "visual_kind": "triangle",
                 "caption": "50° + 60° + ? = 180°",
@@ -225,7 +235,8 @@ LESSON_TEMPLATES: dict[str, dict] = {
                 "narration": (
                     "Imagine tearing off the three corners and lining them up on a straight line. "
                     "They make a half turn — one hundred eighty degrees. "
-                    "So the missing angle is one eighty minus fifty minus sixty, which is seventy degrees."
+                    "So the missing angle is one eighty minus fifty minus sixty, "
+                    "which is seventy degrees."
                 ),
                 "visual_kind": "triangle",
                 "caption": "70°",
@@ -233,7 +244,8 @@ LESSON_TEMPLATES: dict[str, dict] = {
             {
                 "title": "Practice",
                 "narration": (
-                    "Your turn: if two angles are forty and eighty degrees, subtract both from one eighty. "
+                    "Your turn: if two angles are forty and eighty degrees, "
+                    "subtract both from one eighty. "
                     "You should get sixty. Replay if you want to hear that again."
                 ),
                 "visual_kind": "triangle",

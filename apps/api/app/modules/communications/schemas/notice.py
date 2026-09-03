@@ -6,9 +6,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.db.models.communication import NoticePriority
-from app.db.models.communication import NoticeAudience
-
+from app.db.models.communication import NoticeAudience, NoticePriority
 
 _STAFF_ROLES = frozenset({"admin", "super_admin", "class_incharge", "teacher", "operations"})
 _EXTERNAL_ROLES = frozenset({"student", "parent"})

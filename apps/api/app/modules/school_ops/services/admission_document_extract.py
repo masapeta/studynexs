@@ -6,8 +6,8 @@ import re
 
 import structlog
 
-from app.modules.school_ops.services.admission_document_ocr import extract_text_from_upload
 from app.modules.files.services.file_validation import normalize_mime
+from app.modules.school_ops.services.admission_document_ocr import extract_text_from_upload
 
 logger = structlog.get_logger()
 

@@ -18,7 +18,6 @@ if str(_scripts_dir) not in sys.path:
     sys.path.insert(0, str(_scripts_dir))
 
 import httpx
-
 from reference_school_config import DEMO_PASSWORD, LOGIN_PRINCIPAL, LOGIN_STUDENT, TENANT_SLUG
 
 BASE = os.environ.get("SMOKE_BASE_URL", "").rstrip("/")

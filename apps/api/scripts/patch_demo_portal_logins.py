@@ -15,6 +15,7 @@ _scripts_dir = Path(__file__).resolve().parent
 if str(_scripts_dir) not in sys.path:
     sys.path.insert(0, str(_scripts_dir))
 
+from reference_school_config import DEMO_PASSWORD, TENANT_SLUG
 from sqlalchemy import select
 
 from app.core.database import async_session_factory
@@ -23,7 +24,6 @@ from app.db.models.academic import Class
 from app.db.models.school import School
 from app.db.models.student import Parent, Relationship, Student, StudentParentMap
 from app.db.models.user import User, UserRole
-from reference_school_config import DEMO_PASSWORD, TENANT_SLUG
 
 TENANT = TENANT_SLUG
 

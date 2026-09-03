@@ -6,7 +6,6 @@ import pytest
 from app.modules.school_ops.services.admission_document_extract import (
     extract_document_number,
     normalize_aadhaar,
-    normalize_apaar,
     normalize_birth_certificate_number,
     parse_number_from_text,
 )

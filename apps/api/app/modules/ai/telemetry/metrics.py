@@ -156,7 +156,8 @@ class AIMetricsRegistry:
 
             lines.extend([
                 "",
-                "# HELP studynexs_ai_llm_fallback_success_total Successful calls after primary failure",
+                "# HELP studynexs_ai_llm_fallback_success_total Successful calls "
+                "after primary failure",
                 "# TYPE studynexs_ai_llm_fallback_success_total counter",
             ])
             for (feature, provider, model), count in sorted(self._fallbacks.items()):

@@ -5,9 +5,8 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
-from sqlalchemy import func, select
-
 from fastapi import HTTPException
+from sqlalchemy import func, select
 
 from app.db.models.academic import AcademicYear, Class, Subject
 from app.db.models.ai_usage import AIUsage

@@ -57,7 +57,9 @@ class UpdateReportRequest(BaseModel):
     def _sanitize_title(cls, v: object) -> str | None:
         if v is None or v == "":
             return None
-        return sanitize_prompt_text(str(v), max_length=200, field_name="title", reject_injection=True)
+        return sanitize_prompt_text(
+            str(v), max_length=200, field_name="title", reject_injection=True
+        )
 
     @field_validator("ai_remark", mode="before")
     @classmethod

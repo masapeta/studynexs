@@ -14,19 +14,18 @@ _scripts_dir = Path(__file__).resolve().parent
 if str(_scripts_dir) not in sys.path:
     sys.path.insert(0, str(_scripts_dir))
 
+from reference_school_config import TENANT_SLUG
 from sqlalchemy import select
 
 from app.core.database import async_session_factory
 from app.db.models.academic import Class, Subject
 from app.db.models.communication import Notice, NoticeAudience, NoticePriority
 from app.db.models.examination import Exam, ExamMark
-from app.db.models.lesson_plan import LessonPlan, LessonPlanStatus
+from app.db.models.lesson_plan import LessonPlan
 from app.db.models.school import School
 from app.db.models.user import User, UserRole
 from app.modules.curriculum.services.lesson_plan_service import LessonPlanService
 from app.modules.mastery.services.mastery_service import recompute_class_subject
-
-from reference_school_config import TENANT_SLUG
 
 TENANT = TENANT_SLUG
 MATHS_TOPICS = ["Algebra", "Geometry", "Trigonometry", "Statistics"]

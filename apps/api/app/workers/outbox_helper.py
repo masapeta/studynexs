@@ -2,7 +2,6 @@
 Outbox helper — convenience function to enqueue events from any module.
 """
 
-import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 

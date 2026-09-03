@@ -35,9 +35,15 @@ class PackStatus(str, enum.Enum):
 class CurriculumPack(BaseModel):
     __tablename__ = "curriculum_packs"
 
-    school_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("schools.id"), nullable=False)
-    class_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("classes.id"), nullable=False)
-    subject_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("subjects.id"), nullable=False)
+    school_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("schools.id"), nullable=False
+    )
+    class_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("classes.id"), nullable=False
+    )
+    subject_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("subjects.id"), nullable=False
+    )
     academic_year_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("academic_years.id"), nullable=False
     )
@@ -46,11 +52,17 @@ class CurriculumPack(BaseModel):
     publisher: Mapped[str | None] = mapped_column(String(150))
     edition: Mapped[str | None] = mapped_column(String(50))
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    status: Mapped[PackStatus] = mapped_column(SAEnum(PackStatus), nullable=False, default=PackStatus.DRAFT)
+    status: Mapped[PackStatus] = mapped_column(
+        SAEnum(PackStatus), nullable=False, default=PackStatus.DRAFT
+    )
     # Exam blueprint as data: [{"title","marks_per_q","count","type","answer_any"?}]
     blueprint: Mapped[list | None] = mapped_column(JSONB)
-    created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    approved_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    created_by: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
+    )
+    approved_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id")
+    )
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # RAG publish status — set on approve via RagService.index_pack (Batch 1 reconciliation).
     rag_indexed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -69,7 +81,9 @@ class CurriculumPack(BaseModel):
 class CurriculumChapter(BaseModel):
     __tablename__ = "curriculum_chapters"
 
-    school_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("schools.id"), nullable=False)
+    school_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("schools.id"), nullable=False
+    )
     pack_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("curriculum_packs.id", ondelete="CASCADE"), nullable=False
     )
@@ -83,7 +97,9 @@ class CurriculumChapter(BaseModel):
 class CurriculumTopic(BaseModel):
     __tablename__ = "curriculum_topics"
 
-    school_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("schools.id"), nullable=False)
+    school_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("schools.id"), nullable=False
+    )
     chapter_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("curriculum_chapters.id", ondelete="CASCADE"), nullable=False
     )
@@ -100,7 +116,9 @@ class CurriculumLearningOutcome(BaseModel):
 
     __tablename__ = "curriculum_learning_outcomes"
 
-    school_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("schools.id"), nullable=False)
+    school_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("schools.id"), nullable=False
+    )
     topic_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("curriculum_topics.id", ondelete="CASCADE")
     )
@@ -122,11 +140,15 @@ class CurriculumPackAuditEvent(BaseModel):
 
     __tablename__ = "curriculum_pack_audit_events"
 
-    school_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("schools.id"), nullable=False)
+    school_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("schools.id"), nullable=False
+    )
     pack_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("curriculum_packs.id", ondelete="CASCADE"), nullable=False
     )
-    actor_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    actor_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
+    )
     event_type: Mapped[str] = mapped_column(String(50), nullable=False)
     event_metadata: Mapped[dict | None] = mapped_column(JSONB)
 

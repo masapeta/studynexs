@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import hash_password
 from app.db.models.school import School
 from app.db.models.user import User, UserRole
-from tests.conftest import auth_headers, get_auth_token
+from tests.conftest import get_auth_token
 
 
 @pytest.mark.asyncio

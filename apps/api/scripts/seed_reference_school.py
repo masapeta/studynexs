@@ -19,13 +19,6 @@ _scripts_dir = Path(__file__).resolve().parent
 if str(_scripts_dir) not in sys.path:
     sys.path.insert(0, str(_scripts_dir))
 
-from sqlalchemy import select
-
-from app.core.database import async_session_factory
-from app.db.models.academic import Class
-from app.db.models.misconception import MisconceptionEntry
-from app.db.models.school import School
-from app.db.models.student import Student
 from reference_school_config import (
     DEMO_PASSWORD,
     LOGIN_PARENT,
@@ -35,6 +28,13 @@ from reference_school_config import (
     SCHOOL_NAME,
     TENANT_SLUG,
 )
+from sqlalchemy import select
+
+from app.core.database import async_session_factory
+from app.db.models.academic import Class
+from app.db.models.misconception import MisconceptionEntry
+from app.db.models.school import School
+from app.db.models.student import Student
 
 SCRIPTS = [
     "seed_demo_ssc.py",

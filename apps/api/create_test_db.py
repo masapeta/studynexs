@@ -1,6 +1,9 @@
 import asyncio
+
 import asyncpg
+
 from app.core.config import get_settings
+
 
 async def create_test_db():
     settings = get_settings()

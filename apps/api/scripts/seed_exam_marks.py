@@ -21,6 +21,7 @@ _scripts_dir = Path(__file__).resolve().parent
 if str(_scripts_dir) not in sys.path:
     sys.path.insert(0, str(_scripts_dir))
 
+from reference_school_config import SCHOOL_NAME, TENANT_SLUG
 from sqlalchemy import func, select
 
 from app.core.database import async_session_factory
@@ -29,8 +30,6 @@ from app.db.models.examination import Exam, ExamMark, ExamType
 from app.db.models.school import School
 from app.db.models.student import Student
 from app.db.models.user import User, UserRole
-
-from reference_school_config import SCHOOL_NAME, TENANT_SLUG
 
 random.seed(2026)
 

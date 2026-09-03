@@ -12,7 +12,6 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.curriculum_pack import PackStatus
-from app.modules.files.services.document_ocr import extract_text_from_upload
 from app.db.models.document_ingestion import (
     DocumentIngestion,
     DocumentType,
@@ -24,6 +23,7 @@ from app.modules.ai.gateway.input_guard import sanitize_prompt_text
 from app.modules.ai.rag import RagService
 from app.modules.ai.vectorstore.base import VectorStore
 from app.modules.curriculum.services.pack_service import PackService
+from app.modules.files.services.document_ocr import extract_text_from_upload
 from app.modules.files.services.file_service import FileService
 from app.modules.files.services.file_validation import (
     max_upload_bytes,
@@ -41,7 +41,9 @@ class DocumentIntelligenceError(ValueError):
     """Document cannot be ingested."""
 
 
-def chunk_text(text: str, *, max_chars: int = _CHUNK_MAX_CHARS, min_chars: int = _CHUNK_MIN_CHARS) -> list[str]:
+def chunk_text(
+    text: str, *, max_chars: int = _CHUNK_MAX_CHARS, min_chars: int = _CHUNK_MIN_CHARS
+) -> list[str]:
     """Split extracted text into bounded chunks for embedding."""
     normalized = text.replace("\r\n", "\n").strip()
     if not normalized:

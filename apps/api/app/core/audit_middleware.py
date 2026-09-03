@@ -3,14 +3,11 @@ Audit Logging Middleware — auto-logs all mutating API calls.
 Captures: who, what, when, from where, on which school.
 """
 
-import json
 import time
 import uuid
-from datetime import datetime, timezone
 
 import structlog
 from fastapi import Request, Response
-from sqlalchemy import insert
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
 from app.core.config import Environment, get_settings
@@ -71,7 +68,11 @@ class AuditMiddleware(BaseHTTPMiddleware):
                         school_id=uuid.UUID(school_id) if isinstance(school_id, str) else school_id,
                         user_id=uuid.UUID(user_id) if isinstance(user_id, str) else user_id,
                         action=action[:200],
-                        resource_type=request.url.path.split("/")[-2] if "/" in request.url.path else "unknown",
+                        resource_type=(
+                            request.url.path.split("/")[-2]
+                            if "/" in request.url.path
+                            else "unknown"
+                        ),
                         ip_address=request.client.host if request.client else None,
                         user_agent=request.headers.get("user-agent", "")[:300],
                         details={"status": response.status_code, "duration_ms": duration_ms},

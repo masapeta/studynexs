@@ -10,6 +10,7 @@ transaction_id. Partial (WHERE transaction_id IS NOT NULL) so cash payments are 
 from typing import Sequence, Union
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "d1a4f6c8e2b3"

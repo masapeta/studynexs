@@ -6,19 +6,23 @@ from fastapi import HTTPException
 
 from app.modules.ai.gateway.errors import raise_http_for_llm_error
 from app.modules.ai.gateway.input_guard import (
+    safe_provider_error_detail,
     sanitize_answer_map,
     sanitize_lesson_key,
     sanitize_prompt_text,
     sanitize_topic_list,
     sanitize_tts_voice,
-    safe_provider_error_detail,
 )
 from app.modules.ai.gateway.output_guard import (
     sanitize_llm_plain_text,
     sanitize_paper_sections,
     sanitize_vision_answers,
 )
-from app.modules.ai.schemas.question_paper import GenerateRequest, RejectPaperRequest, UpdatePaperRequest
+from app.modules.ai.schemas.question_paper import (
+    GenerateRequest,
+    RejectPaperRequest,
+    UpdatePaperRequest,
+)
 from app.modules.mastery.schemas.mastery import NarrativeUpdate
 
 
