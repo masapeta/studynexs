@@ -69,6 +69,7 @@ type NavGate = keyof UserPermissions;
 
 const TEACHING_SUBROUTES: { prefix: string; gate: NavGate }[] = [
   { prefix: TEACHING.aiPapers, gate: "can_use_ai_papers" },
+  { prefix: TEACHING.workspace, gate: "can_use_mastery" },
   { prefix: TEACHING.mastery, gate: "can_use_mastery" },
   { prefix: TEACHING.reportCards, gate: "can_use_report_cards" },
   { prefix: TEACHING.exams, gate: "can_use_exams" },

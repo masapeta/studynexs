@@ -4,6 +4,7 @@ import { ModuleHubNav } from "./ModuleHubNav";
 import { TEACHING } from "@/lib/dashboard-routes";
 
 const TABS = [
+  { href: TEACHING.workspace, label: "Copilot" },
   { href: TEACHING.exams, label: "Exams" },
   { href: TEACHING.corrections, label: "Review" },
   { href: TEACHING.gradebook, label: "Gradebook" },

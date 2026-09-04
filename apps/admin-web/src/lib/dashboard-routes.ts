@@ -18,6 +18,7 @@ export const STUDENTS = {
 
 export const TEACHING = {
   root: "/dashboard/teaching",
+  workspace: "/dashboard/teaching/workspace",
   exams: "/dashboard/teaching/exams",
   gradebook: "/dashboard/teaching/gradebook",
   reportCards: "/dashboard/teaching/report-cards",
