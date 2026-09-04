@@ -344,6 +344,28 @@ class Settings(BaseSettings):
     EUI_CONSUMER_AEI_RICH_EVIDENCE_ENABLED: bool = False
     EUI_CONSUMER_AEI_SOURCE_ENABLED: bool = False
 
+    # Phase 0 teacher workspace orchestration. Defaults keep the bounded workspace
+    # path off until explicitly enabled for selected schools and teaching roles.
+    WORKSPACE_ORCHESTRATION_ENABLED: bool = False
+    WORKSPACE_MODEL_ROUTING_ENABLED: bool = False
+    WORKSPACE_CLOUD_FALLBACK_ENABLED: bool = False
+    WORKSPACE_ACTION_TOOLS_ENABLED: bool = False
+    WORKSPACE_VOICE_ENABLED: bool = False
+    WORKSPACE_MAX_TOOL_CALLS_PER_TURN: int = 3
+    WORKSPACE_MAX_MODEL_CALLS_PER_TURN: int = 2
+    WORKSPACE_MAX_LOCAL_RETRY_COUNT: int = 1
+    WORKSPACE_TOOL_TIMEOUT_MS: int = 2500
+    WORKSPACE_TOOL_READ_RETRY_COUNT: int = 1
+    WORKSPACE_TOOL_CIRCUIT_BREAKER_THRESHOLD: int = 3
+    WORKSPACE_TOOL_CIRCUIT_BREAKER_COOLDOWN_SECONDS: int = 60
+    WORKSPACE_MAX_INPUT_CHARS: int = 6000
+    WORKSPACE_TRANSCRIPT_RETENTION_DAYS: int = 0
+    WORKSPACE_AUDIO_RETENTION_HOURS: int = 0
+    WORKSPACE_ENABLED_PORTALS: str = "teaching"
+    WORKSPACE_ENABLED_ROLES: str = "teacher,class_incharge"
+    WORKSPACE_ENABLED_SCHOOLS: str = ""
+    WORKSPACE_ALLOWED_REPORT_TYPES: str = "student_learning_evidence_report"
+
     # ── Derived Properties ───────────────────────────────────────
     @property
     def is_development(self) -> bool:
