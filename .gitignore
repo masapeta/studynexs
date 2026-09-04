@@ -63,7 +63,7 @@ avinash-data/
 
 # ── Local / parallel workstreams (excluded from Batch 1 RC) ──
 infra/inventory/*
-!infra/inventory/*.md
+!infra/inventory/DNS_RECORDS.md
 docs/ui-audit/
 REPOSITORY_STATE_AUDIT.md
 docs/product/batch1-ui-demo/99-error.png
