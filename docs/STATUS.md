@@ -1512,6 +1512,74 @@ Validation:
 
 ---
 
+## Local-First Governed Agentic Workspace Phase 0 release-confidence sweep
+
+Date: **2026-09-04**
+
+Status: **Implemented / locally validated / browser-proof clean after runtime refresh**
+
+Scope:
+
+- Phase 0 Teacher Copilot read mode for the local-first governed agentic
+  workspace.
+- Deterministic student learning-evidence report path with bounded orchestration.
+- Per-tool audit emission from the workspace registry using existing
+  `AuditLog` rows.
+- No autonomous academic decisions, no action tools, no voice path, and no LLM
+  report generation in this slice.
+
+Validation evidence:
+
+- Focused registry audit tests:
+  `pytest tests/test_workspace_tool_registry.py -q -p no:cacheprovider` -
+  **7 passed** in **15.82s**.
+- Focused workspace backend subset:
+  `pytest tests/test_workspace_router.py tests/test_workspace_conversation.py
+  tests/test_workspace_teacher_scope.py tests/test_workspace_tool_registry.py
+  tests/test_workspace_request_schema.py -q -p no:cacheprovider` -
+  **23 passed** in **35.27s**.
+- API import sanity: `python -c "import app.main"` - **PASS**.
+- API full tests: `pytest -q -p no:cacheprovider` - **1097 passed,
+  1 skipped, 3 warnings** in **1234.79s (0:20:34)**.
+- API Ruff: `ruff check .` initially found **5 fixable formatting issues** in
+  new workspace/orchestration package files; Ruff mechanical fixes were applied,
+  then `ruff check .` returned **All checks passed!**.
+- Whitespace: `git diff --check` - **PASS**.
+- Admin web lint: `npm run lint` - **exit 0** with **103 warnings** and no
+  errors.
+- Admin web production build: `npm run build` - **PASS**; static route list
+  includes `/dashboard/teaching/workspace`.
+- Browser smoke, first run: `npm run e2e-smoke` - **FAIL** against
+  `http://127.0.0.1:3002` with **18 failed checks** and **27 disallowed console
+  errors**. The failures were repeated page `500` responses and stale/missing
+  chunk load errors such as `Failed to load chunk ...`, followed by missing
+  expected page text and no observed `X-Tenant-Slug` API requests.
+- Browser smoke, after refreshing the stale `3002` runtime: `npm run e2e-smoke`
+  - **ALL GREEN (20 checks, 0 disallowed console errors)**. Tenant tracking was
+  verified on both principal and student paths, dashboard pages rendered, the
+  report-card flow opened an existing card, and the student tutor page rendered
+  an exam-derived lesson.
+
+Release call:
+
+- **Go for local Phase 0 release packaging from this refreshed-runtime sweep.**
+- The initial smoke no-go was caused by a stale `3002` runtime serving old chunk
+  references; the clean rerun is now the definitive browser-proof result for
+  this checkpoint.
+- The backend workspace implementation, per-tool audit emission, API full tests,
+  API lint, frontend lint exit status, frontend production build, and browser
+  smoke are clean.
+
+Residual risk / next checkpoint:
+
+- If the browser smoke regresses with missing shared chunks again, kill the port
+  `3002` owner, restart the web runtime from the current admin-web build, and
+  rerun `npm run e2e-smoke` before diagnosing page code.
+- Frontend lint still carries the accepted **103-warning** backlog and should be
+  paid down in a dedicated cleanup pass.
+
+---
+
 ## Standing rule
 
 Every published runtime phase must end by updating this Master Status before the

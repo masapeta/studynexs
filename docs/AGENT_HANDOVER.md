@@ -1435,3 +1435,60 @@ priority order, verify with proof, and append final release-confidence results.
 
 ---
 
+
+# Engineering Session 16 - Local-First Governed Agentic Workspace Phase 0 release-confidence sweep (2026-09-04)
+
+**Authorization:** ARM request: verify the per-tool audit hardening slice, run the full repo release-confidence sweep, append actual results to status/handover docs, and make a release go/no-go call from the real results.
+
+## Done
+
+- Verified per-tool audit emission in `apps/api/app/modules/ai/orchestration/tool_registry.py`.
+- Verified the registry writes metadata-only `AuditLog` rows using the backend-injected `school_id`, `teacher_user_id`, tool audit event type, outcome, attempt count, error type where applicable, and correlation id.
+- Verified focused audit regressions in `apps/api/tests/test_workspace_tool_registry.py`.
+- Reran focused workspace backend coverage after the audit hardening slice.
+- Ran a full API lint/test/import sweep and admin-web lint/build/smoke sweep.
+- Applied Ruff mechanical formatting fixes for five release-sweep blockers in new workspace/orchestration package files.
+- Appended the release-confidence result to `docs/STATUS.md`.
+
+## Verification evidence
+
+### Focused workspace/audit checks
+
+- `pytest tests/test_workspace_tool_registry.py -q -p no:cacheprovider` - **7 passed** in **15.82s**.
+- `pytest tests/test_workspace_router.py tests/test_workspace_conversation.py tests/test_workspace_teacher_scope.py tests/test_workspace_tool_registry.py tests/test_workspace_request_schema.py -q -p no:cacheprovider` - **23 passed** in **35.27s**.
+- Initial parallel pytest runs caused PostgreSQL DDL contention (`DeadlockDetectedError` / duplicate enum creation) because two DB-backed pytest processes created/dropped the shared test schema simultaneously. Sequential reruns were clean.
+
+### API (`apps/api`)
+
+- Import sanity: `python -c "import app.main"` - **PASS** (`api import ok`).
+- Full tests: `pytest -q -p no:cacheprovider` - **1097 passed, 1 skipped, 3 warnings** in **1234.79s (0:20:34)**.
+- Ruff: `ruff check .` initially found **5 fixable formatting issues** in new workspace/orchestration files. After `ruff check ... --fix`, full `ruff check .` returned **All checks passed!**.
+- Whitespace: `git diff --check` - **PASS**.
+
+### Admin web (`apps/admin-web`)
+
+- Lint: `npm run lint` - **exit 0** with **103 warnings** and no errors.
+- Build: `npm run build` - **PASS**; Next.js build compiled, TypeScript passed, static generation completed, and `/dashboard/teaching/workspace` appeared in the route list.
+- Smoke, first run: `npm run e2e-smoke` - **FAIL** against `http://127.0.0.1:3002`.
+  - Harness selected base: `[smoke] base=http://127.0.0.1:3002 tenant=reference`.
+  - Result: **18 failed checks** and **27 disallowed console errors**.
+  - Dominant failure mode: repeated dashboard page `500` responses plus stale/missing Next chunk load errors (`Failed to load chunk ...`), followed by missing expected page text and no observed `X-Tenant-Slug` API requests.
+- Smoke, after refreshing the stale `3002` runtime: `npm run e2e-smoke` - **ALL GREEN (20 checks, 0 disallowed console errors)**.
+  - Tenant tracking verified on principal and student paths (`reference` on 14 API calls each).
+  - Dashboard pages, report-card flow, student tutor page, and tutor voice hint rendered successfully.
+  - Report-card AI remark was skipped because live AI was unavailable, matching the harness policy.
+
+## Release call
+
+**Go for local Phase 0 release packaging from this refreshed-runtime sweep.**
+
+The Phase 0 workspace backend, deterministic routing, structured response path, per-tool audit emission, API full tests, API lint, admin-web lint exit status, admin-web production build, and browser smoke are clean. The earlier no-go was caused by a stale `3002` runtime serving old chunk references, not by the workspace code.
+
+## Residual risk / next checkpoint
+
+- If the browser smoke regresses with missing shared chunks again, kill the port `3002` owner, restart the web runtime from the current admin-web build, and rerun `npm run e2e-smoke` before diagnosing page code.
+- Keep the frontend 103-warning lint backlog as accepted debt only if ARM continues to treat warnings as non-blocking.
+
+## Stop point
+
+**Workspace Phase 0 is release-confidence green on the refreshed local runtime.**
