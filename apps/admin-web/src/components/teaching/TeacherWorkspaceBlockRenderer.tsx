@@ -9,6 +9,7 @@ import type {
   WorkspaceMetricItem,
   WorkspaceVerification,
 } from "@/lib/workspace-types";
+import { COMPONENT_REGISTRY } from "@/lib/registry";
 
 function surfaceClass(priority: WorkspaceBlock["priority"]): string {
   return priority === "primary"
@@ -85,38 +86,21 @@ function NavigationActions({ actions }: { actions: WorkspaceAction[] }) {
 }
 
 export function TeacherWorkspaceBlockRenderer({
-  block,
+  blocks,
 }: {
-  block: WorkspaceBlock;
+  blocks: WorkspaceBlock[];
 }) {
-  if (block.type === "student_card") {
-    return (
-      <section className={surfaceClass(block.priority)} style={{ padding: 18 }}>
-        <div className="sn-workspace-zone" style={{ display: "grid", gap: 14 }}>
-          {block.title ? <h2 className="sn-page-header-card__title">{block.title}</h2> : null}
-          <div
-            style={{
-              display: "grid",
-              gap: 12,
-              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-            }}
-          >
-            <div>
-              <div style={{ color: "var(--text-muted)", fontSize: 12 }}>Student</div>
-              <div style={{ fontSize: 18, fontWeight: 700 }}>{block.payload.display_name}</div>
-            </div>
-            <div>
-              <div style={{ color: "var(--text-muted)", fontSize: 12 }}>Class</div>
-              <div>{block.payload.class_label}</div>
-            </div>
-            <div>
-              <div style={{ color: "var(--text-muted)", fontSize: 12 }}>Section</div>
-              <div>{block.payload.section_label}</div>
-            </div>
-            <div>
-              <div style={{ color: "var(--text-muted)", fontSize: 12 }}>Admission no.</div>
-              <div>{block.payload.admission_no || "Not available"}</div>
-            </div>
+  return (
+    <div className="flex flex-col gap-4">
+      {blocks.map((block, index) => {
+        const Widget = COMPONENT_REGISTRY[block.type];
+        if (!Widget) return <div key={index}>Unknown block: {block.type}</div>;
+        return <Widget key={index} {...block} />;
+      })}
+    </div>
+  );
+}
+
           </div>
         </div>
       </section>

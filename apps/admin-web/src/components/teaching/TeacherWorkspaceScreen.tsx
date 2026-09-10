@@ -48,20 +48,17 @@ export function TeacherWorkspaceScreen() {
       subtitle="Read-only learning evidence for students in your teaching scope, grounded in existing school records."
       action={<span className="sn-filter-pill">Phase 0 · Read mode</span>}
     >
-      <div style={{ display: "grid", gap: 20 }}>
-        <section className="sn-workspace sn-workspace--primary" style={{ padding: 20 }}>
-          <div className="sn-workspace-zone" style={{ display: "grid", gap: 16 }}>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+      <div className="flex h-full w-full gap-5 overflow-hidden">
+        {/* Left: Chat & Input */}
+        <section className="flex w-1/3 flex-col gap-5 overflow-y-auto px-6 py-8">
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                 <Sparkles size={16} />
                 <strong>Bounded teacher workspace</strong>
-              </div>
-              <p style={{ color: "var(--text-secondary)", fontSize: 14, margin: 0 }}>
+            </div>
+            <p style={{ color: "var(--text-secondary)", fontSize: 14, margin: 0 }}>
                 This first slice only resolves a student, reads deterministic learning evidence,
                 and offers safe navigation targets.
-              </p>
-            </div>
-
+            </p>
             <form
               onSubmit={(event) => {
                 event.preventDefault();
@@ -78,6 +75,63 @@ export function TeacherWorkspaceScreen() {
                 onChange={(event) => setText(event.target.value)}
                 rows={4}
                 maxLength={400}
+                placeholder="Show learning evidence for a student in my class."
+                style={{
+                  background: "color-mix(in srgb, var(--bg-card) 84%, transparent)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 16,
+                  color: "var(--text-primary)",
+                  font: "inherit",
+                  minHeight: 120,
+                  padding: 14,
+                  resize: "vertical",
+                }}
+              />
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {STARTER_PROMPTS.map((prompt) => (
+                    <button
+                      key={prompt}
+                      type="button"
+                      className="btn btn-ghost sn-filter-pill"
+                      onClick={() => { setText(prompt); void submitTurn(prompt); }}
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="btn btn-accent"
+                  style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600 }}
+                >
+                  {submitting ? "Analyzing..." : "Analyze"}
+                </button>
+              </div>
+            </form>
+            {error && <p style={{ color: "var(--danger)" }}>{error}</p>}
+            {response && (
+                <div className="pt-6">
+                    <TeacherWorkspaceBlockRenderer blocks={response.blocks} />
+                    <TeacherWorkspaceResponseMeta meta={response.telemetry} />
+                </div>
+            )}
+        </section>
+
+        {/* Right: Dynamic Canvas */}
+        <section className="h-full w-2/3 border-l border-line bg-surface/50 p-8 overflow-y-auto">
+             <div className="flex h-full w-full">
+                {response ? (
+                    <div className="w-full">
+                        <TeacherWorkspaceBlockRenderer blocks={response.blocks} />
+                    </div>
+                ) : (
+                    \"Orchestrator output will appear here\"
+                )}
+             </div>
+        </section>
+      </div>
                 placeholder="Show learning evidence for a student in my class."
                 style={{
                   background: "color-mix(in srgb, var(--bg-card) 84%, transparent)",
