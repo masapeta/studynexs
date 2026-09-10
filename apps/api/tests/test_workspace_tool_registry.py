@@ -173,7 +173,7 @@ async def _seed_grounded_flagging_report(
 
 @pytest.mark.asyncio
 async def test_workspace_registry_loads_exact_phase0_tools():
-    registry = WorkspaceToolRegistry.load_default()
+    registry = WorkspaceToolRegistry.load_default(include_write_tools=False)
 
     assert registry.names() == (
         "resolve_student_in_teacher_scope",
@@ -307,7 +307,7 @@ async def test_resolve_student_in_teacher_scope_returns_ambiguity(
     )
     await db_session.flush()
 
-    registry = WorkspaceToolRegistry.load_default()
+    registry = WorkspaceToolRegistry.load_default(include_write_tools=False)
     result = await registry.execute(
         "resolve_student_in_teacher_scope",
         db=db_session,
@@ -337,7 +337,7 @@ async def test_learning_evidence_report_returns_grounded_deterministic_payload(
         test_school=test_school,
         test_class=test_class,
     )
-    registry = WorkspaceToolRegistry.load_default()
+    registry = WorkspaceToolRegistry.load_default(include_write_tools=False)
 
     result = await registry.execute(
         "get_student_learning_evidence_report",
@@ -464,7 +464,7 @@ async def test_teacher_navigation_targets_respect_existing_permissions(
         await db_session.execute(select(Student).where(Student.user_id == student_user.id))
     ).scalar_one()
 
-    registry = WorkspaceToolRegistry.load_default()
+    registry = WorkspaceToolRegistry.load_default(include_write_tools=False)
     result = await registry.execute(
         "get_teacher_navigation_targets",
         db=db_session,
@@ -517,7 +517,7 @@ async def test_learning_evidence_report_denies_out_of_scope_subject(
     )
     await db_session.flush()
 
-    registry = WorkspaceToolRegistry.load_default()
+    registry = WorkspaceToolRegistry.load_default(include_write_tools=False)
     result = await registry.execute(
         "get_student_learning_evidence_report",
         db=db_session,

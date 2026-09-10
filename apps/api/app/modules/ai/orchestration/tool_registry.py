@@ -21,6 +21,7 @@ APPROVED_WORKSPACE_TOOL_NAMES = frozenset(
         "resolve_student_in_teacher_scope",
         "get_student_learning_evidence_report",
         "get_teacher_navigation_targets",
+        "mark_evidence_as_reviewed",
     }
 )
 _TRANSIENT_TOOL_ERRORS = (asyncio.TimeoutError, ConnectionError, OSError)
@@ -74,7 +75,7 @@ class WorkspaceToolRegistry:
     _circuit_state: dict[str, _CircuitState] = field(default_factory=dict)
 
     @classmethod
-    def load_default(cls, *, settings: Settings | None = None) -> "WorkspaceToolRegistry":
+    def load_default(cls, *, settings: Settings | None = None, include_write_tools: bool = False) -> "WorkspaceToolRegistry":
         from app.modules.ai.orchestration.tools.read.get_student_learning_evidence_report import (
             TOOL_HANDLER as REPORT_TOOL_HANDLER,
         )
@@ -96,22 +97,34 @@ class WorkspaceToolRegistry:
 
         runtime = settings or get_settings()
 
-        return cls.from_tools(
-            (
-                RegisteredWorkspaceTool(
-                    metadata=cls._apply_runtime_settings(RESOLVE_TOOL_METADATA, runtime),
-                    handler=RESOLVE_TOOL_HANDLER,
-                ),
-                RegisteredWorkspaceTool(
-                    metadata=cls._apply_runtime_settings(REPORT_TOOL_METADATA, runtime),
-                    handler=REPORT_TOOL_HANDLER,
-                ),
-                RegisteredWorkspaceTool(
-                    metadata=cls._apply_runtime_settings(NAV_TOOL_METADATA, runtime),
-                    handler=NAV_TOOL_HANDLER,
-                ),
+        tools = [
+            RegisteredWorkspaceTool(
+                metadata=cls._apply_runtime_settings(RESOLVE_TOOL_METADATA, runtime),
+                handler=RESOLVE_TOOL_HANDLER,
+            ),
+            RegisteredWorkspaceTool(
+                metadata=cls._apply_runtime_settings(REPORT_TOOL_METADATA, runtime),
+                handler=REPORT_TOOL_HANDLER,
+            ),
+            RegisteredWorkspaceTool(
+                metadata=cls._apply_runtime_settings(NAV_TOOL_METADATA, runtime),
+                handler=NAV_TOOL_HANDLER,
+            ),
+        ]
+
+        if include_write_tools:
+            from app.modules.ai.orchestration.tools.write.mark_evidence_as_reviewed import (
+                TOOL_HANDLER as MARK_TOOL_HANDLER,
+                TOOL_METADATA as MARK_TOOL_METADATA,
             )
-        )
+            tools.append(
+                RegisteredWorkspaceTool(
+                    metadata=cls._apply_runtime_settings(MARK_TOOL_METADATA, runtime),
+                    handler=MARK_TOOL_HANDLER,
+                )
+            )
+
+        return cls.from_tools(tuple(tools), strict_approved_names=not include_write_tools)
 
     @classmethod
     def from_tools(

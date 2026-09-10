@@ -33,10 +33,10 @@ class WorkspaceToolMetadata(BaseModel):
     name: str
     input_schema: type[BaseModel]
     output_schema: type[BaseModel]
-    read_only: Literal[True] = True
-    side_effect_level: Literal["none"] = "none"
-    requires_human_confirmation: Literal[False] = False
-    idempotency_key_required: Literal[False] = False
+    read_only: bool = True
+    side_effect_level: ToolSideEffectLevel = "none"
+    requires_human_confirmation: bool = False
+    idempotency_key_required: bool = False
     allowed_roles: list[ToolRole] = Field(default_factory=list, min_length=1)
     scope_rule: str
     audit_event_type: str
@@ -44,7 +44,7 @@ class WorkspaceToolMetadata(BaseModel):
     max_payload_size: int = Field(..., gt=0)
     tool_result_cache_policy: ToolCachePolicy
     timeout_ms: int = Field(..., gt=0)
-    retry_count: int = Field(..., ge=0, le=1)
+    retry_count: int = Field(..., ge=0, le=5)
     circuit_breaker_threshold: int = Field(..., ge=1)
     circuit_breaker_cooldown_seconds: int = Field(..., ge=1)
 
