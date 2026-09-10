@@ -43,7 +43,10 @@ class WorkspaceService:
         request_id = uuid.uuid4()
         correlation_id = f"workspace-{request_id.hex}"
 
-        route = route_workspace_read_turn(body.text, policy=policy)
+        from app.modules.ai.orchestration.router import route_workspace_turn, WorkspaceIntent
+        from app.modules.ai.orchestration.write_orchestrator import WorkspaceWriteOrchestrator
+
+        route = route_workspace_turn(body.text, policy=policy)
         if route.strategy != "deterministic":
             return build_unsupported_request_response(
                 request_id=request_id,
@@ -56,7 +59,18 @@ class WorkspaceService:
             current_user,
             correlation_id=correlation_id,
         )
-        registry = WorkspaceToolRegistry.load_default(settings=settings)
+        registry = WorkspaceToolRegistry.load_default(settings=settings, include_write_tools=True)
+        
+        if route.intent == WorkspaceIntent.WRITE:
+            orchestrator = WorkspaceWriteOrchestrator(registry)
+            tool_result = await orchestrator.execute(
+                db=self.db,
+                context=context,
+                tool_name="mark_evidence_as_reviewed",
+                payload={"flag_id": str(route.flag_id)}
+            )
+            return build_read_response(blocks=[], message=tool_result["status"])
+
         orchestrator = WorkspaceReadOrchestrator(
             registry,
             max_tool_calls=policy.max_tool_calls_per_turn,

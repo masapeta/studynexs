@@ -3,12 +3,18 @@
 from __future__ import annotations
 
 import re
+import uuid
+import enum
 from typing import Literal
 
 from pydantic import ConfigDict
 
 from app.modules.ai.orchestration.policies import WorkspaceRuntimePolicy, report_type_allowed
 from app.modules.workspace.schemas.response import WorkspaceSchemaModel
+
+class WorkspaceIntent(str, enum.Enum):
+    READ = "read"
+    WRITE = "write"
 
 _REPORT_TYPE = "student_learning_evidence_report"
 _ROUTE_PATTERNS = (
@@ -40,6 +46,10 @@ _ROUTE_PATTERNS = (
         r"^why\s+is\s+(?P<selector>.+?)\s+weak\s+in\s+.+$",
         re.IGNORECASE,
     ),
+    re.compile(
+        r"^mark\s+evidence\s+(?:for|id)\s+(?P<flag_id>[a-f0-9-]{36})\s+as\s+reviewed$",
+        re.IGNORECASE,
+    ),
 )
 
 
@@ -47,8 +57,10 @@ class WorkspaceRouteDecision(WorkspaceSchemaModel):
     model_config = ConfigDict(extra="forbid")
 
     strategy: Literal["deterministic", "local_model", "cloud_fallback", "unresolved"]
+    intent: WorkspaceIntent = WorkspaceIntent.READ
     report_type: Literal["student_learning_evidence_report"] | None = None
     student_selector: str | None = None
+    flag_id: uuid.UUID | None = None
     detail: str
 
 
@@ -65,7 +77,7 @@ def _clean_selector(value: str | None) -> str | None:
     return cleaned or None
 
 
-def route_workspace_read_turn(
+def route_workspace_turn(
     text: str,
     *,
     policy: WorkspaceRuntimePolicy,
@@ -76,7 +88,18 @@ def route_workspace_read_turn(
         match = pattern.match(normalized)
         if not match:
             continue
-        selector = _clean_selector(match.group("selector"))
+        
+        groupdict = match.groupdict()
+        
+        if "flag_id" in groupdict:
+            return WorkspaceRouteDecision(
+                strategy="deterministic",
+                intent=WorkspaceIntent.WRITE,
+                flag_id=uuid.UUID(groupdict["flag_id"]),
+                detail="Matched the deterministic mark-evidence-as-reviewed route.",
+            )
+
+        selector = _clean_selector(groupdict.get("selector"))
         if selector is None:
             break
         if not report_type_allowed(_REPORT_TYPE, policy=policy):
@@ -86,6 +109,7 @@ def route_workspace_read_turn(
             )
         return WorkspaceRouteDecision(
             strategy="deterministic",
+            intent=WorkspaceIntent.READ,
             report_type=_REPORT_TYPE,
             student_selector=selector,
             detail="Matched the deterministic student learning evidence report route.",
