@@ -1,4 +1,5 @@
 import { StudentCardWidget } from '@/components/widgets/StudentCardWidget';
+import { ActionCardWidget } from '@/components/widgets/ActionCardWidget';
 
 export const COMPONENT_REGISTRY: Record<string, React.ComponentType<any>> = {
   // Map block_type to frontend components for the dynamic Canvas
@@ -8,5 +9,5 @@ export const COMPONENT_REGISTRY: Record<string, React.ComponentType<any>> = {
   citation_list: () => <div>Not implemented: citation_list</div>,
   action_list: () => <div>Not implemented: action_list</div>,
   error_state: () => <div>Not implemented: error_state</div>,
-  // action: ActionPanelWidget, // Placeholder for Phase 1
+  action: ActionCardWidget,
 };

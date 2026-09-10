@@ -168,13 +168,22 @@ export interface ErrorStateBlock extends WorkspaceBlockBase {
   payload: ErrorStatePayload;
 }
 
+export interface ActionBlock extends WorkspaceBlockBase {
+  type: "action";
+  label: string;
+  action_intent: string;
+  payload_schema: Record<string, any>;
+  target_tool: string;
+}
+
 export type WorkspaceBlock =
   | StudentCardBlock
   | MetricRowBlock
   | TableBlock
   | CitationListBlock
   | ActionListBlock
-  | ErrorStateBlock;
+  | ErrorStateBlock
+  | ActionBlock;
 
 export interface WorkspaceResponse {
   schema_version: "workspace.response.v1";
