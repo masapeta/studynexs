@@ -7,19 +7,19 @@ export function ActionCardWidget(props: ActionBlock & { onUpdate: () => void }) 
   const [submitting, setSubmitting] = useState(false);
 
   const handleAction = async () => {
-     setSubmitting(true);
-     try {
-         // Invoke the tool via the workspace engine
-         await createWorkspaceTurn({ 
-             mode: "read", // Phase 0 constraint: we keep the write capability gated
-             text: `Execute tool ${target_tool}`,
-         });
-         onUpdate();
-     } catch (e) {
-         console.error("Action failed", e);
-     } finally {
-         setSubmitting(false);
-     }
+    setSubmitting(true);
+    try {
+      const flagId = payload_schema.flag_id;
+      await createWorkspaceTurn({ 
+          mode: "read", 
+          text: `mark evidence for ${flagId} as reviewed`,
+      });
+      onUpdate();
+    } catch (e) {
+      console.error("Action failed", e);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
