@@ -114,12 +114,20 @@ class ErrorStateBlock(WorkspaceBlockBase):
     payload: ErrorStatePayload
 
 
+class ActionBlock(WorkspaceBlockBase):
+    type: Literal["action"] = "action"
+    label: str
+    action_intent: str
+    payload_schema: dict
+    target_tool: str
+
 WorkspaceBlock = Annotated[
     StudentCardBlock
     | MetricRowBlock
     | TableBlock
     | CitationListBlock
     | ActionListBlock
-    | ErrorStateBlock,
+    | ErrorStateBlock
+    | ActionBlock,
     Field(discriminator="type"),
 ]

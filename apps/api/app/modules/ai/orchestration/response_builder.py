@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from app.modules.ai.orchestration.orchestrator import WorkspaceReadOrchestrationResult
 from app.modules.ai.orchestration.router import WorkspaceRouteDecision
 from app.modules.workspace.schemas.blocks import (
+    ActionBlock,
     ActionListBlock,
     ActionListPayload,
     CitationListBlock,
@@ -51,6 +52,11 @@ def _base_response(
     citations: list[object] | None = None,
     actions: list[WorkspaceAction] | None = None,
 ) -> WorkspaceResponse:
+    # Phase 0 enforcement: forbid interactive blocks
+    for block in (blocks or []):
+        if isinstance(block, ActionBlock):
+            raise ValueError("Interactive ActionBlocks are not authorized in Phase 0.")
+
     return WorkspaceResponse(
         request_id=request_id,
         correlation_id=correlation_id,
