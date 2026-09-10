@@ -35,7 +35,7 @@ services:
   api:
     image: studynexs-api:${STUDYNEXS_IMAGE_TAG:-operational-proof}
     build:
-      context: ../../apps/api
+      context: ../../repo/apps/api
       dockerfile: Dockerfile
     container_name: studynexs-prod-api
     environment: &api_environment
