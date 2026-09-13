@@ -29,9 +29,11 @@ for q in (
     d = (_post("/api/v1/workspace/assistant/turn", {"text": q}, tok)).get("data", {})
     b, tr = d.get("block", {}), d.get("trace", {})
     guard = tr.get("historical_guard")
-    trng = tr.get("time_range") or {}
     print(f"Q: {q}")
-    print(f"   route={tr.get('route')} cap={tr.get('capability')} action={tr.get('action')} "
-          f"kind={b.get('kind')} temporality={trng.get('temporality')} "
+    print(f"   route={tr.get('route')} cap={tr.get('capability')} kind={b.get('kind')} "
+          f"sem_temporality={tr.get('semantic_temporality')} "
+          f"plan_temporality={tr.get('plan_temporality')} "
+          f"integrity={tr.get('temporal_integrity')} "
+          f"decision={tr.get('temporal_guard_decision')} "
           f"guard={guard.get('decision') if guard else None}")
     print(f"   title={b.get('title')}\n")

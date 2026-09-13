@@ -56,6 +56,27 @@ class AssistantService:
         school = await self.db.get(School, school_id)
         return await resolve_time_range(self.db, school, school_id, time)
 
+    async def _semantic_temporality(
+        self, school_id: uuid.UUID, decision: Any
+    ) -> tuple[str, str | None]:
+        """Derive the user's temporal meaning from the planner's dedicated temporal field.
+
+        Independent of which tool/params were chosen (P0.1 §2/§3). Returns (temporality,
+        human label). When the planner declared a concrete window we resolve it so the
+        dates — not a guessed presence — decide PAST/CURRENT/FUTURE.
+        """
+        from app.modules.workspace.assistant.temporal import semantic_temporality
+
+        temporal = getattr(decision, "temporal", None)
+        presence = getattr(temporal, "presence", "NONE") if temporal else "NONE"
+        time = getattr(temporal, "time", None) if temporal else None
+        sem_range = None
+        label: str | None = None
+        if time is not None:
+            sem_range = await self._resolve_range(school_id, time)
+            label = sem_range.label
+        return semantic_temporality(presence, sem_range), label
+
     async def _history(self, session_id: uuid.UUID) -> list[dict[str, str]]:
         rows = (
             await self.db.execute(
@@ -95,8 +116,12 @@ class AssistantService:
         tools = tools_for_role(role)
         decision = await plan(text, tools=tools, history=history[:-1])
 
+        # Understand the user's temporal meaning SEPARATELY from tool selection (P0.1 §2):
+        # this is the integrity anchor a dropped params.time cannot erase.
+        sem_temporality, sem_label = await self._semantic_temporality(school_id, decision)
+
         block: dict[str, Any]
-        # Non-sensitive execution trace for observability + eval (spec §24, §25).
+        # Non-sensitive execution trace for observability + eval (spec §18, §24, §25).
         trace: dict[str, Any] = {
             "route": decision.route,
             "action": decision.action,
@@ -104,16 +129,27 @@ class AssistantService:
             "params": {k: v for k, v in (decision.params or {}).items() if k != "_range"},
             "document_query": decision.document_query,
             "time_range": None,
+            "semantic_temporality": sem_temporality,
+            "semantic_time_range": sem_label,
+            "plan_temporality": None,
+            "temporal_integrity": None,
+            "temporal_guard_decision": None,
         }
 
         if decision.action == "tool":
             block = await self._run_tool(
-                current_user, decision.tool, decision.params, school_id, trace=trace
+                current_user, decision.tool, decision.params, school_id,
+                trace=trace, semantic=sem_temporality, semantic_label=sem_label,
             )
         elif decision.action == "compose":
-            block = await self._run_compose(current_user, decision.plan, school_id, trace=trace)
+            block = await self._run_compose(
+                current_user, decision.plan, school_id, trace=trace, semantic=sem_temporality
+            )
         elif decision.action == "mixed":
-            block = await self._run_mixed(current_user, decision, school_id, trace=trace)
+            block = await self._run_mixed(
+                current_user, decision, school_id,
+                trace=trace, semantic=sem_temporality, semantic_label=sem_label,
+            )
         elif decision.action == "document":
             block = await self._run_document(
                 school_id, decision.document_query or decision.message or text
@@ -160,12 +196,23 @@ class AssistantService:
         school_id: uuid.UUID,
         *,
         trace: dict[str, Any] | None = None,
+        semantic: str = "NONE",
+        semantic_label: str | None = None,
     ) -> dict[str, Any]:
-        """Execute one governed structured tool with temporal resolution + error safety."""
+        """Execute one governed structured tool with temporal integrity + error safety."""
+        from app.modules.workspace.assistant.temporal import (
+            INTEGRITY_BLOCK_UNSUPPORTED,
+            INTEGRITY_DROPPED,
+            temporal_integrity,
+        )
+
         tool = get_tool(tool_name) if tool_name else None
         if tool is None or not tool.allowed_for(current_user.role):
             return self._guide_block(current_user.role)
         params = dict(raw_params or {})
+
+        # Resolve the plan's own temporal token (if the planner attached one to params).
+        rng = None
         if "time" in params:
             rng = await self._resolve_range(school_id, params.get("time"))
             params["_range"] = rng
@@ -178,21 +225,49 @@ class AssistantService:
                     "start_date": rng.start_date.isoformat() if rng.start_date else None,
                     "end_date": rng.end_date.isoformat() if rng.end_date else None,
                 }
-            # Historical-honesty guard (P0): a current-state relationship capability cannot
-            # answer a PAST request — the ERP has no effective-dated history. Block BEFORE
-            # executing the current-state query; never silently substitute present data.
-            if rng.is_past and not tool.supports_historical:
-                if trace is not None:
-                    trace["historical_guard"] = {
-                        "historical": True,
-                        "capability": tool.name,
-                        "supports_historical": tool.supports_historical,
-                        "decision": "blocked",
-                    }
-                logger.info(
-                    "assistant_historical_blocked", tool=tool.name, period=rng.label
+        plan_temporality = rng.temporality if rng is not None else "NONE"
+
+        # Temporal-integrity guard (P0.1): compare the user's SEMANTIC temporality (extracted
+        # independently of tool selection) against the plan's resolved temporality. This
+        # catches the case where the planner picked a current-state tool but DROPPED the
+        # historical time — which the old params-only guard could not see.
+        decision = temporal_integrity(
+            semantic=semantic,
+            plan=plan_temporality,
+            supports_historical=tool.supports_historical,
+        )
+        if trace is not None:
+            trace["plan_temporality"] = plan_temporality
+            trace["temporal_integrity"] = "OK" if decision == "ALLOW" else "FAILED"
+            trace["temporal_guard_decision"] = decision
+        if decision != "ALLOW":
+            period = semantic_label or (rng.label if rng is not None else "that period")
+            if decision == INTEGRITY_DROPPED:
+                # Semantic-integrity failure — the historical qualifier vanished from the
+                # plan. Refuse; NEVER fall back to current-state data (spec §5).
+                logger.warning(
+                    "assistant_temporal_constraint_dropped",
+                    tool=tool.name,
+                    semantic=semantic,
+                    plan=plan_temporality,
                 )
-                return self._historical_unavailable_block(tool.name, rng.label)
+            elif decision == INTEGRITY_BLOCK_UNSUPPORTED:
+                logger.info(
+                    "assistant_historical_blocked", tool=tool.name, period=period
+                )
+            if trace is not None:
+                trace["historical_guard"] = {
+                    "historical": True,
+                    "capability": tool.name,
+                    "supports_historical": tool.supports_historical,
+                    "decision": "blocked",
+                    "reason": decision,
+                }
+            # A dropped window on an event-time capability isn't "no history" — the data
+            # exists, we just lost the period; ask the user to restate it (spec §5, §14).
+            if decision == INTEGRITY_DROPPED and tool.supports_historical:
+                return self._temporal_dropped_block(period)
+            return self._historical_unavailable_block(tool.name, period)
         try:
             return await tool.handler(self.db, current_user, params)
         except Exception as exc:  # noqa: BLE001 — never crash the turn
@@ -210,6 +285,7 @@ class AssistantService:
         school_id: uuid.UUID,
         *,
         trace: dict[str, Any] | None = None,
+        semantic: str = "NONE",
     ) -> dict[str, Any]:
         """COMPOSE route: validate + execute a bounded multi-capability plan (Phase 4)."""
         from app.modules.workspace.assistant.composition import (
@@ -231,7 +307,8 @@ class AssistantService:
             return self._guide_block(current_user.role)
         try:
             result = await execute_plan(
-                self.db, current_user, plan, resolve_range=self._resolve_range
+                self.db, current_user, plan,
+                resolve_range=self._resolve_range, semantic=semantic,
             )
         except CompositionError as exc:
             # e.g. class not found mid-plan — honest, not fabricated.
@@ -312,10 +389,13 @@ class AssistantService:
         school_id: uuid.UUID,
         *,
         trace: dict[str, Any] | None = None,
+        semantic: str = "NONE",
+        semantic_label: str | None = None,
     ) -> dict[str, Any]:
         """MIXED route: run the structured data step, then the policy step, then combine."""
         data_block = await self._run_tool(
-            current_user, decision.tool, decision.params, school_id, trace=trace
+            current_user, decision.tool, decision.params, school_id,
+            trace=trace, semantic=semantic, semantic_label=semantic_label,
         )
         doc_query = decision.document_query or decision.message or ""
         doc_block = await self._run_document(school_id, doc_query) if doc_query else None
@@ -343,6 +423,22 @@ class AssistantService:
             "message": (
                 f"I can show the current {subject}, but StudyNexs doesn't keep historical "
                 f"{subject} records, so I can't reliably tell you how it was for {period}."
+            ),
+        }
+
+    def _temporal_dropped_block(self, period: str) -> dict[str, Any]:
+        """When a historical window was understood but lost before execution (P0.1 §5, §14).
+
+        The data exists (event-time capability); we refuse rather than silently answer for
+        all time, and ask the user to restate the period.
+        """
+        return {
+            "kind": "not_found",
+            "title": "Couldn't pin down the time period",
+            "message": (
+                f"You asked about {period}, but I couldn't reliably apply that time window. "
+                "Please restate the period (e.g. 'in August' or 'between Aug 1 and Aug 31') "
+                "so I don't give you the wrong figure."
             ),
         }
 

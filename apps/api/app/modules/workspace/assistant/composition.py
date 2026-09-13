@@ -377,17 +377,29 @@ async def execute_plan(
     plan: CompositionPlan,
     *,
     resolve_range,
+    semantic: str = "NONE",
 ) -> CompositionResult:
     """Run a validated compositional plan sequentially in dependency order.
 
     resolve_range: async callable (school_id, token) -> DateRange (injected by the service).
+    semantic: the user's SEMANTIC temporality (P0.1). When the request is historically
+    PAST, a current-state op must be refused even if the plan dropped that op's time —
+    otherwise a composed query could silently join last-month metrics to CURRENT teachers.
     """
     school_id = uuid.UUID(user.school_id)
     outputs: dict[str, list[dict]] = {}
     trace_ops: list[dict] = []
+    semantic_past = (semantic or "NONE").strip().upper() == "PAST"
 
     for op in plan.operations:
         rng: DateRange | None = None
+        # Semantic-integrity guard (§5, §12): a PAST request must NOT run a current-state
+        # relationship op — even if the plan omitted this op's time (dropped qualifier).
+        if semantic_past and op.capability in _CURRENT_STATE_CAPS:
+            raise CompositionError(
+                "historical_relationship_unavailable: StudyNexs doesn't keep historical "
+                f"records for '{op.capability}', so I can't answer that for the requested period."
+            )
         if "time" in op.params:
             rng = await resolve_range(school_id, op.params.get("time"))
             # Historical-honesty guard (§11): current-state op + PAST range -> refuse,

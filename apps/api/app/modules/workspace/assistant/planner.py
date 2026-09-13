@@ -33,6 +33,22 @@ NAV_TARGETS: dict[str, str] = {
 }
 
 
+class TemporalIntent(BaseModel):
+    """The user's temporal meaning, extracted SEPARATELY from tool/param selection.
+
+    This is the semantic-integrity anchor (spec P0.1 §2, §3): temporal meaning must
+    survive independently of which tool the planner picks, so a tool-selection slip
+    that forgets ``params.time`` cannot silently erase a historical request. ``presence``
+    is the user's temporal concept; ``time`` is the canonical token/dict describing the
+    window (same syntax as a tool's ``time`` param).
+    """
+
+    presence: Literal[
+        "NONE", "CURRENT", "PAST", "FUTURE", "PERIOD", "DATE_SPECIFIC"
+    ] = "NONE"
+    time: Any | None = None
+
+
 class PlannerDecision(BaseModel):
     # route classifies the execution domain (spec §2); action is what to do within it.
     route: Literal[
@@ -47,6 +63,9 @@ class PlannerDecision(BaseModel):
     document_query: str | None = None
     # For action='compose': a multi-operation plan (Phase 4). Validated before execution.
     plan: dict[str, Any] | None = None
+    # Temporal meaning, understood independently of tool selection (P0.1). The integrity
+    # guard compares this against the plan's resolved temporality to catch silent drops.
+    temporal: TemporalIntent = Field(default_factory=TemporalIntent)
 
 
 def _catalog_text(tools: list[AssistantTool]) -> str:
@@ -105,16 +124,29 @@ def _system_prompt(tools: list[AssistantTool]) -> str:
         'filters:[{field:"attendance_pct",op:"<",value:75},'
         '{field:"fee_due",op:">",value:10000}]}], '
         'output:{columns:["admission_no","name","attendance_pct","fee_due"]}.\n\n'
+        "TEMPORAL MEANING (ALWAYS fill the 'temporal' object — this is separate from tool\n"
+        "choice and MUST reflect the user's words even if the chosen tool has no time):\n"
+        "  temporal.presence = one of NONE (no time mentioned), CURRENT (now/currently/\n"
+        "    'is'/today's live state), PAST (was/last month/last year/in August/previous\n"
+        "    year — any time before now), FUTURE (next term/upcoming), PERIOD (a span like\n"
+        "    'between Aug 1 and Aug 31'), DATE_SPECIFIC (a single named date).\n"
+        "  temporal.time = the SAME canonical token/dict you would put in a tool's 'time'\n"
+        "    (today, last_month, last_year, previous_academic_year, {\"month\":\"august\"},\n"
+        "    {\"from\":\"YYYY-MM-DD\",\"to\":\"YYYY-MM-DD\"}), or null when presence=NONE.\n"
+        "  CRITICAL: if the user expressed a past/historical period ('was', 'last year',\n"
+        "  'in August'), presence MUST be PAST (or PERIOD/DATE_SPECIFIC) — NEVER NONE and\n"
+        "  NEVER CURRENT. Do not drop the time just because you are unsure which tool fits.\n\n"
         "Rules:\n"
         "- Extract numeric thresholds and class labels (e.g. 'class 10', '> 50%').\n"
-        "- Extract a temporal token into the tool's 'time' param when the tool supports it\n"
-        "  (today, this_month, last_month, current_academic_year, or {from,to}).\n"
+        "- Also copy temporal.time into the tool's 'time' param when the tool takes one; but\n"
+        "  the 'temporal' object is authoritative and must always be set.\n"
         "- PRESERVE the user's actual relationship: 'all teachers and their classes' lists\n"
         "  everyone (omit class_label); do NOT narrow it to one class.\n"
         "- For DOCUMENT/MIXED set document_query to a SHORT topic phrase (e.g. "
         "'attendance policy'), NOT the full question. Keep message under 12 words.\n"
         "- Respond with ONLY a compact JSON object (no code fences, no prose) with keys:\n"
-        "  route, action, tool, params, navigate_to, message, document_query. Keep it short.\n"
+        "  route, action, tool, params, navigate_to, message, document_query, temporal.\n"
+        "  Keep it short.\n"
         "- Never invent data or fields. Never include commentary outside the JSON."
     )
 

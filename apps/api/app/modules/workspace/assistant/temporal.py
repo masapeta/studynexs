@@ -71,6 +71,61 @@ class DateRange:
         return self.temporality == "PAST"
 
 
+# ── Semantic-integrity primitives (P0.1) ──────────────────────────────────────
+# Temporal meaning must survive from the user's words to execution. These pure
+# functions operate on STRUCTURED temporality (never keywords) so the planner
+# cannot silently downgrade a historical request into a current-state one.
+
+# Decisions from the integrity check.
+INTEGRITY_ALLOW = "ALLOW"
+INTEGRITY_BLOCK_UNSUPPORTED = "BLOCK_UNSUPPORTED"  # capability has no history for a PAST ask
+INTEGRITY_DROPPED = "TEMPORAL_CONSTRAINT_DROPPED"  # plan lost the user's historical qualifier
+
+# Presence values the planner may declare (semantic layer).
+_PAST_PRESENCE = frozenset({"PAST"})
+_PERIODIC_PRESENCE = frozenset({"PERIOD", "DATE_SPECIFIC"})
+
+
+def semantic_temporality(presence: str, semantic_range: "DateRange | None") -> str:
+    """Collapse the planner's declared presence + resolved window into one temporality.
+
+    Prefer the concrete resolved window's temporality when a time was given (dates are
+    authoritative); otherwise fall back to the declared presence. A period/date the
+    planner expressed but did NOT resolve is treated as PAST — the safe assumption that
+    forces the integrity check rather than silently proceeding as current.
+    """
+    p = (presence or "NONE").strip().upper()
+    if semantic_range is not None and not semantic_range.is_all_time:
+        return semantic_range.temporality  # PAST / CURRENT / FUTURE from real dates
+    if p in _PAST_PRESENCE or p in _PERIODIC_PRESENCE:
+        return "PAST"
+    if p in ("CURRENT", "FUTURE"):
+        return p
+    return "NONE"
+
+
+def temporal_integrity(
+    *, semantic: str, plan: str, supports_historical: bool
+) -> str:
+    """Compare the user's semantic temporality against the plan's resolved temporality.
+
+    - semantic PAST + plan PAST  → ALLOW if the capability has event-time history, else
+      BLOCK_UNSUPPORTED (current-state capability cannot answer the past).
+    - semantic PAST + plan NOT past → the qualifier was dropped between understanding and
+      execution → TEMPORAL_CONSTRAINT_DROPPED (never fall back to current-state data).
+    - semantic not PAST → honour the plan's own temporality for the capability guard.
+    """
+    sem = (semantic or "NONE").strip().upper()
+    pln = (plan or "NONE").strip().upper()
+    if sem == "PAST":
+        if pln == "PAST":
+            return INTEGRITY_ALLOW if supports_historical else INTEGRITY_BLOCK_UNSUPPORTED
+        return INTEGRITY_DROPPED
+    if pln == "PAST" and not supports_historical:
+        return INTEGRITY_BLOCK_UNSUPPORTED
+    return INTEGRITY_ALLOW
+
+
 def _to_utc(local_dt: datetime) -> datetime:
     return local_dt.astimezone(timezone.utc)
 
