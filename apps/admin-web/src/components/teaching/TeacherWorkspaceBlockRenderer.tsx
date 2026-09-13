@@ -38,15 +38,29 @@ export function TeacherWorkspaceBlockRenderer({
   blocks: WorkspaceBlock[];
 }) {
   return (
-    <div className="flex flex-col gap-4 w-full">
+    <div style={{ display: "grid", gap: 16, width: "100%" }}>
       {blocks.map((block, index) => {
-        const blockType = (block as any).block_type || block.type;
+        const blockType = (block as { block_type?: string }).block_type || block.type;
         const Widget = COMPONENT_REGISTRY[blockType];
-        
+
         if (!Widget) {
-           return <div key={index} className="p-4 border border-danger text-danger text-sm rounded-lg">Unknown block: {blockType}</div>;
+          return (
+            <div
+              key={index}
+              className="card"
+              style={{
+                margin: 0,
+                padding: 16,
+                border: "1px solid color-mix(in srgb, var(--danger) 40%, transparent)",
+                color: "var(--danger)",
+                fontSize: 14,
+              }}
+            >
+              Unknown block: {blockType}
+            </div>
+          );
         }
-        
+
         return <Widget key={index} {...block} />;
       })}
     </div>
@@ -63,7 +77,7 @@ export function TeacherWorkspaceResponseMeta({
   requestId: string;
 }) {
   return (
-    <div className="flex gap-2.5 flex-wrap pt-4">
+    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", paddingTop: 16 }}>
       {verification && <MetaChip>{verificationLabel(verification)}</MetaChip>}
       {verification?.checked_at ? <MetaChip>Checked {new Date(verification.checked_at).toLocaleString()}</MetaChip> : null}
       {warnings?.length > 0 ? <MetaChip>{warnings.length} warning{warnings.length === 1 ? "" : "s"}</MetaChip> : null}

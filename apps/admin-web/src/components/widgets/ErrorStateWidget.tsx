@@ -20,9 +20,11 @@ function MetaChip({ children }: { children: ReactNode }) {
 
 export function ErrorStateWidget(block: ErrorStateBlock) {
   return (
-    <section className="sn-workspace sn-workspace--secondary p-5 rounded-xl border border-line">
-      <div className="sn-workspace-zone" style={{ display: "grid", gap: 10 }}>
-        {block.title ? <h2 className="sn-page-header-card__title">{block.title}</h2> : null}
+    <section className="card" style={{ margin: 0, padding: 20 }}>
+      <div style={{ display: "grid", gap: 10 }}>
+        {block.title ? (
+          <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{block.title}</h2>
+        ) : null}
         <div style={{ color: "var(--danger)", fontSize: 15, fontWeight: 700 }}>
           {block.payload.headline}
         </div>

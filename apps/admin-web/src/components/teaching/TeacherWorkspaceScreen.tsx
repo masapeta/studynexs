@@ -48,15 +48,25 @@ export function TeacherWorkspaceScreen() {
       subtitle="Read-only learning evidence for students in your teaching scope, grounded in existing school records."
       action={<span className="sn-filter-pill">Phase 1 · Agentic Canvas</span>}
     >
-      <div className="flex h-full w-full gap-5 overflow-hidden">
-        {/* Left: Chat & Input (1/3 Width) */}
-        <section className="flex w-1/3 flex-col gap-5 overflow-y-auto px-6 py-8">
+      <div
+        style={{
+          display: "grid",
+          gap: 20,
+          gridTemplateColumns: "minmax(280px, 1fr) minmax(0, 1.6fr)",
+          alignItems: "start",
+        }}
+      >
+        {/* Left: chat & input */}
+        <section
+          className="card"
+          style={{ margin: 0, padding: 24, display: "flex", flexDirection: "column", gap: 16 }}
+        >
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <Sparkles size={16} />
             <strong>Bounded teacher workspace</strong>
           </div>
           <p style={{ color: "var(--text-secondary)", fontSize: 14, margin: 0 }}>
-            Ask for a student's learning evidence to orchestrate backend checks and reveal the action canvas.
+            Ask for a student&apos;s learning evidence to orchestrate backend checks and reveal the action canvas.
           </p>
           <form
             onSubmit={(event) => {
@@ -105,17 +115,17 @@ export function TeacherWorkspaceScreen() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="btn btn-accent"
-                style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600 }}
+                className="btn btn-primary"
+                style={{ padding: "8px 16px", fontWeight: 600, width: "auto" }}
               >
-                {submitting ? "Analyzing..." : "Analyze"}
+                {submitting ? "Analyzing…" : "Analyze"}
               </button>
             </div>
           </form>
           {error && <p style={{ color: "var(--danger)" }}>{error}</p>}
           {response && (
-            <div className="pt-6">
-              <TeacherWorkspaceResponseMeta 
+            <div style={{ paddingTop: 8 }}>
+              <TeacherWorkspaceResponseMeta
                 verification={response.verification} 
                 warnings={response.warnings?.map(w => w.detail) || []}
                 requestId={response.request_id}
@@ -124,19 +134,31 @@ export function TeacherWorkspaceScreen() {
           )}
         </section>
 
-        {/* Right: Dynamic Action Canvas (2/3 Width) */}
-        <section className="h-full w-2/3 border-l border-line bg-surface/50 p-8 overflow-y-auto">
-          <div className="flex h-full w-full items-start justify-center">
-            {response ? (
-              <div className="w-full">
-                <TeacherWorkspaceBlockRenderer blocks={response.blocks} />
-              </div>
-            ) : (
-              <div className="text-muted text-center pt-20">
-                <p>Orchestrator output and interactive Action Cards will appear here.</p>
-              </div>
-            )}
-          </div>
+        {/* Right: dynamic action canvas */}
+        <section className="card" style={{ margin: 0, padding: 24, minHeight: 360 }}>
+          {response ? (
+            <div style={{ display: "grid", gap: 16 }}>
+              <TeacherWorkspaceBlockRenderer blocks={response.blocks} />
+            </div>
+          ) : (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                textAlign: "center",
+                color: "var(--text-muted)",
+                minHeight: 300,
+                gap: 8,
+              }}
+            >
+              <Sparkles size={22} style={{ color: "var(--accent)" }} />
+              <p style={{ margin: 0 }}>
+                Orchestrator output and interactive action cards will appear here.
+              </p>
+            </div>
+          )}
         </section>
       </div>
     </PageShell>

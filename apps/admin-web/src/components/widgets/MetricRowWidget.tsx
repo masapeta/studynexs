@@ -8,9 +8,11 @@ function statusTint(status: WorkspaceMetricItem["status"]): string {
 
 export function MetricRowWidget(block: MetricRowBlock) {
   return (
-    <section className="sn-workspace sn-workspace--primary p-5 rounded-xl border border-line">
-      <div className="sn-workspace-zone" style={{ display: "grid", gap: 14 }}>
-        {block.title ? <h2 className="sn-page-header-card__title">{block.title}</h2> : null}
+    <section className="card" style={{ margin: 0, padding: 20 }}>
+      <div style={{ display: "grid", gap: 14 }}>
+        {block.title ? (
+          <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{block.title}</h2>
+        ) : null}
         <div
           style={{
             display: "grid",

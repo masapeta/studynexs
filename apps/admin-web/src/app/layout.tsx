@@ -34,8 +34,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.variable}>
-      <body>
+    // suppressHydrationWarning: browser extensions inject attributes on <html>/<body>
+    // (e.g. crxemulator) before hydration; this scopes the ignore to top-level attrs only.
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
+      <body suppressHydrationWarning>
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

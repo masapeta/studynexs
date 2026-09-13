@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
+import enum
 import re
 import uuid
-import enum
 from typing import Literal
 
 from pydantic import ConfigDict
 
 from app.modules.ai.orchestration.policies import WorkspaceRuntimePolicy, report_type_allowed
 from app.modules.workspace.schemas.response import WorkspaceSchemaModel
+
 
 class WorkspaceIntent(str, enum.Enum):
     READ = "read"
@@ -88,9 +89,9 @@ def route_workspace_turn(
         match = pattern.match(normalized)
         if not match:
             continue
-        
+
         groupdict = match.groupdict()
-        
+
         if "flag_id" in groupdict:
             return WorkspaceRouteDecision(
                 strategy="deterministic",

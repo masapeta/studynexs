@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.answer_sheet_evaluation import EVAL_STATUS_APPROVED, AnswerSheetEvaluation
 from app.db.models.examination import Exam, ExamMark
-from app.db.models.mastery import MasteryFlag, StudentTopicMastery
+from app.db.models.mastery import FlagStatus, MasteryFlag, StudentTopicMastery
 from app.db.models.misconception import MisconceptionEntry
 from app.db.models.question_paper import QuestionPaper
 from app.modules.mastery.schemas.mastery import (
@@ -260,3 +261,26 @@ async def build_learning_evidence_chain(
         fallback=bool(warnings),
         warnings=warnings,
     )
+
+
+class LearningEvidenceService:
+    """Deterministic write boundary for mastery-flag review actions."""
+
+    def __init__(self, db: AsyncSession) -> None:
+        self.db = db
+
+    async def mark_as_reviewed(
+        self,
+        school_id: uuid.UUID,
+        flag_id: uuid.UUID,
+        teacher_id: uuid.UUID,
+    ) -> MasteryFlag:
+        flag = await self.db.get(MasteryFlag, flag_id)
+        if flag is None or flag.school_id != school_id:
+            raise ValueError("Flag not found")
+        flag.status = FlagStatus.APPROVED
+        flag.reviewed_by = teacher_id
+        flag.reviewed_at = datetime.now(timezone.utc)
+        await self.db.commit()
+        await self.db.refresh(flag)
+        return flag

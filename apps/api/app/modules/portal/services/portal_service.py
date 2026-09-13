@@ -11,6 +11,7 @@ from app.db.models.academic import Class, Subject
 from app.db.models.attendance import Attendance
 from app.db.models.fee import FeeStructure, StudentFeeRecord
 from app.db.models.mastery import FlagStatus, MasteryFlag, StudentTopicMastery
+from app.db.models.school import School
 from app.db.models.student import Parent, Student, StudentParentMap
 from app.db.models.user import User
 from app.modules.portal.schemas.portal import (
@@ -116,6 +117,7 @@ async def build_portal_context(
     db: AsyncSession, *, school_id: uuid.UUID, user_id: uuid.UUID, role: str
 ) -> PortalContextOut:
     portal = resolve_portal(role)
+    school_name = await db.scalar(select(School.name).where(School.id == school_id))
 
     if role == "parent":
         rows = (
@@ -136,7 +138,9 @@ async def build_portal_context(
         children = [
             await _child_summary(db, school_id, stu, u, cls) for stu, u, cls in rows
         ]
-        return PortalContextOut(portal=portal, role=role, children=children)
+        return PortalContextOut(
+            portal=portal, role=role, school_name=school_name, children=children
+        )
 
     if role == "student":
         row = (
@@ -148,19 +152,20 @@ async def build_portal_context(
             )
         ).first()
         if not row:
-            return PortalContextOut(portal=portal, role=role)
+            return PortalContextOut(portal=portal, role=role, school_name=school_name)
         stu, u, cls = row
         summary = await _child_summary(db, school_id, stu, u, cls)
         return PortalContextOut(
             portal=portal,
             role=role,
+            school_name=school_name,
             student_id=stu.id,
             student_name=summary.name,
             class_label=summary.class_label,
             children=[summary],
         )
 
-    return PortalContextOut(portal=portal, role=role)
+    return PortalContextOut(portal=portal, role=role, school_name=school_name)
 
 
 async def parent_child_summary(

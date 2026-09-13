@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from app.modules.ai.orchestration.policies import WorkspaceRuntimePolicy
-from app.modules.ai.orchestration.router import route_workspace_read_turn
+from app.modules.ai.orchestration.router import route_workspace_turn
 
 
 def _policy(
@@ -33,7 +33,7 @@ def _policy(
 
 
 def test_workspace_router_matches_known_learning_evidence_request() -> None:
-    decision = route_workspace_read_turn(
+    decision = route_workspace_turn(
         "show Test Student's learning report",
         policy=_policy(),
     )
@@ -58,7 +58,7 @@ def test_workspace_router_matches_phase0_starter_prompt_shapes(
     prompt: str,
     expected_selector: str,
 ) -> None:
-    decision = route_workspace_read_turn(prompt, policy=_policy())
+    decision = route_workspace_turn(prompt, policy=_policy())
 
     assert decision.strategy == "deterministic"
     assert decision.report_type == "student_learning_evidence_report"
@@ -66,7 +66,7 @@ def test_workspace_router_matches_phase0_starter_prompt_shapes(
 
 
 def test_workspace_router_returns_unresolved_when_model_routing_disabled() -> None:
-    decision = route_workspace_read_turn(
+    decision = route_workspace_turn(
         "summarize my class performance",
         policy=_policy(),
     )
@@ -76,7 +76,7 @@ def test_workspace_router_returns_unresolved_when_model_routing_disabled() -> No
 
 
 def test_workspace_router_defers_to_local_model_when_enabled() -> None:
-    decision = route_workspace_read_turn(
+    decision = route_workspace_turn(
         "summarize my class performance",
         policy=_policy(model_routing_enabled=True),
     )
@@ -86,7 +86,7 @@ def test_workspace_router_defers_to_local_model_when_enabled() -> None:
 
 
 def test_workspace_router_uses_cloud_fallback_after_local_failure() -> None:
-    decision = route_workspace_read_turn(
+    decision = route_workspace_turn(
         "summarize my class performance",
         policy=_policy(model_routing_enabled=True, cloud_fallback_enabled=True),
         local_model_failed=True,

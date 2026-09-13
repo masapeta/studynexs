@@ -61,6 +61,7 @@ class FeeRecordSummaryOut(BaseModel):
 class PortalContextOut(BaseModel):
     portal: str  # staff | teacher | parent | student
     role: str
+    school_name: Optional[str] = None
     children: list[ChildSummaryOut] = Field(default_factory=list)
     student_id: Optional[uuid.UUID] = None
     student_name: Optional[str] = None

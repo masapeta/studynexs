@@ -2,9 +2,11 @@ import type { TableBlock } from "@/lib/workspace-types";
 
 export function TableWidget(block: TableBlock) {
   return (
-    <section className="sn-workspace sn-workspace--primary p-5 rounded-xl border border-line" style={{ overflowX: "auto" }}>
-      <div className="sn-workspace-zone" style={{ display: "grid", gap: 14 }}>
-        {block.title ? <h2 className="sn-page-header-card__title">{block.title}</h2> : null}
+    <section className="card" style={{ margin: 0, padding: 20, overflowX: "auto" }}>
+      <div style={{ display: "grid", gap: 14 }}>
+        {block.title ? (
+          <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{block.title}</h2>
+        ) : null}
         {block.payload.rows.length === 0 ? (
           <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{block.payload.empty_message}</div>
         ) : (

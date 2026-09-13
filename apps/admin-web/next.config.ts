@@ -9,6 +9,7 @@ const useStandalone =
 
 const nextConfig: NextConfig = {
   ...(useStandalone ? { output: "standalone" as const } : {}),
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
   experimental: {
     optimizePackageImports: ["lucide-react", "framer-motion"],
   },

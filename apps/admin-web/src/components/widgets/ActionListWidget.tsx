@@ -3,7 +3,7 @@ import type { ActionListBlock, WorkspaceAction } from "@/lib/workspace-types";
 
 function NavigationActions({ actions }: { actions: WorkspaceAction[] }) {
   return (
-    <div className="sn-workspace-zone" style={{ display: "grid", gap: 10 }}>
+    <div style={{ display: "grid", gap: 10 }}>
       {actions.map((action) =>
         action.enabled ? (
           <Link
@@ -40,9 +40,11 @@ function NavigationActions({ actions }: { actions: WorkspaceAction[] }) {
 
 export function ActionListWidget(block: ActionListBlock) {
   return (
-    <section className="sn-workspace sn-workspace--secondary p-5 rounded-xl border border-line">
-      <div className="sn-workspace-zone" style={{ display: "grid", gap: 14 }}>
-        {block.title ? <h2 className="sn-page-header-card__title">{block.title}</h2> : null}
+    <section className="card" style={{ margin: 0, padding: 20 }}>
+      <div style={{ display: "grid", gap: 14 }}>
+        {block.title ? (
+          <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{block.title}</h2>
+        ) : null}
         <NavigationActions actions={block.payload.items} />
       </div>
     </section>

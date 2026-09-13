@@ -16,13 +16,21 @@ from app.core.config import Settings, get_settings
 from app.db.models.audit import AuditLog
 from app.modules.ai.orchestration.tool_types import WorkspaceToolContext, WorkspaceToolMetadata
 
-APPROVED_WORKSPACE_TOOL_NAMES = frozenset(
+APPROVED_WORKSPACE_READ_TOOL_NAMES = frozenset(
     {
         "resolve_student_in_teacher_scope",
         "get_student_learning_evidence_report",
         "get_teacher_navigation_targets",
+    }
+)
+APPROVED_WORKSPACE_WRITE_TOOL_NAMES = frozenset(
+    {
         "mark_evidence_as_reviewed",
     }
+)
+# Backward-compatible alias: the full approved surface (read + write).
+APPROVED_WORKSPACE_TOOL_NAMES = (
+    APPROVED_WORKSPACE_READ_TOOL_NAMES | APPROVED_WORKSPACE_WRITE_TOOL_NAMES
 )
 _TRANSIENT_TOOL_ERRORS = (asyncio.TimeoutError, ConnectionError, OSError)
 
@@ -75,7 +83,12 @@ class WorkspaceToolRegistry:
     _circuit_state: dict[str, _CircuitState] = field(default_factory=dict)
 
     @classmethod
-    def load_default(cls, *, settings: Settings | None = None, include_write_tools: bool = False) -> "WorkspaceToolRegistry":
+    def load_default(
+        cls,
+        *,
+        settings: Settings | None = None,
+        include_write_tools: bool = False,
+    ) -> "WorkspaceToolRegistry":
         from app.modules.ai.orchestration.tools.read.get_student_learning_evidence_report import (
             TOOL_HANDLER as REPORT_TOOL_HANDLER,
         )
@@ -115,6 +128,8 @@ class WorkspaceToolRegistry:
         if include_write_tools:
             from app.modules.ai.orchestration.tools.write.mark_evidence_as_reviewed import (
                 TOOL_HANDLER as MARK_TOOL_HANDLER,
+            )
+            from app.modules.ai.orchestration.tools.write.mark_evidence_as_reviewed import (
                 TOOL_METADATA as MARK_TOOL_METADATA,
             )
             tools.append(
@@ -124,7 +139,10 @@ class WorkspaceToolRegistry:
                 )
             )
 
-        return cls.from_tools(tuple(tools), strict_approved_names=not include_write_tools)
+        expected = APPROVED_WORKSPACE_TOOL_NAMES if include_write_tools else (
+            APPROVED_WORKSPACE_READ_TOOL_NAMES
+        )
+        return cls.from_tools(tuple(tools), expected_names=expected)
 
     @classmethod
     def from_tools(
@@ -132,20 +150,25 @@ class WorkspaceToolRegistry:
         tools: tuple[RegisteredWorkspaceTool, ...],
         *,
         strict_approved_names: bool = True,
+        expected_names: frozenset[str] | None = None,
         clock: Callable[[], float] | None = None,
     ) -> "WorkspaceToolRegistry":
+        # When an explicit expected set is provided, it defines the exact allowed surface.
+        approved = expected_names if expected_names is not None else APPROVED_WORKSPACE_TOOL_NAMES
+        enforce = strict_approved_names or expected_names is not None
+
         by_name: dict[str, RegisteredWorkspaceTool] = {}
         for tool in tools:
             name = tool.metadata.name
             if name in by_name:
                 raise WorkspaceToolRegistryError(f"Duplicate workspace tool registration: {name}")
-            if strict_approved_names and name not in APPROVED_WORKSPACE_TOOL_NAMES:
+            if enforce and name not in approved:
                 raise WorkspaceToolRegistryError(f"Unapproved workspace tool registration: {name}")
             by_name[name] = tool
 
-        if strict_approved_names and set(by_name) != APPROVED_WORKSPACE_TOOL_NAMES:
-            missing = sorted(APPROVED_WORKSPACE_TOOL_NAMES - set(by_name))
-            extra = sorted(set(by_name) - APPROVED_WORKSPACE_TOOL_NAMES)
+        if enforce and set(by_name) != approved:
+            missing = sorted(approved - set(by_name))
+            extra = sorted(set(by_name) - approved)
             fragments: list[str] = []
             if missing:
                 fragments.append(f"missing={missing}")
@@ -153,7 +176,7 @@ class WorkspaceToolRegistry:
                 fragments.append(f"extra={extra}")
             detail = ", ".join(fragments) or "approved tool set mismatch"
             raise WorkspaceToolRegistryError(
-                f"Workspace tool registry must expose exactly the approved Phase 0 tools ({detail})"
+                f"Workspace tool registry must expose exactly the approved tools ({detail})"
             )
 
         for tool in by_name.values():

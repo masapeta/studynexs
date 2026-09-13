@@ -23,18 +23,21 @@ export function ActionCardWidget(props: ActionBlock & { onUpdate: () => void }) 
   };
 
   return (
-    <div className="sn-workspace sn-workspace--primary p-5 rounded-xl border border-line">
-       <h3 className="font-bold text-lg mb-4">{label}</h3>
-       <button 
-         className="btn btn-accent w-full"
-         disabled={submitting}
-         onClick={async (e) => {
-             e.preventDefault();
-             await handleAction();
-         }}
-       >
-         {submitting ? "Processing..." : label}
-       </button>
+    <div className="card" style={{ margin: 0, padding: 20 }}>
+      <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", marginBottom: 16 }}>
+        {label}
+      </h3>
+      <button
+        type="button"
+        className="btn btn-primary"
+        disabled={submitting}
+        onClick={async (e) => {
+          e.preventDefault();
+          await handleAction();
+        }}
+      >
+        {submitting ? "Processing…" : label}
+      </button>
     </div>
   );
 }

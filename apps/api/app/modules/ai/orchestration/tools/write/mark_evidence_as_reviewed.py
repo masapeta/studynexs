@@ -1,10 +1,13 @@
 from __future__ import annotations
+
 import uuid
+
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.db.models.mastery import MasteryFlag
-from app.modules.mastery.services.learning_evidence_service import LearningEvidenceService
+
 from app.modules.ai.orchestration.tool_types import WorkspaceToolMetadata
+from app.modules.mastery.services.learning_evidence_service import LearningEvidenceService
+
 
 class MarkEvidenceAsReviewedInput(BaseModel):
     flag_id: uuid.UUID = Field(..., description="ID of the mastery flag to review")

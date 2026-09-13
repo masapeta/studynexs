@@ -1,129 +1,72 @@
-"use client";
+﻿"use client";
 
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { LogOut } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { api } from "@/lib/api";
 import { AppBackground } from "@/components/AppBackground";
-import { DemoDataBanner } from "@/components/DemoDataBanner";
+import { WorkspaceRoot } from "@/components/workspace/WorkspaceRoot";
+import { SkipLink } from "@/components/a11y/SkipLink";
 
 export type NavItem = { href: string; label: string; icon?: LucideIcon };
 
+/**
+ * Portal shell for parent/student. Renders inside the unified responsive
+ * WorkspaceRoot (3-zone on desktop, collapses to bottom-nav on mobile) so every
+ * portal looks like one product. The `nav` config drives the slim rail, the
+ * "All modules" drawer, and the mobile bottom nav; `children` render as the page.
+ */
 export default function PortalShell({
   title,
   subtitle,
   nav,
-  wide = false,
   children,
 }: {
   title: string;
   subtitle?: string;
   nav: NavItem[];
-  /** Desktop: widen the device frame for two-panel learning surfaces (AI Tutor). */
+  /** Retained for API compatibility; the responsive shell handles width. */
   wide?: boolean;
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
+  const [schoolName, setSchoolName] = useState("");
 
-  async function handleLogout() {
-    await logout();
-    router.push("/");
-  }
+  const home = nav[0]?.href ?? "/";
+  const portalRoot = home.split("/").filter(Boolean)[0] ?? "";
+  const settingsHref = `/${portalRoot}`;
+
+  useEffect(() => {
+    api<{ data: { school_name?: string } }>("/api/v1/portal/context")
+      .then((r) => setSchoolName(r.data?.school_name ?? ""))
+      .catch(() => {});
+  }, []);
 
   return (
-    <div className="sn-app portal-device-stage">
+    <div className="sn-app">
+      <SkipLink />
       <AppBackground />
-      <div className={`portal-device-frame${wide ? " portal-device-frame--wide" : ""}`}>
-        <div className="portal-shell portal-shell--railed">
-          {/* Desktop-only icon rail (reference layout); hidden on mobile via CSS */}
-          <nav className="portal-rail" aria-label="Portal navigation">
-            {nav.map((item) => {
-              const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`portal-rail-item${active ? " active" : ""}`}
-                  aria-label={item.label}
-                  aria-current={active ? "page" : undefined}
-                  title={item.label}
-                >
-                  {Icon && <Icon size={20} strokeWidth={active ? 2.4 : 2} aria-hidden />}
-                </Link>
-              );
-            })}
-          </nav>
-          <div className="portal-body">
-          <DemoDataBanner />
-          <header className="portal-header">
-            <div>
-              <div style={{ fontWeight: 800, fontSize: 17, letterSpacing: "-0.02em" }}>{title}</div>
-              {subtitle && (
-                <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>{subtitle}</div>
-              )}
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span
-                style={{
-                  fontSize: 12,
-                  color: "var(--text-muted)",
-                  maxWidth: 100,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {user?.full_name}
-              </span>
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                style={{
-                  width: 36,
-                  height: 36,
-                  padding: 0,
-                  borderRadius: 12,
-                  background: "rgba(255,255,255,0.5)",
-                  border: "1px solid var(--sn-glass-border-soft, var(--border))",
-                }}
-                onClick={handleLogout}
-                aria-label="Logout"
-              >
-                <LogOut size={17} />
-              </button>
-            </div>
-          </header>
-
-          <main className="portal-main">{children}</main>
-
-          <nav className="portal-bottom-nav" aria-label="Portal navigation">
-            {nav.map((item) => {
-              const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`portal-nav-item${active ? " active" : ""}`}
-                >
-                  {Icon && (
-                    <span className="portal-nav-icon">
-                      <Icon size={21} strokeWidth={active ? 2.5 : 2} />
-                    </span>
-                  )}
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
-          </nav>
-          </div>
-        </div>
-      </div>
-      <p className="portal-device-caption">StudyNexs portal</p>
+      <main id="main-content" tabIndex={-1}>
+        <WorkspaceRoot
+          userName={user?.full_name ?? ""}
+          role={user?.role ?? "student"}
+          permissions={null}
+          institution={schoolName}
+          modules={{}}
+          homeHref={home}
+          settingsHref={settingsHref}
+          drawerGroups={[{ label: "Portal", items: nav }]}
+          pageTitle={title}
+        >
+          {subtitle ? (
+            <p style={{ color: "var(--text-muted)", fontSize: 14, margin: "0 0 16px" }}>
+              {subtitle}
+            </p>
+          ) : null}
+          {children}
+        </WorkspaceRoot>
+      </main>
     </div>
   );
 }
+

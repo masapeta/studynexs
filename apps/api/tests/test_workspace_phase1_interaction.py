@@ -1,39 +1,52 @@
+from __future__ import annotations
+
 import pytest
-import uuid
-from sqlalchemy import select
-from app.db.models.mastery import MasteryFlag, FlagStatus
-from app.modules.workspace.services.workspace_service import WorkspaceService
-from app.modules.workspace.schemas.request import WorkspaceTurnRequest
+
+from app.db.models.mastery import FlagStatus
 from app.modules.ai.orchestration.tool_registry import WorkspaceToolRegistry
+from app.modules.ai.orchestration.tool_types import WorkspaceToolContext
+from app.modules.ai.orchestration.write_orchestrator import WorkspaceWriteOrchestrator
+from tests.test_workspace_tool_registry import _seed_grounded_flagging_report
+
 
 @pytest.mark.asyncio
-async def test_mark_evidence_as_reviewed_tool_executes(db_session, teacher_user, test_school, test_class, student_user):
-    # 1. Seed a flag
-    flag = MasteryFlag(
-        school_id=test_school.id,
-        student_id=student_user.id,
-        class_id=test_class.id,
-        subject_id=uuid.uuid4(),
-        academic_year_id=uuid.uuid4(),
-        topic="Maths",
-        topic_display="Maths",
-        severity="medium",
-        status=FlagStatus.PENDING_REVIEW,
+async def test_mark_evidence_as_reviewed_tool_executes(
+    client,
+    db_session,
+    admin_user,
+    teacher_user,
+    student_user,
+    test_school,
+    test_class,
+):
+    _weak, _subject, flag, _evaluation = await _seed_grounded_flagging_report(
+        client,
+        db_session,
+        admin_user=admin_user,
+        teacher_user=teacher_user,
+        student_user=student_user,
+        test_school=test_school,
+        test_class=test_class,
     )
-    db_session.add(flag)
-    await db_session.flush()
 
-    # 2. Invoke tool via orchestrator
     registry = WorkspaceToolRegistry.load_default(include_write_tools=True)
-    service = WorkspaceService(db_session, registry)
-    
-    # 3. Simulate tool call
-    result = await service.handle_turn(
-        teacher_user.id, 
-        WorkspaceTurnRequest(mode='read', text=f"Exec mark_evidence_as_reviewed {flag.id}")
+    orchestrator = WorkspaceWriteOrchestrator(registry)
+    context = WorkspaceToolContext(
+        teacher_user_id=teacher_user.id,
+        school_id=test_school.id,
+        role="teacher",
+        tenant_slug="test",
     )
-    
-    # 4. Assert updated
+
+    tool_result = await orchestrator.execute(
+        db_session,
+        context=context,
+        tool_name="mark_evidence_as_reviewed",
+        payload={"flag_id": str(flag.id)},
+    )
+
+    assert tool_result["status"] == "reviewed"
+
     await db_session.refresh(flag)
     assert flag.status == FlagStatus.APPROVED
     assert flag.reviewed_by == teacher_user.id
