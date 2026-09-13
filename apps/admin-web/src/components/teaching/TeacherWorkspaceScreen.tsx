@@ -46,187 +46,94 @@ export function TeacherWorkspaceScreen() {
     <PageShell
       title="Teacher Copilot"
       subtitle="Read-only learning evidence for students in your teaching scope, grounded in existing school records."
-      action={<span className="sn-filter-pill">Phase 0 · Read mode</span>}
+      action={<span className="sn-filter-pill">Phase 1 · Agentic Canvas</span>}
     >
       <div className="flex h-full w-full gap-5 overflow-hidden">
-        {/* Left: Chat & Input */}
+        {/* Left: Chat & Input (1/3 Width) */}
         <section className="flex w-1/3 flex-col gap-5 overflow-y-auto px-6 py-8">
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <Sparkles size={16} />
-                <strong>Bounded teacher workspace</strong>
-            </div>
-            <p style={{ color: "var(--text-secondary)", fontSize: 14, margin: 0 }}>
-                This first slice only resolves a student, reads deterministic learning evidence,
-                and offers safe navigation targets.
-            </p>
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                void submitTurn();
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <Sparkles size={16} />
+            <strong>Bounded teacher workspace</strong>
+          </div>
+          <p style={{ color: "var(--text-secondary)", fontSize: 14, margin: 0 }}>
+            Ask for a student's learning evidence to orchestrate backend checks and reveal the action canvas.
+          </p>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void submitTurn();
+            }}
+            style={{ display: "grid", gap: 12 }}
+          >
+            <label htmlFor="teacher-workspace-input" style={{ fontWeight: 600 }}>
+              Ask for a student learning evidence report
+            </label>
+            <textarea
+              id="teacher-workspace-input"
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              rows={4}
+              maxLength={400}
+              placeholder="Show learning evidence for a student in my class."
+              style={{
+                background: "color-mix(in srgb, var(--bg-card) 84%, transparent)",
+                border: "1px solid var(--border)",
+                borderRadius: 16,
+                color: "var(--text-primary)",
+                font: "inherit",
+                minHeight: 120,
+                padding: 14,
+                resize: "vertical",
               }}
-              style={{ display: "grid", gap: 12 }}
-            >
-              <label htmlFor="teacher-workspace-input" style={{ fontWeight: 600 }}>
-                Ask for a student learning evidence report
-              </label>
-              <textarea
-                id="teacher-workspace-input"
-                value={text}
-                onChange={(event) => setText(event.target.value)}
-                rows={4}
-                maxLength={400}
-                placeholder="Show learning evidence for a student in my class."
-                style={{
-                  background: "color-mix(in srgb, var(--bg-card) 84%, transparent)",
-                  border: "1px solid var(--border)",
-                  borderRadius: 16,
-                  color: "var(--text-primary)",
-                  font: "inherit",
-                  minHeight: 120,
-                  padding: 14,
-                  resize: "vertical",
-                }}
-              />
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {STARTER_PROMPTS.map((prompt) => (
-                    <button
-                      key={prompt}
-                      type="button"
-                      className="btn btn-ghost sn-filter-pill"
-                      onClick={() => { setText(prompt); void submitTurn(prompt); }}
-                    >
-                      {prompt}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="btn btn-accent"
-                  style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600 }}
-                >
-                  {submitting ? "Analyzing..." : "Analyze"}
-                </button>
+            />
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {STARTER_PROMPTS.map((prompt) => (
+                  <button
+                    key={prompt}
+                    type="button"
+                    className="btn btn-ghost sn-filter-pill"
+                    onClick={() => {
+                      setText(prompt);
+                      void submitTurn(prompt);
+                    }}
+                  >
+                    {prompt}
+                  </button>
+                ))}
               </div>
-            </form>
-            {error && <p style={{ color: "var(--danger)" }}>{error}</p>}
-            {response && (
-                <div className="pt-6">
-                    <TeacherWorkspaceBlockRenderer blocks={response.blocks} />
-                    <TeacherWorkspaceResponseMeta meta={response.telemetry} />
-                </div>
-            )}
+              <button
+                type="submit"
+                disabled={submitting}
+                className="btn btn-accent"
+                style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600 }}
+              >
+                {submitting ? "Analyzing..." : "Analyze"}
+              </button>
+            </div>
+          </form>
+          {error && <p style={{ color: "var(--danger)" }}>{error}</p>}
+          {response && (
+            <div className="pt-6">
+              <TeacherWorkspaceResponseMeta meta={response.telemetry} />
+            </div>
+          )}
         </section>
 
-        {/* Right: Dynamic Canvas */}
+        {/* Right: Dynamic Action Canvas (2/3 Width) */}
         <section className="h-full w-2/3 border-l border-line bg-surface/50 p-8 overflow-y-auto">
-             <div className="flex h-full w-full">
-                {response ? (
-                    <div className="w-full">
-                        <TeacherWorkspaceBlockRenderer blocks={response.blocks} />
-                    </div>
-                ) : (
-                    \"Orchestrator output will appear here\"
-                )}
-             </div>
-        </section>
-      </div>
-                placeholder="Show learning evidence for a student in my class."
-                style={{
-                  background: "color-mix(in srgb, var(--bg-card) 84%, transparent)",
-                  border: "1px solid var(--border)",
-                  borderRadius: 16,
-                  color: "var(--text-primary)",
-                  font: "inherit",
-                  minHeight: 120,
-                  padding: 14,
-                  resize: "vertical",
-                }}
-              />
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {STARTER_PROMPTS.map((prompt) => (
-                    <button
-                      key={prompt}
-                      type="button"
-                      className="btn btn-ghost sn-filter-pill"
-                      onClick={() => {
-                        setText(prompt);
-                        void submitTurn(prompt);
-                      }}
-                      disabled={submitting}
-                    >
-                      {prompt}
-                    </button>
-                  ))}
-                </div>
-                <button type="submit" className="btn btn-primary" disabled={submitting}>
-                  {submitting ? "Loading evidence..." : "Run workspace"}
-                </button>
+          <div className="flex h-full w-full items-start justify-center">
+            {response ? (
+              <div className="w-full">
+                <TeacherWorkspaceBlockRenderer blocks={response.blocks} />
               </div>
-            </form>
+            ) : (
+              <div className="text-muted text-center pt-20">
+                <p>Orchestrator output and interactive Action Cards will appear here.</p>
+              </div>
+            )}
           </div>
         </section>
-
-        {error ? (
-          <section className="sn-workspace sn-workspace--secondary" style={{ padding: 18 }}>
-            <div className="sn-workspace-zone" style={{ color: "var(--danger)", display: "grid", gap: 8 }}>
-              <strong>Workspace request failed</strong>
-              <span style={{ color: "var(--text-secondary)", fontSize: 14 }}>{error}</span>
-            </div>
-          </section>
-        ) : null}
-
-        {response ? (
-          <>
-            <section className="sn-workspace sn-workspace--primary" style={{ padding: 20 }}>
-              <div className="sn-workspace-zone" style={{ display: "grid", gap: 12 }}>
-                <div>
-                  <h2 className="sn-page-header-card__title" style={{ marginBottom: 6 }}>
-                    {response.message.title}
-                  </h2>
-                  <p style={{ color: "var(--text-secondary)", fontSize: 15, margin: 0 }}>
-                    {response.message.summary}
-                  </p>
-                </div>
-                <TeacherWorkspaceResponseMeta
-                  verification={response.verification}
-                  warnings={response.warnings.map((warning) => warning.detail)}
-                  requestId={response.request_id}
-                />
-                {response.warnings.length > 0 ? (
-                  <div className="sn-workspace-zone" style={{ display: "grid", gap: 8 }}>
-                    {response.warnings.map((warning) => (
-                      <div key={warning.code} className="sn-filter-pill" style={{ padding: "12px 14px" }}>
-                        <strong style={{ display: "block", marginBottom: 4 }}>{warning.code}</strong>
-                        <span style={{ color: "var(--text-secondary)", fontSize: 14 }}>
-                          {warning.detail}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            </section>
-
-            <div style={{ display: "grid", gap: 16 }} aria-live="polite">
-              {response.blocks.map((block) => (
-                <TeacherWorkspaceBlockRenderer key={block.id} block={block} />
-              ))}
-            </div>
-          </>
-        ) : (
-          <section className="sn-workspace sn-workspace--secondary" style={{ padding: 18 }}>
-            <div className="sn-workspace-zone" style={{ display: "grid", gap: 8 }}>
-              <strong>Ready for a bounded read request</strong>
-              <p style={{ color: "var(--text-secondary)", fontSize: 14, margin: 0 }}>
-                Ask for one student at a time. This surface will not mutate records, generate
-                new academic content, or perform workflow actions in this slice.
-              </p>
-            </div>
-          </section>
-        )}
       </div>
     </PageShell>
   );
