@@ -19,7 +19,7 @@ from app.modules.ai.orchestration.response_builder import (
     build_tool_failure_response,
     build_unsupported_request_response,
 )
-from app.modules.ai.orchestration.router import route_workspace_read_turn
+from app.modules.ai.orchestration.router import route_workspace_turn, WorkspaceIntent
 from app.modules.ai.orchestration.tool_registry import WorkspaceToolRegistry
 from app.modules.workspace.schemas.request import WorkspaceTurnRequest
 from app.modules.workspace.schemas.response import WorkspaceResponse

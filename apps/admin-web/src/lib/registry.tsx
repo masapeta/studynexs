@@ -1,13 +1,17 @@
 import { StudentCardWidget } from '@/components/widgets/StudentCardWidget';
 import { ActionCardWidget } from '@/components/widgets/ActionCardWidget';
+import { MetricRowWidget } from '@/components/widgets/MetricRowWidget';
+import { TableWidget } from '@/components/widgets/TableWidget';
+import { CitationListWidget } from '@/components/widgets/CitationListWidget';
+import { ActionListWidget } from '@/components/widgets/ActionListWidget';
+import { ErrorStateWidget } from '@/components/widgets/ErrorStateWidget';
 
 export const COMPONENT_REGISTRY: Record<string, React.ComponentType<any>> = {
-  // Map block_type to frontend components for the dynamic Canvas
   student_card: StudentCardWidget,
-  metric_row: () => <div>Not implemented: metric_row</div>,
-  table: () => <div>Not implemented: table</div>,
-  citation_list: () => <div>Not implemented: citation_list</div>,
-  action_list: () => <div>Not implemented: action_list</div>,
-  error_state: () => <div>Not implemented: error_state</div>,
+  metric_row: MetricRowWidget,
+  table: TableWidget,
+  citation_list: CitationListWidget,
+  action_list: ActionListWidget,
+  error_state: ErrorStateWidget,
   action: ActionCardWidget,
 };

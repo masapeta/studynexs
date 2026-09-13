@@ -3,13 +3,13 @@ import { useState } from 'react';
 import { createWorkspaceTurn } from '@/lib/workspace-client';
 
 export function ActionCardWidget(props: ActionBlock & { onUpdate: () => void }) {
-  const { label, target_tool, onUpdate } = props;
+  const { label, payload_schema, onUpdate } = props;
   const [submitting, setSubmitting] = useState(false);
 
   const handleAction = async () => {
     setSubmitting(true);
     try {
-      const flagId = payload_schema.flag_id;
+      const flagId = payload_schema?.flag_id;
       await createWorkspaceTurn({ 
           mode: "read", 
           text: `mark evidence for ${flagId} as reviewed`,

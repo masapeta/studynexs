@@ -115,7 +115,11 @@ export function TeacherWorkspaceScreen() {
           {error && <p style={{ color: "var(--danger)" }}>{error}</p>}
           {response && (
             <div className="pt-6">
-              <TeacherWorkspaceResponseMeta meta={response.telemetry} />
+              <TeacherWorkspaceResponseMeta 
+                verification={response.verification} 
+                warnings={response.warnings?.map(w => w.detail) || []}
+                requestId={response.request_id}
+              />
             </div>
           )}
         </section>
