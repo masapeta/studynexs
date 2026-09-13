@@ -1,7 +1,7 @@
 # StudyNexs — Master Status
 
 > **Owner:** Avinash Reddy Masapeta (ARM)
-> **As of:** 2026-09-03
+> **As of:** 2026-09-11
 > **Status role:** Current project anchor for architecture, runtime milestones, and next engineering gate.
 
 ---
@@ -10,15 +10,9 @@
 
 StudyNexs is an AI-first School Operating System with a frozen AEI/EUI
 architecture, a published EUI runtime foundation, a certified AEI v1.0
-supported-scope baseline, and published Assessment Intelligence v1.0 Batch A
-contract/capability foundation, Batch B blueprint readiness foundation, Batch C
-rubric/model-answer readiness foundation, Batch D question-bank/reuse readiness
-foundation, Batch E paper-to-evaluation linkage readiness foundation, Batch F
-bilingual/multilingual assessment readiness foundation, Batch G teacher
-workflow/browser proof foundation, and Batch G-B reproducible Reference fixture
-/ browser proof closure. Assessment Intelligence v1.0 Batch H is now published
-and certifies the final v1.0 product-claim boundary for the declared supported
-scope. The governed Question Paper Studio is now published as the first
+supported-scope baseline, and published Assessment Intelligence v1.0 Batch H,
+now augmented by the Agentic Interaction Phase 1 orchestration foundation,
+completing the product-claim boundary for interactive agentic capabilities. The governed Question Paper Studio is now published as the first
 post-certification Assessment Intelligence product-facing generation baseline.
 
 The current engineering rhythm is:
