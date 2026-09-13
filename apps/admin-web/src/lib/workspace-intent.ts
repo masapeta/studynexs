@@ -32,9 +32,25 @@ export interface DataQuery {
   hrefLabel?: string;
 }
 
+/** A governed inline TABLE pull — reuses a tenant-scoped endpoint that returns a
+ *  list, rendered as a real table (e.g. students with fees pending > 50%). */
+export interface TableQuery {
+  id: string;
+  title: string;
+  endpoint: string;
+  source: string;
+  /** Array property on the `data` payload holding the rows. */
+  rowsFrom: string;
+  columns: Array<{ key: string; label: string; format?: "number" | "money" | "percent" }>;
+  emptyMessage: string;
+  href?: string;
+  hrefLabel?: string;
+}
+
 export type IntentResult =
   | { kind: "navigate"; target: NavTarget; reason: string }
   | { kind: "data"; query: DataQuery }
+  | { kind: "table"; query: TableQuery }
   | { kind: "query"; text: string }
   | { kind: "guide"; suggestions: NavTarget[] };
 
@@ -183,6 +199,49 @@ function matchData(text: string, rules: DataRule[]): DataQuery | null {
   return null;
 }
 
+/** Extract a percentage threshold from text like "> 50%", "over 60 percent", "above 75". */
+function extractPercent(text: string, fallback: number): number {
+  const m = text.match(/(\d{1,3})\s*(?:%|percent|per cent)?/);
+  if (m) {
+    const n = Number(m[1]);
+    if (n >= 0 && n <= 100) return n;
+  }
+  return fallback;
+}
+
+/** Analytical table queries: a list of rows filtered by a condition. Staff only. */
+function matchTable(text: string, role: WorkspaceRole): TableQuery | null {
+  if (role !== "admin" && role !== "teacher") return null;
+  const lower = text.toLowerCase();
+
+  // "students with fees pending > 50%" (and variants: due, outstanding, unpaid).
+  const feePending =
+    /\bstudents?\b/.test(lower) &&
+    /\bfee|fees|dues?|pending|outstanding|unpaid\b/.test(lower) &&
+    /(\d{1,3}\s*(?:%|percent)|>|over|above|more than|greater)/.test(lower);
+  if (feePending) {
+    const threshold = extractPercent(lower, 50);
+    return {
+      id: "fee-pending-over",
+      title: `Students with fees pending over ${threshold}%`,
+      endpoint: `/api/v1/fees/pending-over?min_percent=${threshold}`,
+      source: "Fee System",
+      rowsFrom: "students",
+      columns: [
+        { key: "name", label: "Student" },
+        { key: "class_label", label: "Class" },
+        { key: "total_due", label: "Total due", format: "money" },
+        { key: "pending_amount", label: "Pending", format: "money" },
+        { key: "pending_percent", label: "Pending %", format: "percent" },
+      ],
+      emptyMessage: `No students have fees pending over ${threshold}%.`,
+      href: "/dashboard/finance",
+      hrefLabel: "Open finance",
+    };
+  }
+  return null;
+}
+
 function dataRulesForRole(role: WorkspaceRole): DataRule[] {
   // Staff data pulls only for now (admin/teacher). Parent/student inline data
   // will be added when their governed summary endpoints are wired in.
@@ -213,7 +272,14 @@ export function classifyIntent(
     return { kind: "query", text };
   }
 
-  // 2) Governed inline data pull via existing REST endpoint (counts, fees, attendance).
+  // 2) Analytical TABLE query (filtered list). Checked before the summary data rules
+  //    so "students with fees pending > 50%" returns a table, not the fee summary.
+  const table = matchTable(text, role);
+  if (table) {
+    return { kind: "table", query: table };
+  }
+
+  // 3) Governed inline data pull via existing REST endpoint (counts, fees, attendance).
   //    Only when the phrasing is a data question, not a "take me there" request.
   if (!NAV_VERBS.test(text)) {
     const data = matchData(text, dataRulesForRole(role));

@@ -44,6 +44,34 @@ def _money_json_number(value: Decimal) -> float:
     return float(value)
 
 
+def _normalize_class_label(value: str | None) -> str | None:
+    """Reduce a class filter to comparable tokens: 'Class 10 A' / '10A' / '9b' -> '10 a' / '9 b'."""
+    if not value:
+        return None
+    import re
+
+    cleaned = re.sub(r"(?i)\bclass\b|\bgrade\b|\bstd\b|\bstandard\b", " ", value)
+    cleaned = re.sub(r"[^0-9a-zA-Z]+", " ", cleaned)
+    # Split a compact grade+section (e.g. "9B", "10a") into "9 b" so section matches.
+    cleaned = re.sub(r"(?i)(\d)\s*([a-z])(?=\b)", r"\1 \2", cleaned)
+    cleaned = cleaned.strip().lower()
+    return cleaned or None
+
+
+def _class_label_matches(actual: str, wanted: str) -> bool:
+    """Match a roster class label against a normalized filter.
+
+    "10" matches "Class 10 A" and "Class 10 B" (whole grade); "10 a" matches only
+    "Class 10 A". Grade token compared as a whole token to avoid 1 matching 10.
+    """
+    actual_norm = _normalize_class_label(actual) or ""
+    if not wanted:
+        return True
+    actual_tokens = actual_norm.split()
+    wanted_tokens = wanted.split()
+    return all(tok in actual_tokens for tok in wanted_tokens)
+
+
 def _default_receipt_prefix(school: School) -> str:
     """Receipt prefix used when a school's counter wasn't provisioned at onboarding."""
     base = "".join(ch for ch in (school.code or "") if ch.isalnum()).upper()
@@ -263,6 +291,35 @@ class FeeService:
             "this_month": _money_json_number(this_month),
         }
 
+    async def collection_in_range(
+        self,
+        school_id: uuid.UUID,
+        *,
+        start: datetime | None = None,
+        end: datetime | None = None,
+    ) -> dict:
+        """Fee collected within a half-open [start, end) window (receipts by paid_at).
+
+        start/end are tz-aware UTC. None bounds mean unbounded on that side.
+        """
+        from sqlalchemy import func
+
+        q = select(
+            func.coalesce(func.sum(FeeReceipt.amount_paid), 0),
+            func.count(FeeReceipt.id),
+        ).where(FeeReceipt.school_id == school_id)
+        if start is not None:
+            q = q.where(FeeReceipt.paid_at >= start)
+        if end is not None:
+            q = q.where(FeeReceipt.paid_at < end)
+        row = (await self.db.execute(q)).first()
+        collected = _money_decimal(row[0] if row else 0)
+        count = int(row[1] or 0) if row else 0
+        return {
+            "collected": _money_json_number(collected),
+            "receipt_count": count,
+        }
+
     async def get_recent_payments(self, school_id: uuid.UUID, limit: int = 10) -> list[FeeReceipt]:
         """Get recent fee receipts."""
         result = await self.db.execute(
@@ -375,4 +432,53 @@ class FeeService:
             "total_due": _money_json_number(total_due_all),
             "total_collected": _money_json_number(total_paid_all),
             "term_label": "Term 1",
+        }
+    async def students_by_pending_percent(
+        self,
+        school_id: uuid.UUID,
+        *,
+        min_percent: float = 50.0,
+        class_label: str | None = None,
+        limit: int = 200,
+    ) -> dict:
+        """Students whose unpaid fee share exceeds `min_percent` of their total due.
+
+        Reuses the roster aggregation, then filters + sorts by pending share so the
+        assistant can answer analytical queries like "fees pending > 50%" with a real
+        table (not a summary). Optional `class_label` narrows to one class (e.g.
+        "10", "Class 10", "10 A"). Tenant-scoped; money handled as Decimal.
+        """
+        roster = await self.list_fee_roster(school_id)
+        wanted = _normalize_class_label(class_label)
+        matches: list[dict] = []
+        for s in roster["students"]:
+            if wanted and not _class_label_matches(s["class_label"], wanted):
+                continue
+            due = Decimal(str(s["total_due"]))
+            paid = Decimal(str(s["paid_amount"]))
+            if due <= 0:
+                continue
+            pending = due - paid
+            if pending <= 0:
+                continue
+            pct = (pending / due) * Decimal("100")
+            if float(pct) >= min_percent:
+                matches.append(
+                    {
+                        "student_id": s["student_id"],
+                        "name": s["name"],
+                        "class_label": s["class_label"],
+                        "total_due": s["total_due"],
+                        "paid_amount": s["paid_amount"],
+                        "pending_amount": _money_json_number(pending),
+                        "pending_percent": round(float(pct), 1),
+                        "status": s["status"],
+                    }
+                )
+        matches.sort(key=lambda m: m["pending_percent"], reverse=True)
+        return {
+            "min_percent": min_percent,
+            "class_label": class_label,
+            "count": len(matches),
+            "students": matches[:limit],
         }

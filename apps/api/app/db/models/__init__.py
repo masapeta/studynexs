@@ -86,3 +86,7 @@ from app.db.models.student import (  # noqa: F401
 from app.db.models.teacher import Teacher  # noqa: F401
 from app.db.models.timetable import TimetableSlot  # noqa: F401
 from app.db.models.user import User  # noqa: F401
+from app.db.models.workspace_chat import (  # noqa: F401
+    WorkspaceChatMessage,
+    WorkspaceChatSession,
+)

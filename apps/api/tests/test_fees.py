@@ -211,3 +211,32 @@ async def test_roster_labels_never_paid_student_pending(
     students = resp.json()["data"]["students"]
     row = next(s for s in students if s["student_id"] == str(fee_record.student_id))
     assert row["status"] == "pending"
+
+@pytest.mark.asyncio
+async def test_pending_over_filters_by_percent_and_class(
+    client: AsyncClient, admin_user: User, student_user: User, fee_setup, db_session
+):
+    """The analytical endpoint returns only students over the pending threshold, and a
+    class_label narrows the result — this backs the assistant's 'fees pending > X% of
+    class N' query."""
+    fee_record = await _make_fee_record(db_session, admin_user, student_user, fee_setup)
+    token = await get_auth_token(client, "test_admin", "Admin@123")
+    headers = auth_headers(token)
+
+    # Fully-unpaid student (100% pending) appears above a 50% threshold.
+    resp = await client.get("/api/v1/fees/pending-over?min_percent=50", headers=headers)
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["min_percent"] == 50
+    ids = {s["student_id"] for s in data["students"]}
+    assert str(fee_record.student_id) in ids
+    row = next(s for s in data["students"] if s["student_id"] == str(fee_record.student_id))
+    assert row["pending_percent"] == 100.0
+
+    # A class filter that doesn't match this student's class excludes them.
+    other = await client.get(
+        "/api/v1/fees/pending-over?min_percent=50&class_label=99Z", headers=headers
+    )
+    assert other.status_code == 200
+    other_ids = {s["student_id"] for s in other.json()["data"]["students"]}
+    assert str(fee_record.student_id) not in other_ids

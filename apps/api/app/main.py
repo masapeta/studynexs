@@ -202,6 +202,7 @@ def create_app() -> FastAPI:
     from app.modules.school_ops.endpoints.ops import router as ops_router
     from app.modules.timetable.endpoints.timetable import router as timetable_router
     from app.modules.users.endpoints.users import router as users_router
+    from app.modules.workspace.endpoints.assistant import router as assistant_router
     from app.modules.workspace.endpoints.conversation import router as workspace_router
 
     app.include_router(auth_router, prefix=f"{prefix}/auth", tags=["auth"])
@@ -220,6 +221,9 @@ def create_app() -> FastAPI:
     app.include_router(school_router, prefix=f"{prefix}/school", tags=["school"])
     app.include_router(mastery_router, prefix=f"{prefix}/mastery", tags=["mastery"])
     app.include_router(workspace_router, prefix=f"{prefix}/workspace", tags=["workspace"])
+    app.include_router(
+        assistant_router, prefix=f"{prefix}/workspace/assistant", tags=["workspace-assistant"]
+    )
 
     from app.modules.curriculum.endpoints.concept_card import router as concept_card_router
     from app.modules.curriculum.endpoints.content_review import router as content_review_router

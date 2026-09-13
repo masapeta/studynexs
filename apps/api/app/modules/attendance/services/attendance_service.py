@@ -92,6 +92,36 @@ class AttendanceService:
             "half_day": counts.get("half_day", 0),
         }
 
+    async def student_summary_in_range(
+        self,
+        school_id: uuid.UUID,
+        student_id: uuid.UUID,
+        *,
+        start: date | None = None,
+        end: date | None = None,
+    ) -> dict:
+        """Attendance breakdown + % for one student over a half-open [start, end) date range."""
+        q = select(Attendance.status, func.count()).where(
+            Attendance.school_id == school_id,
+            Attendance.student_id == student_id,
+        )
+        if start is not None:
+            q = q.where(Attendance.date >= start)
+        if end is not None:
+            q = q.where(Attendance.date < end)
+        rows = (await self.db.execute(q.group_by(Attendance.status))).all()
+        counts = {(s.value if hasattr(s, "value") else s): c for s, c in rows}
+        total = sum(counts.values())
+        credited = counts.get("present", 0) + counts.get("late", 0) + counts.get("half_day", 0)
+        return {
+            "present": counts.get("present", 0),
+            "absent": counts.get("absent", 0),
+            "late": counts.get("late", 0),
+            "half_day": counts.get("half_day", 0),
+            "total": total,
+            "percentage": round(credited / total * 100, 1) if total else None,
+        }
+
     async def get_school_summary(
         self, school_id: uuid.UUID, att_date: date
     ) -> dict:

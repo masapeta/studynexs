@@ -43,6 +43,23 @@ async def get_fee_roster(
     return APIResponse(data=roster)
 
 
+@router.get("/pending-over", response_model=APIResponse)
+async def get_students_pending_over(
+    min_percent: float = 50.0,
+    class_label: str | None = None,
+    current_user: CurrentUser = Depends(require_roles("admin", "super_admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Students whose unpaid fee share exceeds `min_percent` — powers analytical
+    assistant queries like 'students with fees pending > 50% of class 10'."""
+    threshold = min(max(min_percent, 0.0), 100.0)
+    service = FeeService(db)
+    result = await service.students_by_pending_percent(
+        uuid.UUID(current_user.school_id), min_percent=threshold, class_label=class_label
+    )
+    return APIResponse(data=result)
+
+
 @router.get("/recent", response_model=APIResponse[list[ReceiptOut]])
 async def get_recent_payments(
     limit: int = 10,

@@ -158,7 +158,9 @@ class Settings(BaseSettings):
 
     # ── Outbox worker ────────────────────────────────────────────
     OUTBOX_WORKER_ENABLED: bool = True
-    OUTBOX_POLL_INTERVAL_SECONDS: float = 2.0
+    # Idle poll cadence. 2s hammered the DB every 2s even with no events; 15s keeps
+    # side-effect latency acceptable while cutting idle query load ~7x.
+    OUTBOX_POLL_INTERVAL_SECONDS: float = 15.0
 
     # ── Audit retention ──────────────────────────────────────────
     AUDIT_RETENTION_DAYS: int = 90
