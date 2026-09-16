@@ -15,10 +15,17 @@ import uuid
 from datetime import date
 from typing import Any
 
+from fastapi import HTTPException
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.authorization import assert_can_access_student
 from app.core.dependencies import CurrentUser
+from app.core.staff_permissions import (
+    assert_class_access,
+    assert_exam_class,
+    get_staff_scope,
+)
 from app.db.models.academic import Class, Subject, TeacherSubjectMapping
 from app.db.models.attendance import Attendance
 from app.db.models.examination import Exam, ExamMark
@@ -54,6 +61,79 @@ def _not_found_block(query: str, noun: str) -> dict[str, Any]:
     }
 
 
+# ── Authorization (P1.1) ───────────────────────────────────────────────────────
+# Scope is enforced server-side here — never via the planner/LLM (spec §2, §7). We REUSE
+# the ERP's authoritative rules (assert_can_access_student / StaffScope / assert_exam_class),
+# never a parallel model. Enforcement happens AFTER entity resolution: resolving "8B" to a
+# class_id does not imply permission to read it (spec §8). A denial returns a non-leaky
+# block that neither confirms nor denies the entity's existence or its contents (spec §14).
+
+
+def _denied_block(noun: str = "information") -> dict[str, Any]:
+    """Honest, non-leaky authorization denial (does not reveal names/marks/existence)."""
+    return {
+        "kind": "not_found",
+        "title": "Not available",
+        "message": (
+            f"You don't have access to that {noun}, or it isn't available to your role. "
+            "You can only see data for the classes and students assigned to you."
+        ),
+    }
+
+
+async def _authorize_student(
+    db: AsyncSession, user: CurrentUser, student_id: uuid.UUID, *, noun: str = "student"
+) -> dict[str, Any] | None:
+    """Return a denial block if the user may not access this student, else None.
+
+    Reuses assert_can_access_student (admin/ops school-wide, parent=linked child,
+    student=self, teacher/incharge=class scope). 403/404 -> non-leaky block.
+    """
+    try:
+        await assert_can_access_student(user, db, student_id)
+        return None
+    except HTTPException:
+        return _denied_block(noun)
+
+
+async def _authorize_class(
+    db: AsyncSession, user: CurrentUser, class_id: uuid.UUID, *, exams: bool = False
+) -> dict[str, Any] | None:
+    """Return a denial block if the user may not access this class, else None.
+
+    Reuses StaffScope: exam/result views use assert_exam_class (admin|incharge|teaches-class);
+    other class views use assert_class_access. Parent/student roles have no class scope here.
+    """
+    if user.role in ("parent", "student"):
+        return _denied_block("class")
+    scope = await get_staff_scope(db, user)
+    try:
+        if exams:
+            assert_exam_class(scope, class_id)
+        else:
+            assert_class_access(scope, class_id)
+        return None
+    except HTTPException:
+        return _denied_block("class")
+
+
+async def _authorized_class_ids(
+    db: AsyncSession, user: CurrentUser, class_ids: list[uuid.UUID], *, exams: bool = False
+) -> list[uuid.UUID]:
+    """Filter a resolved class list to those the user may access (admin = all).
+
+    Scopes multi-class resolutions ('class 10' -> 10A/10B) at the source, so a scoped
+    staff member never sees a class outside their assignments (spec §6, §17).
+    """
+    if user.role in ("parent", "student"):
+        return []
+    scope = await get_staff_scope(db, user)
+    if scope.is_admin:
+        return list(class_ids)
+    permitted = scope.all_class_ids() or set()
+    return [cid for cid in class_ids if cid in permitted]
+
+
 async def _resolve_one_student(
     db: AsyncSession, school_id: uuid.UUID, token: str
 ) -> tuple[Any, dict[str, Any] | None]:
@@ -83,6 +163,9 @@ async def student_attendance(
     entity, block = await _resolve_one_student(db, school_id, token)
     if block:
         return block
+    denied = await _authorize_student(db, user, entity.id)
+    if denied:
+        return denied
 
     rng = params.get("_range")
     start = rng.start_date if rng and not rng.is_all_time else None
@@ -163,6 +246,9 @@ async def student_profile(
     entity, block = await _resolve_one_student(db, school_id, token)
     if block:
         return block
+    denied = await _authorize_student(db, user, entity.id)
+    if denied:
+        return denied
 
     profile = await AcademicService(db).student_profile(school_id, entity.id)
     if not profile:
@@ -195,6 +281,9 @@ async def student_fees(
     entity, block = await _resolve_one_student(db, school_id, token)
     if block:
         return block
+    denied = await _authorize_student(db, user, entity.id)
+    if denied:
+        return denied
     profile = await AcademicService(db).student_profile(school_id, entity.id)
     fees = (profile or {}).get("fees") or {}
     return {
@@ -225,7 +314,11 @@ async def class_roster(
     if res.is_empty:
         return _not_found_block(token, "class")
 
-    class_ids = [c.id for c in res.candidates]
+    # Authorize each resolved class; scoped staff keep only classes they may access.
+    allowed = await _authorized_class_ids(db, user, [c.id for c in res.candidates])
+    if not allowed:
+        return _denied_block("class")
+    class_ids = allowed
     rows = (
         await db.execute(
             select(
@@ -283,6 +376,9 @@ async def class_attendance_today(
         return _clarify_block(res, "class")
 
     cls = res.one
+    denied = await _authorize_class(db, user, cls.id)
+    if denied:
+        return denied
     summary = await AttendanceService(db).get_summary(school_id, cls.id, date.today())
     total = summary["total"]
     credited = summary["present"] + summary["late"] + summary["half_day"]
@@ -327,8 +423,22 @@ async def low_attendance_students(
         res = await resolve_class(db, school_id, class_token)
         if res.is_empty:
             return _not_found_block(class_token, "class")
-        class_filter_ids = [c.id for c in res.candidates]
-        class_label = ", ".join(c.label for c in res.candidates)
+        # Scope requested classes to those the user may access (§6: scope the source).
+        class_filter_ids = await _authorized_class_ids(db, user, [c.id for c in res.candidates])
+        if not class_filter_ids:
+            return _denied_block("class")
+        class_label = ", ".join(
+            c.label for c in res.candidates if c.id in set(class_filter_ids)
+        )
+    else:
+        # No class named: a scoped (non-admin) staff member sees only their own classes,
+        # never the whole school. Admin -> None (unrestricted).
+        scope = await get_staff_scope(db, user)
+        if scope.scoped_only:
+            permitted = scope.all_class_ids() or set()
+            if not permitted:
+                return _denied_block("class")
+            class_filter_ids = list(permitted)
 
     # Aggregate per-student attendance across all recorded days.
     credited_expr = func.sum(
@@ -621,6 +731,9 @@ async def student_marks(
     entity, block = await _resolve_one_student(db, school_id, token)
     if block:
         return block
+    denied = await _authorize_student(db, user, entity.id)
+    if denied:
+        return denied
 
     student_id = entity.id
     class_id = uuid.UUID(entity.detail["class_id"])
@@ -711,6 +824,9 @@ async def class_results(
     if res.is_ambiguous:
         return _clarify_block(res, "class")
     cls = res.one
+    denied = await _authorize_class(db, user, cls.id, exams=True)
+    if denied:
+        return denied
 
     gradebook = await ExamService(db).get_gradebook(school_id, cls.id)
     subjects = gradebook.get("subjects", [])
@@ -796,6 +912,9 @@ async def subject_toppers(
     if cres.is_ambiguous:
         return _clarify_block(cres, "class")
     cls = cres.one
+    denied = await _authorize_class(db, user, cls.id, exams=True)
+    if denied:
+        return denied
     sres = await resolve_subject(db, school_id, subject_token, class_id=cls.id)
     if sres.is_empty:
         return _not_found_block(subject_token, "subject")
