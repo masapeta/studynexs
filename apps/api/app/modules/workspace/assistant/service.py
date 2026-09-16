@@ -170,11 +170,27 @@ class AssistantService:
 
             await derive_parameters(self.db, school_id, decision, prev_sem, trace=derive_trace)
 
-        # Non-sensitive execution trace for observability + eval (spec §18, §24, §25, §28).
+        # Capability-contract metadata for observability (P1.5 §30).
+        from app.modules.workspace.assistant.contracts import get_contract
+
+        _contract = get_contract(decision.tool)
+
+        # Non-sensitive execution trace for observability + eval (spec §18, §24, §25, §28, §30).
         trace: dict[str, Any] = {
             "route": decision.route,
             "action": decision.action,
             "capability": decision.tool,
+            "capability_contract": (
+                {
+                    "entity": _contract.entity,
+                    "operation": _contract.operation,
+                    "scope": _contract.scope,
+                    "temporal_mode": _contract.temporal_mode,
+                    "required_parameters": _contract.required_params,
+                }
+                if _contract
+                else None
+            ),
             "params": {k: v for k, v in (decision.params or {}).items() if k != "_range"},
             "document_query": decision.document_query,
             "time_range": None,
@@ -185,6 +201,7 @@ class AssistantService:
             "temporal_guard_decision": None,
             "carry_over": merge_trace,
             "param_provenance": derive_trace.get("param_provenance"),
+            "derivation_path": derive_trace.get("derivation_path"),
         }
 
         if decision.action == "tool":

@@ -75,10 +75,29 @@ class PlannerDecision(BaseModel):
 
 
 def _catalog_text(tools: list[AssistantTool]) -> str:
+    """Prose + machine-readable contract metadata (requires / derivable) per capability.
+
+    The structured `requires`/`derivable` come from the Capability Contract Registry so the
+    planner can reason over relationships (a class is derivable from a student) rather than
+    guessing from prose — the P1.5 fix for "who teaches the class ARM0242 is in?".
+    """
+    from app.modules.workspace.assistant.contracts import get_contract
+
     lines = []
     for t in tools:
         params = ", ".join(f"{k}: {v}" for k, v in t.params.items()) or "none"
-        lines.append(f"- {t.name}: {t.description} | params: {params}")
+        line = f"- {t.name}: {t.description} | params: {params}"
+        c = get_contract(t.name)
+        if c is not None:
+            required = ", ".join(c.required_params) or "none"
+            derivable = ", ".join(
+                f"{p.name}<-{'/'.join(p.derive_from)}" for p in c.derivable_params()
+            )
+            meta = f" | requires: {required}"
+            if derivable:
+                meta += f" | derivable: {derivable}"
+            line += meta
+        lines.append(line)
     return "\n".join(lines)
 
 
@@ -149,6 +168,13 @@ def _system_prompt(tools: list[AssistantTool]) -> str:
         "'how much fee was collected' -> operation=collection, metric=amount; 'how many\n"
         "receipts' -> operation=collection, metric=receipt_count. On a follow-up that changes\n"
         "only the metric, keep the same tool and time and change 'metric'.\n\n"
+        "RELATIONSHIP DERIVATION: a capability's 'requires' params may be 'derivable' from an\n"
+        "entity the user names. If the user references a class INDIRECTLY through a student\n"
+        "(e.g. 'the class <student> is in', '<student>'s class', 'his/her class'), pick the\n"
+        "class capability and pass the STUDENT (student=<admission/name>) WITHOUT a class — the\n"
+        "system derives the class from the student. Do NOT ask for the class and do NOT fall\n"
+        "back to compose/guide when the class is derivable from a named student. Example: 'who\n"
+        "teaches the class ARM0242 is in?' -> teachers_for_class, params {student:'ARM0242'}.\n\n"
         "Rules:\n"
         "- Extract numeric thresholds and class labels (e.g. 'class 10', '> 50%').\n"
         "- Exams/marks: 'marks of <student>' or 'how did X do in <subject>' -> student_marks;\n"

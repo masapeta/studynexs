@@ -1,23 +1,24 @@
-"""Parameter derivation from canonical relationships (P1.3).
+"""Parameter derivation from canonical relationships (P1.3, generalized in P1.5).
 
-When a follow-up pivots to a capability that needs a parameter the conversation doesn't yet
-have explicitly (e.g. "who scored highest?" -> subject_toppers needs class_label, but context
-only holds student=ARM0242), derive the missing parameter through an AUTHORITATIVE ERP
-relationship (student -> belongs_to -> class) rather than asking the user (spec §1, §22).
+When a capability needs a parameter the conversation doesn't have explicitly (e.g.
+subject_toppers needs a class, but context only holds student=ARM0242), derive it through an
+AUTHORITATIVE ERP relationship (student -belongs_to-> class) instead of asking (spec §1, §22).
 
-Principles:
-  - Authoritative source only (§4): derivations resolve real ERP records via the resolver /
-    services, never the LLM or NL wording.
-  - Canonical ids where possible (§5); the resolver already carries the student's class label.
-  - Precedence EXPLICIT > INHERITED > DERIVED > DEFAULT (§25). We only fill a required param that
-    is still MISSING after explicit+inherited merge; we never overwrite a provided value (§26).
-  - Bounded depth (§13): a small registry of one-hop relationships, composed at most twice.
-  - Deterministic (§14): a unique relationship derives; ambiguous/unavailable -> no guess.
-  - Derivation does NOT authorize (§11): it only fills params; the capability's own P1.1
-    authorization runs afterwards (derive -> authorize -> execute).
-  - Historical safety (§15): derivation feeds CURRENT relationships; the P0/P0.1 guards still
-    block a historical request downstream regardless of what we derived.
-  - Provenance recorded for observability (§8, §28); never surfaced to end users.
+P1.5: this engine is GENERIC — it reads the Capability Contract + Relationship registries
+(contracts.py) rather than per-capability branches. For each required+derivable, still-missing
+param it finds a bounded relationship path from a known context entity to the param's entity
+type and runs the relationship resolver.
+
+Invariants preserved from P1.3:
+  - Authoritative source only (§4); canonical resolution (§5); deterministic — ambiguous or
+    missing yields no value, no guess (§14).
+  - Precedence EXPLICIT > INHERITED > DERIVED > DEFAULT (§19); never overwrite a provided
+    value (§26).
+  - Bounded depth (§10), cycle-free.
+  - Derivation does NOT authorize (§21): capabilities run their P1.1 checks afterwards.
+  - Historical safety (§20): the caller skips derivation for PAST requests; relationships also
+    declare temporal_mode.
+  - Provenance recorded for observability (§18, §30).
 """
 
 from __future__ import annotations
@@ -27,51 +28,73 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.workspace.assistant.resolver import resolve_student
+from app.modules.workspace.assistant.contracts import (
+    SRC_DERIVED,
+    SRC_EXPLICIT,
+    SRC_INHERITED,
+    SRC_UNAVAILABLE,
+    find_relationship,
+    get_contract,
+)
 
-# Parameter sources (provenance).
-SRC_EXPLICIT = "EXPLICIT"
-SRC_INHERITED = "INHERITED"
-SRC_DERIVED = "DERIVED"
-SRC_DEFAULT = "SAFE_DEFAULT"
-SRC_UNAVAILABLE = "UNAVAILABLE"
+__all__ = [
+    "derive_parameters", "SRC_DERIVED", "SRC_EXPLICIT", "SRC_INHERITED", "SRC_UNAVAILABLE",
+]
 
-# Required parameters per capability that are eligible for derivation when missing. Only
-# capabilities whose missing param can be derived from an in-context entity are listed; others
-# keep their existing clarify/not_found behaviour. This is the generic requirement registry
-# (§6) — not per-capability bespoke code.
-CAPABILITY_REQUIRES: dict[str, list[str]] = {
-    "subject_toppers": ["class_label", "subject"],
-    "class_results": ["class_label"],
-    "class_roster": ["class_label"],
-    "class_attendance_today": ["class_label"],
-    "teachers_for_class": ["class_label"],  # optional in the cap, but derivable when a
-                                            # follow-up pivots "who teaches his class?"
+# Max relationship hops when deriving one parameter (§10). student->class = 1.
+MAX_DERIVATION_DEPTH = 2
+
+# Context entity keys we may derive FROM, mapped to their canonical entity type.
+_CONTEXT_ENTITY_TYPES = {
+    "student": "student", "student_id": "student",
+    "class_label": "class", "class": "class",
+    "teacher": "teacher", "teacher_id": "teacher",
 }
 
 
-async def _derive_class_label_from_student(
-    db: AsyncSession, school_id: uuid.UUID, student_token: str
-) -> tuple[str | None, dict[str, Any] | None]:
-    """student -> belongs_to -> class_label, from the authoritative student record.
+def _known_entities(params: dict[str, Any], prev_state: Any) -> dict[str, str]:
+    """Canonical entity type -> token, from explicit params then inherited context."""
+    known: dict[str, str] = {}
+    prev_entities = (getattr(prev_state, "entities", {}) or {}) if prev_state else {}
+    for key, etype in _CONTEXT_ENTITY_TYPES.items():
+        val = params.get(key) or prev_entities.get(key)
+        if val and etype not in known:
+            known[etype] = str(val)
+    return known
 
-    Returns (class_label, provenance) or (None, None) when the student is missing/ambiguous
-    (deterministic: no guess, §14). Reuses resolve_student whose ResolvedEntity already
-    carries the class label from the Student->Class join.
+
+async def _derive_one(
+    db: AsyncSession,
+    school_id: uuid.UUID,
+    target_type: str,
+    derive_from: tuple[str, ...],
+    known: dict[str, str],
+    *,
+    cache: dict[tuple[str, str], tuple[str | None, dict | None]],
+) -> tuple[str | None, dict | None]:
+    """Find a bounded relationship path from a known source entity to target_type; resolve it.
+
+    Single-hop today via the registry; the shape admits a second hop within
+    MAX_DERIVATION_DEPTH without per-relationship code.
     """
-    res = await resolve_student(db, school_id, student_token)
-    if res.is_empty or res.is_ambiguous:
-        return None, None
-    entity = res.one
-    class_label = (entity.detail or {}).get("class_label")
-    if not class_label:
-        return None, None
-    return class_label, {
-        "entity_type": "student",
-        "entity_id": (entity.detail or {}).get("admission_no") or student_token,
-        "relationship": "belongs_to",
-        "to": "class",
-    }
+    for src_entity in derive_from:
+        token = known.get(src_entity)
+        if not token:
+            continue
+        rel = find_relationship(src_entity, target_type)
+        if rel is None:
+            continue
+        cache_key = (rel.name, token)
+        if cache_key in cache:  # reuse within a turn (§31)
+            cached = cache[cache_key]
+            if cached[0]:
+                return cached
+            continue
+        value, provenance = await rel.resolver(db, school_id, token)
+        cache[cache_key] = (value, provenance)
+        if value:
+            return value, provenance
+    return None, None
 
 
 async def derive_parameters(
@@ -82,44 +105,43 @@ async def derive_parameters(
     *,
     trace: dict[str, Any] | None = None,
 ) -> None:
-    """Fill missing REQUIRED params for the chosen capability from canonical relationships.
+    """Fill missing REQUIRED+derivable params for the chosen capability via the registry.
 
-    Runs after conversational merge (explicit + inherited already applied to params) and
-    before execution. Mutates decision.params in place; records provenance in trace. Never
-    overrides an explicitly-provided value (§26). Bounded, deterministic, authoritative.
+    Runs after conversational merge, before execution. Mutates decision.params; records
+    provenance + derivation path in trace. Generic: no per-capability or per-relationship
+    branch (§9). Never overrides an explicit/inherited value (§19/§26).
     """
-    tool = getattr(decision, "tool", None)
-    if getattr(decision, "action", None) != "tool" or not tool:
+    if getattr(decision, "action", None) != "tool":
         return
-    required = CAPABILITY_REQUIRES.get(tool)
-    if not required:
+    contract = get_contract(getattr(decision, "tool", None))
+    if contract is None:
         return
 
     params = dict(getattr(decision, "params", {}) or {})
+    known = _known_entities(params, prev_state)
     provenance: list[dict[str, Any]] = []
+    cache: dict[tuple[str, str], tuple[str | None, dict | None]] = {}
 
-    # A student we can derive from: explicit in this turn, else inherited from prior context.
-    student_token = (
-        params.get("student")
-        or params.get("student_id")
-        or (getattr(prev_state, "entities", {}) or {}).get("student")
-        or (getattr(prev_state, "entities", {}) or {}).get("student_id")
-    )
-
-    for param in required:
-        if params.get(param):
-            continue  # EXPLICIT/INHERITED already present — never override (§25/§26)
-        if param == "class_label" and student_token:
-            class_label, derived_from = await _derive_class_label_from_student(
-                db, school_id, str(student_token)
-            )
-            if class_label:
-                params[param] = class_label
-                provenance.append({
-                    "parameter": param, "value": class_label,
-                    "source": SRC_DERIVED, "derived_from": derived_from,
-                })
+    for p in contract.params.values():
+        if not p.derive_from or SRC_DERIVED not in p.sources:
+            continue
+        if params.get(p.name):
+            continue  # EXPLICIT/INHERITED already present — never override (§19/§26)
+        value, derived_from = await _derive_one(
+            db, school_id, p.type, p.derive_from, known, cache=cache
+        )
+        if value:
+            params[p.name] = value
+            provenance.append({
+                "parameter": p.name, "value": value,
+                "source": SRC_DERIVED, "derived_from": derived_from,
+            })
 
     decision.params = params
     if trace is not None and provenance:
         trace["param_provenance"] = provenance
+        trace["derivation_path"] = [
+            f"{pr['derived_from']['entity_type']} "
+            f"-{pr['derived_from']['relationship']}-> {pr['derived_from']['to']}={pr['value']}"
+            for pr in provenance if pr.get("derived_from")
+        ]

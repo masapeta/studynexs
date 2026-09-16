@@ -27,6 +27,11 @@ async def lifespan(app: FastAPI):
     setup_opentelemetry(settings)
     logger.info("StudyNexs API starting", environment=settings.ENVIRONMENT.value)
 
+    # Fail fast on invalid assistant capability contracts / relationship registry (P1.5 §16/§17).
+    from app.modules.workspace.assistant.contracts import validate_registries
+
+    validate_registries()
+
     from app.modules.tutor.services.tts_service import (
         default_tts_voice,
         resolve_tts_backend,
