@@ -35,6 +35,12 @@ class ConversationSemanticState:
     temporal_presence: str = "NONE"      # NONE/CURRENT/PAST/FUTURE/PERIOD/DATE_SPECIFIC
     temporal_time: Any | None = None     # canonical token/dict for the resolver
     subject: str | None = None           # exam subject, when relevant
+    # Semantic intent of the turn, independent of tool naming (P1.2a). ``operation`` is the
+    # broad action (collection / lookup / ranking / list …); ``metric`` is the measure asked
+    # for (amount / receipt_count / percentage / count …). These let an elliptical metric
+    # switch ("how many receipts?") keep the domain+operation+time and change only the metric.
+    operation: str | None = None
+    metric: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -45,6 +51,8 @@ class ConversationSemanticState:
             "temporal_presence": self.temporal_presence,
             "temporal_time": self.temporal_time,
             "subject": self.subject,
+            "operation": self.operation,
+            "metric": self.metric,
         }
 
     @classmethod
@@ -59,6 +67,8 @@ class ConversationSemanticState:
             temporal_presence=data.get("temporal_presence") or "NONE",
             temporal_time=data.get("temporal_time"),
             subject=data.get("subject"),
+            operation=data.get("operation"),
+            metric=data.get("metric"),
         )
 
 
@@ -123,7 +133,19 @@ def state_from_decision(decision: Any) -> ConversationSemanticState:
         temporal_presence=getattr(temporal, "presence", "NONE") if temporal else "NONE",
         temporal_time=getattr(temporal, "time", None) if temporal else None,
         subject=params.get("subject"),
+        operation=getattr(decision, "operation", None),
+        metric=getattr(decision, "metric", None),
     )
+
+
+# Metric words -> the capability that surfaces them, per domain. Used to recover an
+# elliptical metric switch when the LLM failed to pick a tool but the topic is clear
+# (general operation/metric inheritance, not a phrase-specific patch — P1.2a).
+_DOMAIN_DEFAULT_CAPABILITY = {
+    "fees": "fee_collection_period",
+    "attendance": "student_attendance",
+    "exams": "student_marks",
+}
 
 
 def merge_follow_up(
@@ -149,6 +171,30 @@ def merge_follow_up(
     # continuing the previous subject rather than starting fresh.
     new_has_entity = any(params.get(k) for k in _ENTITY_KEYS)
     same_domain = new_domain is not None and new_domain == prev.domain
+
+    # 0) Capability recovery (P1.2a): a metric-only follow-up ("how many receipts?") often
+    #    makes the LLM drop the tool (guide/clarify) even though the topic is unchanged. If
+    #    this turn chose no tool, named no entity, and expressed a new metric/operation while
+    #    the previous turn had a capability, inherit that capability so the topic survives.
+    #    This is general operation/metric continuation — never a phrase-specific rule.
+    new_metric = getattr(decision, "metric", None)
+    new_operation = getattr(decision, "operation", None)
+    if (
+        getattr(decision, "action", None) not in ("tool", "compose")
+        and not new_has_entity
+        and prev.capability
+        and (new_metric or new_operation)
+    ):
+        inferred = prev.capability
+        # If only a metric changed and prev domain has a canonical metric capability, prefer it.
+        if prev.domain in _DOMAIN_DEFAULT_CAPABILITY and not new_operation:
+            inferred = prev.capability or _DOMAIN_DEFAULT_CAPABILITY[prev.domain]
+        decision.tool = inferred
+        decision.action = "tool"
+        decision.route = "STRUCTURED"
+        new_domain = domain_for_capability(inferred)
+        same_domain = new_domain is not None and new_domain == prev.domain
+        trace["inherited"].append("capability")
 
     # 1) Entity inheritance: if the new turn names no entity, inherit the prior entity —
     #    but only into a capability that ACCEPTS that entity param (never inject a student
@@ -190,10 +236,22 @@ def merge_follow_up(
             temporal.presence = "PAST"
             trace["inherited"].append("temporal:presence")
 
+    # 4) Operation inheritance (P1.2a): a metric-only follow-up keeps the previous operation
+    #    (e.g. 'collection') so the intent stays coherent; the metric is whatever the new turn
+    #    asked for, falling back to the previous metric when unspecified.
+    if same_domain and prev.operation and not getattr(decision, "operation", None):
+        decision.operation = prev.operation
+        trace["inherited"].append("operation")
+    if same_domain and prev.metric and not getattr(decision, "metric", None):
+        decision.metric = prev.metric
+        trace["inherited"].append("metric")
+
     decision.params = params
     trace["merged_entities"] = {k: params.get(k) for k in _ENTITY_KEYS if params.get(k)}
     trace["merged_temporal"] = {
         "presence": getattr(temporal, "presence", "NONE") if temporal else "NONE",
         "time": getattr(temporal, "time", None) if temporal else None,
     }
+    trace["merged_operation"] = getattr(decision, "operation", None)
+    trace["merged_metric"] = getattr(decision, "metric", None)
     return decision, trace

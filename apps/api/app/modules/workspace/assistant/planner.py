@@ -66,6 +66,12 @@ class PlannerDecision(BaseModel):
     # Temporal meaning, understood independently of tool selection (P0.1). The integrity
     # guard compares this against the plan's resolved temporality to catch silent drops.
     temporal: TemporalIntent = Field(default_factory=TemporalIntent)
+    # Semantic intent, independent of tool naming (P1.2a). operation = the broad action
+    # (collection/lookup/ranking/list/comparison); metric = the measure requested
+    # (amount/receipt_count/percentage/count/marks). Enables metric-only follow-ups
+    # ("how many receipts?") to keep domain+operation+time and change only the metric.
+    operation: str | None = None
+    metric: str | None = None
 
 
 def _catalog_text(tools: list[AssistantTool]) -> str:
@@ -137,6 +143,12 @@ def _system_prompt(tools: list[AssistantTool]) -> str:
         "  CRITICAL: if the user expressed a past/historical period ('was', 'last year',\n"
         "  'in August'), presence MUST be PAST (or PERIOD/DATE_SPECIFIC) — NEVER NONE and\n"
         "  NEVER CURRENT. Do not drop the time just because you are unsure which tool fits.\n\n"
+        "SEMANTIC INTENT (always set when action='tool'/'compose'): 'operation' = the broad\n"
+        "action (collection, lookup, ranking, list, comparison, aggregation); 'metric' = the\n"
+        "measure asked for (amount, receipt_count, percentage, count, marks, balance). E.g.\n"
+        "'how much fee was collected' -> operation=collection, metric=amount; 'how many\n"
+        "receipts' -> operation=collection, metric=receipt_count. On a follow-up that changes\n"
+        "only the metric, keep the same tool and time and change 'metric'.\n\n"
         "Rules:\n"
         "- Extract numeric thresholds and class labels (e.g. 'class 10', '> 50%').\n"
         "- Exams/marks: 'marks of <student>' or 'how did X do in <subject>' -> student_marks;\n"
@@ -150,8 +162,8 @@ def _system_prompt(tools: list[AssistantTool]) -> str:
         "- For DOCUMENT/MIXED set document_query to a SHORT topic phrase (e.g. "
         "'attendance policy'), NOT the full question. Keep message under 12 words.\n"
         "- Respond with ONLY a compact JSON object (no code fences, no prose) with keys:\n"
-        "  route, action, tool, params, navigate_to, message, document_query, temporal.\n"
-        "  Keep it short.\n"
+        "  route, action, tool, params, navigate_to, message, document_query, temporal,\n"
+        "  operation, metric. Keep it short.\n"
         "- Never invent data or fields. Never include commentary outside the JSON."
     )
 

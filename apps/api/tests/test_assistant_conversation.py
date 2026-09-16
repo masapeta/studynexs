@@ -135,6 +135,63 @@ def test_no_over_inheritance_on_class_swap():
     assert merged.params["class_label"] == "7A"
 
 
+# ── Operation / metric carry-over (P1.2a) ─────────────────────────────────────
+
+
+def test_metric_switch_recovers_capability_when_llm_drops_tool():
+    """T1 'fee collected in August' -> T2 'how many receipts?' where the LLM returned a guide.
+
+    The metric-only follow-up must recover the previous capability (fee_collection_period),
+    keep the August window, and switch the metric to receipt_count — no phrase-specific rule.
+    """
+    prev = _state(domain="fees", capability="fee_collection_period", action="tool",
+                  temporal_presence="PAST", temporal_time={"month": "august"},
+                  operation="collection", metric="amount")
+    # LLM failed to pick a tool but understood the new metric.
+    d = PlannerDecision(action="clarify", tool=None, params={},
+                        temporal=TemporalIntent(), metric="receipt_count")
+    merged, tr = merge_follow_up(prev, d)
+    assert merged.tool == "fee_collection_period"
+    assert merged.action == "tool"
+    assert "capability" in tr["inherited"]
+    assert merged.params.get("time") == {"month": "august"}  # window inherited
+    assert merged.metric == "receipt_count"                   # new metric applied
+    assert merged.operation == "collection"                   # operation inherited
+
+
+def test_metric_switch_when_tool_kept_inherits_operation_and_time():
+    """If the LLM keeps the tool but omits operation, inherit it; keep time."""
+    prev = _state(domain="fees", capability="fee_collection_period", action="tool",
+                  temporal_presence="PAST", temporal_time={"month": "august"},
+                  operation="collection", metric="amount")
+    d = PlannerDecision(action="tool", tool="fee_collection_period", params={},
+                        temporal=TemporalIntent(), metric="receipt_count")
+    merged, tr = merge_follow_up(prev, d)
+    assert merged.params.get("time") == {"month": "august"}
+    assert merged.operation == "collection"
+    assert merged.metric == "receipt_count"
+
+
+def test_capability_not_recovered_without_metric_or_operation():
+    """A bare guide with no metric/operation must NOT hijack the previous capability."""
+    prev = _state(domain="fees", capability="fee_collection_period", action="tool",
+                  operation="collection", metric="amount")
+    d = PlannerDecision(action="clarify", tool=None, params={}, temporal=TemporalIntent())
+    merged, tr = merge_follow_up(prev, d)
+    assert merged.action == "clarify"
+    assert "capability" not in tr["inherited"]
+
+
+def test_capability_not_recovered_when_new_entity_named():
+    """A follow-up that names a NEW entity is a fresh request, not a metric continuation."""
+    prev = _state(domain="fees", capability="fee_collection_period", action="tool",
+                  operation="collection", metric="amount")
+    d = PlannerDecision(action="clarify", tool=None, params={"student": "ARM0242"},
+                        temporal=TemporalIntent(), metric="balance")
+    merged, tr = merge_follow_up(prev, d)
+    assert "capability" not in tr["inherited"]
+
+
 # ── Adversarial follow-ups (§23) ──────────────────────────────────────────────
 
 
@@ -281,3 +338,46 @@ async def test_e2e_historical_followup_not_downgraded(
     # Still historical -> blocked, never a current-teacher answer.
     assert r2["trace"]["semantic_temporality"] == "PAST"
     assert r2["block"]["title"] == "Historical records not available"
+
+@pytest.mark.asyncio
+async def test_e2e_metric_switch_recovers_capability(
+    test_school: School, admin_user, db_session: AsyncSession, monkeypatch
+):
+    """T1 'fee collected in August' -> T2 'how many receipts?' where the LLM returns a guide.
+
+    P1.2a: capability + operation + time are recovered so the metric switch is answered
+    (metrics block), not lost to a guide — the exact fu-metric-change benchmark failure.
+    """
+    from app.modules.workspace.assistant import service as service_mod
+
+    calls = {"n": 0}
+
+    async def _fake_plan(text, *, tools, history=None, prev_state=None):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return PlannerDecision(
+                action="tool", tool="fee_collection_period",
+                params={"time": {"month": "august"}},
+                temporal=TemporalIntent(presence="PAST", time={"month": "august"}),
+                operation="collection", metric="amount",
+            )
+        # Follow-up: LLM understood the metric but failed to pick a tool.
+        return PlannerDecision(
+            action="clarify", tool=None, params={},
+            temporal=TemporalIntent(), metric="receipt_count",
+        )
+
+    monkeypatch.setattr(service_mod, "plan", _fake_plan)
+    svc = service_mod.AssistantService(db_session)
+    user = _U(test_school.id, user_id=admin_user.id)
+
+    r1 = await svc.handle_turn(current_user=user, text="fee collected in August", session_id=None)
+    import uuid as _uuid
+    r2 = await svc.handle_turn(
+        current_user=user, text="how many receipts were there?",
+        session_id=_uuid.UUID(r1["session_id"]),
+    )
+    assert "capability" in r2["trace"]["carry_over"]["inherited"]
+    assert r2["trace"]["capability"] == "fee_collection_period"
+    assert r2["trace"]["semantic_temporality"] == "PAST"
+    assert r2["block"]["kind"] == "metrics"  # answered with the (recovered) fee metrics
