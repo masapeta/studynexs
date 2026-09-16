@@ -160,7 +160,17 @@ class AssistantService:
         )
 
         block: dict[str, Any]
-        # Non-sensitive execution trace for observability + eval (spec §18, §24, §25).
+        # Parameter derivation (P1.3): fill a required param the pivot lacks (e.g. class from
+        # the in-context student) via an authoritative CURRENT relationship — BEFORE execution
+        # (§9). Skipped for historical requests so a PAST query never derives a current class
+        # (§15); the historical/authorization guards still run downstream regardless.
+        derive_trace: dict[str, Any] = {}
+        if decision.action == "tool" and sem_temporality != "PAST":
+            from app.modules.workspace.assistant.derivation import derive_parameters
+
+            await derive_parameters(self.db, school_id, decision, prev_sem, trace=derive_trace)
+
+        # Non-sensitive execution trace for observability + eval (spec §18, §24, §25, §28).
         trace: dict[str, Any] = {
             "route": decision.route,
             "action": decision.action,
@@ -174,6 +184,7 @@ class AssistantService:
             "temporal_integrity": None,
             "temporal_guard_decision": None,
             "carry_over": merge_trace,
+            "param_provenance": derive_trace.get("param_provenance"),
         }
 
         if decision.action == "tool":
