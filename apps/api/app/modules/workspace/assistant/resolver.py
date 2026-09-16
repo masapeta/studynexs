@@ -16,13 +16,13 @@ from typing import Literal
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.academic import Class
+from app.db.models.academic import Class, Subject
 from app.db.models.school_ops import StaffProfile
 from app.db.models.student import Student
 from app.db.models.user import User, UserRole
 from app.modules.fees.services.fee_service import _class_label_matches, _normalize_class_label
 
-EntityKind = Literal["student", "teacher", "class"]
+EntityKind = Literal["student", "teacher", "class", "subject"]
 MatchStrength = Literal["exact", "strong", "fuzzy"]
 
 _STAFF_ROLES = (
@@ -236,3 +236,65 @@ async def resolve_class(
         if len(candidates) >= limit:
             break
     return Resolution(query=token, kind="class", candidates=candidates)
+
+
+async def resolve_subject(
+    db: AsyncSession,
+    school_id: uuid.UUID,
+    token: str,
+    *,
+    class_id: uuid.UUID | None = None,
+    limit: int = 12,
+) -> Resolution:
+    """Match a subject by name/code (exact then contains).
+
+    Subjects are PER-CLASS in the ERP (subjects.class_id), so the same name repeats across
+    classes. When class_id is given we scope to it (a single subject); otherwise we return
+    the distinct names across the school so the caller can scope later.
+    """
+    term = (token or "").strip()
+    candidates: list[ResolvedEntity] = []
+    if not term:
+        return Resolution(query=token, kind="subject", candidates=[])
+
+    base = select(Subject).where(Subject.school_id == school_id)
+    if class_id is not None:
+        base = base.where(Subject.class_id == class_id)
+
+    # 1) Exact name or code (case-insensitive).
+    exact = (
+        await db.execute(
+            base.where(
+                or_(
+                    func.lower(Subject.name) == term.lower(),
+                    func.lower(Subject.code) == term.lower(),
+                )
+            ).order_by(Subject.name).limit(limit)
+        )
+    ).scalars().all()
+    rows = exact
+    if not rows:
+        # 2) Name contains.
+        rows = (
+            await db.execute(
+                base.where(Subject.name.ilike(f"%{term}%")).order_by(Subject.name).limit(limit)
+            )
+        ).scalars().all()
+
+    seen_names: set[str] = set()
+    for sub in rows:
+        # When unscoped, collapse per-class duplicates to one candidate per name.
+        if class_id is None:
+            if sub.name.lower() in seen_names:
+                continue
+            seen_names.add(sub.name.lower())
+        candidates.append(
+            ResolvedEntity(
+                kind="subject",
+                id=sub.id,
+                label=sub.name,
+                strength="exact" if sub.name.lower() == term.lower() else "fuzzy",
+                detail={"name": sub.name, "code": sub.code, "class_id": str(sub.class_id)},
+            )
+        )
+    return Resolution(query=token, kind="subject", candidates=candidates)

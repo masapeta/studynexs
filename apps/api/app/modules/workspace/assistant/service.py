@@ -331,9 +331,9 @@ class AssistantService:
         pretty = {
             "class_label": "Class", "student_count": "Students", "attendance_pct": "Attendance %",
             "class_teacher": "Class Teacher", "subject_teachers": "Teachers", "name": "Student",
-            "admission_no": "Admission no", "fee_due": "Fee due",
+            "admission_no": "Admission no", "fee_due": "Fee due", "exam_average": "Exam avg %",
         }
-        col_fmt = {"attendance_pct": "percent", "fee_due": "money"}
+        col_fmt = {"attendance_pct": "percent", "fee_due": "money", "exam_average": "percent"}
         columns = [
             {"key": c, "label": pretty.get(c, c.replace("_", " ").title()), **(
                 {"format": col_fmt[c]} if c in col_fmt else {}

@@ -29,6 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import CurrentUser
 from app.db.models.academic import Class, Subject, TeacherSubjectMapping
 from app.db.models.attendance import Attendance
+from app.db.models.examination import Exam, ExamMark
 from app.db.models.fee import StudentFeeRecord
 from app.db.models.student import Student
 from app.db.models.user import User
@@ -40,7 +41,9 @@ MAX_OPERATIONS = 8
 FilterOp = Literal["<", "<=", ">", ">=", "==", "!="]
 
 _SOURCES = {"classes_overview", "class_students", "students_overview"}
-_ENRICHERS = {"enrich_attendance", "enrich_fees", "enrich_class_teacher"}
+_ENRICHERS = {
+    "enrich_attendance", "enrich_fees", "enrich_class_teacher", "enrich_exam_average",
+}
 _ALL_CAPS = _SOURCES | _ENRICHERS | {"filter"}
 
 # Capabilities that reflect only the PRESENT relationship/state (no effective-dated history).
@@ -338,6 +341,37 @@ async def _enrich_fees(
     return rows
 
 
+async def _enrich_exam_average(
+    db: AsyncSession, school_id: uuid.UUID, rows: list[dict]
+) -> list[dict]:
+    """Add exam_average (% of total across all recorded marks) per student, batched.
+
+    Overall % = sum(marks_obtained) / sum(total_marks) across the student's marks. This is a
+    mark-weighted average of recorded exams — labelled as such; the ERP has no pass mark.
+    """
+    ids = [uuid.UUID(r["student_id"]) for r in rows if r.get("student_id")]
+    if not ids:
+        return rows
+    q = (
+        select(
+            ExamMark.student_id,
+            func.sum(ExamMark.marks_obtained),
+            func.sum(Exam.total_marks),
+        )
+        .join(Exam, Exam.id == ExamMark.exam_id)
+        .where(ExamMark.school_id == school_id, ExamMark.student_id.in_(ids))
+        .group_by(ExamMark.student_id)
+    )
+    avg = {
+        str(sid): round(float(obt) / float(tot) * 100, 1)
+        for sid, obt, tot in (await db.execute(q)).all()
+        if tot
+    }
+    for r in rows:
+        r["exam_average"] = avg.get(r["student_id"])
+    return rows
+
+
 async def _enrich_class_teacher(
     db: AsyncSession, school_id: uuid.UUID, rows: list[dict]
 ) -> list[dict]:
@@ -424,6 +458,8 @@ async def execute_plan(
                 rows = await _enrich_attendance(db, school_id, base, rng)
             elif op.capability == "enrich_fees":
                 rows = await _enrich_fees(db, school_id, base)
+            elif op.capability == "enrich_exam_average":
+                rows = await _enrich_exam_average(db, school_id, base)
             else:
                 rows = await _enrich_class_teacher(db, school_id, base)
         elif op.capability == "filter":

@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import CurrentUser
 from app.db.models.academic import Class, Subject, TeacherSubjectMapping
 from app.db.models.attendance import Attendance
+from app.db.models.examination import Exam, ExamMark
 from app.db.models.school_ops import StaffProfile
 from app.db.models.student import Student
 from app.db.models.user import User, UserRole
@@ -28,6 +29,7 @@ from app.modules.workspace.assistant.resolver import (
     Resolution,
     resolve_class,
     resolve_student,
+    resolve_subject,
     resolve_teacher,
 )
 
@@ -592,4 +594,282 @@ async def staff_directory(
         "empty_message": f"No staff found{scope}.",
         "href": "/dashboard/staff",
         "href_label": "Open staff",
+    }
+
+# ── Exam / marks capabilities (P1) ────────────────────────────────────────────
+# Grounded strictly in the audited schema: Exam(class, subject, exam_type, total_marks,
+# date?) + ExamMark(marks_obtained, grade_letter?). The ERP models NO "term", NO
+# pass/fail. grade_letter is stored-but-optional; a percentage is marks_obtained/total
+# and is labelled as such — never asserted as pass/fail. "latest" = most recent by
+# exam date (nulls last) then created_at, mirroring get_gradebook's latest-per-subject.
+
+
+def _mark_pct(obtained: float, total: float) -> float | None:
+    return round(obtained / total * 100, 1) if total else None
+
+
+async def student_marks(
+    db: AsyncSession, user: CurrentUser, params: dict[str, Any]
+) -> dict[str, Any]:
+    """One student's exam marks — every subject, or a single subject if named.
+
+    Returns each exam's obtained/total, percentage (of total), and the stored grade letter
+    if the school recorded one. No pass/fail is asserted (the ERP has no such concept).
+    """
+    school_id = uuid.UUID(user.school_id)
+    token = str(params.get("student") or params.get("student_id") or "").strip()
+    entity, block = await _resolve_one_student(db, school_id, token)
+    if block:
+        return block
+
+    student_id = entity.id
+    class_id = uuid.UUID(entity.detail["class_id"])
+    subject_token = str(params.get("subject") or "").strip()
+
+    q = (
+        select(
+            Exam.title,
+            Subject.name,
+            Exam.exam_type,
+            Exam.total_marks,
+            Exam.date,
+            ExamMark.marks_obtained,
+            ExamMark.grade_letter,
+        )
+        .join(Exam, Exam.id == ExamMark.exam_id)
+        .join(Subject, Subject.id == Exam.subject_id)
+        .where(ExamMark.school_id == school_id, ExamMark.student_id == student_id)
+    )
+    subject_label = ""
+    if subject_token:
+        sres = await resolve_subject(db, school_id, subject_token, class_id=class_id)
+        if sres.is_empty:
+            return _not_found_block(subject_token, "subject")
+        q = q.where(Exam.subject_id.in_([c.id for c in sres.candidates]))
+        subject_label = f" — {sres.candidates[0].label}"
+
+    rows = (
+        await db.execute(q.order_by(Exam.date.desc().nullslast(), Exam.created_at.desc()))
+    ).all()
+    marks = []
+    for title, subject, exam_type, total, exam_date, obtained, grade in rows:
+        marks.append(
+            {
+                "exam": title,
+                "subject": subject,
+                "type": exam_type.value.replace("_", " ").title()
+                if hasattr(exam_type, "value")
+                else str(exam_type),
+                "obtained": float(obtained),
+                "total": float(total),
+                "percentage": _mark_pct(float(obtained), float(total)),
+                "grade": grade or "—",
+                "date": exam_date.isoformat() if exam_date else "—",
+            }
+        )
+    return {
+        "kind": "table",
+        "title": f"Marks — {entity.detail['name']}{subject_label}",
+        "subtitle": entity.label,
+        "source": "Examinations",
+        "columns": [
+            {"key": "exam", "label": "Exam"},
+            {"key": "subject", "label": "Subject"},
+            {"key": "type", "label": "Type"},
+            {"key": "obtained", "label": "Marks"},
+            {"key": "total", "label": "Out of"},
+            {"key": "percentage", "label": "%", "format": "percent"},
+            {"key": "grade", "label": "Grade"},
+            {"key": "date", "label": "Date"},
+        ],
+        "rows": marks,
+        "empty_message": (
+            f"No exam marks are recorded for this student{subject_label} yet."
+        ),
+        "href": "/dashboard/teaching",
+        "href_label": "Open assessments",
+    }
+
+
+async def class_results(
+    db: AsyncSession, user: CurrentUser, params: dict[str, Any]
+) -> dict[str, Any]:
+    """Class results matrix — latest exam per subject, per student, with an average %.
+
+    Reuses ExamService.get_gradebook (the authoritative consolidation). Supports ranking
+    ('top'/'bottom' N by average) and is the basis for comparison across students. The
+    average is the mean of per-subject percentages; the grade letter comes from that
+    service's banding — surfaced as a convenience, not a school-defined pass mark.
+    """
+    from app.modules.examinations.services.exam_service import ExamService
+
+    school_id = uuid.UUID(user.school_id)
+    token = str(params.get("class_label") or params.get("class") or "").strip()
+    res = await resolve_class(db, school_id, token)
+    if res.is_empty:
+        return _not_found_block(token, "class")
+    if res.is_ambiguous:
+        return _clarify_block(res, "class")
+    cls = res.one
+
+    gradebook = await ExamService(db).get_gradebook(school_id, cls.id)
+    subjects = gradebook.get("subjects", [])
+    students = gradebook.get("students", [])
+    if not students:
+        return _not_found_block(token, "class")
+
+    # Optional ranking by average %.
+    order = str(params.get("order") or "").strip().lower()
+    limit_raw = params.get("limit") or params.get("top") or params.get("bottom")
+    if params.get("bottom") is not None and not order:
+        order = "asc"
+    ranked = [s for s in students if s.get("average") is not None]
+    unranked = [s for s in students if s.get("average") is None]
+    if order in ("asc", "desc") or limit_raw:
+        ranked.sort(key=lambda s: s["average"], reverse=(order != "asc"))
+    students_sorted = ranked + unranked
+    try:
+        limit = int(limit_raw) if limit_raw is not None else None
+    except (TypeError, ValueError):
+        limit = None
+    if limit:
+        students_sorted = students_sorted[:limit]
+
+    subject_cols = [{"key": f"s_{s['id']}", "label": s["short"]} for s in subjects]
+    rows = []
+    for s in students_sorted:
+        row = {
+            "name": s["name"],
+            "average": s.get("average"),
+            "grade": s.get("grade_letter") or "—",
+        }
+        for sub in subjects:
+            val = s["marks"].get(sub["id"])
+            row[f"s_{sub['id']}"] = val if val is not None else "—"
+        rows.append(row)
+
+    columns = (
+        [{"key": "name", "label": "Student"}]
+        + subject_cols
+        + [
+            {"key": "average", "label": "Average %", "format": "percent"},
+            {"key": "grade", "label": "Grade"},
+        ]
+    )
+    rank_note = ""
+    if limit:
+        rank_note = f" (top {limit})" if order != "asc" else f" (bottom {limit})"
+    return {
+        "kind": "table",
+        "title": f"Results — {cls.label}{rank_note}",
+        "subtitle": "Latest exam per subject",
+        "source": "Examinations",
+        "columns": columns,
+        "rows": rows,
+        "empty_message": f"No exam marks are recorded for {cls.label} yet.",
+        "href": "/dashboard/teaching",
+        "href_label": "Open assessments",
+    }
+
+
+async def subject_toppers(
+    db: AsyncSession, user: CurrentUser, params: dict[str, Any]
+) -> dict[str, Any]:
+    """Ranking within a class + subject for its latest exam (top/bottom N by marks).
+
+    Grounds 'who scored highest in Maths in 10A' — a single exam (the latest for that
+    class+subject), ranked by marks obtained. No pass/fail; just the ordered scores.
+    """
+    school_id = uuid.UUID(user.school_id)
+    class_token = str(params.get("class_label") or params.get("class") or "").strip()
+    subject_token = str(params.get("subject") or "").strip()
+    if not class_token or not subject_token:
+        return {
+            "kind": "clarify",
+            "title": "Which class and subject?",
+            "message": "Tell me the class and the subject, e.g. 'top scorers in Maths in 10A'.",
+            "options": [],
+        }
+    cres = await resolve_class(db, school_id, class_token)
+    if cres.is_empty:
+        return _not_found_block(class_token, "class")
+    if cres.is_ambiguous:
+        return _clarify_block(cres, "class")
+    cls = cres.one
+    sres = await resolve_subject(db, school_id, subject_token, class_id=cls.id)
+    if sres.is_empty:
+        return _not_found_block(subject_token, "subject")
+
+    # Latest exam for this class+subject.
+    exam = (
+        await db.execute(
+            select(Exam)
+            .where(
+                Exam.school_id == school_id,
+                Exam.class_id == cls.id,
+                Exam.subject_id.in_([c.id for c in sres.candidates]),
+            )
+            .order_by(Exam.date.desc().nullslast(), Exam.created_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if exam is None:
+        return {
+            "kind": "not_found",
+            "title": "No exam found",
+            "message": (
+                f"No {sres.candidates[0].label} exam has been recorded for {cls.label} yet."
+            ),
+        }
+
+    order = str(params.get("order") or "desc").strip().lower()
+    if params.get("bottom") is not None:
+        order = "asc"
+    try:
+        limit = int(params.get("limit") or params.get("top") or params.get("bottom") or 0)
+    except (TypeError, ValueError):
+        limit = 0
+
+    rows = (
+        await db.execute(
+            select(User.full_name, Student.admission_no, ExamMark.marks_obtained,
+                   ExamMark.grade_letter)
+            .join(Student, Student.id == ExamMark.student_id)
+            .join(User, User.id == Student.user_id)
+            .where(ExamMark.school_id == school_id, ExamMark.exam_id == exam.id)
+        )
+    ).all()
+    scores = [
+        {
+            "admission_no": adm,
+            "name": name,
+            "obtained": float(obtained),
+            "total": float(exam.total_marks),
+            "percentage": _mark_pct(float(obtained), float(exam.total_marks)),
+            "grade": grade or "—",
+        }
+        for name, adm, obtained, grade in rows
+    ]
+    scores.sort(key=lambda r: r["obtained"], reverse=(order != "asc"))
+    if limit:
+        scores = scores[:limit]
+    rank_note = ""
+    if limit:
+        rank_note = f" — top {limit}" if order != "asc" else f" — bottom {limit}"
+    return {
+        "kind": "table",
+        "title": f"{sres.candidates[0].label} · {cls.label}{rank_note}",
+        "subtitle": f"{exam.title} (out of {exam.total_marks:g})",
+        "source": "Examinations",
+        "columns": [
+            {"key": "admission_no", "label": "Admission no"},
+            {"key": "name", "label": "Student"},
+            {"key": "obtained", "label": "Marks"},
+            {"key": "percentage", "label": "%", "format": "percent"},
+            {"key": "grade", "label": "Grade"},
+        ],
+        "rows": scores,
+        "empty_message": f"No marks recorded for {exam.title} yet.",
+        "href": "/dashboard/teaching",
+        "href_label": "Open assessments",
     }

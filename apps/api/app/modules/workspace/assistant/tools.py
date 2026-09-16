@@ -309,6 +309,53 @@ ASSISTANT_TOOLS: tuple[AssistantTool, ...] = (
         roles=_STAFF,
         handler=cap.low_attendance_students,
     ),
+    AssistantTool(
+        name="student_marks",
+        description=(
+            "Exam marks for ONE student — every subject, or a single subject if named. Shows "
+            "marks obtained, out-of, percentage of total, and the recorded grade letter (if "
+            "any) per exam. Use for 'ARM0218 marks', 'how did Aarav do in Science', 'show "
+            "exam results for roll 12'. Does NOT judge pass/fail (the ERP has no pass mark)."
+        ),
+        params={
+            "student": "string — admission no, roll no, or student name",
+            "subject": "string, optional — a subject like 'Mathematics' or 'Science'",
+        },
+        roles=_STAFF,
+        handler=cap.student_marks,
+    ),
+    AssistantTool(
+        name="class_results",
+        description=(
+            "Results matrix for a CLASS — each student's marks across subjects (latest exam "
+            "per subject) plus an average %. Supports ranking: pass top/bottom + a limit for "
+            "'top 5 students in 10A', 'class 9 rank list', 'who are the lowest performers in "
+            "8B'. Average = mean of per-subject percentages."
+        ),
+        params={
+            "class_label": "string — a class like '10A' or 'Class 9 B'",
+            "top": "number, optional — return the top N students by average",
+            "bottom": "number, optional — return the bottom N students by average",
+        },
+        roles=_STAFF,
+        handler=cap.class_results,
+    ),
+    AssistantTool(
+        name="subject_toppers",
+        description=(
+            "Ranking within a CLASS + SUBJECT for its latest exam. Use for 'top scorers in "
+            "Maths in 10A', 'who scored highest in Science in 9B', 'lowest marks in English "
+            "in 8A'. Ranks students by marks obtained in that one exam."
+        ),
+        params={
+            "class_label": "string — a class like '10A'",
+            "subject": "string — a subject like 'Mathematics'",
+            "top": "number, optional — top N by marks (default: all, highest first)",
+            "bottom": "number, optional — bottom N by marks",
+        },
+        roles=_STAFF,
+        handler=cap.subject_toppers,
+    ),
 )
 
 
