@@ -170,14 +170,43 @@ def _parse_decision(text: str) -> PlannerDecision | None:
         return None
 
 
+def _prev_state_hint(prev_state: dict[str, Any] | None) -> str | None:
+    """Tell the planner the previous turn's structured meaning so an elliptical follow-up
+    can decide, per dimension, to keep or override it (spec §9). Deterministic merge is the
+    backstop; this just improves the LLM's first proposal."""
+    if not prev_state:
+        return None
+    ent = prev_state.get("entities") or {}
+    ent_str = ", ".join(f"{k}={v}" for k, v in ent.items()) or "none"
+    return (
+        "CONVERSATION CONTEXT (previous turn's meaning — for elliptical follow-ups like "
+        "'what about September?' / 'his fees' / 'what about 2B?'). If THIS turn does not "
+        "restate a dimension, you MAY inherit it; if THIS turn changes a dimension, override "
+        "it. Do NOT blindly copy everything.\n"
+        f"  previous domain: {prev_state.get('domain')}\n"
+        f"  previous capability: {prev_state.get('capability')}\n"
+        f"  previous entities: {ent_str}\n"
+        f"  previous subject: {prev_state.get('subject')}\n"
+        f"  previous temporal: presence={prev_state.get('temporal_presence')} "
+        f"time={prev_state.get('temporal_time')}\n"
+        "IMPORTANT: if the previous temporal presence was PAST and this turn only names a "
+        "new period (e.g. 'September'), keep presence=PAST with the new time. Never silently "
+        "reset temporality to CURRENT/NONE on a follow-up."
+    )
+
+
 async def plan(
     text: str,
     *,
     tools: list[AssistantTool],
     history: list[dict[str, str]] | None = None,
+    prev_state: dict[str, Any] | None = None,
 ) -> PlannerDecision:
     """Ask the LLM to choose a governed tool + params. Falls back to 'clarify'."""
     messages: list[LLMMessage] = [LLMMessage(role="system", content=_system_prompt(tools))]
+    hint = _prev_state_hint(prev_state)
+    if hint:
+        messages.append(LLMMessage(role="system", content=hint))
     for turn in history or []:
         role = turn.get("role", "user")
         content = turn.get("text", "")

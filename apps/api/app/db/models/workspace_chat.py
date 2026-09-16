@@ -63,6 +63,10 @@ class WorkspaceChatMessage(BaseModel):
     text: Mapped[str] = mapped_column(Text, nullable=False, default="")
     result_kind: Mapped[str | None] = mapped_column(String(32), nullable=True)
     payload: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    # Compact structured semantic state after this turn (domain/entity/operation/temporal)
+    # so an elliptical follow-up can inherit unchanged dimensions (P1.2). Never authoritative
+    # and never an authorization token — every turn re-checks permissions.
+    semantic_state: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
     session: Mapped[WorkspaceChatSession] = relationship(back_populates="messages")
 

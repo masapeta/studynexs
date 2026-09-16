@@ -93,6 +93,26 @@ class AssistantService:
         # Oldest first for the model.
         return [{"role": r, "text": t} for r, t in reversed(rows)]
 
+    async def _prev_semantic_state(self, session_id: uuid.UUID) -> dict[str, Any] | None:
+        """The semantic state established by the most recent assistant turn (P1.2).
+
+        Tenant/session-scoped by construction (the query is bound to this session). Used only
+        as a hint + deterministic merge input; never as an authorization token (spec §18/§19).
+        """
+        row = (
+            await self.db.execute(
+                select(WorkspaceChatMessage.semantic_state)
+                .where(
+                    WorkspaceChatMessage.session_id == session_id,
+                    WorkspaceChatMessage.role == "assistant",
+                    WorkspaceChatMessage.semantic_state.is_not(None),
+                )
+                .order_by(WorkspaceChatMessage.created_at.desc())
+                .limit(1)
+            )
+        ).first()
+        return row[0] if row else None
+
     async def handle_turn(
         self,
         *,
@@ -118,10 +138,23 @@ class AssistantService:
 
         history = await self._history(session.id)
         tools = tools_for_role(role)
-        decision = await plan(text, tools=tools, history=history[:-1])
+        prev_state = await self._prev_semantic_state(session.id)
+        decision = await plan(text, tools=tools, history=history[:-1], prev_state=prev_state)
+
+        # Deterministic conversational carry-over (P1.2): merge unchanged dimensions from the
+        # previous turn. This backstops the LLM and GUARANTEES the P0.1 temporal invariant
+        # survives elliptical follow-ups (a follow-up that doesn't override PAST stays PAST).
+        from app.modules.workspace.assistant.conversation import (
+            ConversationSemanticState,
+            merge_follow_up,
+        )
+
+        prev_sem = ConversationSemanticState.from_dict(prev_state)
+        decision, merge_trace = merge_follow_up(prev_sem, decision)
 
         # Understand the user's temporal meaning SEPARATELY from tool selection (P0.1 §2):
-        # this is the integrity anchor a dropped params.time cannot erase.
+        # this is the integrity anchor a dropped params.time cannot erase. Computed AFTER the
+        # merge so an inherited temporality is honoured by the integrity guard.
         sem_temporality, sem_label, sem_concrete = await self._semantic_temporality(
             school_id, decision
         )
@@ -140,6 +173,7 @@ class AssistantService:
             "plan_temporality": None,
             "temporal_integrity": None,
             "temporal_guard_decision": None,
+            "carry_over": merge_trace,
         }
 
         if decision.action == "tool":
@@ -185,6 +219,7 @@ class AssistantService:
                 text=block.get("title", ""),
                 result_kind=result_kind,
                 payload=block,
+                semantic_state=self._state_to_persist(decision, sem_temporality, sem_label),
             )
         )
         await self.db.flush()
@@ -195,6 +230,26 @@ class AssistantService:
             "block": block,
             "trace": trace,
         }
+
+    def _state_to_persist(
+        self, decision: Any, sem_temporality: str, sem_label: str | None
+    ) -> dict[str, Any] | None:
+        """Snapshot the turn's semantic state for follow-up carry-over (P1.2).
+
+        Only persisted when a real capability/plan was chosen — a guide/clarify turn keeps
+        the prior topic alive rather than wiping it. Records the RESOLVED temporality so a
+        follow-up correctly inherits PAST/CURRENT (the P0.1-preserving field).
+        """
+        from app.modules.workspace.assistant.conversation import state_from_decision
+
+        if getattr(decision, "action", None) not in ("tool", "compose", "mixed"):
+            return None
+        state = state_from_decision(decision)
+        # Store the resolved semantic temporality (not the raw presence) so an elliptical
+        # follow-up inherits the correct PAST/CURRENT even when presence was e.g. PERIOD.
+        if sem_temporality in ("PAST", "CURRENT", "FUTURE"):
+            state.temporal_presence = sem_temporality
+        return state.to_dict()
 
     async def _run_tool(
         self,
@@ -235,6 +290,10 @@ class AssistantService:
                     "end_date": rng.end_date.isoformat() if rng.end_date else None,
                 }
         plan_temporality = rng.temporality if rng is not None else "NONE"
+        # A concrete bounded window was actually applied to the plan (regardless of whether
+        # it lands in the past or the current month) — this, not calendar position, is what
+        # tells the guard the temporal constraint survived (P1.2).
+        plan_has_window = rng is not None and not rng.is_all_time
 
         # Temporal-integrity guard (P0.1): compare the user's SEMANTIC temporality (extracted
         # independently of tool selection) against the plan's resolved temporality. This
@@ -245,6 +304,7 @@ class AssistantService:
             plan=plan_temporality,
             supports_historical=tool.supports_historical,
             semantic_concrete=semantic_concrete,
+            plan_has_window=plan_has_window,
         )
         if trace is not None:
             trace["plan_temporality"] = plan_temporality

@@ -89,15 +89,18 @@ _PERIODIC_PRESENCE = frozenset({"PERIOD", "DATE_SPECIFIC"})
 def semantic_temporality(presence: str, semantic_range: "DateRange | None") -> str:
     """Collapse the planner's declared presence + resolved window into one temporality.
 
-    Prefer the concrete resolved window's temporality when a time was given (dates are
-    authoritative); otherwise fall back to the declared presence. A period/date the
-    planner expressed but did NOT resolve is treated as PAST — the safe assumption that
-    forces the integrity check rather than silently proceeding as current.
+    An explicit/carried PAST intent is STICKY and dominates the calendar (spec P1.2 §5/§11,
+    P0.1): "who was the teacher in August?" followed by "what about September?" stays PAST
+    even though September contains today — a historical follow-up must never silently become
+    current. Only when presence does not assert history do the resolved dates decide (so a
+    mislabelled CURRENT/FUTURE window is still corrected by real dates).
     """
     p = (presence or "NONE").strip().upper()
+    if p == "PAST":
+        return "PAST"  # historical intent dominates calendar position
     if semantic_range is not None and not semantic_range.is_all_time:
         return semantic_range.temporality  # PAST / CURRENT / FUTURE from real dates
-    if p in _PAST_PRESENCE or p in _PERIODIC_PRESENCE:
+    if p in _PERIODIC_PRESENCE:
         return "PAST"
     if p in ("CURRENT", "FUTURE"):
         return p
@@ -105,22 +108,28 @@ def semantic_temporality(presence: str, semantic_range: "DateRange | None") -> s
 
 
 def temporal_integrity(
-    *, semantic: str, plan: str, supports_historical: bool, semantic_concrete: bool = False
+    *,
+    semantic: str,
+    plan: str,
+    supports_historical: bool,
+    semantic_concrete: bool = False,
+    plan_has_window: bool = False,
 ) -> str:
     """Compare the user's semantic temporality against the plan's resolved temporality.
 
-    ``semantic_concrete`` = the user's request resolved to a CONCRETE past window (a real
+    ``semantic_concrete`` = the user's request resolved to a CONCRETE bounded window (a real
     date/month/range), as opposed to a weak/ongoing PAST (e.g. present-perfect "has been
-    coming", which is effectively all-time). The distinction prevents a false
-    "constraint dropped" on legitimate all-time questions while preserving the P0.1 guard:
+    coming", which is effectively all-time). ``plan_has_window`` = the plan actually applied a
+    concrete time window to its params. We check *window applied*, not the window's calendar
+    position, because a past-framed window can legitimately resolve to the current month
+    (e.g. "September" collection-to-date). Rules:
 
     - current-state capability + any PAST → BLOCK_UNSUPPORTED (relationship history is not
       kept; refuse rather than answer with the present).
-    - event-time capability + PAST + plan PAST → ALLOW (the concrete window was applied).
-    - event-time capability + PAST + plan not PAST + concrete window → the window was
-      dropped between understanding and execution → TEMPORAL_CONSTRAINT_DROPPED.
-    - event-time capability + PAST + plan not PAST + NO concrete window → ALLOW (an
-      all-time/ongoing question — answer the factual all-time figure).
+    - event-time capability + PAST + a window was applied → ALLOW.
+    - event-time capability + PAST + concrete window intended but NOT applied → the window
+      was dropped between understanding and execution → TEMPORAL_CONSTRAINT_DROPPED.
+    - event-time capability + PAST + no concrete window intended → ALLOW (all-time/ongoing).
     - semantic not PAST → honour the plan's own temporality for the capability guard.
     """
     sem = (semantic or "NONE").strip().upper()
@@ -128,7 +137,7 @@ def temporal_integrity(
     if sem == "PAST":
         if not supports_historical:
             return INTEGRITY_BLOCK_UNSUPPORTED
-        if pln == "PAST":
+        if plan_has_window or pln == "PAST":
             return INTEGRITY_ALLOW
         return INTEGRITY_DROPPED if semantic_concrete else INTEGRITY_ALLOW
     if pln == "PAST" and not supports_historical:

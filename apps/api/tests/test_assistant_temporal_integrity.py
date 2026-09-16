@@ -205,7 +205,7 @@ async def test_handle_turn_degraded_planner_blocks(
     from app.modules.workspace.assistant import service as service_mod
     from app.modules.workspace.assistant.planner import PlannerDecision, TemporalIntent
 
-    async def _degraded_plan(text, *, tools, history=None):
+    async def _degraded_plan(text, *, tools, history=None, prev_state=None):
         return PlannerDecision(
             route="STRUCTURED",
             action="tool",
@@ -241,7 +241,7 @@ async def test_handle_turn_event_time_dropped_window(
     from app.modules.workspace.assistant import service as service_mod
     from app.modules.workspace.assistant.planner import PlannerDecision, TemporalIntent
 
-    async def _degraded_plan(text, *, tools, history=None):
+    async def _degraded_plan(text, *, tools, history=None, prev_state=None):
         return PlannerDecision(
             route="STRUCTURED",
             action="tool",
@@ -274,7 +274,7 @@ async def test_handle_turn_event_time_all_time_allowed(
     from app.modules.workspace.assistant import service as service_mod
     from app.modules.workspace.assistant.planner import PlannerDecision, TemporalIntent
 
-    async def _plan(text, *, tools, history=None):
+    async def _plan(text, *, tools, history=None, prev_state=None):
         return PlannerDecision(
             route="STRUCTURED",
             action="tool",
@@ -304,7 +304,7 @@ async def test_handle_turn_current_planner_allows(
     from app.modules.workspace.assistant import service as service_mod
     from app.modules.workspace.assistant.planner import PlannerDecision, TemporalIntent
 
-    async def _current_plan(text, *, tools, history=None):
+    async def _current_plan(text, *, tools, history=None, prev_state=None):
         return PlannerDecision(
             route="STRUCTURED",
             action="tool",
