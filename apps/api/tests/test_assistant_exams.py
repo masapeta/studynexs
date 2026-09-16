@@ -96,6 +96,10 @@ async def test_student_marks_subject_filter(
     block = await cap.student_marks(db_session, user, {"student": "ADM100", "subject": "Mathematics"})
     assert block["kind"] == "table"
     assert all(r["subject"] == "Mathematics" for r in block["rows"])
+    # Colloquial alias 'maths' must resolve to 'Mathematics' (general alias handling).
+    alias = await cap.student_marks(db_session, user, {"student": "ADM100", "subject": "maths"})
+    assert alias["kind"] == "table"
+    assert all(r["subject"] == "Mathematics" for r in alias["rows"])
     # An unknown subject is honest, not empty-invented.
     miss = await cap.student_marks(db_session, user, {"student": "ADM100", "subject": "Biology"})
     assert miss["kind"] == "not_found"

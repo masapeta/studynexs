@@ -105,22 +105,32 @@ def semantic_temporality(presence: str, semantic_range: "DateRange | None") -> s
 
 
 def temporal_integrity(
-    *, semantic: str, plan: str, supports_historical: bool
+    *, semantic: str, plan: str, supports_historical: bool, semantic_concrete: bool = False
 ) -> str:
     """Compare the user's semantic temporality against the plan's resolved temporality.
 
-    - semantic PAST + plan PAST  → ALLOW if the capability has event-time history, else
-      BLOCK_UNSUPPORTED (current-state capability cannot answer the past).
-    - semantic PAST + plan NOT past → the qualifier was dropped between understanding and
-      execution → TEMPORAL_CONSTRAINT_DROPPED (never fall back to current-state data).
+    ``semantic_concrete`` = the user's request resolved to a CONCRETE past window (a real
+    date/month/range), as opposed to a weak/ongoing PAST (e.g. present-perfect "has been
+    coming", which is effectively all-time). The distinction prevents a false
+    "constraint dropped" on legitimate all-time questions while preserving the P0.1 guard:
+
+    - current-state capability + any PAST → BLOCK_UNSUPPORTED (relationship history is not
+      kept; refuse rather than answer with the present).
+    - event-time capability + PAST + plan PAST → ALLOW (the concrete window was applied).
+    - event-time capability + PAST + plan not PAST + concrete window → the window was
+      dropped between understanding and execution → TEMPORAL_CONSTRAINT_DROPPED.
+    - event-time capability + PAST + plan not PAST + NO concrete window → ALLOW (an
+      all-time/ongoing question — answer the factual all-time figure).
     - semantic not PAST → honour the plan's own temporality for the capability guard.
     """
     sem = (semantic or "NONE").strip().upper()
     pln = (plan or "NONE").strip().upper()
     if sem == "PAST":
+        if not supports_historical:
+            return INTEGRITY_BLOCK_UNSUPPORTED
         if pln == "PAST":
-            return INTEGRITY_ALLOW if supports_historical else INTEGRITY_BLOCK_UNSUPPORTED
-        return INTEGRITY_DROPPED
+            return INTEGRITY_ALLOW
+        return INTEGRITY_DROPPED if semantic_concrete else INTEGRITY_ALLOW
     if pln == "PAST" and not supports_historical:
         return INTEGRITY_BLOCK_UNSUPPORTED
     return INTEGRITY_ALLOW

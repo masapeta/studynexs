@@ -58,12 +58,14 @@ class AssistantService:
 
     async def _semantic_temporality(
         self, school_id: uuid.UUID, decision: Any
-    ) -> tuple[str, str | None]:
+    ) -> tuple[str, str | None, bool]:
         """Derive the user's temporal meaning from the planner's dedicated temporal field.
 
         Independent of which tool/params were chosen (P0.1 §2/§3). Returns (temporality,
-        human label). When the planner declared a concrete window we resolve it so the
-        dates — not a guessed presence — decide PAST/CURRENT/FUTURE.
+        human label, concrete). ``concrete`` = the request resolved to a real bounded past
+        window (date/month/range), distinguishing it from a weak/ongoing PAST (present-
+        perfect, "recently") that maps to all-time — used by the integrity guard so an
+        all-time question isn't mistaken for a dropped historical window.
         """
         from app.modules.workspace.assistant.temporal import semantic_temporality
 
@@ -72,10 +74,12 @@ class AssistantService:
         time = getattr(temporal, "time", None) if temporal else None
         sem_range = None
         label: str | None = None
+        concrete = False
         if time is not None:
             sem_range = await self._resolve_range(school_id, time)
             label = sem_range.label
-        return semantic_temporality(presence, sem_range), label
+            concrete = not sem_range.is_all_time  # a bounded window actually resolved
+        return semantic_temporality(presence, sem_range), label, concrete
 
     async def _history(self, session_id: uuid.UUID) -> list[dict[str, str]]:
         rows = (
@@ -118,7 +122,9 @@ class AssistantService:
 
         # Understand the user's temporal meaning SEPARATELY from tool selection (P0.1 §2):
         # this is the integrity anchor a dropped params.time cannot erase.
-        sem_temporality, sem_label = await self._semantic_temporality(school_id, decision)
+        sem_temporality, sem_label, sem_concrete = await self._semantic_temporality(
+            school_id, decision
+        )
 
         block: dict[str, Any]
         # Non-sensitive execution trace for observability + eval (spec §18, §24, §25).
@@ -140,6 +146,7 @@ class AssistantService:
             block = await self._run_tool(
                 current_user, decision.tool, decision.params, school_id,
                 trace=trace, semantic=sem_temporality, semantic_label=sem_label,
+                semantic_concrete=sem_concrete,
             )
         elif decision.action == "compose":
             block = await self._run_compose(
@@ -149,6 +156,7 @@ class AssistantService:
             block = await self._run_mixed(
                 current_user, decision, school_id,
                 trace=trace, semantic=sem_temporality, semantic_label=sem_label,
+                semantic_concrete=sem_concrete,
             )
         elif decision.action == "document":
             block = await self._run_document(
@@ -198,6 +206,7 @@ class AssistantService:
         trace: dict[str, Any] | None = None,
         semantic: str = "NONE",
         semantic_label: str | None = None,
+        semantic_concrete: bool = False,
     ) -> dict[str, Any]:
         """Execute one governed structured tool with temporal integrity + error safety."""
         from app.modules.workspace.assistant.temporal import (
@@ -235,6 +244,7 @@ class AssistantService:
             semantic=semantic,
             plan=plan_temporality,
             supports_historical=tool.supports_historical,
+            semantic_concrete=semantic_concrete,
         )
         if trace is not None:
             trace["plan_temporality"] = plan_temporality
@@ -391,11 +401,13 @@ class AssistantService:
         trace: dict[str, Any] | None = None,
         semantic: str = "NONE",
         semantic_label: str | None = None,
+        semantic_concrete: bool = False,
     ) -> dict[str, Any]:
         """MIXED route: run the structured data step, then the policy step, then combine."""
         data_block = await self._run_tool(
             current_user, decision.tool, decision.params, school_id,
             trace=trace, semantic=semantic, semantic_label=semantic_label,
+            semantic_concrete=semantic_concrete,
         )
         doc_query = decision.document_query or decision.message or ""
         doc_block = await self._run_document(school_id, doc_query) if doc_query else None

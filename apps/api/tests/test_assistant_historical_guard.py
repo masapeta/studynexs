@@ -5,7 +5,6 @@ current-state query runs — never silently answered with present data (spec §6
 Transactional (event_time) capabilities and current requests must still work.
 """
 
-from datetime import date
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +12,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models.school import School
 from app.modules.workspace.assistant.temporal import resolve_time_range
 from app.modules.workspace.assistant.tools import get_tool
-
 
 # ── Temporal classification: PAST vs CURRENT vs event ─────────────────────────
 

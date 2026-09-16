@@ -36,26 +36,34 @@ class _FakeUser:
 
 
 def test_temporal_integrity_matrix():
-    # PAST semantic + current-state capability + plan has no time -> DROPPED.
+    # PAST semantic + current-state capability -> BLOCK_UNSUPPORTED regardless of plan
+    # (relationship history is never kept; the capability simply can't answer the past).
     assert (
         temporal_integrity(semantic="PAST", plan="NONE", supports_historical=False)
-        == INTEGRITY_DROPPED
+        == INTEGRITY_BLOCK_UNSUPPORTED
     )
-    # PAST semantic + current-state + plan PAST -> capability can't answer -> BLOCK.
     assert (
         temporal_integrity(semantic="PAST", plan="PAST", supports_historical=False)
         == INTEGRITY_BLOCK_UNSUPPORTED
     )
-    # PAST semantic + event-time capability + plan PAST -> ALLOW.
+    # PAST semantic + event-time capability + plan PAST -> ALLOW (window applied).
     assert (
         temporal_integrity(semantic="PAST", plan="PAST", supports_historical=True)
         == INTEGRITY_ALLOW
     )
-    # PAST semantic but event-time capability with plan time dropped -> still DROPPED
-    # (the historical window itself was lost; refuse rather than answer all-time).
+    # PAST + event-time + plan not PAST + CONCRETE window -> the window was dropped -> DROPPED.
     assert (
-        temporal_integrity(semantic="PAST", plan="NONE", supports_historical=True)
+        temporal_integrity(
+            semantic="PAST", plan="NONE", supports_historical=True, semantic_concrete=True
+        )
         == INTEGRITY_DROPPED
+    )
+    # PAST + event-time + plan not PAST + NO concrete window -> all-time question -> ALLOW.
+    assert (
+        temporal_integrity(
+            semantic="PAST", plan="NONE", supports_historical=True, semantic_concrete=False
+        )
+        == INTEGRITY_ALLOW
     )
     # CURRENT semantic + current-state -> ALLOW (the normal case).
     assert (
@@ -93,11 +101,12 @@ async def test_semantic_temporality_prefers_resolved_dates(
 async def test_dropped_qualifier_is_blocked_without_executing(
     test_school: School, db_session: AsyncSession
 ):
-    """semantic=PAST but params has NO time (planner dropped it) -> TEMPORAL_CONSTRAINT_DROPPED.
+    """semantic=PAST but params has NO time (planner dropped it) -> blocked, handler not run.
 
-    Uses a non-existent class: if the handler ran it would return 'class not found'. The
-    integrity guard instead returns the historical-unavailable block BEFORE the handler,
-    proving the current-state query never executed.
+    A current-state relationship capability can never answer the past, so the reason is
+    BLOCK_UNSUPPORTED. Uses a non-existent class: if the handler ran it would return 'class
+    not found'. The integrity guard instead returns the historical-unavailable block BEFORE
+    the handler, proving the current-state query never executed.
     """
     from app.modules.workspace.assistant.service import AssistantService
 
@@ -116,7 +125,7 @@ async def test_dropped_qualifier_is_blocked_without_executing(
     assert block["kind"] == "not_found"
     assert block["title"] == "Historical records not available"  # NOT 'class not found'
     assert trace["temporal_integrity"] == "FAILED"
-    assert trace["temporal_guard_decision"] == INTEGRITY_DROPPED
+    assert trace["temporal_guard_decision"] == INTEGRITY_BLOCK_UNSUPPORTED
     assert trace["historical_guard"]["decision"] == "blocked"
     assert trace["plan_temporality"] == "NONE"
 
@@ -142,7 +151,7 @@ async def test_dropped_qualifier_student_class_blocked(
     )
     assert block["kind"] == "not_found"
     assert block["title"] == "Historical records not available"
-    assert trace["temporal_guard_decision"] == INTEGRITY_DROPPED
+    assert trace["temporal_guard_decision"] == INTEGRITY_BLOCK_UNSUPPORTED
 
 
 # ── Current + transactional still work through the integrity path ─────────────
@@ -216,7 +225,75 @@ async def test_handle_turn_degraded_planner_blocks(
     assert tr["semantic_temporality"] == "PAST"
     assert tr["plan_temporality"] == "NONE"
     assert tr["temporal_integrity"] == "FAILED"
+    # current-state capability can never answer the past -> BLOCK_UNSUPPORTED (still blocked).
+    assert tr["temporal_guard_decision"] == INTEGRITY_BLOCK_UNSUPPORTED
+
+
+@pytest.mark.asyncio
+async def test_handle_turn_event_time_dropped_window(
+    test_school: School, admin_user, db_session: AsyncSession, monkeypatch
+):
+    """event-time tool + CONCRETE past window that the plan dropped -> TEMPORAL_CONSTRAINT_DROPPED.
+
+    'fee collected in August' understood as PAST(August) but params.time dropped: we must
+    refuse (not answer all-time), because a concrete window was lost.
+    """
+    from app.modules.workspace.assistant import service as service_mod
+    from app.modules.workspace.assistant.planner import PlannerDecision, TemporalIntent
+
+    async def _degraded_plan(text, *, tools, history=None):
+        return PlannerDecision(
+            route="STRUCTURED",
+            action="tool",
+            tool="fee_collection_period",
+            params={},  # concrete window dropped
+            temporal=TemporalIntent(presence="PAST", time={"month": "august"}),
+        )
+
+    monkeypatch.setattr(service_mod, "plan", _degraded_plan)
+    svc = service_mod.AssistantService(db_session)
+    user = _FakeUser(test_school.id, user_id=admin_user.id)
+    result = await svc.handle_turn(
+        current_user=user, text="how much did we collect in August?", session_id=None
+    )
+    tr = result["trace"]
+    assert tr["semantic_temporality"] == "PAST"
+    assert tr["temporal_integrity"] == "FAILED"
     assert tr["temporal_guard_decision"] == INTEGRITY_DROPPED
+
+
+@pytest.mark.asyncio
+async def test_handle_turn_event_time_all_time_allowed(
+    test_school: School, admin_user, db_session: AsyncSession, monkeypatch
+):
+    """event-time tool + weak/ongoing PAST (no concrete window) -> ALLOW (all-time answer).
+
+    'how often has X been attending' is present-perfect -> may be tagged PAST, but it's an
+    all-time question; it must NOT be mistaken for a dropped historical window.
+    """
+    from app.modules.workspace.assistant import service as service_mod
+    from app.modules.workspace.assistant.planner import PlannerDecision, TemporalIntent
+
+    async def _plan(text, *, tools, history=None):
+        return PlannerDecision(
+            route="STRUCTURED",
+            action="tool",
+            tool="student_attendance",
+            params={"student": "does-not-exist-ADM", "time": "all_time"},
+            temporal=TemporalIntent(presence="PAST", time="all_time"),
+        )
+
+    monkeypatch.setattr(service_mod, "plan", _plan)
+    svc = service_mod.AssistantService(db_session)
+    user = _FakeUser(test_school.id, user_id=admin_user.id)
+    result = await svc.handle_turn(
+        current_user=user, text="how often has ADM been coming?", session_id=None
+    )
+    tr = result["trace"]
+    assert tr["temporal_integrity"] == "OK"
+    assert tr["temporal_guard_decision"] == INTEGRITY_ALLOW
+    # handler ran -> honest not_found for the unknown student (NOT a temporal block).
+    assert result["block"]["kind"] == "not_found"
 
 
 @pytest.mark.asyncio

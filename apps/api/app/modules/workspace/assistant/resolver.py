@@ -238,6 +238,17 @@ async def resolve_class(
     return Resolution(query=token, kind="class", candidates=candidates)
 
 
+# Common colloquial subject aliases -> the canonical name fragment stored in the ERP.
+# General synonym handling (not question-specific): schools say "maths"/"bio"/"socials".
+_SUBJECT_ALIASES = {
+    "maths": "mathematics", "math": "mathematics",
+    "bio": "biology", "phy": "physics", "chem": "chemistry",
+    "socials": "social studies", "social": "social studies", "sst": "social studies",
+    "eng": "english", "sci": "science", "evs": "environmental",
+    "pt": "physical education", "pe": "physical education",
+}
+
+
 async def resolve_subject(
     db: AsyncSession,
     school_id: uuid.UUID,
@@ -246,7 +257,7 @@ async def resolve_subject(
     class_id: uuid.UUID | None = None,
     limit: int = 12,
 ) -> Resolution:
-    """Match a subject by name/code (exact then contains).
+    """Match a subject by name/code (exact then contains), with colloquial aliases.
 
     Subjects are PER-CLASS in the ERP (subjects.class_id), so the same name repeats across
     classes. When class_id is given we scope to it (a single subject); otherwise we return
@@ -257,16 +268,19 @@ async def resolve_subject(
     if not term:
         return Resolution(query=token, kind="subject", candidates=[])
 
+    # Normalize colloquial aliases before matching (maths -> mathematics).
+    canonical = _SUBJECT_ALIASES.get(term.lower(), term)
+
     base = select(Subject).where(Subject.school_id == school_id)
     if class_id is not None:
         base = base.where(Subject.class_id == class_id)
 
-    # 1) Exact name or code (case-insensitive).
+    # 1) Exact name or code (case-insensitive) on the canonical term.
     exact = (
         await db.execute(
             base.where(
                 or_(
-                    func.lower(Subject.name) == term.lower(),
+                    func.lower(Subject.name) == canonical.lower(),
                     func.lower(Subject.code) == term.lower(),
                 )
             ).order_by(Subject.name).limit(limit)
@@ -274,10 +288,11 @@ async def resolve_subject(
     ).scalars().all()
     rows = exact
     if not rows:
-        # 2) Name contains.
+        # 2) Name contains (use the canonical term so 'maths' finds 'Mathematics').
         rows = (
             await db.execute(
-                base.where(Subject.name.ilike(f"%{term}%")).order_by(Subject.name).limit(limit)
+                base.where(Subject.name.ilike(f"%{canonical}%"))
+                .order_by(Subject.name).limit(limit)
             )
         ).scalars().all()
 
