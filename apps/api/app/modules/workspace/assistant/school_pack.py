@@ -1,0 +1,110 @@
+"""SchoolPack — school-specific SEMANTIC configuration (P1.6).
+
+The universal runtime (planner, derivation, conversation, capability contracts, relationship
+registry) is school-agnostic. Everything that legitimately varies by school lives here as
+CONFIGURATION, not code:
+
+  - terminology (what a class-incharge is called; the "teachers" column heading)
+  - academic structure (how a class label is composed/displayed from grade + section)
+  - grading (percentage boundaries -> letter)
+  - role interpretation (which roles are staff / admin)
+  - period terminology (term / semester labels)
+
+Strict architectural rule (from the P1.6 brief):
+  A SchoolPack MAY configure semantics. It MUST NOT become a second authorization engine, a
+  second data adapter, or a bag of arbitrary Python callbacks. So a pack is *plain data* plus
+  a couple of *pure, deterministic* formatting/label functions — no DB access, no permission
+  decisions, no side effects.
+
+The default StudyNexsPack reproduces the current reference-school behaviour EXACTLY (labels
+byte-for-byte), so introducing the pack changes no output. School A/B/C variants exist only to
+prove the runtime is driven by configuration, not by the reference school's assumptions.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+
+@dataclass(frozen=True)
+class GradingScale:
+    """Percentage -> letter bands, highest-first. Pure data; no pass/fail is implied."""
+
+    # (min_percent_inclusive, letter), evaluated highest band first.
+    bands: tuple[tuple[float, str], ...] = (
+        (90, "A+"), (80, "A"), (70, "B"), (60, "C"), (50, "D"), (0, "F"),
+    )
+
+    def letter_for(self, percent: float | None) -> str | None:
+        if percent is None:
+            return None
+        for threshold, letter in self.bands:
+            if percent >= threshold:
+                return letter
+        return None
+
+
+@dataclass(frozen=True)
+class SchoolPack:
+    """School-specific semantic configuration (plain data + pure label helpers)."""
+
+    slug: str = "studynexs"
+    # Terminology: canonical concept -> the school's display term.
+    class_incharge_term: str = "Class Teacher"       # form tutor / homeroom / etc.
+    teachers_column_label: str = "Teachers"
+    period_terms: dict[str, str] = field(default_factory=lambda: {
+        "term": "Term", "academic_year": "Academic Year",
+    })
+    # Academic structure: how a class LABEL is composed from grade + section. "{grade} {section}"
+    # reproduces the reference school ("Class 10" + "A" -> "Class 10 A"); School B could use
+    # "{grade} · {section}" or swap in "Division".
+    class_label_format: str = "{grade} {section}"
+    grading: GradingScale = field(default_factory=GradingScale)
+    # Role interpretation (which role strings count as staff / admin for display purposes; the
+    # AUTHORITATIVE authorization enforcement stays server-side in P1.1 — the pack never decides
+    # access, it only labels).
+    admin_roles: frozenset[str] = frozenset({"admin", "super_admin"})
+
+    # ── Pure label helpers (deterministic, no I/O) ──────────────────────────────
+
+    def class_label(self, grade: str, section: str) -> str:
+        return self.class_label_format.format(
+            grade=(grade or "").strip(), section=(section or "").strip()
+        ).strip()
+
+    def grade_letter(self, percent: float | None) -> str | None:
+        return self.grading.letter_for(percent)
+
+
+# The production default: current reference-school behaviour, unchanged.
+_STUDYNEXS_PACK = SchoolPack()
+
+# Conceptual test packs (P1.4 §19) — proof that differences are configuration, not code. NOT
+# wired to any production tenant; used only by the 3-school configuration test.
+SCHOOL_A_PACK = SchoolPack(slug="school_a")  # identical to StudyNexs default (proves parity)
+SCHOOL_B_PACK = SchoolPack(
+    slug="school_b",
+    class_incharge_term="Form Tutor",
+    class_label_format="{grade} {section}",  # grade="Grade 2", section="Blue" -> "Grade 2 Blue"
+    period_terms={"term": "Semester", "academic_year": "Academic Year"},
+    grading=GradingScale(bands=((70, "A"), (55, "B"), (40, "C"), (0, "D"))),
+)
+SCHOOL_C_PACK = SchoolPack(
+    slug="school_c",
+    class_incharge_term="Homeroom",
+    class_label_format="{grade}-{section}",  # e.g. "Year 2-A"
+)
+
+_PACKS = {p.slug: p for p in (_STUDYNEXS_PACK, SCHOOL_A_PACK, SCHOOL_B_PACK, SCHOOL_C_PACK)}
+
+
+def get_school_pack(slug: str | None = None) -> SchoolPack:
+    """Return the SchoolPack for a slug; default StudyNexs pack when unknown/unset.
+
+    Today every real tenant uses the default pack (a single production SchoolPack over the
+    current PostgreSQL/services). The lookup is the seam a future onboarding flow would use to
+    assign a pack per school — without touching the universal runtime.
+    """
+    if not slug:
+        return _STUDYNEXS_PACK
+    return _PACKS.get(slug, _STUDYNEXS_PACK)

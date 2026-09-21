@@ -39,6 +39,7 @@ from app.modules.workspace.assistant.resolver import (
     resolve_subject,
     resolve_teacher,
 )
+from app.modules.workspace.assistant.school_pack import get_school_pack
 
 # ── Shared block builders ─────────────────────────────────────────────────────
 
@@ -334,12 +335,13 @@ async def class_roster(
             .order_by(Student.admission_no)
         )
     ).all()
+    _pack = get_school_pack()
     students = [
         {
             "name": name,
             "admission_no": adm,
             "roll_no": roll or "—",
-            "class_label": f"{grade} {section}".strip(),
+            "class_label": _pack.class_label(grade, section),
         }
         for name, adm, roll, grade, section in rows
     ]
@@ -477,7 +479,7 @@ async def low_attendance_students(
                 {
                     "name": name,
                     "admission_no": adm,
-                    "class_label": f"{grade} {section}".strip(),
+                    "class_label": get_school_pack().class_label(grade, section),
                     "attendance_percent": pct,
                 }
             )
@@ -523,10 +525,13 @@ async def teachers_for_class(
         class_ids = [c.id for c in res.candidates]
         class_label = ", ".join(c.label for c in res.candidates)
 
+    pack = get_school_pack()
+    incharge_term = pack.class_incharge_term  # SchoolPack terminology (default "Class Teacher")
+
     rows: list[dict[str, Any]] = []
     seen: set[tuple[str, str, str]] = set()
 
-    # 1) Class incharges (homeroom / "Class Teacher") — Class.class_incharge_id.
+    # 1) Class incharges (the school's "class teacher" role) — Class.class_incharge_id.
     incharge_q = (
         select(User.full_name, Class.grade, Class.section)
         .join(Class, Class.class_incharge_id == User.id)
@@ -535,12 +540,12 @@ async def teachers_for_class(
     if class_ids:
         incharge_q = incharge_q.where(Class.id.in_(class_ids))
     for full_name, grade, section in (await db.execute(incharge_q)).all():
-        label = f"{grade} {section}".strip()
-        key = (full_name, "Class Teacher", label)
+        label = pack.class_label(grade, section)
+        key = (full_name, incharge_term, label)
         if key in seen:
             continue
         seen.add(key)
-        rows.append({"name": full_name, "role": "Class Teacher", "class_label": label})
+        rows.append({"name": full_name, "role": incharge_term, "class_label": label})
 
     # 2) Subject teachers — TeacherSubjectMapping.
     subject_q = (
@@ -553,14 +558,14 @@ async def teachers_for_class(
     if class_ids:
         subject_q = subject_q.where(TeacherSubjectMapping.class_id.in_(class_ids))
     for full_name, subject_name, grade, section in (await db.execute(subject_q)).all():
-        label = f"{grade} {section}".strip()
+        label = pack.class_label(grade, section)
         key = (full_name, subject_name, label)
         if key in seen:
             continue
         seen.add(key)
         rows.append({"name": full_name, "role": subject_name, "class_label": label})
 
-    rows.sort(key=lambda r: (r["class_label"], r["role"] != "Class Teacher", r["name"]))
+    rows.sort(key=lambda r: (r["class_label"], r["role"] != incharge_term, r["name"]))
     scope = f" for {class_label}" if class_label else ""
     return {
         "kind": "table",
@@ -595,9 +600,10 @@ async def teacher_assignments(
         return _clarify_block(res, "teacher")
 
     teacher = res.one
+    pack = get_school_pack()
     rows: list[dict[str, Any]] = []
 
-    # Homeroom classes.
+    # Homeroom / class-incharge classes (school's term).
     for grade, section in (
         await db.execute(
             select(Class.grade, Class.section).where(
@@ -606,7 +612,8 @@ async def teacher_assignments(
         )
     ).all():
         rows.append(
-            {"subject": "Class Teacher (homeroom)", "class_label": f"{grade} {section}".strip()}
+            {"subject": f"{pack.class_incharge_term} (homeroom)",
+             "class_label": pack.class_label(grade, section)}
         )
 
     # Subject assignments.
@@ -621,7 +628,7 @@ async def teacher_assignments(
             )
         )
     ).all():
-        rows.append({"subject": subject_name, "class_label": f"{grade} {section}".strip()})
+        rows.append({"subject": subject_name, "class_label": pack.class_label(grade, section)})
 
     rows.sort(key=lambda r: (r["class_label"], r["subject"]))
     return {
