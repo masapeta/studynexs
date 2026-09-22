@@ -68,7 +68,12 @@ class Resolution:
 
 
 def _class_label(grade: str, section: str) -> str:
-    return f"{grade} {section}".strip()
+    # Display label follows the active SchoolPack (§6). Canonical identity stays the class id;
+    # class-token matching normalizes formatting away, so a non-default label format still
+    # resolves. Import here to avoid a module-load cycle (resolver <-> school_pack consumers).
+    from app.modules.workspace.assistant.school_pack import get_school_pack
+
+    return get_school_pack().class_label(grade, section)
 
 
 async def resolve_student(

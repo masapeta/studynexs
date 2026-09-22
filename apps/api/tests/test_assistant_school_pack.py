@@ -77,10 +77,10 @@ def test_school_b_terminology_and_grading_differ_by_config():
 
 def test_school_c_class_label_format_differs_by_config():
     assert SCHOOL_C_PACK.class_incharge_term == "Homeroom"
-    assert SCHOOL_C_PACK.class_label("Year 2", "A") == "Year 2-A"
+    assert SCHOOL_C_PACK.class_label("Year 2", "A") == "Year 2 / Div A"
     # Same inputs, three schools, three different labels/terms -> configuration, not code.
     assert get_school_pack().class_label("Class 10", "A") == "Class 10 A"
-    assert SCHOOL_C_PACK.class_label("Class 10", "A") == "Class 10-A"
+    assert SCHOOL_C_PACK.class_label("Class 10", "A") == "Class 10 / Div A"
 
 
 def test_all_test_packs_are_the_same_type_and_pure_data():

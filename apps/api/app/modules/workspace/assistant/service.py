@@ -120,6 +120,24 @@ class AssistantService:
         text: str,
         session_id: uuid.UUID | None,
     ) -> dict[str, Any]:
+        # Bind the active SchoolPack for this turn from the authenticated tenant (spec §23:
+        # blind — the runtime never receives "School B uses Form Tutor"; it reads semantics
+        # from the pack the tenant maps to). Real tenants map to the default, so behaviour is
+        # unchanged. The whole turn runs inside this scope so every get_school_pack() reads it.
+        from app.modules.workspace.assistant.school_pack import pack_for_tenant, use_school_pack
+
+        with use_school_pack(pack_for_tenant(getattr(current_user, "tenant_slug", None))):
+            return await self._handle_turn(
+                current_user=current_user, text=text, session_id=session_id
+            )
+
+    async def _handle_turn(
+        self,
+        *,
+        current_user: CurrentUser,
+        text: str,
+        session_id: uuid.UUID | None,
+    ) -> dict[str, Any]:
         school_id = uuid.UUID(current_user.school_id)
         user_id = uuid.UUID(current_user.id)
         role = current_user.role
@@ -426,9 +444,13 @@ class AssistantService:
         if trace is not None:
             trace["operations"] = result.trace_ops
 
+        from app.modules.workspace.assistant.school_pack import get_school_pack
+
+        _pack = get_school_pack()
         pretty = {
             "class_label": "Class", "student_count": "Students", "attendance_pct": "Attendance %",
-            "class_teacher": "Class Teacher", "subject_teachers": "Teachers", "name": "Student",
+            "class_teacher": _pack.class_incharge_term,
+            "subject_teachers": _pack.teachers_column_label, "name": "Student",
             "admission_no": "Admission no", "fee_due": "Fee due", "exam_average": "Exam avg %",
         }
         col_fmt = {"attendance_pct": "percent", "fee_due": "money", "exam_average": "percent"}

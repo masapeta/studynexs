@@ -34,6 +34,7 @@ from app.db.models.fee import StudentFeeRecord
 from app.db.models.student import Student
 from app.db.models.user import User
 from app.modules.workspace.assistant.resolver import resolve_class
+from app.modules.workspace.assistant.school_pack import get_school_pack
 from app.modules.workspace.assistant.temporal import DateRange
 
 MAX_OPERATIONS = 8
@@ -215,10 +216,11 @@ async def _classes_overview(
             ).all()
         )
 
+    pack = get_school_pack()
     return [
         {
             "class_id": str(c.id),
-            "class_label": f"{c.grade} {c.section}".strip(),
+            "class_label": pack.class_label(c.grade, c.section),
             "student_count": counts.get(c.id, 0),
             "attendance_pct": att_map.get(c.id),
             "class_teacher": names.get(c.class_incharge_id) if c.class_incharge_id else None,
@@ -247,12 +249,13 @@ async def _class_students(
             .order_by(Student.admission_no)
         )
     ).all()
+    pack = get_school_pack()
     return [
         {
             "student_id": str(sid),
             "name": name,
             "admission_no": adm,
-            "class_label": f"{grade} {section}".strip(),
+            "class_label": pack.class_label(grade, section),
         }
         for sid, name, adm, grade, section in rows
     ]
@@ -278,12 +281,13 @@ async def _students_overview(
             .limit(MAX_SOURCE_ROWS)
         )
     ).all()
+    pack = get_school_pack()
     return [
         {
             "student_id": str(sid),
             "name": name,
             "admission_no": adm,
-            "class_label": f"{grade} {section}".strip(),
+            "class_label": pack.class_label(grade, section),
         }
         for sid, name, adm, grade, section in rows
     ]

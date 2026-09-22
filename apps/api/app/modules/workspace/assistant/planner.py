@@ -101,12 +101,28 @@ def _catalog_text(tools: list[AssistantTool]) -> str:
     return "\n".join(lines)
 
 
+def _school_terms() -> str:
+    """The ACTIVE school's own terminology, so the planner resolves that school's words to the
+    universal concept without any globally-hardcoded synonym list (spec §4). Blind: the term
+    comes from the tenant's SchoolPack, not from the user's message."""
+    from app.modules.workspace.assistant.school_pack import get_school_pack
+
+    pack = get_school_pack()
+    return (
+        "THIS SCHOOL'S TERMINOLOGY (resolve these words to the universal concept; other\n"
+        "schools may use different words — do not assume synonyms beyond this list):\n"
+        f"  the teacher responsible for a class (class incharge) is called "
+        f'"{pack.class_incharge_term}".\n\n'
+    )
+
+
 def _system_prompt(tools: list[AssistantTool]) -> str:
     return (
         "You are the routing planner for StudyNexs, a school operations assistant.\n"
         "First CLASSIFY the request into a route, then decide the action. You do NOT\n"
         "answer with data yourself; you pick a governed tool, navigate, retrieve a\n"
         "document, or clarify.\n\n"
+        f"{_school_terms()}"
         "Routes:\n"
         "- STRUCTURED: live ERP data (students, attendance, fees, teachers, classes).\n"
         "- DOCUMENT: school policy / handbook / rules knowledge (unstructured docs).\n"
@@ -126,7 +142,7 @@ def _system_prompt(tools: list[AssistantTool]) -> str:
         "COMPOSITION (action='compose', route='STRUCTURED') — for questions that combine\n"
         "class/student metrics, e.g. 'classes below 75% attendance and their teachers',\n"
         "'students in 8A with attendance < 75% and fee dues > 10000', 'each class with\n"
-        "student count, attendance and class teacher', 'top 5 students by fee due'.\n"
+        "student count, attendance and class incharge', 'top 5 students by fee due'.\n"
         "Set plan = an object with 'operations' (each: id, capability, depends_on[], params,\n"
         "filters[]) and 'output' (columns[], sort_field, sort_desc, limit, type).\n"
         "Composition capabilities:\n"
