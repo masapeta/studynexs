@@ -16,7 +16,7 @@ from datetime import date
 from typing import Any
 
 from fastapi import HTTPException
-from sqlalchemy import case, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.authorization import assert_can_access_student
@@ -175,6 +175,11 @@ async def student_attendance(
         school_id, entity.id, start=start, end=end
     )
     total = summary["total"]
+    # Re-score the raw status counts under the active school's attendance policy (§4/§5),
+    # rather than the service's fixed convention, so a school's denominator/credit rule applies.
+    pct = get_school_pack().attendance_percentage(
+        {k: summary.get(k, 0) for k in ("present", "late", "half_day", "absent")}
+    )
     scope = f" ({rng.label})" if rng and not rng.is_all_time else ""
 
     if total == 0:
@@ -197,7 +202,7 @@ async def student_attendance(
         "subtitle": entity.label,
         "source": "Attendance System",
         "metrics": [
-            {"label": "Attendance", "value": summary["percentage"], "format": "percent"},
+            {"label": "Attendance", "value": pct, "format": "percent"},
             {"label": "Present", "value": summary["present"]},
             {"label": "Absent", "value": summary["absent"]},
             {"label": "Days recorded", "value": total},
@@ -383,8 +388,10 @@ async def class_attendance_today(
         return denied
     summary = await AttendanceService(db).get_summary(school_id, cls.id, date.today())
     total = summary["total"]
-    credited = summary["present"] + summary["late"] + summary["half_day"]
-    pct = round(credited / total * 100, 1) if total else None
+    # School-configured denominator/credit policy scores the raw status counts (§4/§5).
+    pct = get_school_pack().attendance_percentage(
+        {k: summary.get(k, 0) for k in ("present", "late", "half_day", "absent")}
+    )
     if total == 0:
         return {
             "kind": "metrics",
@@ -442,13 +449,8 @@ async def low_attendance_students(
                 return _denied_block("class")
             class_filter_ids = list(permitted)
 
-    # Aggregate per-student attendance across all recorded days.
-    credited_expr = func.sum(
-        case(
-            (Attendance.status.in_(["present", "late", "half_day"]), 1),
-            else_=0,
-        )
-    )
+    # Aggregate per-student, per-STATUS counts (one bounded query), then let the active
+    # school's attendance policy score them (§4/§5) — no fixed credited/denominator here.
     q = (
         select(
             Student.id,
@@ -456,30 +458,39 @@ async def low_attendance_students(
             Student.admission_no,
             Class.grade,
             Class.section,
-            func.count(Attendance.id).label("total"),
-            credited_expr.label("credited"),
+            Attendance.status,
+            func.count(Attendance.id).label("n"),
         )
         .join(User, User.id == Student.user_id)
         .join(Class, Class.id == Student.class_id)
         .join(Attendance, Attendance.student_id == Student.id)
         .where(Student.school_id == school_id)
-        .group_by(Student.id, User.full_name, Student.admission_no, Class.grade, Class.section)
+        .group_by(
+            Student.id, User.full_name, Student.admission_no,
+            Class.grade, Class.section, Attendance.status,
+        )
     )
     if class_filter_ids:
         q = q.where(Student.class_id.in_(class_filter_ids))
 
-    rows = (await db.execute(q)).all()
+    pack = get_school_pack()
+    by_student: dict[uuid.UUID, dict[str, Any]] = {}
+    for sid, name, adm, grade, section, status, n in (await db.execute(q)).all():
+        rec = by_student.setdefault(
+            sid, {"name": name, "adm": adm, "grade": grade, "section": section, "counts": {}}
+        )
+        key = status.value if hasattr(status, "value") else str(status)
+        rec["counts"][key] = rec["counts"].get(key, 0) + int(n)
+
     students = []
-    for _sid, name, adm, grade, section, total, credited_count in rows:
-        if not total:
-            continue
-        pct = round((credited_count or 0) / total * 100, 1)
-        if pct < threshold:
+    for rec in by_student.values():
+        pct = pack.attendance_percentage(rec["counts"])
+        if pct is not None and pct < threshold:
             students.append(
                 {
-                    "name": name,
-                    "admission_no": adm,
-                    "class_label": get_school_pack().class_label(grade, section),
+                    "name": rec["name"],
+                    "admission_no": rec["adm"],
+                    "class_label": pack.class_label(rec["grade"], rec["section"]),
                     "attendance_percent": pct,
                 }
             )
