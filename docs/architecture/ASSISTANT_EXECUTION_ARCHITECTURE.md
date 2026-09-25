@@ -1,7 +1,7 @@
 # Assistant Execution Architecture — Design of Record
 
-- **Status:** Accepted (design), Implementation in progress (Phase 3 landed)
-- **Version:** 1.1
+- **Status:** Accepted (design), Implementation in progress (Phases 3–4 landed)
+- **Version:** 1.2
 - **Date:** 2026-09-26
 - **Owner:** Avinash Reddy Masapeta (ARM)
 - **Subsystem:** Workspace Assistant (`app/modules/workspace/assistant`)
@@ -101,7 +101,7 @@ Dispatch (in `AssistantService._handle_turn`) is a single `if decision.action ==
 | `navigate` | nav block | ✅ real |
 | `clarify` | guide block | ✅ real |
 | `act` | `_action_not_supported` | 🔲 stub — Action boundary lands here |
-| *workflow* | — | 🔲 not present — Workflow boundary is the new seam |
+| `workflow` | `_run_workflow` → executor → registry | ✅ real (Phase 4; QP first consumer) |
 
 **Design consequence:** Workflow is added as a **new classification** feeding a **generic workflow boundary**, and Action replaces the `act` stub. Neither introduces a QP-specific branch (§5).
 
@@ -189,6 +189,17 @@ Module `app/modules/workspace/workflows/` — a **contract + lifecycle model onl
 | Lesson Plan | TBD | maybe | maybe | low/medium | ✅ representable |
 | Remediation | potentially agentic | maybe | maybe | high | ✅ `execution_mode=agentic` reserved |
 | Parent Intervention | deterministic + action | yes | maybe | medium | ✅ workflow + Action (Phase 8) |
+
+### 5.6 What Phase 4 wired (Question Paper — first consumer)
+
+The generic pattern now runs end to end for QP, with **no QP-specific router** and **no rewrite** of QP logic:
+
+- **`PlannerDecision`** gained the minimum: a `WORKFLOW` route, a `workflow` action, and a `workflow_id` field. A workflow is **not** overloaded onto `tool` (it is not a capability). `PlannerDecision` remains the only semantic model.
+- **Gemma** learned the `WORKFLOW` route semantically (paraphrase-based, not keyword-matched): "create/prepare/generate a test/exam/question paper for a class & subject" → `workflow_id="question_paper"` + params (`class_label`, `subject`, `total_marks`, `topics`).
+- **JEV** exposes each registered workflow as a namespaced bounded Choice option (`workflow:<id>`); a confident workflow choice maps to the same canonical workflow decision. Follow-ups still route to Gemma (unchanged carry-over). Confidence gate unchanged.
+- **Dispatch:** `AssistantService._run_workflow` → `workflows.executor.run_workflow` — the **single controlled workflow-resolution path** (`app/modules/workspace/workflows/executor.py`). It resolves class/subject via the existing assistant resolver, authorizes via the existing `get_staff_scope` + `assert_qp_generate` (JEV/Gemma selecting the workflow grants nothing), finds the newest **APPROVED** CurriculumPack, enforces the existing monthly credit cap, and calls the existing `generate_paper`. Returns a `kind="workflow"` structured block reporting `workflow_state=waiting_for_approval` alongside the authoritative domain `paper_status=draft`.
+- **HITL preserved:** the executor never approves. The result block's actions point at the existing server-side `/submit` and `/approve` endpoints. A model cannot approve a paper.
+- **Failure/clarify:** unknown workflow → guide; missing/ambiguous class or subject → clarify; no approved pack → guide; generation failure → `WorkflowError` → safe guide. No partial state.
 
 ---
 

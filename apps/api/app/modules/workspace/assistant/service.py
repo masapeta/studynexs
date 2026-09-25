@@ -244,6 +244,7 @@ class AssistantService:
             "param_provenance": derive_trace.get("param_provenance"),
             "derivation_path": derive_trace.get("derivation_path"),
             "planner_meta": planner_meta,
+            "workflow_id": decision.workflow_id,
         }
 
         if decision.action == "tool":
@@ -266,6 +267,8 @@ class AssistantService:
             block = await self._run_document(
                 school_id, decision.document_query or decision.message or text
             )
+        elif decision.action == "workflow":
+            block = await self._run_workflow(current_user, decision, trace=trace)
         elif decision.action == "act":
             block = self._action_not_supported(decision)
         elif decision.action == "navigate" and decision.navigate_to in NAV_TARGETS:
@@ -587,6 +590,31 @@ class AssistantService:
                 "so I don't give you the wrong figure."
             ),
         }
+
+    async def _run_workflow(
+        self, current_user: CurrentUser, decision: Any, *, trace: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Route a first-class workflow through the single controlled executor (Phase 4).
+
+        The executor reuses the existing governed domain services (QP generation, staff-scope
+        authorization, credit cap, approved-pack lookup) and returns a UI-independent block. A
+        workflow failure degrades to a safe guide block rather than crashing the turn.
+        """
+        from app.modules.workspace.workflows.executor import WorkflowError, run_workflow
+
+        trace["workflow_id"] = decision.workflow_id
+        try:
+            block = await run_workflow(
+                self.db,
+                current_user,
+                workflow_id=decision.workflow_id,
+                params=decision.params,
+            )
+        except WorkflowError as exc:
+            trace["workflow_state"] = exc.state.value
+            return {"kind": "guide", "title": "Couldn't complete that", "message": exc.message}
+        trace["workflow_state"] = block.get("workflow_state")
+        return block
 
     def _action_not_supported(self, decision: Any) -> dict[str, Any]:
         """ACTION route recognized but writes require explicit confirmation (spec §21)."""

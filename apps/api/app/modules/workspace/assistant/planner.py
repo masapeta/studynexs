@@ -52,13 +52,19 @@ class TemporalIntent(BaseModel):
 class PlannerDecision(BaseModel):
     # route classifies the execution domain (spec §2); action is what to do within it.
     route: Literal[
-        "STRUCTURED", "DOCUMENT", "MIXED", "ACTION", "CLARIFICATION", "NAVIGATE"
+        "STRUCTURED", "DOCUMENT", "MIXED", "ACTION", "CLARIFICATION", "NAVIGATE", "WORKFLOW"
     ] = "STRUCTURED"
-    action: Literal["tool", "navigate", "clarify", "document", "mixed", "act", "compose"]
+    action: Literal[
+        "tool", "navigate", "clarify", "document", "mixed", "act", "compose", "workflow"
+    ]
     tool: str | None = None
     params: dict[str, Any] = Field(default_factory=dict)
     navigate_to: str | None = None
     message: str | None = None
+    # For action='workflow': the WorkflowRegistry id (e.g. "question_paper"). The one canonical
+    # way to identify a first-class workflow — NOT overloaded onto `tool` (a workflow is not a
+    # capability). Resolved through the single workflow-resolution path in the service.
+    workflow_id: str | None = None
     # For MIXED: the document topic to retrieve after the structured step runs.
     document_query: str | None = None
     # For action='compose': a multi-operation plan (Phase 4). Validated before execution.
@@ -130,6 +136,10 @@ def _system_prompt(tools: list[AssistantTool]) -> str:
         "  attendance policy threshold?'). Set tool+params for the data step AND\n"
         "  document_query for the policy step.\n"
         "- ACTION: the user asks to CHANGE data (mark absent, record payment, assign).\n"
+        "- WORKFLOW: the user asks to PRODUCE a multi-step academic artifact — currently a\n"
+        "  QUESTION PAPER / test paper / exam paper / assessment. Any phrasing that means\n"
+        "  'create/generate/prepare/make a question paper (or test/exam paper) for a class &\n"
+        "  subject' is WORKFLOW, not a data lookup. Set workflow_id + params (see WORKFLOWS).\n"
         "- NAVIGATE: user just wants to open a section.\n"
         "- CLARIFICATION: unclear/unsupported.\n\n"
         "Available tools (STRUCTURED / the data step of MIXED):\n"
@@ -138,7 +148,15 @@ def _system_prompt(tools: list[AssistantTool]) -> str:
         f"{', '.join(NAV_TARGETS)}\n\n"
         "Action field by route: STRUCTURED->'tool' for a SINGLE capability, or 'compose'\n"
         "for a question needing MULTIPLE capabilities combined; DOCUMENT->'document';\n"
-        "MIXED->'mixed'; ACTION->'act'; NAVIGATE->'navigate'; CLARIFICATION->'clarify'.\n\n"
+        "MIXED->'mixed'; ACTION->'act'; WORKFLOW->'workflow'; NAVIGATE->'navigate';\n"
+        "CLARIFICATION->'clarify'.\n\n"
+        "WORKFLOW (action='workflow', route='WORKFLOW') — for producing a question paper.\n"
+        "Set workflow_id='question_paper' and params with what the user gave: class_label\n"
+        "(e.g. '8', '8A', 'Class 8'), subject (verbatim, e.g. 'Science', 'Mathematics'),\n"
+        "total_marks (int, if a mark total is stated e.g. '50 marks'), topics (list, if named).\n"
+        "Recognise paraphrases: 'create a test paper', 'prepare an exam paper', 'generate a\n"
+        "Class 8 Science paper', 'make a question paper from the curriculum', 'prepare a\n"
+        "50-mark assessment'. Do NOT treat these as a data lookup or a capability.\n\n"
         "COMPOSITION (action='compose', route='STRUCTURED') — for questions that combine\n"
         "class/student metrics, e.g. 'classes below 75% attendance and their teachers',\n"
         "'students in 8A with attendance < 75% and fee dues > 10000', 'each class with\n"
@@ -208,8 +226,8 @@ def _system_prompt(tools: list[AssistantTool]) -> str:
         "- For DOCUMENT/MIXED set document_query to a SHORT topic phrase (e.g. "
         "'attendance policy'), NOT the full question. Keep message under 12 words.\n"
         "- Respond with ONLY a compact JSON object (no code fences, no prose) with keys:\n"
-        "  route, action, tool, params, navigate_to, message, document_query, temporal,\n"
-        "  operation, metric. Keep it short.\n"
+        "  route, action, tool, workflow_id, params, navigate_to, message, document_query,\n"
+        "  temporal, operation, metric. Keep it short.\n"
         "- Never invent data or fields. Never include commentary outside the JSON."
     )
 

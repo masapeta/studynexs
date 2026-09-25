@@ -65,10 +65,19 @@ _RELATIVE_PHRASES = {
 
 def _cap_criteria(tools: list[AssistantTool]) -> dict[str, str]:
     """Capability options for the JEV Choice, from the live catalog (first sentence of each
-    tool description; no per-question tuning)."""
+    tool description; no per-question tuning). Registered workflows are added as bounded options
+    so JEV can route a workflow request (e.g. a question paper) as a first-class choice."""
     crit = {t.name: (t.description.split(".")[0][:120] or t.name) for t in tools}
+    from app.modules.workspace.workflows.registry import list_workflows
+
+    for wf in list_workflows():
+        crit[f"{_WORKFLOW_PREFIX}{wf.workflow_id}"] = wf.description[:120]
     crit["unsupported"] = "The request is not answerable by any capability above"
     return crit
+
+
+# JEV choice keys for workflows are namespaced so they never collide with capability names.
+_WORKFLOW_PREFIX = "workflow:"
 
 
 def _presence_for(category: str | None) -> str:
@@ -210,6 +219,8 @@ def jev_decision_to_plan(
     from app.modules.workspace.assistant.tools import get_tool
 
     cap = decision.get("capability")
+    if isinstance(cap, str) and cap.startswith(_WORKFLOW_PREFIX):
+        return _jev_workflow_to_plan(cap[len(_WORKFLOW_PREFIX):], text)
     if not cap or cap == "unsupported" or cap not in {t.name for t in tools}:
         return PlannerDecision(action="clarify", message=None)
     tool = get_tool(cap)
@@ -221,6 +232,31 @@ def jev_decision_to_plan(
         tool=cap,
         params=params,
         temporal=TemporalIntent(presence=presence, time=params.get("time")),
+    )
+
+
+def _jev_workflow_to_plan(workflow_id: str, text: str) -> PlannerDecision:
+    """Build a workflow PlannerDecision from a JEV workflow choice + deterministic params.
+
+    Params are extracted with the SAME deterministic extractors used for capabilities (class
+    span, subject aliases, mark total). Downstream the executor resolves and authorizes every
+    value; a missing param defers to an honest clarify, never a fabricated one."""
+    from app.modules.workspace.assistant.resolver import _SUBJECT_ALIASES
+
+    params: dict[str, Any] = {}
+    label = _extract_class_label(text)
+    if label:
+        params["class_label"] = label
+    low = text.lower()
+    for alias, canonical in _SUBJECT_ALIASES.items():
+        if re.search(rf"\b{re.escape(alias)}\b", low):
+            params["subject"] = canonical
+            break
+    marks = re.search(r"(\d{1,3})\s*(?:marks?|mark)\b", low)
+    if marks:
+        params["total_marks"] = int(marks.group(1))
+    return PlannerDecision(
+        route="WORKFLOW", action="workflow", workflow_id=workflow_id, params=params
     )
 
 
@@ -272,7 +308,8 @@ async def plan_hybrid(
     jev = await jev_decide(text, tools)
     if jev is not None and (jev.get("confidence") or 0.0) >= threshold:
         cap = jev.get("capability")
-        if cap and cap != "unsupported" and cap in {t.name for t in tools}:
+        is_workflow = isinstance(cap, str) and cap.startswith(_WORKFLOW_PREFIX)
+        if cap and cap != "unsupported" and (is_workflow or cap in {t.name for t in tools}):
             decision = jev_decision_to_plan(jev, text, tools)
             return decision, {
                 "planner": "jev", "fallback": False,
