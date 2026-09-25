@@ -47,8 +47,11 @@ _ENRICHERS = {
 }
 _ALL_CAPS = _SOURCES | _ENRICHERS | {"filter"}
 
-# Capabilities that reflect only the PRESENT relationship/state (no effective-dated history).
-# A PAST temporal token on any of these can't be answered — block, never substitute (P0, §11).
+# Composition sources/enrichers that reflect only the PRESENT relationship/state (no
+# effective-dated history). A PAST temporal token on any of these can't be answered — block,
+# never substitute (P0, §11). These are the composition DAG's OWN capabilities (not the 16
+# governed tools), so they have no CapabilityContract; this set is their single, local source
+# of temporal semantics — deliberately NOT derived from CAPABILITY_CONTRACTS (spec Part 1 §4).
 _CURRENT_STATE_CAPS = {
     "classes_overview", "class_students", "students_overview", "enrich_class_teacher",
 }

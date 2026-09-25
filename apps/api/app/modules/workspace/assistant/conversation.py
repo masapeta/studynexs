@@ -23,6 +23,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+# Capability -> semantic domain and accepted entity params are DERIVED from the capability
+# contract (single source of truth); carry-over keeps no parallel maps (spec Part 1 §1, §3).
+from app.modules.workspace.assistant.contracts import (
+    domain_for_capability,
+    entity_param_keys,
+    get_contract,
+)
+
 
 @dataclass
 class ConversationSemanticState:
@@ -72,51 +80,13 @@ class ConversationSemanticState:
         )
 
 
-# Capability -> the semantic domain it belongs to. Used to decide when a follow-up stays
-# in the same domain (inherit temporal/entity) vs. switches domain (drop stale dimensions).
-_CAPABILITY_DOMAIN = {
-    "student_attendance": "attendance",
-    "class_attendance_today": "attendance",
-    "low_attendance_students": "attendance",
-    "fee_collection": "fees",
-    "fee_collection_period": "fees",
-    "students_fee_pending_over": "fees",
-    "student_fees": "fees",
-    "student_marks": "exams",
-    "class_results": "exams",
-    "subject_toppers": "exams",
-    "student_profile": "students",
-    "class_roster": "students",
-    "teachers_for_class": "teachers",
-    "teacher_assignments": "teachers",
-    "staff_directory": "staff",
-    "school_overview": "overview",
-}
-
 # Entity keys that identify "who/what" a turn is about — eligible for inheritance.
 _ENTITY_KEYS = ("student", "student_id", "class_label", "class", "teacher", "teacher_id")
 
-# Which entity keys each capability actually accepts — so we never inject a per-student
-# entity into a school-wide capability (e.g. fee_collection_period takes no student).
-_CAPABILITY_ENTITY_PARAMS = {
-    "student_attendance": {"student", "student_id"},
-    "student_profile": {"student", "student_id"},
-    "student_fees": {"student", "student_id"},
-    "student_marks": {"student", "student_id"},
-    "class_roster": {"class_label", "class"},
-    "class_attendance_today": {"class_label", "class"},
-    "class_results": {"class_label", "class"},
-    "subject_toppers": {"class_label", "class"},
-    "low_attendance_students": {"class_label", "class"},
-    "students_fee_pending_over": {"class_label", "class"},
-    "teachers_for_class": {"class_label", "class"},
-    "teacher_assignments": {"teacher", "teacher_id"},
-    # fee_collection / fee_collection_period / school_overview / staff_directory: no entity.
-}
 
-
-def domain_for_capability(capability: str | None) -> str | None:
-    return _CAPABILITY_DOMAIN.get(capability or "")
+def _accepted_entity_params(capability: str | None) -> frozenset[str]:
+    """Which entity keys a capability accepts, derived from its contract params."""
+    return entity_param_keys(get_contract(capability))
 
 
 def state_from_decision(decision: Any) -> ConversationSemanticState:
@@ -200,7 +170,7 @@ def merge_follow_up(
     #    but only into a capability that ACCEPTS that entity param (never inject a student
     #    into a school-wide tool like fee_collection_period). Domains must be compatible.
     _entity_domains = {"fees", "exams", "attendance", "students"}
-    accepted = _CAPABILITY_ENTITY_PARAMS.get(getattr(decision, "tool", "") or "", set())
+    accepted = _accepted_entity_params(getattr(decision, "tool", None))
     if not new_has_entity and prev.entities and accepted and (
         same_domain or new_domain in _entity_domains
     ):

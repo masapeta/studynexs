@@ -252,6 +252,65 @@ def get_contract(name: str | None) -> CapabilityContract | None:
     return CAPABILITY_CONTRACTS.get(name or "")
 
 
+# ── Derived semantic views (contract = single source of truth) ──────────────────
+# Consumers (conversation carry-over, composition, planner) read these instead of keeping
+# their own parallel maps. One definition (the contract) -> many consumers.
+
+# Canonical entity type -> the coarser conversational DOMAIN grouping. This is the ONLY place
+# the grouping lives; it is deliberately coarser than `entity` (exam_result -> "exams",
+# school -> "overview") because a follow-up "domain" spans several entities of a topic.
+_ENTITY_DOMAIN: dict[str, str] = {
+    "attendance": "attendance",
+    "fee": "fees",
+    "exam_result": "exams",
+    "student": "students",
+    "teacher": "teachers",
+    "staff": "staff",
+    "school": "overview",
+}
+
+# An entity-typed param may be addressed by more than one param key in practice (a resolver
+# may fill `student` or `student_id`). This alias table is the single place that mapping lives.
+ENTITY_PARAM_ALIASES: dict[str, frozenset[str]] = {
+    "student": frozenset({"student", "student_id"}),
+    "class": frozenset({"class_label", "class"}),
+    "teacher": frozenset({"teacher", "teacher_id"}),
+}
+
+
+def domain_for_entity(entity: str | None) -> str | None:
+    """The conversational domain a capability belongs to, derived from its contract entity."""
+    return _ENTITY_DOMAIN.get(entity or "")
+
+
+def domain_for_capability(name: str | None) -> str | None:
+    """The conversational domain of a capability, via its contract (no per-capability map)."""
+    c = get_contract(name)
+    return domain_for_entity(c.entity) if c else None
+
+
+def entity_param_keys(contract: CapabilityContract | None) -> frozenset[str]:
+    """Param keys that identify the 'who/what' of a capability, derived from its contract.
+
+    Expands each entity-typed param (student/class/teacher) to its accepted key aliases, so
+    conversational carry-over never injects an entity into a capability that doesn't take one.
+    """
+    if contract is None:
+        return frozenset()
+    keys: set[str] = set()
+    for p in contract.params.values():
+        alias = ENTITY_PARAM_ALIASES.get(p.type)
+        if alias:
+            keys |= alias
+    return frozenset(keys)
+
+
+def is_current_state(name: str | None) -> bool:
+    """Whether a governed capability reflects only the present state (no history), from contract."""
+    c = get_contract(name)
+    return bool(c and c.temporal_mode == "current_state")
+
+
 # ── Fail-fast validation (§16, §17) ────────────────────────────────────────────
 
 
@@ -260,15 +319,26 @@ class ContractError(Exception):
 
 
 def validate_registries() -> None:
-    """Validate contracts + relationships; raise ContractError on any structural problem.
+    """Validate contracts + relationships and detect SEMANTIC DRIFT against the tool catalog.
 
-    Also cross-checks against the tool catalog: every contract maps to a real tool and the
-    contract's temporal_mode matches the tool's (single source of truth for P0.1). Called at
-    import time and in tests so bad metadata fails before a production query.
+    The contract is the single semantic source of truth; the tool catalog is its runtime
+    adapter (handler + planner-facing prose). This checks the two never diverge silently:
+      - every contract maps to a real tool AND every tool has a contract (no orphans);
+      - tool param KEYS == contract param names (a param added to one but not the other);
+      - the contract entity has a conversational domain (so carry-over can derive it);
+      - scope/temporal/source/derive metadata is structurally valid.
+    (temporal_mode is no longer duplicated on the tool — it is a property reading the contract,
+    so an equality check would be tautological; drift is prevented at the source instead.)
+    Called at import time and in tests so bad metadata fails before a production query.
     """
     from app.modules.workspace.assistant.tools import ASSISTANT_TOOLS
 
     tool_by_name = {t.name: t for t in ASSISTANT_TOOLS}
+
+    # Every runtime tool must have a semantic contract (drift: a capability with no source).
+    for tname in tool_by_name:
+        if tname not in CAPABILITY_CONTRACTS:
+            raise ContractError(f"tool '{tname}' has no capability contract")
 
     for name, c in CAPABILITY_CONTRACTS.items():
         if c.name != name:
@@ -279,12 +349,18 @@ def validate_registries() -> None:
             raise ContractError(f"{name}: bad temporal_mode '{c.temporal_mode}'")
         if c.scope not in _VALID_SCOPE:
             raise ContractError(f"{name}: bad scope '{c.scope}'")
+        if domain_for_entity(c.entity) is None:
+            raise ContractError(f"{name}: entity '{c.entity}' has no conversational domain")
         tool = tool_by_name.get(name)
         if tool is None:
             raise ContractError(f"contract '{name}' has no matching tool")
-        if tool.temporal_mode != c.temporal_mode:
+        # Param-key drift: the planner-facing tool params and the contract params must agree.
+        tool_param_keys = set(tool.params)
+        contract_param_keys = set(c.params)
+        if tool_param_keys != contract_param_keys:
             raise ContractError(
-                f"{name}: temporal_mode '{c.temporal_mode}' != tool '{tool.temporal_mode}'"
+                f"{name}: tool params {sorted(tool_param_keys)} != contract params "
+                f"{sorted(contract_param_keys)}"
             )
         for pname, p in c.params.items():
             if p.name != pname:

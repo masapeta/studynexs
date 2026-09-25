@@ -27,16 +27,26 @@ class AssistantTool:
     description: str
     # JSON-ish param spec shown to the planner: {param: "type — description"}.
     params: dict[str, str]
+    # Coarse catalog gate: which roles even SEE this tool in the planner catalog. This is a
+    # runtime/UI concern, NOT the authoritative authorization — object-level access is enforced
+    # server-side inside each capability (P1.1 _authorize_* + get_staff_scope). Kept here, not
+    # derived from the contract's `scope`, because `scope` is the object-access shape (student/
+    # class/school) while `roles` is which role strings may route to the tool at all.
     roles: frozenset[str]
     handler: ToolHandler
-    # Temporal contract for the historical-honesty guard:
-    #   "event_time"     — filters dated transactional records; PAST ranges are supported
-    #                      (fees, attendance).
-    #   "current_state"  — reflects only the present relationship/state; the ERP has no
-    #                      effective-dated history, so a PAST request cannot be answered
-    #                      (teacher/class assignments, student's class, roster).
-    #   "timeless"       — no temporal dimension (school overview).
-    temporal_mode: str = "timeless"
+
+    @property
+    def temporal_mode(self) -> str:
+        """The temporal contract, read from the single semantic source (CapabilityContract).
+
+        "event_time" (dated records; PAST supported) / "current_state" (present-only; the ERP
+        has no effective-dated history, so PAST is refused) / "timeless" (no time dimension).
+        No longer declared on the tool — that was a duplicate of the contract (spec §1, §2).
+        """
+        from app.modules.workspace.assistant.contracts import get_contract
+
+        c = get_contract(self.name)
+        return c.temporal_mode if c else "timeless"
 
     @property
     def supports_historical(self) -> bool:
@@ -195,7 +205,6 @@ ASSISTANT_TOOLS: tuple[AssistantTool, ...] = (
         },
         roles=_STAFF,
         handler=cap.teachers_for_class,
-        temporal_mode="current_state",
     ),
     AssistantTool(
         name="teacher_assignments",
@@ -209,7 +218,6 @@ ASSISTANT_TOOLS: tuple[AssistantTool, ...] = (
         },
         roles=_STAFF,
         handler=cap.teacher_assignments,
-        temporal_mode="current_state",
     ),
     AssistantTool(
         name="staff_directory",
@@ -234,7 +242,6 @@ ASSISTANT_TOOLS: tuple[AssistantTool, ...] = (
         },
         roles=_STAFF,
         handler=cap.student_attendance,
-        temporal_mode="event_time",
     ),
     AssistantTool(
         name="fee_collection_period",
@@ -246,7 +253,6 @@ ASSISTANT_TOOLS: tuple[AssistantTool, ...] = (
         params={"time": TIME_PARAM_HELP},
         roles=_ADMIN,
         handler=cap.fee_collection_period,
-        temporal_mode="event_time",
     ),
     AssistantTool(
         name="student_profile",
@@ -260,7 +266,6 @@ ASSISTANT_TOOLS: tuple[AssistantTool, ...] = (
         },
         roles=_STAFF,
         handler=cap.student_profile,
-        temporal_mode="current_state",
     ),
     AssistantTool(
         name="student_fees",
@@ -284,7 +289,6 @@ ASSISTANT_TOOLS: tuple[AssistantTool, ...] = (
         },
         roles=_STAFF,
         handler=cap.class_roster,
-        temporal_mode="current_state",
     ),
     AssistantTool(
         name="class_attendance_today",
