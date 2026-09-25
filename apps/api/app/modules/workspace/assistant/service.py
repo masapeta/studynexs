@@ -113,6 +113,27 @@ class AssistantService:
         ).first()
         return row[0] if row else None
 
+    async def _plan(
+        self,
+        text: str,
+        *,
+        tools: Any,
+        history: list[dict[str, str]] | None,
+        prev_state: dict[str, Any] | None,
+    ) -> tuple[Any, dict[str, Any]]:
+        """Dispatch to the configured planner backend (default gemma). Only the planning STAGE
+        varies; the returned PlannerDecision feeds the identical downstream runtime."""
+        from app.core.config import get_settings
+
+        backend = (get_settings().PLANNER_BACKEND or "gemma").lower()
+        if backend in ("jev", "hybrid"):
+            from app.modules.workspace.assistant.jev_planner import plan_hybrid, plan_jev
+
+            fn = plan_jev if backend == "jev" else plan_hybrid
+            return await fn(text, tools=tools, history=history, prev_state=prev_state)
+        decision = await plan(text, tools=tools, history=history, prev_state=prev_state)
+        return decision, {"planner": "gemma"}
+
     async def handle_turn(
         self,
         *,
@@ -157,7 +178,9 @@ class AssistantService:
         history = await self._history(session.id)
         tools = tools_for_role(role)
         prev_state = await self._prev_semantic_state(session.id)
-        decision = await plan(text, tools=tools, history=history[:-1], prev_state=prev_state)
+        decision, planner_meta = await self._plan(
+            text, tools=tools, history=history[:-1], prev_state=prev_state
+        )
 
         # Deterministic conversational carry-over (P1.2): merge unchanged dimensions from the
         # previous turn. This backstops the LLM and GUARANTEES the P0.1 temporal invariant
@@ -220,6 +243,7 @@ class AssistantService:
             "carry_over": merge_trace,
             "param_provenance": derive_trace.get("param_provenance"),
             "derivation_path": derive_trace.get("derivation_path"),
+            "planner_meta": planner_meta,
         }
 
         if decision.action == "tool":

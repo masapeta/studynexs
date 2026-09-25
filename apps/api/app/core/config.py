@@ -247,6 +247,22 @@ class Settings(BaseSettings):
     OLLAMA_VISION_MODEL: str = ""
     OLLAMA_API_KEY: str = ""  # optional — Ollama cloud / authenticated endpoints
     AI_REQUEST_TIMEOUT_SECONDS: float = 120.0
+
+    # ── Assistant planner backend (experimental hybrid; default keeps Gemma) ──────
+    # gemma  = the current LLM planner (unchanged default).
+    # jev    = TypeSafe System One bounded-decision model for capability/temporal, with
+    #          deterministic param extraction downstream.
+    # hybrid = JEV first; fall back to Gemma when JEV capability confidence is below the
+    #          threshold. Only the planning STAGE changes — the deterministic runtime
+    #          (resolver/derivation/temporal integrity/authorization/composition) is untouched.
+    PLANNER_BACKEND: str = "gemma"
+    # Frozen from dev-set calibration (benchmark_jev_planner, 3 reps): the 0.90-0.94 confidence
+    # bucket was only ~67% accurate (a close-capability confusion) while >=0.95 was 100%, so 0.95
+    # is the safe gate — 0% false-accepts, and the danger bucket falls back to Gemma.
+    PLANNER_JEV_CONFIDENCE_THRESHOLD: float = 0.95
+    TYPESAFE_API_KEY: str = ""  # TypeSafe/JEV bearer key (only needed for jev/hybrid)
+    TYPESAFE_MODEL: str = "jev-latest"
+    TYPESAFE_URL: str = "https://api.typesafe.ai/v1/systemone"
     # Emergency/manual-review exception for the new Question Paper Studio only. Approved
     # CurriculumPacks remain mandatory unless this is explicitly enabled and an authorized
     # staff member records an acknowledgement and reason.
