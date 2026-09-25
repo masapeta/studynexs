@@ -238,16 +238,26 @@ def jev_decision_to_plan(
 def _jev_workflow_to_plan(workflow_id: str, text: str) -> PlannerDecision:
     """Build a workflow PlannerDecision from a JEV workflow choice + deterministic params.
 
-    Params are extracted with the SAME deterministic extractors used for capabilities (class
-    span, subject aliases, mark total). Downstream the executor resolves and authorizes every
-    value; a missing param defers to an honest clarify, never a fabricated one."""
+    Params are extracted with the SAME deterministic extractors used for capabilities. Downstream
+    the executor resolves and authorizes every value; a missing param defers to an honest clarify,
+    never a fabricated one. Per-workflow: QP wants class/subject/marks; evaluation wants a student
+    reference (the exam + answer sheet are supplied through the UI)."""
     from app.modules.workspace.assistant.resolver import _SUBJECT_ALIASES
 
     params: dict[str, Any] = {}
+    low = text.lower()
+
+    if workflow_id == "evaluate_answer_sheet":
+        m = _ADMISSION_RE.search(text)
+        if m:
+            params["student"] = m.group(1).upper()
+        return PlannerDecision(
+            route="WORKFLOW", action="workflow", workflow_id=workflow_id, params=params
+        )
+
     label = _extract_class_label(text)
     if label:
         params["class_label"] = label
-    low = text.lower()
     for alias, canonical in _SUBJECT_ALIASES.items():
         if re.search(rf"\b{re.escape(alias)}\b", low):
             params["subject"] = canonical

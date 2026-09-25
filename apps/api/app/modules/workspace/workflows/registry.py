@@ -43,6 +43,7 @@ def _register_builtin_workflows() -> None:
     the others are added as their real domain schemas/consumers land (Phases 5-7)."""
     # Import domain schemas lazily so the workflow package has no heavy import-time deps.
     from app.modules.ai.schemas.question_paper import GenerateRequest, QuestionPaperOut
+    from app.modules.examinations.schemas.evaluation import EvaluationCreate, EvaluationOut
 
     register_workflow(
         WorkflowDefinition(
@@ -61,6 +62,26 @@ def _register_builtin_workflows() -> None:
             domain_resource="question_paper",
             audit_action="workflow.question_paper",
             tags=("assessment", "generation"),
+        )
+    )
+
+    register_workflow(
+        WorkflowDefinition(
+            workflow_id="evaluate_answer_sheet",
+            version="1.0",
+            name="Answer Sheet Evaluation",
+            description=(
+                "Evaluate a student's answer sheet for an exam — AI suggests marks & feedback "
+                "asynchronously, then a teacher reviews and approves before marks are final."
+            ),
+            io=WorkflowIO(input_schema=EvaluationCreate, output_schema=EvaluationOut),
+            execution_mode=ExecutionMode.DETERMINISTIC,
+            required_roles=("teacher", "class_incharge", "admin", "super_admin"),
+            approval_required=True,
+            is_async=True,  # runs on the existing Arq worker (sync only under TESTING)
+            domain_resource="answer_sheet_evaluation",
+            audit_action="workflow.evaluate_answer_sheet",
+            tags=("assessment", "evaluation"),
         )
     )
 

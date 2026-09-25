@@ -1,7 +1,7 @@
 # Assistant Execution Architecture — Design of Record
 
-- **Status:** Accepted (design), Implementation in progress (Phases 3–4 landed)
-- **Version:** 1.2
+- **Status:** Accepted (design), Implementation in progress (Phases 3–5 landed)
+- **Version:** 1.3
 - **Date:** 2026-09-26
 - **Owner:** Avinash Reddy Masapeta (ARM)
 - **Subsystem:** Workspace Assistant (`app/modules/workspace/assistant`)
@@ -200,6 +200,20 @@ The generic pattern now runs end to end for QP, with **no QP-specific router** a
 - **Dispatch:** `AssistantService._run_workflow` → `workflows.executor.run_workflow` — the **single controlled workflow-resolution path** (`app/modules/workspace/workflows/executor.py`). It resolves class/subject via the existing assistant resolver, authorizes via the existing `get_staff_scope` + `assert_qp_generate` (JEV/Gemma selecting the workflow grants nothing), finds the newest **APPROVED** CurriculumPack, enforces the existing monthly credit cap, and calls the existing `generate_paper`. Returns a `kind="workflow"` structured block reporting `workflow_state=waiting_for_approval` alongside the authoritative domain `paper_status=draft`.
 - **HITL preserved:** the executor never approves. The result block's actions point at the existing server-side `/submit` and `/approve` endpoints. A model cannot approve a paper.
 - **Failure/clarify:** unknown workflow → guide; missing/ambiguous class or subject → clarify; no approved pack → guide; generation failure → `WorkflowError` → safe guide. No partial state.
+
+### 5.7 What Phase 5 wired (Evaluation — second consumer, async + Arq)
+
+Evaluation proves the **same** generic model handles a materially different workflow — asynchronous, Arq-backed, with its own domain lifecycle — with **no evaluation-specific orchestration** and **no rewrite** of the evaluation implementation:
+
+- **Registered** as `evaluate_answer_sheet` in the same registry, `is_async=True`, `approval_required=True`. IO references the real `EvaluationCreate` / `EvaluationOut`.
+- **Same executor, new branch:** `_run_evaluation` reuses the existing `AnswerSheetEvalService.create_and_evaluate` unchanged — which authorizes (`assert_exams_access` + `assert_exam_eval_access`), checks AI credits, and **enqueues an Arq job** (runs sync only under TESTING). No new queue/scheduler/worker.
+- **Async lifecycle proven:** the generic `WorkflowState` is **derived** from the authoritative domain status — `pending→QUEUED`, `processing→RUNNING`, `suggested→WAITING_FOR_APPROVAL` (teacher HITL), `approved→COMPLETED`, `failed→FAILED`. The workflow is **never** reported COMPLETED merely because the job was submitted; the domain status stays the source of truth (wraps, does not own).
+- **Correlation:** the result block carries `evaluation_id` + `job_id` (`AnswerSheetEvaluation.job_id → Job`), so request → workflow → Arq job → result is traceable via the existing job/telemetry mechanisms — no second tracing system.
+- **HITL preserved:** the executor never approves. Result actions point at the existing `/api/v1/exams/evaluations/{id}/approve` endpoint.
+- **Idempotency (existing, documented):** `create_and_evaluate` row-locks the student + eval row and rejects a re-submit while `processing` / after `approved` (unique `(exam_id, student_id)`); the workflow layer adds nothing and relies on these existing protections.
+- **Answer-sheet upload** stays in the existing UI; a chat turn supplies exam + student references, and when no answer source is present the workflow returns an honest upload next-step rather than fabricating input.
+
+**Reuse proven:** QP (sync + approval) and Evaluation (async + Arq) run through the **same** `PlannerDecision → WorkflowRegistry → executor` path with no per-workflow orchestration model — strong evidence the Phase 3 architecture is correctly generic.
 
 ---
 

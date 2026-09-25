@@ -64,8 +64,10 @@ async def run_workflow(
 
     if definition.workflow_id == "question_paper":
         return await _run_question_paper(db, current_user, params or {})
+    if definition.workflow_id == "evaluate_answer_sheet":
+        return await _run_evaluation(db, current_user, params or {})
 
-    # Registered but no executor yet (Phases 5-7 land the others).
+    # Registered but no executor yet (Phases 6-7 land the others).
     return {
         "kind": "guide",
         "title": definition.name,
@@ -188,12 +190,132 @@ async def _approved_pack_id(
     return None
 
 
+async def _run_evaluation(
+    db: AsyncSession, current_user: CurrentUser, params: dict[str, Any]
+) -> dict[str, Any]:
+    """Execute the Answer Sheet Evaluation workflow over the EXISTING async pipeline.
+
+    Wraps `AnswerSheetEvalService.create_and_evaluate` (unchanged): it authorizes, checks AI
+    credits, and enqueues an Arq job (runs sync only under TESTING). The generic WorkflowState is
+    DERIVED from the authoritative domain status — QUEUED/RUNNING while the job runs,
+    WAITING_FOR_APPROVAL once AI marks are suggested (teacher HITL), COMPLETED on approval, FAILED
+    on error. We do NOT report COMPLETED merely because the job was submitted.
+
+    Needs an exam + a student + an answer source (a file already uploaded, or transcribed answers).
+    A chat turn typically supplies exam + student references; the answer sheet itself is uploaded
+    through the existing UI, so when no answer source is present we return an honest next-step
+    rather than fabricating one.
+    """
+    from app.core.staff_permissions import (
+        assert_exam_eval_access,
+        assert_exams_access,
+        get_staff_scope,
+    )
+    from app.core.tenant_scope import TenantScope
+    from app.modules.examinations.services.answer_sheet_eval_service import (
+        AnswerSheetEvalService,
+        EvalError,
+    )
+    from app.modules.workspace.assistant.resolver import resolve_student
+
+    school_id = uuid.UUID(current_user.school_id)
+
+    exam_id = _coerce_uuid(params.get("exam_id"))
+    if exam_id is None:
+        return {
+            "kind": "clarify",
+            "title": "Which exam?",
+            "message": (
+                "Tell me which exam to evaluate — open the exam and start the evaluation, or "
+                "name the exam so I can look it up."
+            ),
+        }
+
+    # Authorization — the EXISTING exam/eval gates. Workflow selection grants nothing.
+    scope = await get_staff_scope(db, current_user)
+    assert_exams_access(scope)
+    try:
+        exam = await TenantScope(db, school_id).exam(exam_id)
+    except Exception:  # noqa: BLE001 — a missing/foreign exam is a clarify, not a crash
+        return {
+            "kind": "clarify",
+            "title": "Exam not found",
+            "message": "I couldn't find that exam for your school. Please check and try again.",
+        }
+    assert_exam_eval_access(scope, exam)
+
+    student_token = (params.get("student") or "").strip()
+    if not student_token:
+        return {
+            "kind": "clarify",
+            "title": "Which student?",
+            "message": "Which student's answer sheet should I evaluate?",
+        }
+    student_res = await resolve_student(db, school_id, student_token)
+    if len(student_res.candidates) != 1:
+        return _clarify_entity("student", student_token, student_res.candidates)
+    student_id = student_res.candidates[0].id
+
+    file_id = _coerce_uuid(params.get("file_id"))
+    raw_answers = params.get("student_answers")
+    student_answers = raw_answers if isinstance(raw_answers, dict) else None
+    if not file_id and not student_answers:
+        return {
+            "kind": "guide",
+            "title": "Upload the answer sheet",
+            "message": (
+                f"To evaluate {student_res.candidates[0].label} for {exam.title}, upload the "
+                "answer sheet on the exam's evaluation screen — then I can start the evaluation."
+            ),
+            "suggestions": [
+                {"label": "Open exam evaluation", "href": f"/dashboard/teaching/exams/{exam.id}"},
+            ],
+        }
+
+    from app.db.models.school import School
+
+    school = await db.get(School, school_id)
+
+    service = AnswerSheetEvalService(db)
+    try:
+        row = await service.create_and_evaluate(
+            school_id=school_id,
+            exam_id=exam.id,
+            student_id=student_id,
+            created_by=uuid.UUID(current_user.id),
+            role=current_user.role,
+            school=school,
+            file_id=file_id,
+            student_answers=student_answers,
+        )
+    except EvalError as exc:
+        raise WorkflowError(str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001 — safe message; details logged upstream
+        logger.warning("workflow_eval_failed", error=str(exc))
+        raise WorkflowError("Answer sheet evaluation failed. Please try again.") from exc
+
+    return _eval_result_block(
+        row, exam_title=exam.title, student_label=student_res.candidates[0].label
+    )
+
+
 def _coerce_marks(value: Any) -> int:
     try:
         marks = int(value)
     except (TypeError, ValueError):
         return 80
     return marks if 1 <= marks <= 200 else 80
+
+
+def _coerce_uuid(value: Any) -> uuid.UUID | None:
+    if isinstance(value, uuid.UUID):
+        return value
+    if isinstance(value, str) and value.strip():
+        try:
+            return uuid.UUID(value.strip())
+        except ValueError:
+            return None
+    return None
 
 
 def _clarify_entity(kind: str, query: str, candidates: list[Any]) -> dict[str, Any]:
@@ -235,4 +357,55 @@ def _qp_result_block(paper: Any, *, class_label: str, subject_label: str) -> dic
             f"Drafted a {float(paper.total_marks):.0f}-mark {subject_label} paper for "
             f"{class_label} ({question_count} questions). Review and approve it to finalise."
         ),
+    }
+
+
+# Map the authoritative domain eval status -> the generic orchestration state. The domain status
+# stays the source of truth (wraps, does not own); this derivation is display/telemetry only.
+_EVAL_STATUS_TO_WORKFLOW = {
+    "pending": WorkflowState.QUEUED,
+    "processing": WorkflowState.RUNNING,
+    "suggested": WorkflowState.WAITING_FOR_APPROVAL,  # AI done, awaiting teacher HITL
+    "approved": WorkflowState.COMPLETED,
+    "failed": WorkflowState.FAILED,
+}
+
+
+def _eval_result_block(row: Any, *, exam_title: str, student_label: str) -> dict[str, Any]:
+    """UI-independent workflow result for an (async) answer-sheet evaluation."""
+    status = row.status.value if hasattr(row.status, "value") else str(row.status)
+    wf_state = _EVAL_STATUS_TO_WORKFLOW.get(status, WorkflowState.RUNNING).value
+    running = wf_state in (WorkflowState.QUEUED.value, WorkflowState.RUNNING.value)
+    if wf_state == WorkflowState.FAILED.value:
+        message = f"Evaluation failed for {student_label}. {row.error_message or ''}".strip()
+    elif running:
+        message = (
+            f"Evaluating {student_label}'s answer sheet for {exam_title}. I'll have suggested "
+            "marks shortly — check the evaluation screen to review and approve."
+        )
+    else:
+        message = (
+            f"AI marks are ready for {student_label} ({exam_title}). Review and approve them to "
+            "finalise."
+        )
+    return {
+        "kind": "workflow",
+        "workflow_id": "evaluate_answer_sheet",
+        "title": f"Answer Sheet Evaluation — {student_label}",
+        "workflow_state": wf_state,
+        "eval_status": status,  # authoritative domain status
+        "summary": {
+            "evaluation_id": str(row.id),
+            "exam": exam_title,
+            "student": student_label,
+            "job_id": str(row.job_id) if row.job_id else None,
+        },
+        "actions": [
+            {"label": "Review evaluation", "href": f"/dashboard/teaching/exams/{row.exam_id}"},
+            {
+                "label": "Approve marks",
+                "endpoint": f"/api/v1/exams/evaluations/{row.id}/approve",
+            },
+        ],
+        "message": message,
     }
