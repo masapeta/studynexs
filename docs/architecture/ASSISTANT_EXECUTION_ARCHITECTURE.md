@@ -1,8 +1,8 @@
 # Assistant Execution Architecture — Design of Record
 
-- **Status:** Accepted (design), Implementation in progress (Phases 3–5 landed)
-- **Version:** 1.3
-- **Date:** 2026-09-26
+- **Status:** Accepted (design), Implementation in progress (Phases 3–6 landed)
+- **Version:** 1.4
+- **Date:** 2026-09-28
 - **Owner:** Avinash Reddy Masapeta (ARM)
 - **Subsystem:** Workspace Assistant (`app/modules/workspace/assistant`)
 - **Related ADR:** [`ADR-0003-assistant-execution-and-workflow-architecture.md`](../decisions/ADR-0003-assistant-execution-and-workflow-architecture.md)
@@ -214,6 +214,14 @@ Evaluation proves the **same** generic model handles a materially different work
 - **Answer-sheet upload** stays in the existing UI; a chat turn supplies exam + student references, and when no answer source is present the workflow returns an honest upload next-step rather than fabricating input.
 
 **Reuse proven:** QP (sync + approval) and Evaluation (async + Arq) run through the **same** `PlannerDecision → WorkflowRegistry → executor` path with no per-workflow orchestration model — strong evidence the Phase 3 architecture is correctly generic.
+
+### 5.8 What Phase 6 wired (Lesson Plan) — and why Remediation is deferred
+
+**Lesson Plan (third consumer, deterministic + approval):** registered as `lesson_plan` (`is_async=False`, `approval_required=True`, IO = real `GenerateLessonPlanRequest` / `LessonPlanOut`). `_run_lesson_plan` reuses `LessonPlanService.generate` unchanged — resolves class/subject via the assistant resolver, authorizes via the existing `assert_qp_generate` gate, grounds on an approved pack when one exists (the service also works ungrounded via template), and returns `WorkflowState.WAITING_FOR_APPROVAL` alongside the authoritative domain `plan_status=draft` (`LessonPlanStatus` DRAFT → APPROVED). Actions point at the existing `/api/v1/lesson-plans/{id}/approve`.
+
+**Governance hardening (found + fixed in Phase 6):** `LessonPlanService.generate` raises the authz `HTTPException` *inside* the call. The executor now calls `assert_qp_generate` **before** the try and **re-raises `HTTPException`** so a 403 propagates unchanged and is never masked as a generic `WorkflowError`. This is the same before-generation authz ordering QP and Evaluation already use.
+
+**Remediation — deliberately NOT built (per brief §8, roadmap "prove the need", constitution YAGNI §4.1):** there is **no remediation domain service** in the codebase — only `remedial_activity` / `remedial_hint` fragments inside the misconception service. Wrapping a workflow around a non-existent feature would be *inventing functionality*, not reusing an existing implementation. Remediation is therefore deferred until a real remediation feature exists (it is the natural candidate for the first **agentic** workflow when built — Phase 12 — but the need must be proven from real behavior, not assumed). The generic model already reserves `execution_mode=agentic` for it (§5.5 matrix).
 
 ---
 

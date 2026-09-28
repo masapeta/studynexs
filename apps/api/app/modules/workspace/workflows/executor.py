@@ -23,6 +23,7 @@ import uuid
 from typing import Any
 
 import structlog
+from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import CurrentUser
@@ -66,8 +67,10 @@ async def run_workflow(
         return await _run_question_paper(db, current_user, params or {})
     if definition.workflow_id == "evaluate_answer_sheet":
         return await _run_evaluation(db, current_user, params or {})
+    if definition.workflow_id == "lesson_plan":
+        return await _run_lesson_plan(db, current_user, params or {})
 
-    # Registered but no executor yet (Phases 6-7 land the others).
+    # Registered but no executor yet (Phase 7 lands the others).
     return {
         "kind": "guide",
         "title": definition.name,
@@ -299,6 +302,81 @@ async def _run_evaluation(
     )
 
 
+async def _run_lesson_plan(
+    db: AsyncSession, current_user: CurrentUser, params: dict[str, Any]
+) -> dict[str, Any]:
+    """Execute the Lesson Plan workflow over the EXISTING lesson-plan pipeline (sync + approval).
+
+    Wraps `LessonPlanService.generate` unchanged: it authorizes via the existing staff-scope gate
+    and produces a DRAFT lesson plan (grounded in an approved pack when one exists, else a
+    template). CREATED -> RUNNING -> WAITING_FOR_APPROVAL; the LessonPlan domain lifecycle
+    (DRAFT -> APPROVED) stays authoritative.
+    """
+    from app.core.staff_permissions import assert_qp_generate, get_staff_scope
+    from app.modules.curriculum.services.lesson_plan_service import LessonPlanService
+    from app.modules.workspace.assistant.resolver import resolve_class, resolve_subject
+
+    school_id = uuid.UUID(current_user.school_id)
+
+    class_label = (params.get("class_label") or params.get("class") or "").strip()
+    subject_name = (params.get("subject") or "").strip()
+    if not class_label or not subject_name:
+        missing = "class" if not class_label else "subject"
+        return {
+            "kind": "clarify",
+            "title": "Which class and subject?",
+            "message": (
+                f"Tell me the {missing} for the lesson plan — e.g. "
+                "'a lesson plan for Class 8 Science'."
+            ),
+        }
+
+    class_res = await resolve_class(db, school_id, class_label)
+    if len(class_res.candidates) != 1:
+        return _clarify_entity("class", class_label, class_res.candidates)
+    class_id = class_res.candidates[0].id
+
+    subject_res = await resolve_subject(db, school_id, subject_name, class_id=class_id)
+    if len(subject_res.candidates) != 1:
+        return _clarify_entity("subject", subject_name, subject_res.candidates)
+    subject_id = subject_res.candidates[0].id
+
+    # Authorization — the EXISTING staff-scope gate (same one QP uses), enforced BEFORE generation
+    # so a 403 propagates as-is and is never masked by the broad failure handler below.
+    scope = await get_staff_scope(db, current_user)
+    assert_qp_generate(scope, class_id, subject_id)
+
+    topic = (params.get("topic") or "").strip() or None
+    chapter = (params.get("chapter") or "").strip() or None
+    # Ground on an approved pack when available; the service also works ungrounded (template).
+    pack_id = await _approved_pack_id(db, school_id, class_id, subject_id)
+
+    service = LessonPlanService(db)
+    try:
+        plan = await service.generate(
+            school_id,
+            scope,
+            class_id=class_id,
+            subject_id=subject_id,
+            topic=topic,
+            chapter=chapter,
+            pack_id=pack_id,
+        )
+    except ValueError as exc:
+        raise WorkflowError(str(exc)) from exc
+    except HTTPException:
+        raise  # authorization / governance errors must propagate unchanged
+    except Exception as exc:  # noqa: BLE001 — safe message; details logged upstream
+        logger.warning("workflow_lesson_plan_failed", error=str(exc))
+        raise WorkflowError("Lesson plan generation failed. Please try again.") from exc
+
+    return _lesson_plan_result_block(
+        plan,
+        class_label=class_res.candidates[0].label,
+        subject_label=subject_res.candidates[0].label,
+    )
+
+
 def _coerce_marks(value: Any) -> int:
     try:
         marks = int(value)
@@ -408,4 +486,35 @@ def _eval_result_block(row: Any, *, exam_title: str, student_label: str) -> dict
             },
         ],
         "message": message,
+    }
+
+
+def _lesson_plan_result_block(
+    plan: Any, *, class_label: str, subject_label: str
+) -> dict[str, Any]:
+    """UI-independent workflow result for a generated lesson-plan draft awaiting approval."""
+    return {
+        "kind": "workflow",
+        "workflow_id": "lesson_plan",
+        "title": f"Lesson Plan — {class_label} {subject_label}",
+        "workflow_state": WorkflowState.WAITING_FOR_APPROVAL.value,
+        "plan_status": plan.status.value if hasattr(plan.status, "value") else str(plan.status),
+        "summary": {
+            "lesson_plan_id": str(plan.id),
+            "class": class_label,
+            "subject": subject_label,
+            "topic": plan.topic,
+            "chapter": plan.chapter,
+            "segments": len(plan.segments or []),
+            "grounded": bool(getattr(plan, "grounded", False)),
+        },
+        # Actions invoke the EXISTING authorized server-side endpoints (HITL).
+        "actions": [
+            {"label": "Review", "href": f"/dashboard/lesson-plans/{plan.id}"},
+            {"label": "Approve", "endpoint": f"/api/v1/lesson-plans/{plan.id}/approve"},
+        ],
+        "message": (
+            f"Drafted a lesson plan for {class_label} {subject_label}"
+            f"{f' on {plan.topic}' if plan.topic else ''}. Review and approve it to finalise."
+        ),
     }

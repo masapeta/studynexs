@@ -240,8 +240,8 @@ def _jev_workflow_to_plan(workflow_id: str, text: str) -> PlannerDecision:
 
     Params are extracted with the SAME deterministic extractors used for capabilities. Downstream
     the executor resolves and authorizes every value; a missing param defers to an honest clarify,
-    never a fabricated one. Per-workflow: QP wants class/subject/marks; evaluation wants a student
-    reference (the exam + answer sheet are supplied through the UI)."""
+    never a fabricated one. Per-workflow: QP wants class/subject/marks; lesson plan wants
+    class/subject; evaluation wants a student reference (exam + answer sheet come from the UI)."""
     from app.modules.workspace.assistant.resolver import _SUBJECT_ALIASES
 
     params: dict[str, Any] = {}
@@ -262,9 +262,10 @@ def _jev_workflow_to_plan(workflow_id: str, text: str) -> PlannerDecision:
         if re.search(rf"\b{re.escape(alias)}\b", low):
             params["subject"] = canonical
             break
-    marks = re.search(r"(\d{1,3})\s*(?:marks?|mark)\b", low)
-    if marks:
-        params["total_marks"] = int(marks.group(1))
+    if workflow_id != "lesson_plan":  # marks are meaningless for a lesson plan
+        marks = re.search(r"(\d{1,3})\s*(?:marks?|mark)\b", low)
+        if marks:
+            params["total_marks"] = int(marks.group(1))
     return PlannerDecision(
         route="WORKFLOW", action="workflow", workflow_id=workflow_id, params=params
     )

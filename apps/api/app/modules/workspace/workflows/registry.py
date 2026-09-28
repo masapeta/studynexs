@@ -43,6 +43,10 @@ def _register_builtin_workflows() -> None:
     the others are added as their real domain schemas/consumers land (Phases 5-7)."""
     # Import domain schemas lazily so the workflow package has no heavy import-time deps.
     from app.modules.ai.schemas.question_paper import GenerateRequest, QuestionPaperOut
+    from app.modules.curriculum.schemas.lesson_plan import (
+        GenerateLessonPlanRequest,
+        LessonPlanOut,
+    )
     from app.modules.examinations.schemas.evaluation import EvaluationCreate, EvaluationOut
 
     register_workflow(
@@ -82,6 +86,28 @@ def _register_builtin_workflows() -> None:
             domain_resource="answer_sheet_evaluation",
             audit_action="workflow.evaluate_answer_sheet",
             tags=("assessment", "evaluation"),
+        )
+    )
+
+    register_workflow(
+        WorkflowDefinition(
+            workflow_id="lesson_plan",
+            version="1.0",
+            name="Lesson Plan",
+            description=(
+                "Generate a lesson plan (draft) for a class & subject — optionally grounded in "
+                "an approved CurriculumPack — reviewed and approved by a teacher/incharge."
+            ),
+            io=WorkflowIO(
+                input_schema=GenerateLessonPlanRequest, output_schema=LessonPlanOut
+            ),
+            execution_mode=ExecutionMode.DETERMINISTIC,
+            required_roles=("teacher", "class_incharge", "admin", "super_admin"),
+            approval_required=True,
+            is_async=False,
+            domain_resource="lesson_plan",
+            audit_action="workflow.lesson_plan",
+            tags=("curriculum", "planning"),
         )
     )
 
