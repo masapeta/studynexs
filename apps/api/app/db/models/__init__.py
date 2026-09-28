@@ -54,6 +54,13 @@ from app.db.models.mastery import (  # noqa: F401
 from app.db.models.misconception import MisconceptionEntry  # noqa: F401
 from app.db.models.notification import Notification  # noqa: F401
 from app.db.models.outbox import OutboxEvent  # noqa: F401
+from app.db.models.parent_intervention import (  # noqa: F401
+    INTERVENTION_STATUS_DRAFT,
+    INTERVENTION_STATUS_FAILED,
+    INTERVENTION_STATUS_NOTIFIED,
+    ParentInterventionBatch,
+    ParentInterventionDraft,
+)
 from app.db.models.question_bank import (  # noqa: F401
     BANK_STATUS_APPROVED,
     QuestionBankItem,

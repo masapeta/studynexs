@@ -24,6 +24,7 @@ from typing import Any
 
 import structlog
 from fastapi import HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import CurrentUser
@@ -69,8 +70,10 @@ async def run_workflow(
         return await _run_evaluation(db, current_user, params or {})
     if definition.workflow_id == "lesson_plan":
         return await _run_lesson_plan(db, current_user, params or {})
+    if definition.workflow_id == "parent_intervention":
+        return await _run_parent_intervention(db, current_user, params or {})
 
-    # Registered but no executor yet (Phase 7 lands the others).
+    # Registered but no executor yet.
     return {
         "kind": "guide",
         "title": definition.name,
@@ -377,6 +380,47 @@ async def _run_lesson_plan(
     )
 
 
+async def _run_parent_intervention(
+    db: AsyncSession, current_user: CurrentUser, params: dict[str, Any]
+) -> dict[str, Any]:
+    """Execute the Parent Intervention workflow: identify at-risk students + draft 1:1 messages.
+
+    Sends NOTHING. Produces a batch of drafts at WAITING_FOR_APPROVAL; delivery happens only via
+    the separate governed approve-and-notify action (server-side, authenticated). Only staff who
+    can access exams/classes may run this (same role gate the other assessment workflows use)."""
+    from app.core.staff_permissions import assert_exams_access, get_staff_scope
+    from app.modules.workspace.workflows.parent_intervention_service import (
+        InterventionError,
+        ParentInterventionService,
+    )
+
+    school_id = uuid.UUID(current_user.school_id)
+
+    # Authorization — staff scope (admins/incharges/teachers). Selection by the planner grants
+    # nothing; the per-parent target is re-authorized at approval time.
+    scope = await get_staff_scope(db, current_user)
+    assert_exams_access(scope)
+
+    threshold = _coerce_threshold(params.get("attendance_threshold") or params.get("threshold"))
+    service = ParentInterventionService(db)
+    try:
+        batch, drafts = await service.create_batch(
+            school_id=school_id, created_by=uuid.UUID(current_user.id), threshold=threshold
+        )
+    except InterventionError as exc:
+        return {"kind": "guide", "title": "Nothing to intervene on", "message": exc.message}
+
+    return await _intervention_result_block(db, school_id, batch, drafts)
+
+
+def _coerce_threshold(value: Any) -> float:
+    try:
+        t = float(value)
+    except (TypeError, ValueError):
+        return 75.0
+    return t if 1 <= t <= 100 else 75.0
+
+
 def _coerce_marks(value: Any) -> int:
     try:
         marks = int(value)
@@ -516,5 +560,72 @@ def _lesson_plan_result_block(
         "message": (
             f"Drafted a lesson plan for {class_label} {subject_label}"
             f"{f' on {plan.topic}' if plan.topic else ''}. Review and approve it to finalise."
+        ),
+    }
+
+
+async def _intervention_result_block(
+    db: AsyncSession, school_id: uuid.UUID, batch: Any, drafts: list[Any]
+) -> dict[str, Any]:
+    """UI-independent result: the 1:1 drafts awaiting approval. Each carries its own approve action
+    (per-target authorization/idempotency/audit); there is NO bulk-send action."""
+    from app.db.models.student import Student
+    from app.db.models.user import User
+
+    student_ids = [d.student_id for d in drafts]
+    parent_ids = [d.parent_user_id for d in drafts]
+    names: dict[str, str] = {}
+    if student_ids:
+        srows = (
+            await db.execute(
+                select(Student.id, User.full_name)
+                .join(User, User.id == Student.user_id)
+                .where(Student.id.in_(student_ids), Student.school_id == school_id)
+            )
+        ).all()
+        names.update({f"s:{sid}": n for sid, n in srows})
+    if parent_ids:
+        prows = (
+            await db.execute(
+                select(User.id, User.full_name).where(
+                    User.id.in_(parent_ids), User.school_id == school_id
+                )
+            )
+        ).all()
+        names.update({f"p:{uid}": n for uid, n in prows})
+
+    items = [
+        {
+            "draft_id": str(d.id),
+            "student": names.get(f"s:{d.student_id}", "Student"),
+            "parent": names.get(f"p:{d.parent_user_id}", "Parent"),
+            "reason": d.reason,
+            "message": d.message,
+            "status": d.status,
+            # Each draft is approved independently — server-side, idempotent, audited.
+            "action": {
+                "label": "Approve & Notify",
+                "endpoint": f"/api/v1/workflows/parent-intervention/drafts/{d.id}/approve",
+            },
+        }
+        for d in drafts
+    ]
+    recipients = len({d.parent_user_id for d in drafts})
+    return {
+        "kind": "workflow",
+        "workflow_id": "parent_intervention",
+        "title": "Parent Intervention — review before sending",
+        "workflow_state": WorkflowState.WAITING_FOR_APPROVAL.value,
+        "summary": {
+            "batch_id": str(batch.id),
+            "reason": batch.reason,
+            "total_students": len({d.student_id for d in drafts}),
+            "total_recipients": recipients,
+        },
+        "drafts": items,
+        "message": (
+            f"Found {len({d.student_id for d in drafts})} student(s) needing attention. Review "
+            "each drafted message and approve to notify the parent. Nothing is sent until you "
+            "approve."
         ),
     }

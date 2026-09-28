@@ -255,6 +255,14 @@ def _jev_workflow_to_plan(workflow_id: str, text: str) -> PlannerDecision:
             route="WORKFLOW", action="workflow", workflow_id=workflow_id, params=params
         )
 
+    if workflow_id == "parent_intervention":
+        m = _THRESHOLD_RE.search(text)
+        if m:
+            params["attendance_threshold"] = float(m.group(1))
+        return PlannerDecision(
+            route="WORKFLOW", action="workflow", workflow_id=workflow_id, params=params
+        )
+
     label = _extract_class_label(text)
     if label:
         params["class_label"] = label

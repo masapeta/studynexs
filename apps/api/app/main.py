@@ -230,6 +230,12 @@ def create_app() -> FastAPI:
         assistant_router, prefix=f"{prefix}/workspace/assistant", tags=["workspace-assistant"]
     )
 
+    from app.modules.workspace.endpoints.workflow_actions import router as workflow_action_router
+
+    app.include_router(
+        workflow_action_router, prefix=f"{prefix}/workflows", tags=["workflow-actions"]
+    )
+
     from app.modules.curriculum.endpoints.concept_card import router as concept_card_router
     from app.modules.curriculum.endpoints.content_review import router as content_review_router
     from app.modules.curriculum.endpoints.graph import router as curriculum_graph_router

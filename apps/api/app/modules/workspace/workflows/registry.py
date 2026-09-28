@@ -48,6 +48,10 @@ def _register_builtin_workflows() -> None:
         LessonPlanOut,
     )
     from app.modules.examinations.schemas.evaluation import EvaluationCreate, EvaluationOut
+    from app.modules.workspace.workflows.parent_intervention_schemas import (
+        ParentInterventionOut,
+        ParentInterventionRequest,
+    )
 
     register_workflow(
         WorkflowDefinition(
@@ -108,6 +112,29 @@ def _register_builtin_workflows() -> None:
             domain_resource="lesson_plan",
             audit_action="workflow.lesson_plan",
             tags=("curriculum", "planning"),
+        )
+    )
+
+    register_workflow(
+        WorkflowDefinition(
+            workflow_id="parent_intervention",
+            version="1.0",
+            name="Parent Intervention",
+            description=(
+                "Identify students needing attention (e.g. low attendance), draft a 1:1 message "
+                "to each linked parent, and — only after explicit human approval — send an in-app "
+                "notification. The AI never sends; every message is reviewed and approved."
+            ),
+            io=WorkflowIO(
+                input_schema=ParentInterventionRequest, output_schema=ParentInterventionOut
+            ),
+            execution_mode=ExecutionMode.DETERMINISTIC,
+            required_roles=("teacher", "class_incharge", "admin", "super_admin"),
+            approval_required=True,
+            is_async=False,
+            domain_resource="parent_intervention",
+            audit_action="workflow.parent_intervention",
+            tags=("communication", "intervention"),
         )
     )
 
