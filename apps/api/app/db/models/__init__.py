@@ -35,6 +35,11 @@ from app.db.models.fee import (  # noqa: F401
     StudentFeeRecord,
 )
 from app.db.models.file import UploadedFile  # noqa: F401
+from app.db.models.governed_action import (  # noqa: F401
+    ACTION_STATUS_COMPLETED,
+    ACTION_STATUS_FAILED,
+    GovernedActionExecution,
+)
 from app.db.models.job import Job, JobStatus  # noqa: F401
 from app.db.models.knowledge_graph import (  # noqa: F401
     ConceptSource,

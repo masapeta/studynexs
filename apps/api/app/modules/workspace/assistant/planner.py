@@ -65,6 +65,10 @@ class PlannerDecision(BaseModel):
     # way to identify a first-class workflow — NOT overloaded onto `tool` (a workflow is not a
     # capability). Resolved through the single workflow-resolution path in the service.
     workflow_id: str | None = None
+    # For action='act': the governed action target (e.g. "publish_notice"). Identifies a
+    # state-changing action; kept separate from tool/workflow_id (an action is neither a read
+    # capability nor a multi-step workflow). Execution ALWAYS requires explicit human confirmation.
+    action_target: str | None = None
     # For MIXED: the document topic to retrieve after the structured step runs.
     document_query: str | None = None
     # For action='compose': a multi-operation plan (Phase 4). Validated before execution.
@@ -135,7 +139,10 @@ def _system_prompt(tools: list[AssistantTool]) -> str:
         "- MIXED: needs BOTH live data AND a policy document (e.g. 'is X below the\n"
         "  attendance policy threshold?'). Set tool+params for the data step AND\n"
         "  document_query for the policy step.\n"
-        "- ACTION: the user asks to CHANGE data (mark absent, record payment, assign).\n"
+        "- ACTION: the user asks to CHANGE data / send something. One action exists:\n"
+        "  PUBLISH NOTICE — 'publish/send/create/post a notice', 'inform Class X that ...'. Set\n"
+        "  action='act', action_target='publish_notice', and params (see ACTIONS). Nothing is\n"
+        "  published until the user explicitly confirms.\n"
         "- WORKFLOW: the user asks to run a multi-step academic process. Four exist:\n"
         "  (a) QUESTION PAPER — 'create/generate/prepare/make a question paper (or test/exam\n"
         "  paper) for a class & subject'; (b) ANSWER SHEET EVALUATION — 'evaluate/grade/mark\n"
@@ -170,6 +177,13 @@ def _system_prompt(tools: list[AssistantTool]) -> str:
         "    'notify parents of low-attendance students', 'message parents of students below\n"
         "    70%', 'draft parent intervention for at-risk students'. Nothing is sent — it\n"
         "    drafts for review. Do NOT treat any of these as a data lookup.\n\n"
+        "ACTIONS (action='act', route='ACTION'):\n"
+        "  publish_notice — publish a school notice. Set action_target='publish_notice' and\n"
+        "    params: title (short), content (the notice text), audience ('internal' for staff,\n"
+        "    'external' for parents/students — infer from who it's for), class_label (if a\n"
+        "    specific class). Paraphrases: 'publish a notice to Class 8A ...', 'send a class\n"
+        "    notice to 8A', 'create a notice for staff', 'inform Class 9B tomorrow is a\n"
+        "    holiday', 'post a notice for parents'. Nothing publishes until the user confirms.\n\n"
         "COMPOSITION (action='compose', route='STRUCTURED') — for questions that combine\n"
         "class/student metrics, e.g. 'classes below 75% attendance and their teachers',\n"
         "'students in 8A with attendance < 75% and fee dues > 10000', 'each class with\n"
@@ -239,7 +253,8 @@ def _system_prompt(tools: list[AssistantTool]) -> str:
         "- For DOCUMENT/MIXED set document_query to a SHORT topic phrase (e.g. "
         "'attendance policy'), NOT the full question. Keep message under 12 words.\n"
         "- Respond with ONLY a compact JSON object (no code fences, no prose) with keys:\n"
-        "  route, action, tool, workflow_id, params, navigate_to, message, document_query,\n"
+        "  route, action, tool, workflow_id, action_target, params, navigate_to, message,\n"
+        "  document_query,\n"
         "  temporal, operation, metric. Keep it short.\n"
         "- Never invent data or fields. Never include commentary outside the JSON."
     )

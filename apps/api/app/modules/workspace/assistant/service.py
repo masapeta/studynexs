@@ -270,7 +270,7 @@ class AssistantService:
         elif decision.action == "workflow":
             block = await self._run_workflow(current_user, decision, trace=trace)
         elif decision.action == "act":
-            block = self._action_not_supported(decision)
+            block = await self._run_action(current_user, decision, trace=trace)
         elif decision.action == "navigate" and decision.navigate_to in NAV_TARGETS:
             block = {
                 "kind": "navigate",
@@ -615,6 +615,70 @@ class AssistantService:
             return {"kind": "guide", "title": "Couldn't complete that", "message": exc.message}
         trace["workflow_state"] = block.get("workflow_state")
         return block
+
+    async def _run_action(
+        self, current_user: CurrentUser, decision: Any, *, trace: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Prepare a governed state-changing action as a CONFIRM-required PREVIEW (Phase 8).
+
+        The assistant NEVER executes the state change here — it only drafts a preview the user must
+        explicitly confirm via an authenticated endpoint. `publish_notice` is the first consumer;
+        anything else falls back to the not-supported guide.
+        """
+        trace["action_target"] = decision.action_target
+        if decision.action_target != "publish_notice":
+            return self._action_not_supported(decision)
+
+        from app.modules.workspace.workflows.notice_action_service import (
+            NoticeActionError,
+            NoticeActionService,
+        )
+
+        params = decision.params or {}
+        try:
+            preview = await NoticeActionService(self.db).preview(
+                current_user,
+                title=params.get("title") or "",
+                content=params.get("content") or "",
+                audience=params.get("audience") or "",
+                class_label=params.get("class_label") or params.get("class"),
+            )
+        except NoticeActionError as exc:
+            return {"kind": "clarify", "title": "Notice details needed", "message": exc.message}
+
+        trace["action_status"] = "waiting_for_confirmation"
+        return {
+            "kind": "action_preview",
+            "action": "publish_notice",
+            "title": "Review notice before publishing",
+            "status": "waiting_for_confirmation",
+            "preview": {
+                "title": preview.title,
+                "content": preview.content,
+                "audience": preview.audience,
+                "target_roles": preview.target_roles,
+                "class_scoped": preview.class_id is not None,
+            },
+            # The confirm action carries the server-issued token; only an authenticated call to
+            # this endpoint publishes. A model can never confirm.
+            "confirm_action": {
+                "label": "Publish Notice",
+                "endpoint": "/api/v1/workflows/actions/publish-notice/confirm",
+                "payload": {
+                    "action_token": str(preview.action_token),
+                    "title": preview.title,
+                    "content": preview.content,
+                    "audience": preview.audience,
+                    "target_roles": preview.target_roles,
+                    "priority": preview.priority,
+                    "class_id": str(preview.class_id) if preview.class_id else None,
+                },
+            },
+            "message": (
+                f"Ready to publish this {preview.audience} notice. Review it and confirm to "
+                "publish — nothing is posted until you do."
+            ),
+        }
 
     def _action_not_supported(self, decision: Any) -> dict[str, Any]:
         """ACTION route recognized but writes require explicit confirmation (spec §21)."""

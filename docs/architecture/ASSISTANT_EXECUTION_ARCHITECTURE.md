@@ -1,7 +1,7 @@
 # Assistant Execution Architecture — Design of Record
 
-- **Status:** Accepted (design), Implementation in progress (Phases 3–7 landed)
-- **Version:** 1.5
+- **Status:** Accepted (design), Implementation in progress (Phases 3–8 landed)
+- **Version:** 1.6
 - **Date:** 2026-09-28
 - **Owner:** Avinash Reddy Masapeta (ARM)
 - **Subsystem:** Workspace Assistant (`app/modules/workspace/assistant`)
@@ -249,7 +249,26 @@ action     → single governed STATE CHANGE
 
 An Action must (eventually) carry: authorization, validation, confirmation where risky, **idempotency**, audit, tenant isolation, safe failure. Examples: `mark_absent`, `record_payment`, `send_fee_reminder`, `publish_notice`, `send_parent_message`, **`approve_question_paper`**.
 
-**First consumer (landed, Phase 7):** Parent Intervention's `approve_and_notify` (§5.9) — a server-side, role-gated, re-validated, idempotent, audited, IN_APP-only action. A model-produced `approved=true` NEVER authorizes it; only an authenticated user action does. The boundary is built only as far as this one consumer needs (no generic Action Engine), while cleanly separating `query | workflow | action`. QP/lesson-plan approval remain their existing domain endpoints; whether they migrate onto a shared action abstraction is decided in Phase 8 once a second real action (fee reminders / notices) proves the reusable shape.
+**First consumer (landed, Phase 7):** Parent Intervention's `approve_and_notify` (§5.9) — a server-side, role-gated, re-validated, idempotent, audited, IN_APP-only action. A model-produced `approved=true` NEVER authorizes it; only an authenticated user action does. The boundary is built only as far as this one consumer needs (no generic Action Engine), while cleanly separating `query | workflow | action`.
+
+### 6.1 Second consumer (landed, Phase 8): `publish_notice` — and what the two actions reveal
+
+Publish Notice is the first consumer of the assistant's `act` route (previously a stub). It routes `JEV/Gemma → PlannerDecision(action="act", action_target="publish_notice") → preview → explicit confirm → NoticeService.create_notice`. A new `action_target` field on `PlannerDecision` identifies the action (kept distinct from `tool`/`workflow_id` — an action is neither a capability nor a workflow). The preview validates + authorizes + mints a server-issued `action_token` and **creates nothing**; only an authenticated call to `POST /api/v1/workflows/actions/publish-notice/confirm` publishes. `NoticeService` is reused unchanged.
+
+**Comparison of the two real actions (brief §10) — this is the evidence that shaped how much to extract:**
+
+| Aspect | Parent Intervention notify (§5.9) | Publish Notice (§6.1) |
+|---|---|---|
+| Shape | workflow draft → per-draft approve | action preview → confirm |
+| Pre-confirmation state | **persisted** draft rows (`ParentInterventionDraft`) | **ephemeral** preview (nothing persisted) |
+| Human-in-the-loop | approve the persisted draft | confirm the previewed payload |
+| Idempotency key | domain unique `(batch, student, parent)` + row-lock | server-issued **`action_token`** ledger (`GovernedActionExecution`) |
+| Repeat semantics | re-approve returns the same notification | identical content **may** republish with a *fresh* token |
+| Effect | one IN_APP `Notification` per parent | one `Notice` via `NoticeService` |
+
+**What is genuinely shared (and therefore worth naming):** server-side **re-authorization at execution time**, **validation before effect**, **explicit audit row** (same `AuditLog` model), **honest failure** (never a silent success), and **a model can never execute**. These are a consistent *governance pattern*, documented and followed by both.
+
+**What is NOT shared (and therefore deliberately not abstracted):** the idempotency mechanism (domain-unique-key vs. token-ledger) and the state model (persisted draft vs. ephemeral preview) differ for real reasons. Forcing them under one base class would be a wrong abstraction. The only *new shared mechanism* extracted is the `GovernedActionExecution` **token ledger** — and only because the stateless action genuinely needed server-side idempotency that a domain unique key could not provide. Parent Intervention is **not** retrofitted onto it (its domain key already works). **No generic Action Engine / registry / DSL was built** — the two implementations share a pattern and one small ledger, nothing more. A third action would be the point to reconsider a richer abstraction (rule of three).
 
 ---
 
