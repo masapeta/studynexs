@@ -140,6 +140,7 @@ async def register_job_handlers(ctx: dict | None = None) -> None:
     without this hook JOB_HANDLERS would be empty and every job would dead-end as
     "No handler registered". New job modules must be imported here.
     """
+    import app.modules.ai.jobs.question_paper_job  # noqa: F401
     import app.modules.demo.jobs.tenant_cleanup_job  # noqa: F401
     import app.modules.examinations.jobs.answer_sheet_eval_job  # noqa: F401
 

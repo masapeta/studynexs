@@ -66,7 +66,7 @@ def _register_builtin_workflows() -> None:
             execution_mode=ExecutionMode.DETERMINISTIC,
             required_roles=("teacher", "class_incharge", "admin", "super_admin"),
             approval_required=True,
-            is_async=False,
+            is_async=True,  # runs on the existing Arq worker (sync only under TESTING)
             domain_resource="question_paper",
             audit_action="workflow.question_paper",
             tags=("assessment", "generation"),

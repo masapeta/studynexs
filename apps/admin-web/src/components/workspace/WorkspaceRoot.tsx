@@ -14,10 +14,12 @@ import {
 import {
   assistantTurn,
   getChatSession,
+  getJob,
   listChatSessions,
   type AssistantBlock,
   type ChatSessionSummary,
 } from "@/lib/assistant-client";
+import { workflowIsRunning } from "./assistant-block-logic";
 import { AssistantBlockView } from "./AssistantBlockView";
 import { WorkspaceSlimNav, type SlimNavKey } from "./WorkspaceSlimNav";
 import { WorkspaceTopBar } from "./WorkspaceTopBar";
@@ -84,6 +86,123 @@ export function WorkspaceRoot({
     setTimeout(() => streamRef.current?.scrollIntoView({ behavior: "smooth" }), 80);
   }, []);
 
+  // Timers for in-flight async workflows (e.g. question-paper generation), keyed by turn id, so
+  // unmount / new-chat can cancel them and a stale poll never mutates a turn that's gone.
+  const pollTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  const clearPoll = useCallback((turnId: string) => {
+    const t = pollTimers.current.get(turnId);
+    if (t) {
+      clearTimeout(t);
+      pollTimers.current.delete(turnId);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timers = pollTimers.current;
+    return () => {
+      timers.forEach((t) => clearTimeout(t));
+      timers.clear();
+    };
+  }, []);
+
+  /**
+   * Poll a queued/running workflow's backing job until it finishes, then replace that turn's
+   * block with an honest outcome. We NEVER show success speculatively — only what the job reports.
+   */
+  const pollWorkflowJob = useCallback(
+    (turnId: string, jobId: string, baseBlock: AssistantBlock) => {
+      const MAX_ATTEMPTS = 60; // ~2 min — then we stop and tell the user honestly
+      clearPoll(turnId);
+
+      const schedule = (attempt: number) => {
+        const timer = setTimeout(
+          async () => {
+            try {
+              const job = await getJob(jobId);
+              if (job.status === "done") {
+                const paperId = job.result?.paper_id as string | undefined;
+                setTurns((prev) =>
+                  prev.map((t) =>
+                    t.id === turnId
+                      ? {
+                          ...t,
+                          block: {
+                            ...baseBlock,
+                            workflow_state: "waiting_for_approval",
+                            message: "Your question paper is ready to review and approve.",
+                            actions: paperId
+                              ? [
+                                  {
+                                    label: "Review",
+                                    href: `/dashboard/question-papers/${paperId}`,
+                                  },
+                                ]
+                              : baseBlock.actions,
+                            summary: { ...(baseBlock.summary ?? {}), paper_id: paperId ?? null },
+                          },
+                        }
+                      : t
+                  )
+                );
+                clearPoll(turnId);
+                return;
+              }
+              if (job.status === "failed") {
+                setTurns((prev) =>
+                  prev.map((t) =>
+                    t.id === turnId
+                      ? {
+                          ...t,
+                          block: {
+                            kind: "error",
+                            title: "Generation failed",
+                            message:
+                              "The question paper couldn't be generated. Please try again.",
+                          },
+                        }
+                      : t
+                  )
+                );
+                clearPoll(turnId);
+                return;
+              }
+              if (attempt + 1 >= MAX_ATTEMPTS) {
+                setTurns((prev) =>
+                  prev.map((t) =>
+                    t.id === turnId
+                      ? {
+                          ...t,
+                          block: {
+                            ...baseBlock,
+                            message:
+                              "Still generating — this is taking longer than usual. " +
+                              "You can keep working; check back shortly.",
+                          },
+                        }
+                      : t
+                  )
+                );
+                clearPoll(turnId);
+                return;
+              }
+              schedule(attempt + 1);
+            } catch {
+              // Transient read failure (e.g. a refresh in flight): back off and retry, bounded.
+              if (attempt + 1 < MAX_ATTEMPTS) schedule(attempt + 1);
+              else clearPoll(turnId);
+            }
+          },
+          attempt === 0 ? 1200 : 2000
+        );
+        pollTimers.current.set(turnId, timer);
+      };
+
+      schedule(0);
+    },
+    [clearPoll]
+  );
+
   const send = useCallback(
     async (value?: string) => {
       const requestText = (value ?? text).trim();
@@ -102,10 +221,19 @@ export function WorkspaceRoot({
           router.push(res.block.href);
           return;
         }
+        const assistantId = `a-${Date.now()}`;
         setTurns((prev) => [
           ...prev,
-          { id: `a-${Date.now()}`, role: "assistant", block: res.block },
+          { id: assistantId, role: "assistant", block: res.block },
         ]);
+        // An async workflow (e.g. question-paper generation) returns QUEUED with a job id — poll
+        // the existing job endpoint and update this turn in place when it finishes.
+        const block = res.block;
+        const jobId =
+          block?.kind === "workflow" && workflowIsRunning(block.workflow_state)
+            ? (block.summary?.job_id as string | undefined)
+            : undefined;
+        if (jobId && block) pollWorkflowJob(assistantId, jobId, block);
         scrollToEnd();
       } catch (err) {
         setError(getApiErrorMessage(err, "StudyNexs could not complete that request."));
@@ -113,7 +241,7 @@ export function WorkspaceRoot({
         setSubmitting(false);
       }
     },
-    [text, submitting, sessionId, router, scrollToEnd]
+    [text, submitting, sessionId, router, scrollToEnd, pollWorkflowJob] 
   );
 
   const handleRunAction = useCallback(
@@ -123,13 +251,19 @@ export function WorkspaceRoot({
     [send]
   );
 
+  const cancelAllPolls = useCallback(() => {
+    pollTimers.current.forEach((t) => clearTimeout(t));
+    pollTimers.current.clear();
+  }, []);
+
   const startNewChat = useCallback(() => {
+    cancelAllPolls();
     setTurns([]);
     setError("");
     setSessionId(null);
     setText("");
     setHistoryOpen(false);
-  }, []);
+  }, [cancelAllPolls]);
 
   const openHistory = useCallback(async () => {
     setHistoryOpen(true);
@@ -142,6 +276,7 @@ export function WorkspaceRoot({
 
   const loadSession = useCallback(
     async (id: string) => {
+      cancelAllPolls();
       setHistoryOpen(false);
       setError("");
       try {
@@ -160,7 +295,7 @@ export function WorkspaceRoot({
         setError("Couldn't load that conversation.");
       }
     },
-    [scrollToEnd]
+    [scrollToEnd, cancelAllPolls]
   );
 
   const handleNav = useCallback(

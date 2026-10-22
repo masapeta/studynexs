@@ -1,7 +1,7 @@
 # Assistant Execution Architecture — Design of Record
 
-- **Status:** Accepted (design), Implementation in progress (Phases 3–9 landed)
-- **Version:** 1.7
+- **Status:** Accepted (design), Implementation in progress (Phases 3–10 landed)
+- **Version:** 1.8
 - **Date:** 2026-10-22
 - **Owner:** Avinash Reddy Masapeta (ARM)
 - **Subsystem:** Workspace Assistant (`app/modules/workspace/assistant`)
@@ -201,7 +201,7 @@ The generic pattern now runs end to end for QP, with **no QP-specific router** a
 - **HITL preserved:** the executor never approves. The result block's actions point at the existing server-side `/submit` and `/approve` endpoints. A model cannot approve a paper.
 - **Failure/clarify:** unknown workflow → guide; missing/ambiguous class or subject → clarify; no approved pack → guide; generation failure → `WorkflowError` → safe guide. No partial state.
 
-> **Accepted decision — QP will become async before GA.** QP generation currently runs **inline (sync)**, inherited from the existing feature (Phase 4 wrapped it, did not rewrite it). For a customer-scale product a ~2-minute synchronous request is a liability (edge/gateway timeouts, lost work on disconnect, worker starvation during exam season). The correct end state is async, consistent with Evaluation. The workflow model already supports this (the `is_async` flag + `QUEUED→RUNNING→COMPLETED` lifecycle), so the conversion is a **contained change** — an Arq task for `generate_paper`, an enqueue in `_run_question_paper`, and job-status wiring — with **no** change to the planner, registry, or routing. It is deliberately sequenced with **Phase 10 (Native Chat UX)** so the backend async change and the frontend polling/progress UX land and are tested together (rather than a sync-assuming UI over an async backend). Trigger: before general availability / observed exam-season load. Until then `is_async=False` on the `question_paper` definition is honest metadata that matches the inline behavior.
+> **Resolved in Phase 10 — QP generation is now asynchronous.** Production QP generation no longer blocks the request: `_run_question_paper` keeps all fast up-front work (resolve class/subject, authorize, approved-pack gate, pre-flight credit **check**) then **enqueues** `question_paper_generate` on the existing Arq worker and returns a `kind="workflow"` block at `workflow_state=queued` carrying `summary.job_id`. The worker runs the **unchanged** `generate_paper` pipeline; the chat polls the existing `GET /api/v1/jobs/{job_id}` and swaps the turn to `waiting_for_approval` (with a Review link to the generated paper) on `done`, or an honest error on `failed`. **No** change to the planner, registry routing, or `generate_paper`. `is_async=True` on the `question_paper` definition now matches real behavior. **TESTING still runs synchronously** (preserves the existing QP tests + deterministic CI). **Idempotency:** an in-flight (`QUEUED`/`RUNNING`) job for the same school + creator + class + subject is reused — a double-submit or client retry cannot produce two papers or two credit charges. **Graceful degradation:** if enqueue fails (Redis/worker outage) the executor falls back to synchronous generation, exactly as Evaluation does. **Single-charge invariant:** the pre-flight `enforce_monthly_ai_cap` is a check only; the one reservation happens inside `generate_paper` at generation, so a queued-but-never-run job never charges. **Pollable reference:** the generic `Job` row is the orchestration handle (tenant- + creator-authorized at `GET /api/v1/jobs/{job_id}`); the QP `PaperStatus` domain lifecycle stays authoritative and unchanged (the paper still only exists once generated).
 
 ### 5.7 What Phase 5 wired (Evaluation — second consumer, async + Arq)
 
@@ -234,6 +234,15 @@ Parent Intervention is the first workflow whose result carries a **state-changin
 - **Action half** (`ParentInterventionService.approve_and_notify`, exposed at `POST /api/v1/workflows/parent-intervention/drafts/{id}/approve`, role-gated): the first governed state-changing action. At approval time it row-locks the draft, **re-validates** tenant + `assert_can_access_student` + that the recipient is still a linked parent + message validity, is **idempotent** (already-notified → returns unchanged; unique `(batch, student, parent)`), delivers **one IN_APP** notification via the existing `NotificationService`, and writes an explicit `AuditLog` row (workflow/student/parent/notification ids). Failure sets `status=failed` honestly — never a silent notified/COMPLETED.
 - **Safety invariants:** a model can never approve or send (only an authenticated staff user hitting the endpoint can); strictly 1:1 (no bulk notification — each draft has its own approve action); IN_APP only (SMS/email/push TODO stubs explicitly deferred); the send is described as approval-gated / server-authorized / validated / idempotent / audited — **not** "reversible" (a delivered notification cannot be assumed un-sendable).
 - **Not built:** no generic Action Engine, no broadcast abstraction, no external channels, no agent. The action surface is exactly what this one consumer needs; generalization waits until a second real action (fee reminders / notices) proves the shape (Phase 8).
+
+### 5.10 What Phase 10 wired (Native Chat UX + QP async execution)
+
+Phase 10 completes the chat presentation for all result kinds and removes synchronous QP generation as a pre-GA risk, reusing the existing Arq/Job infrastructure (no new engine, queue, or realtime transport).
+
+- **Native rendering (frontend).** All twelve result kinds render through `AssistantBlockView.tsx`; the safety-critical decisions are extracted into a pure, unit-tested module `assistant-block-logic.ts` (`node --test`, matching the existing frontend test stack — no new framework). The rules that could silently go wrong live there: an `action_result` shows success **only** when the backend confirms it (`created===true`, or `created===false` with `status="completed"` for an idempotent replay, or `status="published"`); unknown kinds hit a safe fallback instead of crashing; `mixed` children render in a stable data-then-document order. The twelve-kind TS union gained `workflow`/`action_preview`/`action_result` (already in Phase 9) plus a trailing `string` for forward-compatibility.
+- **QP async (backend).** `_run_question_paper` keeps all fast up-front work (resolve/authorize/approved-pack/pre-flight credit check) then delegates to `_enqueue_qp_generation`, which enqueues `question_paper_generate` on the existing worker and returns a `queued` workflow block with `summary.job_id`. The new job handler (`app/modules/ai/jobs/question_paper_job.py`, registered in `worker.register_job_handlers`) runs the unchanged `generate_paper`. TESTING runs synchronously (preserves existing QP tests). Idempotent (in-flight job reused), degrades to sync on enqueue failure, single-charge preserved (reservation stays inside `generate_paper`). The generic `Job` row is the pollable handle; `PaperStatus` stays authoritative.
+- **Chat integration (polling).** When a turn returns a `queued`/`running` workflow with a `job_id`, `WorkspaceRoot.tsx` polls the existing tenant-/creator-scoped `GET /api/v1/jobs/{job_id}` (bounded ~2 min, backoff), then swaps the turn in place to `waiting_for_approval` (with a Review link to the paper) on `done`, or an honest error on `failed`. Polls are cancelled on new-chat / session-switch / unmount so a stale poll never mutates a gone turn. No websocket/SSE introduced — polling reuses what exists.
+- **Not built:** no second renderer architecture, no response-framework abstraction, no new job system, no realtime transport, no change to the planner/registry/`generate_paper`.
 
 ---
 
@@ -374,7 +383,7 @@ Architecture is complete **now**; implementation proceeds one real product featu
 | 7 | Parent Intervention | workflow + governed action |
 | 8 | Governed Actions boundary | QP approval first |
 | 9 ✅ | Consolidated Structured Result (typed boundary) | all categories |
-| 10 | Native Chat UX rendering | all categories |
+| 10 ✅ | Native Chat UX rendering + QP async execution | all categories |
 | 11 | MCP Apps adapter | interoperability only |
 | 12 | Agentic execution where justified | prove need first; framework only if measured limitation |
 

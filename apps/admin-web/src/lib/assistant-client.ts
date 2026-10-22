@@ -134,3 +134,18 @@ export async function getChatSession(sessionId: string): Promise<ChatMessage[]> 
   );
   return res.data ?? [];
 }
+
+/** A background job's pollable status (e.g. async question-paper generation). */
+export interface JobStatusOut {
+  id: string;
+  type: string;
+  status: "queued" | "running" | "done" | "failed";
+  result?: Record<string, unknown> | null;
+  error?: string | null;
+}
+
+/** Poll one job the current user owns. Tenant- and creator-scoped server-side (404 otherwise). */
+export async function getJob(jobId: string): Promise<JobStatusOut> {
+  const res = await api<{ data: JobStatusOut }>(`/api/v1/jobs/${jobId}`);
+  return res.data;
+}

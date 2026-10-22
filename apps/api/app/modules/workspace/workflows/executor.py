@@ -142,7 +142,10 @@ async def _run_question_paper(
     total_marks = _coerce_marks(params.get("total_marks"))
     topics = [str(t) for t in (params.get("topics") or []) if str(t).strip()]
 
-    # Credit cap — the EXISTING monthly enforcement (row-locked ledger).
+    # Credit cap — the EXISTING monthly enforcement (row-locked ledger). A pre-flight CHECK only
+    # (returns credits to charge); the single reservation happens inside generate_paper at
+    # generation, so a queued-but-never-run job never charges. Checked up front so an over-cap
+    # teacher fails fast with 429 instead of enqueuing dead work.
     credits = await enforce_monthly_ai_cap(
         db,
         school_id,
@@ -152,32 +155,149 @@ async def _run_question_paper(
         purpose_tag="qp_full",
     )
 
-    try:
-        paper = await generate_paper(
-            db,
-            school_id=school_id,
-            created_by=uuid.UUID(current_user.id),
-            class_id=class_id,
-            subject_id=subject_id,
-            topics=topics,
-            total_marks=total_marks,
-            duration_minutes=180,
-            difficulty="balanced",
-            role=current_user.role,
-            purpose_tag="qp_full",
-            credits_charged=credits,
-            pack_id=pack_id,
-        )
-    except ValueError as exc:
-        raise WorkflowError(str(exc)) from exc
-    except Exception as exc:  # noqa: BLE001 — surface a safe message; details are logged upstream
-        logger.warning("workflow_qp_generate_failed", error=str(exc))
-        raise WorkflowError("Question paper generation failed. Please try again.") from exc
+    class_label_out = class_res.candidates[0].label
+    subject_label_out = subject_res.candidates[0].label
+    gen_params = {
+        "school_id": str(school_id),
+        "created_by": current_user.id,
+        "class_id": str(class_id),
+        "subject_id": str(subject_id),
+        "topics": topics,
+        "total_marks": total_marks,
+        "duration_minutes": 180,
+        "difficulty": "balanced",
+        "role": current_user.role,
+        "purpose_tag": "qp_full",
+        "credits_charged": credits,
+        "pack_id": str(pack_id),
+    }
 
-    return _qp_result_block(
-        paper,
-        class_label=class_res.candidates[0].label,
-        subject_label=subject_res.candidates[0].label,
+    # TESTING runs synchronously (preserves existing QP behaviour + tests); production enqueues on
+    # the EXISTING Arq worker and returns a QUEUED workflow the chat polls — same discipline as the
+    # Evaluation workflow. The expensive generation never blocks the request in production.
+    from app.core.config import Environment, get_settings
+
+    if get_settings().ENVIRONMENT == Environment.TESTING:
+        try:
+            paper = await generate_paper(
+                db,
+                school_id=school_id,
+                created_by=uuid.UUID(current_user.id),
+                class_id=class_id,
+                subject_id=subject_id,
+                topics=topics,
+                total_marks=total_marks,
+                duration_minutes=180,
+                difficulty="balanced",
+                role=current_user.role,
+                purpose_tag="qp_full",
+                credits_charged=credits,
+                pack_id=pack_id,
+            )
+        except ValueError as exc:
+            raise WorkflowError(str(exc)) from exc
+        except Exception as exc:  # noqa: BLE001 — safe message; details logged upstream
+            logger.warning("workflow_qp_generate_failed", error=str(exc))
+            raise WorkflowError("Question paper generation failed. Please try again.") from exc
+        return _qp_result_block(
+            paper, class_label=class_label_out, subject_label=subject_label_out
+        )
+
+    return await _enqueue_qp_generation(
+        db,
+        current_user,
+        gen_params=gen_params,
+        class_label=class_label_out,
+        subject_label=subject_label_out,
+    )
+
+
+async def _enqueue_qp_generation(
+    db: AsyncSession,
+    current_user: CurrentUser,
+    *,
+    gen_params: dict[str, Any],
+    class_label: str,
+    subject_label: str,
+) -> dict[str, Any]:
+    """Enqueue QP generation on the existing Arq worker (idempotent), returning a QUEUED block.
+
+    Idempotency: an in-flight (QUEUED/RUNNING) job for the SAME school + creator + class + subject
+    is reused rather than enqueuing a second generation — a double-submit or client retry can't
+    produce two papers or two charges. Falls back to synchronous generation if enqueue fails, so a
+    Redis/worker outage degrades gracefully instead of dropping the request.
+    """
+    from app.core.jobs.queue import enqueue
+    from app.db.models.job import Job, JobStatus
+    from app.modules.ai.services.question_paper_service import generate_paper
+
+    school_id = uuid.UUID(current_user.school_id)
+    created_by = uuid.UUID(current_user.id)
+
+    existing = (
+        await db.execute(
+            select(Job)
+            .where(
+                Job.school_id == school_id,
+                Job.created_by == created_by,
+                Job.type == "question_paper_generate",
+                Job.status.in_((JobStatus.QUEUED, JobStatus.RUNNING)),
+            )
+            .order_by(Job.created_at.desc())
+        )
+    ).scalars().first()
+    for job in [existing] if existing else []:
+        if (
+            str(job.params.get("class_id")) == gen_params["class_id"]
+            and str(job.params.get("subject_id")) == gen_params["subject_id"]
+        ):
+            return _qp_queued_block(
+                job_id=job.id,
+                class_label=class_label,
+                subject_label=subject_label,
+                total_marks=int(gen_params["total_marks"]),
+            )
+
+    try:
+        job = await enqueue(
+            db,
+            task="question_paper_generate",
+            params=gen_params,
+            school_id=school_id,
+            created_by=created_by,
+        )
+    except Exception:  # noqa: BLE001 — Redis/worker down: degrade to synchronous generation
+        logger.warning("qp_enqueue_failed_running_sync")
+        try:
+            paper = await generate_paper(
+                db,
+                school_id=school_id,
+                created_by=created_by,
+                class_id=uuid.UUID(gen_params["class_id"]),
+                subject_id=uuid.UUID(gen_params["subject_id"]),
+                topics=[str(t) for t in (gen_params.get("topics") or [])],
+                total_marks=int(gen_params["total_marks"]),
+                duration_minutes=180,
+                difficulty="balanced",
+                role=str(gen_params.get("role") or current_user.role),
+                purpose_tag="qp_full",
+                credits_charged=gen_params.get("credits_charged"),
+                pack_id=uuid.UUID(gen_params["pack_id"]) if gen_params.get("pack_id") else None,
+            )
+        except ValueError as exc:
+            raise WorkflowError(str(exc)) from exc
+        except Exception as exc:  # noqa: BLE001 — safe message; details logged upstream
+            logger.warning("workflow_qp_generate_failed", error=str(exc))
+            raise WorkflowError("Question paper generation failed. Please try again.") from exc
+        return _qp_result_block(
+            paper, class_label=class_label, subject_label=subject_label
+        )
+
+    return _qp_queued_block(
+        job_id=job.id,
+        class_label=class_label,
+        subject_label=subject_label,
+        total_marks=int(gen_params["total_marks"]),
     )
 
 
@@ -447,6 +567,35 @@ def _clarify_entity(kind: str, query: str, candidates: list[Any]) -> dict[str, A
         names = ", ".join(c.label for c in candidates[:5])
         msg = f"Which {kind} did you mean? {names}"
     return {"kind": "clarify", "title": f"Which {kind}?", "message": msg}
+
+
+def _qp_queued_block(
+    *, job_id: uuid.UUID, class_label: str, subject_label: str, total_marks: int
+) -> dict[str, Any]:
+    """UI-independent QUEUED workflow block for an async QP generation the chat will poll.
+
+    The generic Job id is the pollable reference (GET /api/v1/jobs/{job_id}); on DONE the job's
+    result carries `paper_id`, at which point the chat shows the final WAITING_FOR_APPROVAL block
+    via the existing review endpoints. No paper exists yet — we never imply one does.
+    """
+    return {
+        "kind": "workflow",
+        "workflow_id": "question_paper",
+        "title": f"Question Paper — {class_label} {subject_label}",
+        "workflow_state": WorkflowState.QUEUED.value,
+        "summary": {
+            "job_id": str(job_id),
+            "class": class_label,
+            "subject": subject_label,
+            "total_marks": float(total_marks),
+        },
+        # The chat polls the job; the review link only becomes meaningful once a paper exists.
+        "actions": [],
+        "message": (
+            f"Generating a {total_marks:.0f}-mark {subject_label} paper for {class_label}. "
+            "I'll show it here as soon as it's ready to review."
+        ),
+    }
 
 
 def _qp_result_block(paper: Any, *, class_label: str, subject_label: str) -> dict[str, Any]:
