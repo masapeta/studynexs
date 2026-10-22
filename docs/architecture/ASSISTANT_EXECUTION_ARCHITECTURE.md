@@ -1,8 +1,8 @@
 # Assistant Execution Architecture — Design of Record
 
-- **Status:** Accepted (design), Implementation in progress (Phases 3–8 landed)
-- **Version:** 1.6
-- **Date:** 2026-09-28
+- **Status:** Accepted (design), Implementation in progress (Phases 3–9 landed)
+- **Version:** 1.7
+- **Date:** 2026-10-22
 - **Owner:** Avinash Reddy Masapeta (ARM)
 - **Subsystem:** Workspace Assistant (`app/modules/workspace/assistant`)
 - **Related ADR:** [`ADR-0003-assistant-execution-and-workflow-architecture.md`](../decisions/ADR-0003-assistant-execution-and-workflow-architecture.md)
@@ -274,14 +274,53 @@ Publish Notice is the first consumer of the assistant's `act` route (previously 
 
 ## 7. Structured Result (UI-independent contract)
 
-The service/business layer returns typed blocks and **never generates HTML**. The consolidated result model supports:
+The service/business layer returns typed blocks and **never generates HTML**. Every assistant turn ends at **one** typed-contract boundary.
 
-```
-text · table · metrics · card · chart · form · approval · progress ·
-artifact · navigation · clarification · error
+### 7.1 The boundary (Phase 9, landed)
+
+`_handle_turn` dispatches a request to exactly one producer (capability / composition / workflow / action / clarification), each of which returns a plain `dict` block. Immediately after the dispatch if-ladder — the single place every path converges — the block passes through:
+
+```python
+from app.modules.workspace.assistant.result import validate_block
+block = validate_block(block)   # strict=False in production
 ```
 
-The same `StructuredResult` renders through the **Native UI** (chat + traditional surfaces) and, where interoperability is useful, through an **MCP Apps adapter**. MCP is an adapter over the governed capability/workflow boundary — it does **not** hold business logic, DB access, semantic interpretation, authorization, or orchestration.
+`validate_block` is defined in [`app/modules/workspace/assistant/result.py`](../../apps/api/app/modules/workspace/assistant/result.py). It is **not** a renderer, a framework, or a second abstraction layer — it is a thin validation seam with two jobs: (1) catch schema drift in CI, and (2) emit a stable, known `result_kind` for telemetry/persistence.
+
+**Compatibility guarantee:** `validate_block` returns the **original dict object unchanged** — never a `model_dump`. The wire shape is preserved byte-for-byte (extra/passthrough fields such as domain-status keys on `workflow` survive). This is enforced by `extra="allow"` on every block model and asserted by the contract tests.
+
+### 7.2 Known result kinds (12)
+
+Eleven kinds are produced by the backend today; the twelfth (`action_result`) is produced by the governed-action **confirm** endpoint (not by `_handle_turn`) and is a recognized frontend kind.
+
+| Kind | Produced by | Notes |
+|---|---|---|
+| `metrics` | capability | title, metrics[{label,value,format?}], source?, href? |
+| `table` | capability | columns[], rows[], empty_message? |
+| `guide` | fallback / capability | suggestions[{label,href}] |
+| `error` | any path | title, message (generic; never leaks internals) |
+| `clarify` | planner | options[{id,label}] fed back as a turn |
+| `not_found` | capability | title, message |
+| `document` | compose/document | citations[{title,document_type,snippet}] |
+| `mixed` | compose | data{block} + document{block}\|null |
+| `navigate` | capability | href, label |
+| `workflow` | workflow runner | workflow_id, workflow_state, summary{}, actions[]; domain-status passthrough |
+| `action_preview` | governed action | action, status, preview{}, confirm_action{endpoint,payload,label} |
+| `action_result` | confirm endpoint | action, status, created, notice_id?, audience? (**not** a `_handle_turn` block) |
+
+### 7.3 Compatibility policy
+
+- **Production (`strict=False`, default):** unknown kinds and malformed known payloads are **logged and passed through unchanged** — a validation failure never breaks an otherwise successful turn.
+- **Tests (`strict=True`):** malformed **known** kinds raise, so schema drift fails CI and cannot become invisible. Unknown kinds still pass through (forward-compatibility — a future kind is not a failure).
+- **Frontend mirror:** the `AssistantBlock.kind` union in `assistant-client.ts` lists all twelve kinds plus a trailing `string` for forward-compatibility; `AssistantBlockView.tsx` renders each kind and falls back safely. `action_result` renders success **only** when the backend confirms it (`created === true` / `status === "published"`) — a displayed result never implies success the backend did not report.
+
+### 7.4 Migration path
+
+Adding a new kind is additive and reuse-first: add a block model + entry to `_MODEL_BY_KIND` in `result.py`, a sample to the contract test, a union member + renderer branch on the frontend. No existing producer changes. This is **not** the `type`-discriminated block system in `app/modules/workspace/schemas/blocks.py` — that serves the older teacher-copilot `WorkspaceResponse` surface and remains separate by design.
+
+### 7.5 Rendering surfaces
+
+The same structured result renders through the **Native UI** (chat + traditional surfaces) and, where interoperability is useful, through a **future MCP Apps adapter** (Phase 11). MCP is an adapter over the governed capability/workflow boundary — it does **not** hold business logic, DB access, semantic interpretation, authorization, or orchestration.
 
 Chat is used where natural-language interaction, follow-up, quick decisions, summarization, action, or workflow initiation help. Traditional web surfaces remain for complex admin, persistent tables, configuration, dashboards, large reports, bulk management, and long forms. StudyNexs is **not** chat-only.
 
@@ -334,7 +373,7 @@ Architecture is complete **now**; implementation proceeds one real product featu
 | 6 | Lesson Planning + Remediation | exec mode decided per-workflow |
 | 7 | Parent Intervention | workflow + governed action |
 | 8 | Governed Actions boundary | QP approval first |
-| 9 | Consolidated Structured Result | all categories |
+| 9 ✅ | Consolidated Structured Result (typed boundary) | all categories |
 | 10 | Native Chat UX rendering | all categories |
 | 11 | MCP Apps adapter | interoperability only |
 | 12 | Agentic execution where justified | prove need first; framework only if measured limitation |

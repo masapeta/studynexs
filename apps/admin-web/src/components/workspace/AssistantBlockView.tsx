@@ -236,6 +236,137 @@ export function AssistantBlockView({
     );
   }
 
+  if (block.kind === "workflow") {
+    const summary = block.summary ?? {};
+    return (
+      <div className="card" style={{ margin: 0, padding: 22 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+          <span style={{ fontSize: 15, fontWeight: 800, color: "var(--text-primary)" }}>
+            {block.title || "Workflow"}
+          </span>
+          {block.workflow_state ? (
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: "var(--accent-dark)",
+                background: "var(--accent-50)",
+                border: "1px solid color-mix(in srgb, var(--accent) 30%, transparent)",
+                padding: "3px 9px",
+                borderRadius: 999,
+              }}
+            >
+              {block.workflow_state.replace(/_/g, " ")}
+            </span>
+          ) : null}
+        </div>
+        {block.message ? (
+          <p style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 2 }}>
+            {block.message}
+          </p>
+        ) : null}
+        {Object.keys(summary).length ? (
+          <div style={{ marginTop: 12, display: "grid", gap: 4 }}>
+            {Object.entries(summary).map(([k, v]) => (
+              <div key={k} style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                <span style={{ textTransform: "capitalize" }}>{k.replace(/_/g, " ")}</span>:{" "}
+                <span style={{ color: "var(--text-primary)" }}>{String(v ?? "—")}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        {block.actions?.length ? (
+          <div style={{ marginTop: 16, display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {block.actions.map((a, i) =>
+              a.href ? (
+                <button
+                  key={i}
+                  type="button"
+                  className="btn btn-outline"
+                  style={{ width: "auto", padding: "7px 14px" }}
+                  onClick={() => router.push(a.href!)}
+                >
+                  {a.label}
+                </button>
+              ) : (
+                <span key={i} style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+                  {a.label}
+                </span>
+              )
+            )}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (block.kind === "action_preview") {
+    const preview = block.preview ?? {};
+    const confirm = block.confirm_action;
+    return (
+      <div className="card" style={{ margin: 0, padding: 22 }}>
+        <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text-primary)", marginBottom: 6 }}>
+          {block.title || "Review before confirming"}
+        </div>
+        {block.message ? (
+          <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 12 }}>
+            {block.message}
+          </p>
+        ) : null}
+        {Object.keys(preview).length ? (
+          <div
+            style={{
+              display: "grid",
+              gap: 6,
+              padding: "12px 14px",
+              borderRadius: 12,
+              background: "var(--bg)",
+              border: "1px solid var(--border)",
+            }}
+          >
+            {Object.entries(preview).map(([k, v]) => (
+              <div key={k} style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                <span style={{ textTransform: "capitalize" }}>{k.replace(/_/g, " ")}</span>:{" "}
+                <span style={{ color: "var(--text-primary)" }}>{String(v ?? "—")}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        {confirm ? (
+          <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 12 }}>
+            {confirm.label || "Confirm"} is required — nothing happens until you confirm.
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (block.kind === "action_result") {
+    // Only show success when the backend actually confirms it.
+    const succeeded = block.created === true || block.status === "published";
+    return (
+      <div
+        className="card"
+        style={{
+          margin: 0,
+          padding: 18,
+          background: succeeded ? "var(--success-light)" : "var(--bg)",
+          border: `1px solid ${
+            succeeded
+              ? "color-mix(in srgb, var(--success) 30%, transparent)"
+              : "var(--border)"
+          }`,
+          color: succeeded ? "var(--success)" : "var(--text-primary)",
+          fontSize: 14,
+        }}
+      >
+        {succeeded
+          ? block.message || block.title || "Done."
+          : block.message || block.title || "The action did not complete."}
+      </div>
+    );
+  }
+
   // metrics + table share a header + source footer.
   return (
     <div className="card" style={{ margin: 0, padding: 22 }}>

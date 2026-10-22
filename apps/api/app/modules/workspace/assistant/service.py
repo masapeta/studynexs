@@ -280,6 +280,11 @@ class AssistantService:
             }
         else:
             block = self._guide_block(role, message=decision.message)
+        # Single typed-contract boundary (Phase 9): validate the block against its kind's model
+        # for compatibility/telemetry, returning it unchanged so the wire shape is preserved.
+        from app.modules.workspace.assistant.result import validate_block
+
+        block = validate_block(block)
         result_kind = block.get("kind", "data")
         trace["result_kind"] = result_kind
 

@@ -29,7 +29,26 @@ export interface AssistantCitation {
   snippet?: string | null;
 }
 
-/** A typed result block the assistant returns; render varies by `kind`. */
+/** An action/link the assistant surfaces on a workflow block. */
+export interface AssistantAction {
+  label: string;
+  href?: string;
+}
+
+/** The confirm step on an action_preview block (human-in-the-loop gate). */
+export interface AssistantConfirmAction {
+  label: string;
+  endpoint: string;
+  payload?: Record<string, unknown>;
+}
+
+/**
+ * A typed result block the assistant returns; render varies by `kind`.
+ *
+ * `kind` mirrors the backend contract in app/modules/workspace/assistant/result.py.
+ * The trailing `string` keeps forward-compatibility: an unknown future kind is tolerated,
+ * not type-errored.
+ */
 export interface AssistantBlock {
   kind:
     | "metrics"
@@ -41,6 +60,9 @@ export interface AssistantBlock {
     | "not_found"
     | "document"
     | "mixed"
+    | "workflow"
+    | "action_preview"
+    | "action_result"
     | string;
   title?: string;
   subtitle?: string;
@@ -58,6 +80,20 @@ export interface AssistantBlock {
   citations?: AssistantCitation[];
   data?: AssistantBlock;
   document?: AssistantBlock | null;
+  // workflow
+  workflow_id?: string;
+  workflow_state?: string;
+  summary?: Record<string, unknown>;
+  actions?: AssistantAction[];
+  // action_preview
+  action?: string;
+  status?: string;
+  preview?: Record<string, unknown>;
+  confirm_action?: AssistantConfirmAction;
+  // action_result (returned by the confirm endpoint; may also render in history)
+  notice_id?: string;
+  audience?: string;
+  created?: boolean;
 }
 
 export interface AssistantTurn {
