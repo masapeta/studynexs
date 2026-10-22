@@ -3,16 +3,12 @@
 import { useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import type { AssistantBlock } from "@/lib/assistant-client";
-
-function fmt(value: unknown, format?: "number" | "money" | "percent"): string {
-  if (value === null || value === undefined || value === "") return "—";
-  const num = typeof value === "number" ? value : Number(value);
-  if (Number.isNaN(num)) return String(value);
-  if (format === "money") return `₹${num.toLocaleString("en-IN")}`;
-  if (format === "percent") return `${Math.round(num)}%`;
-  if (format === "number") return num.toLocaleString("en-IN");
-  return String(value);
-}
+import {
+  actionResultSucceeded,
+  fmt,
+  mixedChildren,
+  workflowStateLabel,
+} from "./assistant-block-logic";
 
 /** Renders one assistant result block. onSelect (optional) feeds a clarify choice back as a turn. */
 export function AssistantBlockView({
@@ -155,10 +151,12 @@ export function AssistantBlockView({
   }
 
   if (block.kind === "mixed") {
+    const children = mixedChildren(block);
     return (
       <div style={{ display: "grid", gap: 12 }}>
-        {block.data ? <AssistantBlockView block={block.data} onSelect={onSelect} /> : null}
-        {block.document ? <AssistantBlockView block={block.document} onSelect={onSelect} /> : null}
+        {children.map((child, i) => (
+          <AssistantBlockView key={i} block={child} onSelect={onSelect} />
+        ))}
       </div>
     );
   }
@@ -254,9 +252,10 @@ export function AssistantBlockView({
                 border: "1px solid color-mix(in srgb, var(--accent) 30%, transparent)",
                 padding: "3px 9px",
                 borderRadius: 999,
+                textTransform: "capitalize",
               }}
             >
-              {block.workflow_state.replace(/_/g, " ")}
+              {workflowStateLabel(block.workflow_state)}
             </span>
           ) : null}
         </div>
@@ -342,8 +341,8 @@ export function AssistantBlockView({
   }
 
   if (block.kind === "action_result") {
-    // Only show success when the backend actually confirms it.
-    const succeeded = block.created === true || block.status === "published";
+    // Only show success when the backend actually confirms it (see assistant-block-logic).
+    const succeeded = actionResultSucceeded(block);
     return (
       <div
         className="card"
