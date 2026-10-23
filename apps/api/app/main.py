@@ -275,6 +275,10 @@ def create_app() -> FastAPI:
     app.include_router(demo_router, prefix=f"{prefix}/demo", tags=["demo"])
     app.include_router(lesson_plan_router, prefix=f"{prefix}/lesson-plans", tags=["curriculum"])
 
+    from app.modules.mcp.endpoints.mcp import router as mcp_router
+
+    app.include_router(mcp_router, prefix=f"{prefix}/mcp", tags=["mcp"])
+
     return app
 
 

@@ -1,8 +1,8 @@
 # Assistant Execution Architecture — Design of Record
 
-- **Status:** Accepted (design), Implementation in progress (Phases 3–10 landed)
-- **Version:** 1.8
-- **Date:** 2026-10-22
+- **Status:** Accepted (design), Implementation in progress (Phases 3–11 landed)
+- **Version:** 1.9
+- **Date:** 2026-10-23
 - **Owner:** Avinash Reddy Masapeta (ARM)
 - **Subsystem:** Workspace Assistant (`app/modules/workspace/assistant`)
 - **Related ADR:** [`ADR-0003-assistant-execution-and-workflow-architecture.md`](../decisions/ADR-0003-assistant-execution-and-workflow-architecture.md)
@@ -244,6 +244,32 @@ Phase 10 completes the chat presentation for all result kinds and removes synchr
 - **Chat integration (polling).** When a turn returns a `queued`/`running` workflow with a `job_id`, `WorkspaceRoot.tsx` polls the existing tenant-/creator-scoped `GET /api/v1/jobs/{job_id}` (bounded ~2 min, backoff), then swaps the turn in place to `waiting_for_approval` (with a Review link to the paper) on `done`, or an honest error on `failed`. Polls are cancelled on new-chat / session-switch / unmount so a stale poll never mutates a gone turn. No websocket/SSE introduced — polling reuses what exists.
 - **Not built:** no second renderer architecture, no response-framework abstraction, no new job system, no realtime transport, no change to the planner/registry/`generate_paper`.
 
+### 5.11 What Phase 11 wired (MCP Apps adapter — bounded, read-only interoperability)
+
+Phase 11 exposes an explicitly allowlisted slice of existing capabilities to compatible external MCP hosts (per **SEP-1865 / MCP Apps**), as a thin protocol shim — **not** a new runtime, registry, identity, or data layer.
+
+**Adapter boundary + identity flow:**
+
+```
+MCP Host (Claude/Copilot/…)  ──Bearer + X-Tenant-Slug──▶  POST /api/v1/mcp
+      JSON-RPC 2.0                                           │ require_roles(staff) + get_current_user
+                                                             ▼  (server-derived CurrentUser; body identity ignored)
+                                      app/modules/mcp/server.handle_rpc
+                                        · initialize / tools/list / resources/list / resources/read / tools/call
+                                        · allowlist: MCP tool ─▶ EXISTING AssistantTool.handler
+                                                             ▼
+                                      cap.class_attendance_today  (resolve_class + _authorize_class, tenant-scoped)
+```
+
+- **Where it runs:** in-process FastAPI router at `/api/v1/mcp` (`app/modules/mcp/`). It reuses the existing auth dependency, `require_roles`, rate limiting, audit middleware, and DB session. No new process, SDK, or dependency — the small JSON-RPC subset is implemented directly (SEP-1865 explicitly permits this).
+- **Identity is server-derived.** `get_current_user` decodes the Bearer JWT (and enforces the tenant/school match); the host supplies the same credentials a browser does. A `school_id`/`user_id`/`role` placed in the JSON-RPC body is **ignored** — proven by `test_spoofed_identity_in_body_is_ignored`. Cross-tenant lookups return `not_found`, never another school's data (`test_cross_tenant_class_is_not_found`).
+- **The allowlist (exactly one tool):** `school_class_attendance_today` → the existing `class_attendance_today` capability. Chosen because it is **read-only**, staff-gated, **object-authorized inside the capability** (`_authorize_class`), and exposes only **aggregate counts** (present/absent/late/%) — **no individual student records**. `tools/call` returns `content[].text` (the model/text-only fallback) **plus** `structuredContent` (the unchanged capability block) for the interactive app.
+- **The one MCP App:** a self-contained `text/html;profile=mcp-app` resource at `ui://studynexs/class-attendance.html`, served via `resources/read` with a deny-by-default CSP (`csp: {}` — no external origins). It implements the `ui/initialize` handshake, applies host theme CSS variables (with fallbacks), renders loading/empty/error/success, and refreshes via a `tools/call` round-trip **only** when the host advertises `serverTools`. It is **not** `AssistantBlockView.tsx` — that is a Next.js client component requiring a build step and cannot run in the single-file sandbox; it was deliberately **not** reused.
+- **No mutation surface.** Only the read-only tool is reachable; any other tool name (e.g. `publish_notice`) is rejected with JSON-RPC `-32601` (`test_unknown_tool_is_rejected`). Governed actions are **not** exposed by this slice. Rendering the app or clicking refresh can never bypass authorization — every refresh is a fresh authenticated `tools/call`.
+- **Graceful degradation:** a host without MCP Apps simply shows `content[].text`; the app itself degrades to a neutral message if `ui/initialize` is unanswered.
+- **Not built:** no second capability registry, no planner/JEV/Gemma involvement, no workflow re-implementation, no merge with the teacher-copilot `WorkspaceResponse`, no generic MCP platform, no app-registered tools, no external-URL content type.
+- **GA blockers (explicit):** (1) **no compatible-host smoke test was run** — the adapter is verified at the protocol/JSON-RPC level with a simulated host (the tests), not against a live Claude/Copilot connector; a real-host smoke test + the `ui/` postMessage lifecycle in a real sandbox remain to be validated before GA. (2) MCP host connections currently rely on the standard Bearer flow; a dedicated connector onboarding/consent + per-connection scoping review is a pre-GA item. (3) Audit of MCP tool calls uses the generic structured log event `mcp_tool_call` + existing audit middleware; a dedicated MCP audit/retention review is recommended before GA.
+
 ---
 
 ## 6. Actions (governed state change)
@@ -329,7 +355,7 @@ Adding a new kind is additive and reuse-first: add a block model + entry to `_MO
 
 ### 7.5 Rendering surfaces
 
-The same structured result renders through the **Native UI** (chat + traditional surfaces) and, where interoperability is useful, through a **future MCP Apps adapter** (Phase 11). MCP is an adapter over the governed capability/workflow boundary — it does **not** hold business logic, DB access, semantic interpretation, authorization, or orchestration.
+The same structured result renders through the **Native UI** (chat + traditional surfaces) and, where interoperability is useful, through the **MCP Apps adapter** (Phase 11, §5.11). MCP is an adapter over the governed capability/workflow boundary — it does **not** hold business logic, DB access, semantic interpretation, authorization, or orchestration.
 
 Chat is used where natural-language interaction, follow-up, quick decisions, summarization, action, or workflow initiation help. Traditional web surfaces remain for complex admin, persistent tables, configuration, dashboards, large reports, bulk management, and long forms. StudyNexs is **not** chat-only.
 
@@ -384,7 +410,7 @@ Architecture is complete **now**; implementation proceeds one real product featu
 | 8 | Governed Actions boundary | QP approval first |
 | 9 ✅ | Consolidated Structured Result (typed boundary) | all categories |
 | 10 ✅ | Native Chat UX rendering + QP async execution | all categories |
-| 11 | MCP Apps adapter | interoperability only |
+| 11 ✅ | MCP Apps adapter (bounded, read-only slice) | interoperability only |
 | 12 | Agentic execution where justified | prove need first; framework only if measured limitation |
 
 **Rule:** each phase must pass the architecture review checklist (real requirement? already represented? reuse a contract? duplicate metadata? bypass governance? needs LLM? could JEV/deterministic do it cheaper? really needs an agent/framework/MCP? complexity vs benefit?). QP proves the boundary; the same architecture then serves Evaluation, Lesson Planning, Remediation, and Parent Intervention.

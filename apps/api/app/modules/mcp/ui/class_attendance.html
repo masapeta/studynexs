@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Class Attendance</title>
+    <style>
+      /* Fallbacks first; a host MAY override these via HostContext.styles.variables. */
+      :root {
+        --color-background-primary: light-dark(#ffffff, #171717);
+        --color-background-secondary: light-dark(#f5f5f5, #262626);
+        --color-text-primary: light-dark(#171717, #fafafa);
+        --color-text-secondary: light-dark(#525252, #a3a3a3);
+        --color-border-primary: light-dark(#e5e5e5, #404040);
+        --color-text-danger: light-dark(#b91c1c, #f87171);
+        --color-background-danger: light-dark(#fef2f2, #3f1d1d);
+        --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        --border-radius-md: 10px;
+        --border-radius-lg: 14px;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; }
+      body {
+        font-family: var(--font-sans);
+        background: var(--color-background-primary);
+        color: var(--color-text-primary);
+        padding: 16px;
+        font-size: 14px;
+      }
+      .card {
+        border: 1px solid var(--color-border-primary);
+        border-radius: var(--border-radius-lg);
+        padding: 18px;
+      }
+      .head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+      .title { font-size: 15px; font-weight: 700; margin: 0; }
+      .refresh {
+        font: inherit;
+        font-size: 13px;
+        padding: 6px 12px;
+        border-radius: var(--border-radius-md);
+        border: 1px solid var(--color-border-primary);
+        background: var(--color-background-secondary);
+        color: var(--color-text-primary);
+        cursor: pointer;
+      }
+      .refresh:disabled { opacity: 0.5; cursor: default; }
+      .refresh:focus-visible { outline: 2px solid var(--color-text-primary); outline-offset: 2px; }
+      .grid {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      }
+      .metric {
+        border: 1px solid var(--color-border-primary);
+        border-radius: var(--border-radius-md);
+        padding: 12px 14px;
+        background: var(--color-background-secondary);
+      }
+      .metric .label { font-size: 12px; color: var(--color-text-secondary); }
+      .metric .value { font-size: 22px; font-weight: 800; margin-top: 2px; }
+      .muted { color: var(--color-text-secondary); }
+      .error {
+        border: 1px solid var(--color-text-danger);
+        background: var(--color-background-danger);
+        color: var(--color-text-danger);
+        border-radius: var(--border-radius-md);
+        padding: 12px 14px;
+      }
+      .skeleton {
+        height: 60px;
+        border-radius: var(--border-radius-md);
+        background: linear-gradient(
+          90deg,
+          var(--color-background-secondary) 25%,
+          var(--color-border-primary) 37%,
+          var(--color-background-secondary) 63%
+        );
+        background-size: 400% 100%;
+        animation: shimmer 1.4s ease infinite;
+      }
+      @keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+      @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+    </style>
+  </head>
+  <body>
+    <div class="card" role="region" aria-label="Class attendance today">
+      <div class="head">
+        <h1 class="title" id="title">Class attendance today</h1>
+        <button class="refresh" id="refresh" type="button" aria-label="Refresh attendance" hidden>
+          Refresh
+        </button>
+      </div>
+      <div id="body" aria-live="polite">
+        <div class="grid" aria-hidden="true">
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Minimal MCP Apps client — no SDK, just the JSON-RPC-over-postMessage subset we need.
+      // Keeps the app self-contained so it loads under a deny-by-default CSP (SEP-1865).
+      (function () {
+        "use strict";
+        var parentWindow = window.parent;
+        var nextId = 1;
+        var pending = {};
+        var toolName = null; // learned from the tool-input notification / host context
+        var toolArgs = {}; // last-known arguments (for refresh)
+        var hostSupportsServerTools = false;
+
+        var bodyEl = document.getElementById("body");
+        var titleEl = document.getElementById("title");
+        var refreshBtn = document.getElementById("refresh");
+
+        function send(method, params) {
+          var id = nextId++;
+          parentWindow.postMessage({ jsonrpc: "2.0", id: id, method: method, params: params }, "*");
+          return new Promise(function (resolve, reject) {
+            pending[id] = { resolve: resolve, reject: reject };
+          });
+        }
+        function notify(method, params) {
+          parentWindow.postMessage({ jsonrpc: "2.0", method: method, params: params }, "*");
+        }
+
+        function esc(s) {
+          return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+          });
+        }
+
+        function applyTheme(ctx) {
+          if (!ctx) return;
+          if (ctx.theme) document.documentElement.style.colorScheme = ctx.theme;
+          var vars = ctx.styles && ctx.styles.variables;
+          if (vars) {
+            Object.keys(vars).forEach(function (k) {
+              if (vars[k] != null) document.documentElement.style.setProperty(k, vars[k]);
+            });
+          }
+        }
+
+        function renderLoading() {
+          bodyEl.innerHTML =
+            '<div class="grid" aria-hidden="true"><div class="skeleton"></div>' +
+            '<div class="skeleton"></div><div class="skeleton"></div></div>';
+        }
+        function renderError(msg) {
+          bodyEl.innerHTML = '<div class="error">' + esc(msg) + "</div>";
+        }
+        function renderEmpty(msg) {
+          bodyEl.innerHTML = '<p class="muted">' + esc(msg) + "</p>";
+        }
+        function fmt(m) {
+          var v = m.value;
+          if (m.format === "percent" && typeof v === "number") return Math.round(v) + "%";
+          return v == null ? "—" : esc(v);
+        }
+        function render(result) {
+          // Prefer structuredContent (the StudyNexs block); fall back to text for non-App hosts.
+          var block = result && result.structuredContent;
+          if (!block) {
+            var text =
+              result && result.content && result.content[0] && result.content[0].text;
+            renderEmpty(text || "No data.");
+            return;
+          }
+          if (result.isError) {
+            renderError(
+              (result.content && result.content[0] && result.content[0].text) ||
+                "Couldn't load attendance."
+            );
+            return;
+          }
+          if (block.title) titleEl.textContent = block.title;
+          var metrics = block.metrics || [];
+          if (!metrics.length) {
+            renderEmpty(block.message || "Attendance hasn't been marked for this class today.");
+            return;
+          }
+          var html = '<div class="grid">';
+          metrics.forEach(function (m) {
+            html +=
+              '<div class="metric"><div class="label">' +
+              esc(m.label) +
+              '</div><div class="value">' +
+              fmt(m) +
+              "</div></div>";
+          });
+          html += "</div>";
+          bodyEl.innerHTML = html;
+        }
+
+        async function refresh() {
+          if (!hostSupportsServerTools || !toolName) return;
+          refreshBtn.disabled = true;
+          renderLoading();
+          try {
+            var result = await send("tools/call", { name: toolName, arguments: toolArgs });
+            render(result);
+          } catch (e) {
+            renderError("Couldn't refresh. Please try again.");
+          } finally {
+            refreshBtn.disabled = false;
+          }
+        }
+        refreshBtn.addEventListener("click", function () {
+          refresh();
+        });
+
+        window.addEventListener("message", function (event) {
+          var data = event.data;
+          if (!data || data.jsonrpc !== "2.0") return;
+
+          // Response to one of our requests.
+          if (data.id != null && pending[data.id]) {
+            var p = pending[data.id];
+            delete pending[data.id];
+            if (data.error) p.reject(new Error(data.error.message || "error"));
+            else p.resolve(data.result);
+            return;
+          }
+
+          // Host notifications.
+          if (data.method === "ui/notifications/tool-input") {
+            toolArgs = (data.params && data.params.arguments) || {};
+          } else if (data.method === "ui/notifications/tool-result") {
+            render(data.params || {});
+          } else if (data.method === "ui/notifications/host-context-changed") {
+            applyTheme(data.params);
+          }
+        });
+
+        // Lifecycle: declare our (minimal) capabilities, learn host capabilities + context.
+        send("ui/initialize", {
+          appInfo: { name: "StudyNexs Class Attendance", version: "1.0.0" },
+          appCapabilities: { availableDisplayModes: ["inline"] },
+        })
+          .then(function (res) {
+            var host = (res && res.hostCapabilities) || {};
+            hostSupportsServerTools = !!host.serverTools;
+            if (hostSupportsServerTools) refreshBtn.hidden = false;
+            applyTheme(res && res.hostContext);
+            var ti = res && res.hostContext && res.hostContext.toolInfo;
+            if (ti && ti.tool && ti.tool.name) toolName = ti.tool.name;
+            notify("ui/notifications/initialized", {});
+          })
+          .catch(function () {
+            // A host that doesn't speak ui/initialize still rendered our HTML; the tool's text
+            // content is the fallback. Show a neutral message rather than a hard failure.
+            renderEmpty("Open this from the StudyNexs assistant to see live attendance.");
+          });
+      })();
+    </script>
+  </body>
+</html>
