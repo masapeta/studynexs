@@ -1,22 +1,94 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import type { AssistantBlock } from "@/lib/assistant-client";
 import {
   actionResultSucceeded,
   fmt,
+  isSupportedActionEndpoint,
   mixedChildren,
   workflowStateLabel,
 } from "./assistant-block-logic";
 
-/** Renders one assistant result block. onSelect (optional) feeds a clarify choice back as a turn. */
+/** A governed chat action the user may confirm. `onAction` runs it and appends the real result. */
+export interface AssistantActionRequest {
+  endpoint: string;
+  payload?: Record<string, unknown>;
+  label: string;
+}
+
+/**
+ * A confirm/approve control for a governed action. It POSTs ONLY through the caller's `onAction`
+ * (which validates the endpoint + runs the authenticated client), shows a pending state, blocks
+ * repeat clicks, and never implies success — on failure it surfaces the error and stays clickable.
+ * An unsupported endpoint renders as an inert label (no request is possible).
+ */
+function ActionButton({
+  request,
+  onAction,
+  variant = "primary",
+}: {
+  request: AssistantActionRequest;
+  onAction?: (req: AssistantActionRequest) => Promise<void>;
+  variant?: "primary" | "outline";
+}) {
+  const [pending, setPending] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const supported = isSupportedActionEndpoint(request.endpoint);
+  if (!supported || !onAction) {
+    // Not actionable from chat — show the label as plain text, never a dead button that posts.
+    return <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{request.label}</span>;
+  }
+
+  const run = async () => {
+    if (pending || done) return; // anti double-click / double-submit
+    setPending(true);
+    setError(null);
+    try {
+      await onAction(request);
+      setDone(true); // success is driven by onAction resolving, i.e. the backend confirming
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "That action couldn't be completed.");
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <span style={{ display: "inline-flex", flexDirection: "column", gap: 4 }}>
+      <button
+        type="button"
+        className={variant === "primary" ? "btn btn-primary" : "btn btn-outline"}
+        style={{ width: "auto", padding: "7px 14px", opacity: done ? 0.6 : 1 }}
+        onClick={run}
+        disabled={pending || done}
+        aria-busy={pending}
+      >
+        {pending ? "Working…" : done ? "Done" : request.label}
+      </button>
+      {error ? (
+        <span style={{ fontSize: 12, color: "var(--danger)" }} role="alert">
+          {error}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+/** Renders one assistant result block. onSelect feeds a clarify choice back as a turn;
+ * onAction runs a governed action/workflow endpoint and appends the confirmed result. */
 export function AssistantBlockView({
   block,
   onSelect,
+  onAction,
 }: {
   block: AssistantBlock;
   onSelect?: (text: string) => void;
+  onAction?: (req: AssistantActionRequest) => Promise<void>;
 }) {
   const router = useRouter();
 
@@ -155,7 +227,7 @@ export function AssistantBlockView({
     return (
       <div style={{ display: "grid", gap: 12 }}>
         {children.map((child, i) => (
-          <AssistantBlockView key={i} block={child} onSelect={onSelect} />
+          <AssistantBlockView key={i} block={child} onSelect={onSelect} onAction={onAction} />
         ))}
       </div>
     );
@@ -287,6 +359,13 @@ export function AssistantBlockView({
                 >
                   {a.label}
                 </button>
+              ) : a.endpoint ? (
+                <ActionButton
+                  key={i}
+                  request={{ endpoint: a.endpoint, label: a.label }}
+                  onAction={onAction}
+                  variant="outline"
+                />
               ) : (
                 <span key={i} style={{ fontSize: 13, color: "var(--text-secondary)" }}>
                   {a.label}
@@ -331,10 +410,21 @@ export function AssistantBlockView({
             ))}
           </div>
         ) : null}
-        {confirm ? (
-          <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 12 }}>
-            {confirm.label || "Confirm"} is required — nothing happens until you confirm.
-          </p>
+        {confirm?.endpoint ? (
+          <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 8 }}>
+            <ActionButton
+              request={{
+                endpoint: confirm.endpoint,
+                payload: confirm.payload,
+                label: confirm.label || "Confirm",
+              }}
+              onAction={onAction}
+              variant="primary"
+            />
+            <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+              Nothing is changed until you confirm.
+            </span>
+          </div>
         ) : null}
       </div>
     );

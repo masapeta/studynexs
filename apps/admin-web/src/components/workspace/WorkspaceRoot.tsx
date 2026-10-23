@@ -16,11 +16,12 @@ import {
   getChatSession,
   getJob,
   listChatSessions,
+  runAssistantAction,
   type AssistantBlock,
   type ChatSessionSummary,
 } from "@/lib/assistant-client";
 import { workflowIsRunning } from "./assistant-block-logic";
-import { AssistantBlockView } from "./AssistantBlockView";
+import { AssistantBlockView, type AssistantActionRequest } from "./AssistantBlockView";
 import { WorkspaceSlimNav, type SlimNavKey } from "./WorkspaceSlimNav";
 import { WorkspaceTopBar } from "./WorkspaceTopBar";
 import { ActionWidgetGrid } from "./ActionWidgetGrid";
@@ -243,7 +244,22 @@ export function WorkspaceRoot({
     },
     [text, submitting, sessionId, router, scrollToEnd, pollWorkflowJob] 
   );
-
+  /**
+   * Run a governed action/workflow endpoint and append the CONFIRMED backend result as a new turn.
+   * Rethrows on failure so the action control shows the error and never implies success. Endpoint
+   * validation + the authenticated POST live in runAssistantAction; authorization is the server's.
+   */
+  const handleAction = useCallback(
+    async (req: AssistantActionRequest) => {
+      const resultBlock = await runAssistantAction(req.endpoint, req.payload);
+      setTurns((prev) => [
+        ...prev,
+        { id: `act-${Date.now()}`, role: "assistant", block: resultBlock },
+      ]);
+      scrollToEnd();
+    },
+    [scrollToEnd]
+  );
   const handleRunAction = useCallback(
     (action: WorkspaceActionDef) => {
       void send(action.intent);
@@ -415,6 +431,7 @@ export function WorkspaceRoot({
                           key={turn.id}
                           block={turn.block}
                           onSelect={(t) => void send(t)}
+                          onAction={handleAction}
                         />
                       ) : null
                     )}

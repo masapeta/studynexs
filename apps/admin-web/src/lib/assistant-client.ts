@@ -29,10 +29,12 @@ export interface AssistantCitation {
   snippet?: string | null;
 }
 
-/** An action/link the assistant surfaces on a workflow block. */
+/** An action the assistant surfaces on a workflow block: a link (`href`) or a governed POST
+ * operation (`endpoint`, invoked via the allowlisted action path). */
 export interface AssistantAction {
   label: string;
   href?: string;
+  endpoint?: string;
 }
 
 /** The confirm step on an action_preview block (human-in-the-loop gate). */
@@ -148,4 +150,21 @@ export interface JobStatusOut {
 export async function getJob(jobId: string): Promise<JobStatusOut> {
   const res = await api<{ data: JobStatusOut }>(`/api/v1/jobs/${jobId}`);
   return res.data;
+}
+
+/**
+ * Execute a governed chat action against an allowlisted internal endpoint. Delegates endpoint
+ * validation + response normalization to the pure `executeAction` helper, binding the authenticated
+ * `api()` client as the transport. Throws if the endpoint is unsupported (NO request is made) or if
+ * the server rejects the call — the caller must treat a throw as failure and never render success.
+ */
+export async function runAssistantAction(
+  endpoint: string,
+  payload?: Record<string, unknown>
+): Promise<AssistantBlock> {
+  // Lazy import keeps the client dependency-light and avoids a cycle with the logic module.
+  const { executeAction } = await import("@/components/workspace/assistant-block-logic");
+  return executeAction(endpoint, payload, (ep, body) =>
+    api<unknown>(ep, { method: "POST", body: JSON.stringify(body) })
+  );
 }
