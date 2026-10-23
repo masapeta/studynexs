@@ -58,6 +58,7 @@ class AssistantTool:
 
 _STAFF = frozenset({"admin", "super_admin", "class_incharge", "teacher", "operations"})
 _ADMIN = frozenset({"admin", "super_admin"})
+_PARENT = frozenset({"parent"})
 
 # Shared help so the planner emits a CANONICAL temporal token, never free text.
 TIME_PARAM_HELP = (
@@ -359,6 +360,60 @@ ASSISTANT_TOOLS: tuple[AssistantTool, ...] = (
         },
         roles=_STAFF,
         handler=cap.subject_toppers,
+    ),
+    # ── Parent capabilities (Milestone 1) — a parent's OWN linked children only ──
+    AssistantTool(
+        name="my_children_overview",
+        description=(
+            "Overview of the parent's own linked children: each child's class, attendance, "
+            "fee pending, and weak-topic count. Use for 'show my children', 'how are my kids "
+            "doing', 'overview of my children's progress'. Returns a table."
+        ),
+        params={},
+        roles=_PARENT,
+        handler=cap.my_children_overview,
+    ),
+    AssistantTool(
+        name="my_child_attendance",
+        description=(
+            "Attendance for ONE of the parent's own children. Use for 'my child's attendance', "
+            "'how is Aarav's attendance', 'is my daughter attending regularly'. If the parent "
+            "has more than one child and none is named, the system asks which child."
+        ),
+        params={
+            "child": (
+                "string, optional — which child (first name or class, e.g. 'Aarav' or '5A'). "
+                "Omit if the parent has one child."
+            ),
+        },
+        roles=_PARENT,
+        handler=cap.my_child_attendance,
+    ),
+    AssistantTool(
+        name="my_child_progress",
+        description=(
+            "Academic progress and topics to improve (weak topics) for ONE of the parent's own "
+            "children. Use for 'which subjects need improvement', 'my child's weak topics', "
+            "'how is my son doing in studies'. Returns a table of subjects and topics."
+        ),
+        params={
+            "child": "string, optional — which child (first name or class). Omit if only one.",
+        },
+        roles=_PARENT,
+        handler=cap.my_child_progress,
+    ),
+    AssistantTool(
+        name="my_child_fees",
+        description=(
+            "Fees and payment status for ONE of the parent's own children. Use for 'what fees "
+            "are due', 'my child's fee status', 'how much do I owe'. Returns a table of fee "
+            "records with amount, status, and due date."
+        ),
+        params={
+            "child": "string, optional — which child (first name or class). Omit if only one.",
+        },
+        roles=_PARENT,
+        handler=cap.my_child_fees,
     ),
 )
 

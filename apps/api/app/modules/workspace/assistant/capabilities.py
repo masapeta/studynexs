@@ -1010,3 +1010,249 @@ async def subject_toppers(
         "href": "/dashboard/teaching",
         "href_label": "Open assessments",
     }
+
+# ── Parent capabilities (Milestone 1) ─────────────────────────────────────────
+# Parents ask about THEIR OWN linked children only. These reuse the existing
+# parent-scoped portal_service functions (already keyed by the authenticated parent's
+# user_id via StudentParentMap), so the data source itself can never return another
+# family's child. Child selection happens WITHIN that already-scoped set — never via the
+# school-wide resolve_student (which would be a cross-family leak surface). After selection,
+# _authorize_student re-runs the authoritative assert_can_access_student as defence-in-depth.
+# No student_id is ever accepted from the planner/params — only a free-text `child` hint.
+
+
+def _parent_child_denied() -> dict[str, Any]:
+    """Non-leaky denial that never confirms another family's child exists."""
+    return _not_found_block("that child", "child")
+
+
+def _match_children(children: list[Any], token: str) -> list[Any]:
+    """Match the parent's OWN children by a free-text hint (name / class / roll / first name)."""
+    needle = token.strip().lower()
+    if not needle:
+        return list(children)
+    hits = []
+    for c in children:
+        name = (getattr(c, "name", "") or "").lower()
+        cls = (getattr(c, "class_label", "") or "").lower()
+        roll = (getattr(c, "roll_no", "") or "").lower()
+        hay = f"{name} {cls} {roll}"
+        if needle in hay or any(needle == part for part in name.split()):
+            hits.append(c)
+    return hits
+
+
+def _clarify_children(children: list[Any], noun: str) -> dict[str, Any]:
+    """Ask which of the parent's OWN children is meant (only their children are listed)."""
+    return {
+        "kind": "clarify",
+        "title": "Which child do you mean?",
+        "message": f"You have {len(children)} children on record. Please pick one to see {noun}.",
+        "options": [
+            {
+                "id": str(c.student_id),
+                "label": (
+                    f"{c.name} ({c.class_label})"
+                    if getattr(c, "class_label", None)
+                    else c.name
+                ),
+            }
+            for c in children
+        ],
+    }
+
+
+async def _select_one_child(
+    children: list[Any], token: str, *, noun: str
+) -> tuple[Any, dict[str, Any] | None]:
+    """Return (child, None) or (None, block) — clarify for ambiguity, not_found for no match.
+
+    Selection is strictly within the parent's own children list; it can never reach another
+    family because the list was built from the parent's StudentParentMap rows.
+    """
+    if not children:
+        return None, {
+            "kind": "not_found",
+            "title": "No children linked",
+            "message": (
+                "There are no children linked to your account yet. Please contact the school."
+            ),
+        }
+    token = (token or "").strip()
+    if not token:
+        if len(children) == 1:
+            return children[0], None
+        return None, _clarify_children(children, noun)
+    hits = _match_children(children, token)
+    if len(hits) == 1:
+        return hits[0], None
+    if not hits:
+        return None, _parent_child_denied()
+    return None, _clarify_children(hits, noun)
+
+
+async def my_children_overview(
+    db: AsyncSession, user: CurrentUser, params: dict[str, Any]
+) -> dict[str, Any]:
+    """Overview of all of the authenticated parent's linked children."""
+    from app.modules.portal.services.portal_service import build_portal_context
+
+    school_id = uuid.UUID(user.school_id)
+    ctx = await build_portal_context(
+        db, school_id=school_id, user_id=uuid.UUID(user.id), role="parent"
+    )
+    rows = [
+        {
+            "name": c.name,
+            "class_label": c.class_label,
+            "attendance_pct": c.attendance_pct,
+            "fee_pending": c.fee_pending,
+            "weak_topic_count": c.weak_topic_count,
+        }
+        for c in ctx.children
+    ]
+    return {
+        "kind": "table",
+        "title": "My children",
+        "source": "Student Information System",
+        "columns": [
+            {"key": "name", "label": "Child"},
+            {"key": "class_label", "label": "Class"},
+            {"key": "attendance_pct", "label": "Attendance", "format": "percent"},
+            {"key": "fee_pending", "label": "Fee pending", "format": "money"},
+            {"key": "weak_topic_count", "label": "Weak topics"},
+        ],
+        "rows": rows,
+        "empty_message": "There are no children linked to your account yet.",
+        "href": "/parent",
+        "href_label": "Open parent home",
+    }
+
+
+async def my_child_attendance(
+    db: AsyncSession, user: CurrentUser, params: dict[str, Any]
+) -> dict[str, Any]:
+    """Attendance for one of the parent's linked children (selected within their own set)."""
+    from app.modules.portal.services.portal_service import build_portal_context
+
+    school_id = uuid.UUID(user.school_id)
+    ctx = await build_portal_context(
+        db, school_id=school_id, user_id=uuid.UUID(user.id), role="parent"
+    )
+    child, block = await _select_one_child(
+        ctx.children, str(params.get("child") or ""), noun="attendance"
+    )
+    if block:
+        return block
+    denied = await _authorize_student(db, user, child.student_id, noun="child")
+    if denied:
+        return denied
+    if child.attendance_pct is None:
+        return {
+            "kind": "metrics",
+            "title": f"Attendance — {child.name}",
+            "subtitle": child.class_label,
+            "source": "Attendance System",
+            "message": "No attendance has been recorded for this child yet.",
+            "metrics": [],
+        }
+    return {
+        "kind": "metrics",
+        "title": f"Attendance — {child.name}",
+        "subtitle": child.class_label,
+        "source": "Attendance System",
+        "metrics": [
+            {"label": "Attendance", "value": child.attendance_pct, "format": "percent"},
+        ],
+        "href": "/parent",
+        "href_label": "Open parent home",
+    }
+
+
+async def my_child_progress(
+    db: AsyncSession, user: CurrentUser, params: dict[str, Any]
+) -> dict[str, Any]:
+    """Academic progress + weak topics for one of the parent's linked children."""
+    from app.modules.portal.services.portal_service import list_parent_children_progress
+
+    school_id = uuid.UUID(user.school_id)
+    children = await list_parent_children_progress(
+        db, school_id=school_id, parent_user_id=uuid.UUID(user.id)
+    )
+    child, block = await _select_one_child(
+        children, str(params.get("child") or ""), noun="progress"
+    )
+    if block:
+        return block
+    denied = await _authorize_student(db, user, child.student_id, noun="child")
+    if denied:
+        return denied
+    rows = [
+        {
+            "subject_name": w.subject_name,
+            "topic_display": w.topic_display,
+            "mastery_pct": w.mastery_pct,
+        }
+        for w in child.weak_topics
+    ]
+    return {
+        "kind": "table",
+        "title": f"Topics to improve — {child.name}",
+        "subtitle": child.class_label,
+        "source": "Learning / Mastery",
+        "columns": [
+            {"key": "subject_name", "label": "Subject"},
+            {"key": "topic_display", "label": "Topic"},
+            {"key": "mastery_pct", "label": "Mastery", "format": "percent"},
+        ],
+        "rows": rows,
+        "empty_message": (
+            f"No weak topics are flagged for {child.name} right now — they're on track."
+        ),
+        "href": "/parent",
+        "href_label": "Open parent home",
+    }
+
+
+async def my_child_fees(
+    db: AsyncSession, user: CurrentUser, params: dict[str, Any]
+) -> dict[str, Any]:
+    """Fee records and payment status for one of the parent's linked children."""
+    from app.modules.portal.services.portal_service import list_parent_children_fees
+
+    school_id = uuid.UUID(user.school_id)
+    children_fees = await list_parent_children_fees(
+        db, school_id=school_id, parent_user_id=uuid.UUID(user.id)
+    )
+    child, block = await _select_one_child(
+        children_fees, str(params.get("child") or ""), noun="fees"
+    )
+    if block:
+        return block
+    denied = await _authorize_student(db, user, child.student_id, noun="child")
+    if denied:
+        return denied
+    rows = [
+        {
+            "fee_type": r.fee_type or "—",
+            "amount": r.amount,
+            "status": r.status,
+            "due_date": r.due_date or "—",
+        }
+        for r in child.records
+    ]
+    return {
+        "kind": "table",
+        "title": f"Fees — {child.name}",
+        "source": "Fee System",
+        "columns": [
+            {"key": "fee_type", "label": "Fee"},
+            {"key": "amount", "label": "Amount", "format": "money"},
+            {"key": "status", "label": "Status"},
+            {"key": "due_date", "label": "Due date"},
+        ],
+        "rows": rows,
+        "empty_message": f"No fee records are on file for {child.name}.",
+        "href": "/parent/fees",
+        "href_label": "Open fees",
+    }

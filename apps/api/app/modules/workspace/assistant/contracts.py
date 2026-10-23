@@ -245,6 +245,24 @@ CAPABILITY_CONTRACTS: dict[str, CapabilityContract] = {
             "top": _P("top", "number"), "bottom": _P("bottom", "number"),
         },
     ),
+    # Parent capabilities (Milestone 1). `child` is a free-text hint (string), NOT an entity
+    # param: a parent's child is selected within their OWN linked set, never resolved
+    # school-wide, so it is deliberately not derivable and carries no cross-family surface.
+    "my_children_overview": _C(
+        "my_children_overview", "student", "list", "student", "timeless",
+    ),
+    "my_child_attendance": _C(
+        "my_child_attendance", "attendance", "aggregate", "student", "timeless",
+        params={"child": _P("child", "string")},
+    ),
+    "my_child_progress": _C(
+        "my_child_progress", "student", "list", "student", "timeless",
+        params={"child": _P("child", "string")},
+    ),
+    "my_child_fees": _C(
+        "my_child_fees", "fee", "list", "student", "timeless",
+        params={"child": _P("child", "string")},
+    ),
 }
 
 
