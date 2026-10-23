@@ -46,6 +46,28 @@ groups:
           summary: "StudyNexs has stale queued/running background jobs"
           description: "Oldest {{ $labels.status }} job for {{ $labels.task }} is older than 30 minutes."
 
+      # Question-paper generation is the slowest real job and is user-visible in chat; alert at the
+      # stuck-job sweep's own thresholds (JOB_QUEUED_STUCK_SECONDS=300 / JOB_RUNNING_STUCK_SECONDS=900)
+      # so a down/crashed worker is caught well before the generic 30-min backlog rule. Uses the
+      # existing DB-backed job-status gauge — no new metric.
+      - alert: StudyNexsQPJobStuckQueued
+        expr: studynexs_job_status_oldest_age_seconds{task="question_paper_generate",status="queued"} > 300
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Question paper jobs stuck queued"
+          description: "A question_paper_generate job has been queued >5m — the Arq worker may be down or backlogged."
+
+      - alert: StudyNexsQPJobStuckRunning
+        expr: studynexs_job_status_oldest_age_seconds{task="question_paper_generate",status="running"} > 900
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Question paper jobs stuck running"
+          description: "A question_paper_generate job has been running >15m — the worker likely crashed mid-generation."
+
   - name: studynexs_ai
     rules:
       - alert: AI_LLM_ErrorRateHigh

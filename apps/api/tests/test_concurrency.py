@@ -8,6 +8,7 @@ where the partial unique indexes actually exist (create_all builds them from the
 from __future__ import annotations
 
 import asyncio
+import uuid
 from datetime import date
 from decimal import Decimal
 
@@ -467,3 +468,86 @@ async def test_same_idem_key_returns_same_receipt(engine):
                                        PaymentMode.CASH, idempotency_key="SEQ")
         await s.commit()
     assert r1.id == r2.id  # sequential retry returned the existing receipt, no new row
+
+
+# ── Background-job delivery: concurrent duplicate delivery claims exactly once ────
+
+
+@pytest.mark.asyncio
+async def test_job_concurrent_duplicate_delivery_runs_handler_once(engine, monkeypatch):
+    """The real pre-GA risk: Arq is at-least-once AND multi-worker, so the SAME job id can be
+    delivered to two workers CONCURRENTLY. A read-then-write guard lets both see QUEUED and both
+    run the handler -> a second question paper + a second credit charge. The atomic QUEUED->RUNNING
+    claim must let exactly ONE delivery run the handler; the rest no-op."""
+    import app.core.jobs.worker as worker
+
+    # Seed a committed QUEUED job that eight concurrent deliveries will fight over.
+    async with _sm(engine)() as s:
+        school = School(name="JQ", code="JQ", tenant_slug="jq", board="CBSE",
+                        contact_email="j@t.com", contact_phone="+910000000009", is_active=True)
+        s.add(school)
+        await s.flush()
+        job = Job(type="question_paper_generate", params={"k": "v"}, school_id=school.id,
+                  status=JobStatus.QUEUED)
+        s.add(job)
+        await s.commit()
+        job_id = str(job.id)
+
+    runs: list[str] = []
+
+    async def _counting_handler(params, db):
+        # A small await lets the eight deliveries actually interleave on the event loop, so the
+        # test exercises a real race rather than sequential execution.
+        await asyncio.sleep(0.02)
+        runs.append(params.get("_job_id", "?"))
+        return {"ran": True}
+
+    monkeypatch.setitem(worker.JOB_HANDLERS, "question_paper_generate", _counting_handler)
+
+    # Each delivery uses its OWN committing session (like separate worker processes). Patch the
+    # worker's session factory to the test engine's sessionmaker.
+    monkeypatch.setattr(worker, "async_session_factory", _sm(engine))
+
+    results = await asyncio.gather(
+        *(worker.run_job({}, job_id) for _ in range(8)), return_exceptions=True
+    )
+    assert not [r for r in results if isinstance(r, Exception)], results
+
+    # The handler ran exactly once — no duplicate paper, no double charge.
+    assert len(runs) == 1
+    async with _sm(engine)() as s:
+        final = await s.get(Job, uuid.UUID(job_id))
+    assert final.status == JobStatus.DONE
+    assert final.result == {"ran": True}
+
+
+@pytest.mark.asyncio
+async def test_job_redelivery_of_terminal_job_is_noop(engine, monkeypatch):
+    """Sequential redelivery of an already-DONE job must also no-op (ack lost after completion)."""
+    import app.core.jobs.worker as worker
+
+    async with _sm(engine)() as s:
+        school = School(name="JQ2", code="JQ2", tenant_slug="jq2", board="CBSE",
+                        contact_email="j2@t.com", contact_phone="+910000000010", is_active=True)
+        s.add(school)
+        await s.flush()
+        job = Job(type="question_paper_generate", params={}, school_id=school.id,
+                  status=JobStatus.DONE, result={"paper_id": "already-done"})
+        s.add(job)
+        await s.commit()
+        job_id = str(job.id)
+
+    ran = {"n": 0}
+
+    async def _handler(params, db):
+        ran["n"] += 1
+        return {}
+
+    monkeypatch.setitem(worker.JOB_HANDLERS, "question_paper_generate", _handler)
+    monkeypatch.setattr(worker, "async_session_factory", _sm(engine))
+
+    await worker.run_job({}, job_id)
+    assert ran["n"] == 0  # terminal job never re-runs
+    async with _sm(engine)() as s:
+        final = await s.get(Job, uuid.UUID(job_id))
+    assert final.result == {"paper_id": "already-done"}  # untouched

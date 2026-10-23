@@ -17,7 +17,7 @@ from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import async_session_factory
@@ -59,13 +59,25 @@ async def run_job(ctx, job_id: str):
             platform_metrics.record_job_event(task="unknown", status="retry_not_found")
             raise Retry(defer=2)
 
-        # Re-delivery guard: Arq dispatch is at-least-once, so an already-finished job can be
-        # redelivered (e.g. an ack lost after completion). Re-running a terminal job would repeat
-        # its side effects — for question-paper generation that means a SECOND paper and a SECOND
-        # credit charge. A terminal job is idempotently a no-op here.
-        if job.status in (JobStatus.DONE, JobStatus.FAILED):
+        # Atomic claim (single-owner guarantee). Arq dispatch is at-least-once AND can run on
+        # multiple worker processes, so the SAME job id may be delivered twice — sequentially
+        # (an ack lost after completion → the job is terminal) OR concurrently (two workers grab
+        # the same QUEUED job at once). A read-then-write guard closes only the sequential case;
+        # two concurrent reads would both see QUEUED and both run the handler → a SECOND paper and
+        # a SECOND credit charge. Instead, claim the job with a conditional UPDATE: exactly one
+        # caller flips QUEUED→RUNNING; everyone else gets rowcount 0 and no-ops. This is the same
+        # row-conditional discipline used for money (constitution §29/§36).
+        claim = await session.execute(
+            update(Job)
+            .where(Job.id == job.id, Job.status == JobStatus.QUEUED)
+            .values(status=JobStatus.RUNNING, updated_at=datetime.now(timezone.utc))
+        )
+        await session.commit()
+        if claim.rowcount == 0:
+            # Already terminal (sequential redelivery) or already claimed by another worker
+            # (concurrent delivery). Either way we must NOT run the handler again.
             logger.info(
-                "job_redelivery_ignored",
+                "job_claim_skipped",
                 job_id=job_id,
                 task=job.type,
                 status=job.status.value,
@@ -93,8 +105,8 @@ async def run_job(ctx, job_id: str):
             )
             return
 
+        # We own the job (claim succeeded). Reflect RUNNING on our in-memory row for the handler.
         job.status = JobStatus.RUNNING
-        await session.commit()
         platform_metrics.record_job_event(task=job.type, status=JobStatus.RUNNING.value)
         logger.info(
             "job_started",
