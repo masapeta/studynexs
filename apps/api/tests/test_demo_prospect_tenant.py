@@ -282,11 +282,15 @@ async def test_cleanup_worker_excludes_running_job_row(
     session = create.json()["data"]
     school_id = uuid.UUID(session["school_id"])
 
+    # Seed QUEUED — the real pre-dispatch state. run_job atomically claims it (QUEUED->RUNNING),
+    # so the cleanup handler runs with its OWN row already RUNNING and must exclude it from the
+    # purge. (The old test seeded RUNNING and relied on run_job executing an already-RUNNING job,
+    # which the atomic single-owner claim now correctly refuses.)
     job = Job(
         type="tenant_cleanup",
         params={"school_id": str(school_id)},
         school_id=school_id,
-        status=JobStatus.RUNNING,
+        status=JobStatus.QUEUED,
     )
     db_session.add(job)
     await db_session.commit()

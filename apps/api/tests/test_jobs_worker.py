@@ -88,6 +88,10 @@ async def test_run_job_records_success_metrics(monkeypatch):
 
         async def execute(self, *_a, **_k):
             class _R:
+                # The SELECT path reads scalar_one_or_none; the atomic claim UPDATE reads
+                # rowcount (1 = this delivery won the QUEUED->RUNNING claim and runs the handler).
+                rowcount = 1
+
                 def scalar_one_or_none(self_inner):
                     return job
 
