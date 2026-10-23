@@ -32,7 +32,7 @@ from app.db.models.user import User, UserRole
 from app.modules.ai.jobs.question_paper_job import (  # noqa: E402
     run_question_paper_generate,
 )
-from app.modules.workspace.workflows.executor import run_workflow
+from app.modules.workspace.workflows.executor import WorkflowError, run_workflow
 
 
 async def _seed(db, *, with_pack=True, teacher_maps=True):
@@ -90,7 +90,7 @@ def _acoro(value):
 
 def _force_production(monkeypatch):
     """Make the executor take the async (non-TESTING) branch without touching the real env."""
-    fake = SimpleNamespace(ENVIRONMENT=Environment.PRODUCTION)
+    fake = SimpleNamespace(ENVIRONMENT=Environment.PRODUCTION, is_development=False)
     monkeypatch.setattr("app.core.config.get_settings", lambda: fake)
     monkeypatch.setattr(
         "app.modules.ai.services.usage_caps.enforce_monthly_ai_cap",
@@ -171,33 +171,30 @@ async def test_duplicate_submission_reuses_inflight_job(db_session, monkeypatch)
 
 
 @pytest.mark.asyncio
-async def test_enqueue_failure_falls_back_to_sync(db_session, monkeypatch):
+async def test_enqueue_failure_in_production_fails_fast_no_sync(db_session, monkeypatch):
     seed = await _seed(db_session)
     _force_production(monkeypatch)
 
     async def _broken_enqueue(db, **kwargs):
         raise RuntimeError("redis down")
 
-    async def _fake_generate(db, **kwargs):
-        return SimpleNamespace(
-            id=uuid.uuid4(), total_marks=Decimal("50"), status=PaperStatus.DRAFT,
-            grounded=True, sections=[SimpleNamespace(questions=[object(), object()])],
-        )
+    async def _must_not_generate(db, **kwargs):
+        raise AssertionError("production must NOT fall back to synchronous generation")
 
     monkeypatch.setattr("app.core.jobs.queue.enqueue", _broken_enqueue)
     monkeypatch.setattr(
-        "app.modules.ai.services.question_paper_service.generate_paper", _fake_generate
+        "app.modules.ai.services.question_paper_service.generate_paper", _must_not_generate
     )
 
-    block = await run_workflow(
-        db_session, _user(seed),
-        workflow_id="question_paper",
-        params={"class_label": "8A", "subject": "Science", "total_marks": 50},
-    )
-    # Graceful degradation: a Redis/worker outage still produces a paper synchronously.
-    assert block["kind"] == "workflow"
-    assert block["workflow_state"] == "waiting_for_approval"
-    assert block["paper_status"] == "draft"
+    # Production enqueue failure must fail fast + retryable — NEVER a minutes-long sync generation
+    # on the request path. No paper created, no credit charged (generate_paper never runs).
+    with pytest.raises(WorkflowError) as exc:
+        await run_workflow(
+            db_session, _user(seed),
+            workflow_id="question_paper",
+            params={"class_label": "8A", "subject": "Science", "total_marks": 50},
+        )
+    assert "try again" in str(exc.value).lower()
 
 
 @pytest.mark.asyncio
@@ -270,3 +267,123 @@ async def test_job_handler_runs_generation(db_session, monkeypatch):
     )
     assert out["paper_id"] == str(paper_id)
     assert out["paper_status"] == "draft"
+
+
+@pytest.mark.asyncio
+async def test_dev_mode_still_permits_sync_fallback(db_session, monkeypatch):
+    """Dev (no running worker) MAY still generate synchronously on enqueue failure."""
+    seed = await _seed(db_session)
+    # Force the async branch but as DEVELOPMENT, where the sync fallback is permitted.
+    fake = SimpleNamespace(ENVIRONMENT=Environment.DEVELOPMENT, is_development=True)
+    monkeypatch.setattr("app.core.config.get_settings", lambda: fake)
+    monkeypatch.setattr(
+        "app.modules.ai.services.usage_caps.enforce_monthly_ai_cap",
+        lambda *a, **k: _acoro(1),
+    )
+
+    async def _broken_enqueue(db, **kwargs):
+        raise RuntimeError("redis down")
+
+    async def _fake_generate(db, **kwargs):
+        return SimpleNamespace(
+            id=uuid.uuid4(), total_marks=Decimal("50"), status=PaperStatus.DRAFT,
+            grounded=True, sections=[SimpleNamespace(questions=[object(), object()])],
+        )
+
+    monkeypatch.setattr("app.core.jobs.queue.enqueue", _broken_enqueue)
+    monkeypatch.setattr(
+        "app.modules.ai.services.question_paper_service.generate_paper", _fake_generate
+    )
+    block = await run_workflow(
+        db_session, _user(seed),
+        workflow_id="question_paper",
+        params={"class_label": "8A", "subject": "Science", "total_marks": 50},
+    )
+    assert block["kind"] == "workflow"
+    assert block["workflow_state"] == "waiting_for_approval"
+
+
+# ── Recovery: worker re-delivery guard ───────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_worker_ignores_redelivery_of_terminal_job(db_session, monkeypatch):
+    """An at-least-once re-delivery of an already-DONE job must NOT re-run the handler (which would
+    create a second paper + a second charge)."""
+    from contextlib import asynccontextmanager
+
+    import app.core.jobs.worker as worker
+
+    seed = await _seed(db_session)
+    job = Job(
+        type="question_paper_generate",
+        params={"school_id": str(seed.school.id)},
+        school_id=seed.school.id,
+        created_by=seed.teacher.id,
+        status=JobStatus.DONE,  # already finished
+        result={"paper_id": str(uuid.uuid4())},
+    )
+    db_session.add(job)
+    await db_session.flush()
+
+    @asynccontextmanager
+    async def _fake_factory():
+        yield db_session
+
+    monkeypatch.setattr(worker, "async_session_factory", _fake_factory)
+
+    called = {"n": 0}
+
+    async def _handler(params, db):
+        called["n"] += 1
+        return {}
+
+    monkeypatch.setitem(worker.JOB_HANDLERS, "question_paper_generate", _handler)
+
+    await worker.run_job({}, str(job.id))
+    # The handler must never run for a terminal job.
+    assert called["n"] == 0
+
+
+# ── Stuck-job sweep ──────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_stuck_job_sweep_flags_old_queued_and_running(db_session, monkeypatch):
+    from contextlib import asynccontextmanager
+    from datetime import datetime, timedelta, timezone
+
+    import app.modules.jobs.jobs_health_sweep as sweep_mod
+
+    seed = await _seed(db_session)
+    old = datetime.now(timezone.utc) - timedelta(seconds=3600)
+
+    stuck_q = Job(
+        type="question_paper_generate", params={}, school_id=seed.school.id,
+        created_by=seed.teacher.id, status=JobStatus.QUEUED,
+    )
+    stuck_r = Job(
+        type="question_paper_generate", params={}, school_id=seed.school.id,
+        created_by=seed.teacher.id, status=JobStatus.RUNNING,
+    )
+    fresh = Job(
+        type="question_paper_generate", params={}, school_id=seed.school.id,
+        created_by=seed.teacher.id, status=JobStatus.QUEUED,
+    )
+    db_session.add_all([stuck_q, stuck_r, fresh])
+    await db_session.flush()
+    # Backdate the two stuck jobs past the thresholds; leave `fresh` recent.
+    stuck_q.created_at = old
+    stuck_r.updated_at = old
+    await db_session.flush()
+
+    @asynccontextmanager
+    async def _fake_factory():
+        yield db_session
+
+    monkeypatch.setattr(sweep_mod, "async_session_factory", _fake_factory)
+
+    out = await sweep_mod.sweep_stuck_jobs({})
+    assert out["stuck_queued"] == 1  # only the backdated queued job
+    assert out["stuck_running"] == 1  # only the backdated running job
+    assert out["stuck_total"] == 2  # `fresh` is not flagged

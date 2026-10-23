@@ -266,32 +266,49 @@ async def _enqueue_qp_generation(
             school_id=school_id,
             created_by=created_by,
         )
-    except Exception:  # noqa: BLE001 — Redis/worker down: degrade to synchronous generation
-        logger.warning("qp_enqueue_failed_running_sync")
-        try:
-            paper = await generate_paper(
-                db,
-                school_id=school_id,
-                created_by=created_by,
-                class_id=uuid.UUID(gen_params["class_id"]),
-                subject_id=uuid.UUID(gen_params["subject_id"]),
-                topics=[str(t) for t in (gen_params.get("topics") or [])],
-                total_marks=int(gen_params["total_marks"]),
-                duration_minutes=180,
-                difficulty="balanced",
-                role=str(gen_params.get("role") or current_user.role),
-                purpose_tag="qp_full",
-                credits_charged=gen_params.get("credits_charged"),
-                pack_id=uuid.UUID(gen_params["pack_id"]) if gen_params.get("pack_id") else None,
+    except Exception as exc:  # noqa: BLE001 — enqueue (Redis/worker) failure
+        from app.core.config import Environment, get_settings
+
+        settings = get_settings()
+        # Dev/test MAY fall back to synchronous generation so a developer without a running worker
+        # can still exercise the flow. PRODUCTION MUST NOT: a minutes-long synchronous generation on
+        # the request path is exactly the liability this async conversion removed (gateway timeouts,
+        # lost work on disconnect, worker starvation). Fail fast + retryable instead. No paper was
+        # created and no credit was charged (the single reservation lives inside generate_paper,
+        # which never ran), and the in-flight idempotency check above still guards a retry.
+        if settings.is_development or settings.ENVIRONMENT == Environment.TESTING:
+            logger.warning("qp_enqueue_failed_running_sync_dev", error=str(exc))
+            try:
+                paper = await generate_paper(
+                    db,
+                    school_id=school_id,
+                    created_by=created_by,
+                    class_id=uuid.UUID(gen_params["class_id"]),
+                    subject_id=uuid.UUID(gen_params["subject_id"]),
+                    topics=[str(t) for t in (gen_params.get("topics") or [])],
+                    total_marks=int(gen_params["total_marks"]),
+                    duration_minutes=180,
+                    difficulty="balanced",
+                    role=str(gen_params.get("role") or current_user.role),
+                    purpose_tag="qp_full",
+                    credits_charged=gen_params.get("credits_charged"),
+                    pack_id=uuid.UUID(gen_params["pack_id"]) if gen_params.get("pack_id") else None,
+                )
+            except ValueError as gen_exc:
+                raise WorkflowError(str(gen_exc)) from gen_exc
+            except Exception as gen_exc:  # noqa: BLE001 — safe message; details logged upstream
+                logger.warning("workflow_qp_generate_failed", error=str(gen_exc))
+                raise WorkflowError(
+                    "Question paper generation failed. Please try again."
+                ) from gen_exc
+            return _qp_result_block(
+                paper, class_label=class_label, subject_label=subject_label
             )
-        except ValueError as exc:
-            raise WorkflowError(str(exc)) from exc
-        except Exception as exc:  # noqa: BLE001 — safe message; details logged upstream
-            logger.warning("workflow_qp_generate_failed", error=str(exc))
-            raise WorkflowError("Question paper generation failed. Please try again.") from exc
-        return _qp_result_block(
-            paper, class_label=class_label, subject_label=subject_label
-        )
+
+        logger.error("qp_enqueue_failed", error=str(exc), school_id=str(school_id))
+        raise WorkflowError(
+            "Couldn't start question paper generation right now. Please try again in a moment."
+        ) from exc
 
     return _qp_queued_block(
         job_id=job.id,

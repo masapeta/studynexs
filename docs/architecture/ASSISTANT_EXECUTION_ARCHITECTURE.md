@@ -1,7 +1,7 @@
 # Assistant Execution Architecture — Design of Record
 
-- **Status:** Accepted (design), Implementation in progress (Phases 3–11 landed)
-- **Version:** 1.9
+- **Status:** Accepted (design), Implementation in progress (Phases 3–11 landed; QP ops hardening)
+- **Version:** 1.10
 - **Date:** 2026-10-23
 - **Owner:** Avinash Reddy Masapeta (ARM)
 - **Subsystem:** Workspace Assistant (`app/modules/workspace/assistant`)
@@ -269,6 +269,16 @@ MCP Host (Claude/Copilot/…)  ──Bearer + X-Tenant-Slug──▶  POST /api/
 - **Graceful degradation:** a host without MCP Apps simply shows `content[].text`; the app itself degrades to a neutral message if `ui/initialize` is unanswered.
 - **Not built:** no second capability registry, no planner/JEV/Gemma involvement, no workflow re-implementation, no merge with the teacher-copilot `WorkspaceResponse`, no generic MCP platform, no app-registered tools, no external-URL content type.
 - **GA blockers (explicit):** (1) **no compatible-host smoke test was run** — the adapter is verified at the protocol/JSON-RPC level with a simulated host (the tests), not against a live Claude/Copilot connector; a real-host smoke test + the `ui/` postMessage lifecycle in a real sandbox remain to be validated before GA. (2) MCP host connections currently rely on the standard Bearer flow; a dedicated connector onboarding/consent + per-connection scoping review is a pre-GA item. (3) Audit of MCP tool calls uses the generic structured log event `mcp_tool_call` + existing audit middleware; a dedicated MCP audit/retention review is recommended before GA.
+
+### 5.12 Question Paper operational hardening (post-Phase-10, separate commit)
+
+Phase 10 made QP generation async but left two production risks, now closed (QP business logic, publication, and the approval lifecycle are **unchanged**):
+
+- **Enqueue failure no longer runs synchronously in production.** `_enqueue_qp_generation` previously fell back to a minutes-long synchronous `generate_paper` on the request path when Arq enqueue failed — reintroducing the exact liability the async conversion removed. Now the synchronous fallback is permitted **only** under `ENVIRONMENT=testing` or `is_development` (so a developer without a running worker can still exercise the flow); in production an enqueue failure raises a clear, **retryable** `WorkflowError` ("Couldn't start question paper generation right now. Please try again…"). No paper is created and no credit is charged — the single reservation lives inside `generate_paper`, which never runs — and the pre-enqueue in-flight idempotency check still guards the retry.
+- **Worker re-delivery guard (recovery / single-charge).** Arq dispatch is at-least-once, so an already-finished job could be redelivered and re-run `generate_paper`, creating a **second paper and a second charge**. `run_job` now treats a job already in a terminal state (`DONE`/`FAILED`) as an idempotent no-op (logged `job_redelivery_ignored` + `redelivery_ignored` metric). This is generic — it protects every job type, including evaluation. Paper creation + credit reservation are already atomic in the worker's single commit, so a crash *before* commit rolls both back and a clean re-run regenerates exactly once.
+- **Stuck-job detection (report-only).** A new bounded Arq cron (`sweep_stuck_jobs`, `app/modules/jobs/jobs_health_sweep.py`) flags jobs still `queued` past `JOB_QUEUED_STUCK_SECONDS` (default 300) or `running` past `JOB_RUNNING_STUCK_SECONDS` (default 900), using existing `Job` timestamps. It **logs** (`job_stuck`) and **records the existing platform job metric** (`stuck_queued`/`stuck_running`); it never mutates, cancels, or retries a job. No monitoring framework was added.
+- **Observability (honest scope):** actionable context (job id, task, status, age, school id — **no student PII**) is logged, and the condition is surfaced on the existing Prometheus job metric. **No alert is wired** — turning the `stuck_*` metric into a real page/alert in the production monitoring stack is an operational step that has **not** been done and remains a GA item.
+- **Tests:** production enqueue-failure fails fast (no sync, no paper), dev-mode sync fallback still works, the re-delivery guard no-ops a terminal job, and the stuck-sweep flags only backdated queued/running jobs — alongside the existing idempotency/authorization/single-charge coverage.
 
 ---
 

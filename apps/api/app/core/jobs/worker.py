@@ -59,6 +59,20 @@ async def run_job(ctx, job_id: str):
             platform_metrics.record_job_event(task="unknown", status="retry_not_found")
             raise Retry(defer=2)
 
+        # Re-delivery guard: Arq dispatch is at-least-once, so an already-finished job can be
+        # redelivered (e.g. an ack lost after completion). Re-running a terminal job would repeat
+        # its side effects — for question-paper generation that means a SECOND paper and a SECOND
+        # credit charge. A terminal job is idempotently a no-op here.
+        if job.status in (JobStatus.DONE, JobStatus.FAILED):
+            logger.info(
+                "job_redelivery_ignored",
+                job_id=job_id,
+                task=job.type,
+                status=job.status.value,
+            )
+            platform_metrics.record_job_event(task=job.type, status="redelivery_ignored")
+            return
+
         handler = JOB_HANDLERS.get(job.type)
         if handler is None:
             job.status = JobStatus.FAILED
@@ -153,6 +167,12 @@ async def sweep_expired_prospect_tenants(ctx: dict) -> dict:
     return await _sweep(ctx)
 
 
+async def sweep_stuck_jobs(ctx: dict) -> dict:
+    from app.modules.jobs.jobs_health_sweep import sweep_stuck_jobs as _sweep
+
+    return await _sweep(ctx)
+
+
 def _demo_sweep_cron():
     from arq.cron import cron
 
@@ -166,11 +186,24 @@ def _demo_sweep_cron():
     )
 
 
+def _stuck_job_sweep_cron():
+    from arq.cron import cron
+
+    from app.core.config import get_settings
+
+    cfg = get_settings()
+    return cron(
+        sweep_stuck_jobs,
+        minute=set(cfg.JOB_STUCK_SWEEP_CRON_MINUTES),
+        run_at_startup=False,
+    )
+
+
 class WorkerSettings:
     """Arq worker settings — all jobs flow through the single `run_job` entrypoint."""
 
-    functions = [run_job, sweep_expired_prospect_tenants]
-    cron_jobs = [_demo_sweep_cron()]
+    functions = [run_job, sweep_expired_prospect_tenants, sweep_stuck_jobs]
+    cron_jobs = [_demo_sweep_cron(), _stuck_job_sweep_cron()]
     redis_settings = get_redis_settings()
     on_startup = register_job_handlers
     max_tries = 5  # bounds the job-not-found-yet Retry loop (see run_job)

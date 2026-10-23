@@ -162,6 +162,14 @@ class Settings(BaseSettings):
     # side-effect latency acceptable while cutting idle query load ~7x.
     OUTBOX_POLL_INTERVAL_SECONDS: float = 15.0
 
+    # ── Background job health (stuck-job detection) ──────────────
+    # A background job still QUEUED/RUNNING beyond these thresholds is flagged (logged + metered)
+    # by the stuck-job sweep. Report-only — the sweep never mutates jobs. Tuned for QP generation,
+    # which is the slowest real job; raise if a legitimately longer job type is added.
+    JOB_QUEUED_STUCK_SECONDS: int = 300      # queued >5 min  -> worker likely down / backlogged
+    JOB_RUNNING_STUCK_SECONDS: int = 900     # running >15 min -> worker likely crashed mid-job
+    JOB_STUCK_SWEEP_CRON_MINUTES: list[int] = [5, 20, 35, 50]
+
     # ── Audit retention ──────────────────────────────────────────
     AUDIT_RETENTION_DAYS: int = 90
 
