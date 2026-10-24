@@ -1414,6 +1414,50 @@ async def my_lesson(
     }
 
 
+# Tutor burst limit via the assistant — matches the /ask endpoint (20 req / 60s) under a
+# DISTINCT action key so the three limiters (workspace_turn, /ask, assistant tutor) never share
+# a counter. Identity is server-derived (school_id + user.id); never from params.
+_TUTOR_RATE_MAX = 20
+_TUTOR_RATE_WINDOW = 60
+
+
+async def _enforce_tutor_rate_limit(user: CurrentUser) -> dict[str, Any] | None:
+    """Apply the assistant tutor burst limit. Returns a block on 429/503, else None.
+
+    Fail-closed on Redis error: check_rate_limit raises 503, which we surface as an honest
+    error block rather than permitting an unmetered-path charge.
+    """
+    from fastapi import HTTPException, status
+
+    from app.core.config import Environment, get_settings
+    from app.core.dependencies import check_rate_limit, get_redis
+
+    settings = get_settings()
+    if not settings.RATE_LIMIT_ENABLED or settings.ENVIRONMENT == Environment.TESTING:
+        return None
+    key = f"assistant_tutor:{user.school_id}:{user.id}"
+    try:
+        r = await get_redis()
+        await check_rate_limit(key, _TUTOR_RATE_MAX, _TUTOR_RATE_WINDOW, r)
+    except HTTPException as exc:
+        if exc.status_code == status.HTTP_429_TOO_MANY_REQUESTS:
+            return {
+                "kind": "guide",
+                "title": "You're asking the tutor a lot right now",
+                "message": (
+                    "You've reached the tutor's limit for this minute. Please wait a moment "
+                    "and try again — your other learning tools still work."
+                ),
+                "suggestions": [{"label": "My weak topics", "href": "/student/tutor"}],
+            }
+        return {
+            "kind": "error",
+            "title": "Tutor is unavailable right now",
+            "message": "The tutor couldn't be reached. Please try again in a moment.",
+        }
+    return None
+
+
 async def ask_tutor(
     db: AsyncSession, user: CurrentUser, params: dict[str, Any]
 ) -> dict[str, Any]:
@@ -1447,6 +1491,13 @@ async def ask_tutor(
             "message": "Please rephrase your question for the tutor.",
             "options": [],
         }
+    # Tutor-specific burst limit BEFORE the metered call (mirrors the /ask endpoint's 20/60
+    # using a DISTINCT key so it never shares a counter with workspace_turn or /ask). Enforced
+    # here (not on /turn) so deterministic student tools never consume tutor-call budget. Redis
+    # failure fails CLOSED (503 -> honest error block) rather than silently permitting a charge.
+    limit_block = await _enforce_tutor_rate_limit(user)
+    if limit_block:
+        return limit_block
     try:
         answer = await StudentCopilotService(db).ask(
             school_id=school_id,

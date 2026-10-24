@@ -29,7 +29,7 @@ export default function PortalShell({
   wide?: boolean;
   children: React.ReactNode;
 }) {
-  const { user } = useAuth();
+  const { user, permissions } = useAuth();
   const [schoolName, setSchoolName] = useState("");
 
   const home = nav[0]?.href ?? "/";
@@ -50,7 +50,7 @@ export default function PortalShell({
         <WorkspaceRoot
           userName={user?.full_name ?? ""}
           role={user?.role ?? "student"}
-          permissions={null}
+          permissions={permissions}
           institution={schoolName}
           modules={{}}
           homeHref={home}

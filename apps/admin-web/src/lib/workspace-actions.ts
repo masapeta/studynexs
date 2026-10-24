@@ -88,14 +88,15 @@ export function roleToWorkspaceRole(role: string | undefined): WorkspaceRole {
   return "admin";
 }
 
-/** Suggested natural-language prompts per role for the composer. Lead with things
- *  that resolve today (navigation) so the workspace visibly acts on every query. */
+/** Suggested natural-language prompts per role for the composer. Lead with the role's
+ *  real conversational capabilities (answered in-chat) before navigation, so each persona
+ *  discovers what it can actually ask — never a capability the role can't execute. */
 export const WORKSPACE_PROMPTS: Record<WorkspaceRole, string[]> = {
   admin: [
+    "School overview",
+    "Show fee collection status",
+    "School attendance today",
     "Open students",
-    "Go to attendance",
-    "Show finance",
-    "Open assessments",
   ],
   teacher: [
     "Show learning evidence for a student in my class",
@@ -103,13 +104,54 @@ export const WORKSPACE_PROMPTS: Record<WorkspaceRole, string[]> = {
     "Go to assessments",
   ],
   parent: [
-    "Open fees",
-    "Show my children",
-    "Go to notices",
+    "How is my child doing?",
+    "What is my child's attendance?",
+    "Which subjects need improvement?",
+    "What fees are due?",
   ],
   student: [
-    "Open AI tutor",
-    "Show my mastery",
-    "Go to notices",
+    "What should I study today?",
+    "Which topics am I weak in?",
+    "Explain my weakest topic",
   ],
 };
+
+/** Per-role hero (title + subtitle) for the empty chat state, so every persona sees a
+ *  greeting that reflects its own world rather than a generic staff-flavored one. */
+export interface WorkspaceHero {
+  title: string;
+  subtitle: string;
+}
+
+export const WORKSPACE_HERO: Record<WorkspaceRole, WorkspaceHero> = {
+  admin: {
+    title: "How can StudyNexs help run your school today?",
+    subtitle:
+      "Ask about students, attendance, fees, finance, staff, assessments, notices, or school performance.",
+  },
+  teacher: {
+    title: "How can StudyNexs help your teaching today?",
+    subtitle:
+      "Ask about your classes, student learning evidence, attendance, assessments, and curriculum.",
+  },
+  parent: {
+    title: "How is your child doing today?",
+    subtitle:
+      "Ask about your children's progress, attendance, topics to improve, fees, and school notices.",
+  },
+  student: {
+    title: "What would you like to learn today?",
+    subtitle:
+      "Ask what to study, which topics you're weak in, open a lesson, or get help from your AI tutor.",
+  },
+};
+
+/** The suggested prompts for a role (unknown/undefined -> admin, matching roleToWorkspaceRole). */
+export function promptsForRole(role: string | undefined): string[] {
+  return WORKSPACE_PROMPTS[roleToWorkspaceRole(role)];
+}
+
+/** The hero greeting for a role (unknown/undefined -> admin, matching roleToWorkspaceRole). */
+export function heroForRole(role: string | undefined): WorkspaceHero {
+  return WORKSPACE_HERO[roleToWorkspaceRole(role)];
+}

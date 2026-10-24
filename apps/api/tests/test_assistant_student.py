@@ -394,3 +394,153 @@ async def test_full_turn_student_cannot_invoke_staff_tool(
         current_user=user, text="show me class 10A results", session_id=None
     )
     assert r["block"]["kind"] == "guide"  # staff tool not allowed_for(student) -> guide
+
+# ── Tutor-specific rate limit (Milestone 3) ─────────────────────────────────────
+# The limiter is enforced INSIDE ask_tutor before the metered call. Both the limiter guard
+# and check_rate_limit no-op under ENVIRONMENT==testing, so these tests force a non-testing,
+# rate-limit-enabled settings and inject a counting fake Redis + the real fixed-window logic.
+
+
+class _FakeRedis:
+    """Minimal async Redis implementing the INCR+EXPIRE eval the limiter uses."""
+
+    def __init__(self):
+        self.counts: dict[str, int] = {}
+        self.fail = False
+
+    async def eval(self, _script, _nkeys, key, _window):
+        if self.fail:
+            raise RuntimeError("redis down")
+        self.counts[key] = self.counts.get(key, 0) + 1
+        return self.counts[key]
+
+
+def _force_rate_limited_settings(monkeypatch, fake_redis):
+    """Make the tutor limiter active (non-testing + enabled) with a fake Redis + fresh settings."""
+    from app.core import dependencies as deps
+    from app.core.config import Environment, get_settings
+
+    base = get_settings()
+
+    class _S:
+        RATE_LIMIT_ENABLED = True
+        ENVIRONMENT = Environment.PRODUCTION
+        REDIS_RATE_LIMIT_PREFIX = base.REDIS_RATE_LIMIT_PREFIX
+
+    # _enforce_tutor_rate_limit does `from app.core.config import get_settings` -> patch source.
+    monkeypatch.setattr("app.core.config.get_settings", lambda: _S())
+    # check_rate_limit reads its OWN module-level settings for the testing short-circuit.
+    monkeypatch.setattr(deps, "settings", _S())
+    monkeypatch.setattr(deps, "_redis_pool", fake_redis)
+
+    async def _fake_get_redis():
+        return fake_redis
+
+    monkeypatch.setattr(deps, "get_redis", _fake_get_redis)
+
+
+@pytest.mark.asyncio
+async def test_ask_tutor_allowed_within_budget_then_rate_limited(
+    student_learning, db_session: AsyncSession, monkeypatch
+):
+    async def _fake_llm(*_a, **_k):
+        return LLMResult(
+            text=json.dumps({"answer": "Slope is rise over run.", "citations": [],
+                             "follow_up_hints": []}),
+            model="stub", provider="stub",
+        )
+
+    monkeypatch.setattr(_COPILOT_LLM, _fake_llm)
+    fake = _FakeRedis()
+    _force_rate_limited_settings(monkeypatch, fake)
+    school_id = student_learning["school"].id
+    user = _U(student_learning["me_user"].id, school_id, "student")
+
+    # 20 requests are permitted (each reaches the tutor and returns a document block).
+    for _ in range(20):
+        block = await cap.ask_tutor(db_session, user, {"question": "explain slope please"})
+        assert block["kind"] == "document"
+
+    # The 21st in the same window is rate-limited BEFORE the metered call (guide, not a charge).
+    charged_before = int((await db_session.execute(
+        select(func.coalesce(func.sum(AIUsage.credits_charged), 0)).where(
+            AIUsage.school_id == school_id, AIUsage.purpose_tag == "tutor_explain"
+        )
+    )).scalar_one())
+    limited = await cap.ask_tutor(db_session, user, {"question": "explain slope please"})
+    assert limited["kind"] == "guide"
+    assert "limit" in limited["message"].lower()
+    charged_after = int((await db_session.execute(
+        select(func.coalesce(func.sum(AIUsage.credits_charged), 0)).where(
+            AIUsage.school_id == school_id, AIUsage.purpose_tag == "tutor_explain"
+        )
+    )).scalar_one())
+    assert charged_after == charged_before  # rate-limited call never charged
+
+
+@pytest.mark.asyncio
+async def test_ask_tutor_limiter_keys_by_school_and_user(
+    student_learning, db_session: AsyncSession, monkeypatch
+):
+    async def _fake_llm(*_a, **_k):
+        return LLMResult(
+            text=json.dumps({"answer": "ok", "citations": [], "follow_up_hints": []}),
+            model="stub", provider="stub",
+        )
+
+    monkeypatch.setattr(_COPILOT_LLM, _fake_llm)
+    fake = _FakeRedis()
+    _force_rate_limited_settings(monkeypatch, fake)
+    school_id = student_learning["school"].id
+    user = _U(student_learning["me_user"].id, school_id, "student")
+    await cap.ask_tutor(db_session, user, {"question": "explain slope please"})
+    from app.core.config import get_settings
+
+    prefix = get_settings().REDIS_RATE_LIMIT_PREFIX
+    expected = f"{prefix}assistant_tutor:{user.school_id}:{user.id}"
+    assert expected in fake.counts  # distinct key, keyed by authenticated school + user
+    # Never shares a counter with the workspace_turn or /ask (student_copilot) limiters.
+    assert not any("workspace_turn" in k or "student_copilot" in k for k in fake.counts)
+
+
+@pytest.mark.asyncio
+async def test_ask_tutor_redis_failure_fails_closed_no_charge(
+    student_learning, db_session: AsyncSession, monkeypatch
+):
+    async def _fake_llm(*_a, **_k):  # must never run on a fail-closed path
+        raise AssertionError("tutor LLM must not run when the limiter fails closed")
+
+    monkeypatch.setattr(_COPILOT_LLM, _fake_llm)
+    fake = _FakeRedis()
+    fake.fail = True
+    _force_rate_limited_settings(monkeypatch, fake)
+    school_id = student_learning["school"].id
+    user = _U(student_learning["me_user"].id, school_id, "student")
+
+    before = int((await db_session.execute(
+        select(func.coalesce(func.sum(AIUsage.credits_charged), 0)).where(
+            AIUsage.school_id == school_id
+        )
+    )).scalar_one())
+    block = await cap.ask_tutor(db_session, user, {"question": "explain slope please"})
+    assert block["kind"] == "error"  # fail-closed: honest error, not a silent permit
+    after = int((await db_session.execute(
+        select(func.coalesce(func.sum(AIUsage.credits_charged), 0)).where(
+            AIUsage.school_id == school_id
+        )
+    )).scalar_one())
+    assert after == before  # no credit charged when the limiter fails closed
+
+
+@pytest.mark.asyncio
+async def test_deterministic_student_tools_do_not_consume_tutor_budget(
+    student_learning, db_session: AsyncSession, monkeypatch
+):
+    """weak_topics / lesson / daily_plan must never touch the tutor limiter counter."""
+    fake = _FakeRedis()
+    _force_rate_limited_settings(monkeypatch, fake)
+    user = _U(student_learning["me_user"].id, student_learning["school"].id, "student")
+    await cap.my_weak_topics(db_session, user, {})
+    await cap.my_lesson(db_session, user, {})
+    await cap.my_daily_plan(db_session, user, {})
+    assert not any("assistant_tutor" in k for k in fake.counts)  # no tutor budget consumed

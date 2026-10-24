@@ -7,6 +7,7 @@ import { getApiErrorMessage } from "@/lib/api";
 import { roleLabel, type UserPermissions } from "@/lib/permissions";
 import {
   WORKSPACE_ACTIONS,
+  WORKSPACE_HERO,
   WORKSPACE_PROMPTS,
   roleToWorkspaceRole,
   type WorkspaceActionDef,
@@ -63,6 +64,7 @@ export function WorkspaceRoot({
   const wsRole = roleToWorkspaceRole(role);
   const actions = WORKSPACE_ACTIONS[wsRole];
   const prompts = WORKSPACE_PROMPTS[wsRole];
+  const hero = WORKSPACE_HERO[wsRole];
 
   const [navActive, setNavActive] = useState<SlimNavKey>("home");
   const [modulesOpen, setModulesOpen] = useState(false);
@@ -374,13 +376,8 @@ export function WorkspaceRoot({
                       <div className="sn-ws-hero__badge">
                         <Sparkles size={26} />
                       </div>
-                      <h1 className="sn-ws-hero__title">
-                        How can StudyNexs help your academic day?
-                      </h1>
-                      <p className="sn-ws-hero__sub">
-                        Ask about classes, attendance, assignments, exams, marks, fees,
-                        certificates, policies, or student progress.
-                      </p>
+                      <h1 className="sn-ws-hero__title">{hero.title}</h1>
+                      <p className="sn-ws-hero__sub">{hero.subtitle}</p>
                     </div>
 
                     <div>
