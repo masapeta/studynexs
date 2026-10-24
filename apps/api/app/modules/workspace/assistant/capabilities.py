@@ -1256,3 +1256,219 @@ async def my_child_fees(
         "href": "/parent/fees",
         "href_label": "Open fees",
     }
+
+# ── Student capabilities (Milestone 2) ────────────────────────────────────────
+# Students ask about THEIR OWN learning only. Identity is the authenticated student: the
+# student row is resolved from CurrentUser.id (Student.user_id), never from a params-supplied
+# id. Handlers reuse the existing authorized tutor/learning services (which themselves verify
+# the student belongs to the school); _authorize_student re-runs assert_can_access_student
+# (student = self only) as defence-in-depth. ask_tutor is the one METERED path — it reuses
+# StudentCopilotService.ask unchanged, so credit reservation/usage controls stay intact.
+
+
+async def _resolve_self_student_id(
+    db: AsyncSession, user: CurrentUser
+) -> tuple[uuid.UUID | None, dict[str, Any] | None]:
+    """Resolve the authenticated student's own student_id — never from params (self only)."""
+    school_id = uuid.UUID(user.school_id)
+    row = (
+        await db.execute(
+            select(Student.id).where(
+                Student.user_id == uuid.UUID(user.id),
+                Student.school_id == school_id,
+            )
+        )
+    ).first()
+    if not row:
+        return None, {
+            "kind": "not_found",
+            "title": "No student profile",
+            "message": (
+                "There's no student profile linked to your account. Please contact the school."
+            ),
+        }
+    student_id = row[0]
+    denied = await _authorize_student(db, user, student_id, noun="learning record")
+    if denied:
+        return None, denied
+    return student_id, None
+
+
+async def my_daily_plan(
+    db: AsyncSession, user: CurrentUser, params: dict[str, Any]
+) -> dict[str, Any]:
+    """The authenticated student's deterministic daily learning plan (no LLM, no credits)."""
+    from app.modules.tutor.services.student_copilot_service import StudentCopilotService
+
+    student_id, block = await _resolve_self_student_id(db, user)
+    if block:
+        return block
+    school_id = uuid.UUID(user.school_id)
+    plan = await StudentCopilotService(db).get_daily_plan(
+        school_id=school_id, student_id=student_id
+    )
+    if plan.status != "ready":
+        return {
+            "kind": "guide",
+            "title": "No learning action yet",
+            "message": plan.reason,
+            "suggestions": [{"label": "Open tutor", "href": "/student/tutor"}],
+        }
+    metrics = []
+    if plan.mastery_pct is not None:
+        metrics.append({"label": "Mastery", "value": plan.mastery_pct, "format": "percent"})
+    metrics.append({"label": "Curriculum sources", "value": plan.source_count})
+    return {
+        "kind": "metrics",
+        "title": plan.title,
+        "subtitle": plan.topic,
+        "source": "Learning / Mastery",
+        "message": plan.reason,
+        "metrics": metrics,
+        "href": f"/student/tutor?lesson={plan.lesson_key}" if plan.lesson_key else "/student/tutor",
+        "href_label": "Open lesson",
+    }
+
+
+async def my_weak_topics(
+    db: AsyncSession, user: CurrentUser, params: dict[str, Any]
+) -> dict[str, Any]:
+    """Topics to revise + recommended lessons for the authenticated student."""
+    from app.modules.tutor.services.tutor_service import list_recommendations
+
+    student_id, block = await _resolve_self_student_id(db, user)
+    if block:
+        return block
+    school_id = uuid.UUID(user.school_id)
+    recs = await list_recommendations(db, school_id=school_id, student_id=student_id)
+    rows = [
+        {
+            "topic": r.topic,
+            "subject_name": r.subject_name,
+            "mastery_pct": r.mastery_pct,
+            "reason": r.reason,
+        }
+        for r in recs
+    ]
+    return {
+        "kind": "table",
+        "title": "Topics to improve",
+        "source": "Learning / Mastery",
+        "columns": [
+            {"key": "subject_name", "label": "Subject"},
+            {"key": "topic", "label": "Topic"},
+            {"key": "mastery_pct", "label": "Mastery", "format": "percent"},
+            {"key": "reason", "label": "Why"},
+        ],
+        "rows": rows,
+        "empty_message": (
+            "No weak topics are flagged right now — you're on track. Keep practising!"
+        ),
+        "href": "/student/tutor",
+        "href_label": "Open tutor",
+    }
+
+
+async def my_lesson(
+    db: AsyncSession, user: CurrentUser, params: dict[str, Any]
+) -> dict[str, Any]:
+    """A tutor lesson for the authenticated student — the named topic, or their top priority."""
+    from app.modules.tutor.services.student_copilot_service import StudentCopilotService
+    from app.modules.tutor.services.tutor_service import get_lesson
+
+    student_id, block = await _resolve_self_student_id(db, user)
+    if block:
+        return block
+    school_id = uuid.UUID(user.school_id)
+    lesson_key = str(params.get("topic") or params.get("lesson_key") or "").strip()
+    if not lesson_key:
+        plan = await StudentCopilotService(db).get_daily_plan(
+            school_id=school_id, student_id=student_id
+        )
+        lesson_key = plan.lesson_key or ""
+    if not lesson_key:
+        return {
+            "kind": "guide",
+            "title": "No lesson yet",
+            "message": (
+                "A lesson appears once an assessed topic creates mastery evidence. "
+                "Ask your teacher which topic to revise first."
+            ),
+            "suggestions": [{"label": "Open tutor", "href": "/student/tutor"}],
+        }
+    lesson = await get_lesson(
+        db, school_id=school_id, student_id=student_id, lesson_key=lesson_key
+    )
+    if lesson is None:
+        return _not_found_block(lesson_key, "lesson")
+    steps = "\n\n".join(
+        f"{i}. {s.title} — {s.narration}" for i, s in enumerate(lesson.steps, start=1)
+    )
+    return {
+        "kind": "document",
+        "title": f"Lesson — {lesson.topic}",
+        "message": steps or "This lesson has no steps yet.",
+        "citations": [],
+        "href": f"/student/tutor?lesson={lesson.lesson_key}",
+        "href_label": "Open full lesson",
+    }
+
+
+async def ask_tutor(
+    db: AsyncSession, user: CurrentUser, params: dict[str, Any]
+) -> dict[str, Any]:
+    """Grounded AI tutor answer for the authenticated student — METERED (reuses tutor service).
+
+    Reuses StudentCopilotService.ask unchanged: it reserves one `tutor_explain` credit, runs
+    the grounded LLM once, and finalizes the usage row (no double charge). This is the single
+    metered student capability; the deterministic tools above cost no credits.
+    """
+    from app.modules.tutor.schemas.copilot import CopilotAskIn
+    from app.modules.tutor.services.student_copilot_service import StudentCopilotService
+
+    student_id, block = await _resolve_self_student_id(db, user)
+    if block:
+        return block
+    school_id = uuid.UUID(user.school_id)
+    question = str(params.get("question") or "").strip()
+    if len(question) < 3:
+        return {
+            "kind": "clarify",
+            "title": "What would you like help with?",
+            "message": "Tell me the topic or question you'd like the tutor to explain.",
+            "options": [],
+        }
+    try:
+        ask_in = CopilotAskIn(question=question[:800])
+    except Exception:  # noqa: BLE001 — invalid question text -> honest clarify, no charge
+        return {
+            "kind": "clarify",
+            "title": "What would you like help with?",
+            "message": "Please rephrase your question for the tutor.",
+            "options": [],
+        }
+    try:
+        answer = await StudentCopilotService(db).ask(
+            school_id=school_id,
+            student_id=student_id,
+            body=ask_in,
+            user_id=uuid.UUID(user.id),
+            role=user.role,
+        )
+    except ValueError as exc:
+        return {
+            "kind": "guide",
+            "title": "I need a bit more to go on",
+            "message": str(exc),
+            "suggestions": [{"label": "Open tutor", "href": "/student/tutor"}],
+        }
+    hints = "\n".join(f"• {h}" for h in answer.follow_up_hints)
+    message = answer.answer + (f"\n\nTry next:\n{hints}" if hints else "")
+    return {
+        "kind": "document",
+        "title": f"Tutor — {answer.concept_title}" if answer.concept_title else "Tutor",
+        "message": message,
+        "citations": [],
+        "href": "/student/tutor",
+        "href_label": "Open tutor",
+    }

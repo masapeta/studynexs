@@ -263,6 +263,23 @@ CAPABILITY_CONTRACTS: dict[str, CapabilityContract] = {
         "my_child_fees", "fee", "list", "student", "timeless",
         params={"child": _P("child", "string")},
     ),
+    # Student capabilities (Milestone 2). Identity is the authenticated student (self only);
+    # no entity param is accepted, so there is nothing to derive or spoof. `question`/`topic`
+    # are free-text (string) inputs to the tutor/lesson services, not entity references.
+    "my_daily_plan": _C(
+        "my_daily_plan", "student", "lookup", "student", "timeless",
+    ),
+    "my_weak_topics": _C(
+        "my_weak_topics", "student", "list", "student", "timeless",
+    ),
+    "my_lesson": _C(
+        "my_lesson", "student", "lookup", "student", "timeless",
+        params={"topic": _P("topic", "string")},
+    ),
+    "ask_tutor": _C(
+        "ask_tutor", "student", "lookup", "student", "timeless",
+        params={"question": _P("question", "string", required=True)},
+    ),
 }
 
 

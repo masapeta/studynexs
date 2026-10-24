@@ -59,6 +59,7 @@ class AssistantTool:
 _STAFF = frozenset({"admin", "super_admin", "class_incharge", "teacher", "operations"})
 _ADMIN = frozenset({"admin", "super_admin"})
 _PARENT = frozenset({"parent"})
+_STUDENT = frozenset({"student"})
 
 # Shared help so the planner emits a CANONICAL temporal token, never free text.
 TIME_PARAM_HELP = (
@@ -414,6 +415,58 @@ ASSISTANT_TOOLS: tuple[AssistantTool, ...] = (
         },
         roles=_PARENT,
         handler=cap.my_child_fees,
+    ),
+    # ── Student capabilities (Milestone 2) — the authenticated student's own learning ──
+    AssistantTool(
+        name="my_daily_plan",
+        description=(
+            "The student's own 'study this today' plan — the recommended topic and lesson from "
+            "their mastery evidence. Use for 'what should I study today', 'help me revise today', "
+            "'my learning plan'. Deterministic (no AI generation)."
+        ),
+        params={},
+        roles=_STUDENT,
+        handler=cap.my_daily_plan,
+    ),
+    AssistantTool(
+        name="my_weak_topics",
+        description=(
+            "The student's own weak topics and recommended lessons. Use for 'which topics am I "
+            "weak in', 'what should I improve', 'show my recommended lessons', 'help me improve "
+            "in Mathematics'. Returns a table. Deterministic (no AI generation)."
+        ),
+        params={},
+        roles=_STUDENT,
+        handler=cap.my_weak_topics,
+    ),
+    AssistantTool(
+        name="my_lesson",
+        description=(
+            "Open a tutor lesson for the student — a named topic, or their top-priority topic if "
+            "none is named. Use for 'explain my weakest topic', 'show me the fractions lesson', "
+            "'teach me today's topic'. Returns the lesson steps. Deterministic (no AI generation)."
+        ),
+        params={
+            "topic": (
+                "string, optional — a topic or lesson key (e.g. 'fractions'). Omit for the "
+                "student's top-priority lesson."
+            ),
+        },
+        roles=_STUDENT,
+        handler=cap.my_lesson,
+    ),
+    AssistantTool(
+        name="ask_tutor",
+        description=(
+            "Ask the AI tutor a study question, answered with the student's own curriculum "
+            "context. Use for open questions like 'explain photosynthesis', 'why is my answer "
+            "wrong', 'help me understand fractions'. This uses AI and consumes one tutor credit."
+        ),
+        params={
+            "question": "string — the student's study question (3-800 characters)",
+        },
+        roles=_STUDENT,
+        handler=cap.ask_tutor,
     ),
 )
 
