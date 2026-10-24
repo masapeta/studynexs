@@ -217,6 +217,10 @@ CAPABILITY_CONTRACTS: dict[str, CapabilityContract] = {
                               derive_from=("student",)),
         },
     ),
+    "school_attendance": _C(
+        "school_attendance", "attendance", "aggregate", "school", "event_time",
+        params={"time": _P("time", "time")},
+    ),
     "low_attendance_students": _C(
         "low_attendance_students", "attendance", "filter", "class", "timeless",
         params={

@@ -146,3 +146,32 @@ class AttendanceService:
             "half_day": counts.get("half_day", 0),
             "percentage": percentage
         }
+
+    async def get_school_summary_in_range(
+        self, school_id: uuid.UUID, *, start: date, end: date
+    ) -> dict:
+        """School-wide attendance status counts over a half-open [start, end) date range.
+
+        Direct school-wide analog of ``student_summary_in_range`` (no student filter), summed
+        across the authoritative Attendance rows — one row per student per marked day. Returns
+        raw status counts so the caller scores % under the active school's policy.
+        """
+        rows = (
+            await self.db.execute(
+                select(Attendance.status, func.count())
+                .where(
+                    Attendance.school_id == school_id,
+                    Attendance.date >= start,
+                    Attendance.date < end,
+                )
+                .group_by(Attendance.status)
+            )
+        ).all()
+        counts = {(s.value if hasattr(s, "value") else str(s)): c for s, c in rows}
+        return {
+            "total": sum(counts.values()),
+            "present": counts.get("present", 0),
+            "absent": counts.get("absent", 0),
+            "late": counts.get("late", 0),
+            "half_day": counts.get("half_day", 0),
+        }

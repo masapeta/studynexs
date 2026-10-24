@@ -415,6 +415,76 @@ async def class_attendance_today(
     }
 
 
+async def school_attendance(
+    db: AsyncSession, user: CurrentUser, params: dict[str, Any]
+) -> dict[str, Any]:
+    """School-wide attendance for a day (default today) — aggregate only, admin/principal scope.
+
+    Reuses the authoritative AttendanceService (get_school_summary for a single day,
+    get_school_summary_in_range for a period) over the tenant's Attendance rows; % is scored by
+    the active school's policy. No student-level rows are returned (pure aggregate).
+    """
+    from app.modules.attendance.services.attendance_service import AttendanceService
+
+    # School-wide aggregation is a whole-school read: restrict to admin/principal, never a
+    # class-scoped teacher (who sees only their classes via class_attendance_today).
+    if user.role not in ("admin", "super_admin"):
+        return _denied_block("school-wide attendance")
+
+    school_id = uuid.UUID(user.school_id)
+    service = AttendanceService(db)
+    rng = params.get("_range")
+
+    if rng is not None and not rng.is_all_time and rng.start_date and rng.end_date:
+        # A multi-day period is reported per day, not as one blended number — ask for one day.
+        if (rng.end_date - rng.start_date).days > 1:
+            return {
+                "kind": "guide",
+                "title": "Which day's attendance?",
+                "message": (
+                    f"School-wide attendance is reported for a single day. Ask for a specific "
+                    f"day within {rng.label} (for example 'today' or a date)."
+                ),
+                "suggestions": [{"label": "Attendance", "href": "/dashboard/attendance"}],
+            }
+        summary = await service.get_school_summary_in_range(
+            school_id, start=rng.start_date, end=rng.end_date
+        )
+        day_label = rng.label
+    else:
+        summary = await service.get_school_summary(school_id, date.today())
+        day_label = "today"
+
+    total = summary["total"]
+    pct = get_school_pack().attendance_percentage(
+        {k: summary.get(k, 0) for k in ("present", "late", "half_day", "absent")}
+    )
+    if total == 0:
+        return {
+            "kind": "metrics",
+            "title": f"School attendance — {day_label}",
+            "source": "Attendance System",
+            "message": f"No attendance has been marked across the school {day_label}.",
+            "metrics": [],
+            "href": "/dashboard/attendance",
+            "href_label": "Open attendance",
+        }
+    return {
+        "kind": "metrics",
+        "title": f"School attendance — {day_label}",
+        "source": "Attendance System",
+        "metrics": [
+            {"label": "Attendance", "value": pct, "format": "percent"},
+            {"label": "Present", "value": summary["present"]},
+            {"label": "Absent", "value": summary["absent"]},
+            {"label": "Late", "value": summary["late"]},
+            {"label": "Marks recorded", "value": total},
+        ],
+        "href": "/dashboard/attendance",
+        "href_label": "Open attendance",
+    }
+
+
 async def low_attendance_students(
     db: AsyncSession, user: CurrentUser, params: dict[str, Any]
 ) -> dict[str, Any]:

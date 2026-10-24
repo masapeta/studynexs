@@ -295,12 +295,26 @@ ASSISTANT_TOOLS: tuple[AssistantTool, ...] = (
     AssistantTool(
         name="class_attendance_today",
         description=(
-            "Today's attendance summary for a class (present/absent/%). Use for 'how many "
-            "students are absent today in 5A', 'attendance of class 2A today'."
+            "Today's attendance for ONE NAMED CLASS (present/absent/%). Requires a class. Use for "
+            "'how many students are absent today in 5A', 'attendance of class 2A today'. For the "
+            "WHOLE school (no class named) use school_attendance instead."
         ),
         params={"class_label": "string — a class like '5A' or 'Class 2 A'"},
         roles=_STAFF,
         handler=cap.class_attendance_today,
+    ),
+    AssistantTool(
+        name="school_attendance",
+        description=(
+            "WHOLE-SCHOOL attendance for a single day (default today): overall attendance %, "
+            "present, absent, late across every class. Use when NO class is named — 'show today's "
+            "school attendance', 'what's the school attendance today', 'overall attendance'. NOT "
+            "for one class (use class_attendance_today) and NOT the student/teacher/class counts "
+            "overview (use school_overview)."
+        ),
+        params={"time": TIME_PARAM_HELP},
+        roles=_ADMIN,
+        handler=cap.school_attendance,
     ),
     AssistantTool(
         name="low_attendance_students",
