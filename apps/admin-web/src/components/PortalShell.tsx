@@ -20,6 +20,7 @@ export default function PortalShell({
   title,
   subtitle,
   nav,
+  chat = false,
   children,
 }: {
   title: string;
@@ -27,7 +28,9 @@ export default function PortalShell({
   nav: NavItem[];
   /** Retained for API compatibility; the responsive shell handles width. */
   wide?: boolean;
-  children: React.ReactNode;
+  /** Render the native chat (no page children) instead of a portal page. */
+  chat?: boolean;
+  children?: React.ReactNode;
 }) {
   const { user, permissions } = useAuth();
   const [schoolName, setSchoolName] = useState("");
@@ -56,14 +59,18 @@ export default function PortalShell({
           homeHref={home}
           settingsHref={settingsHref}
           drawerGroups={[{ label: "Portal", items: nav }]}
-          pageTitle={title}
+          pageTitle={chat ? undefined : title}
         >
-          {subtitle ? (
-            <p style={{ color: "var(--text-muted)", fontSize: 14, margin: "0 0 16px" }}>
-              {subtitle}
-            </p>
-          ) : null}
-          {children}
+          {chat ? undefined : (
+            <>
+              {subtitle ? (
+                <p style={{ color: "var(--text-muted)", fontSize: 14, margin: "0 0 16px" }}>
+                  {subtitle}
+                </p>
+              ) : null}
+              {children}
+            </>
+          )}
         </WorkspaceRoot>
       </main>
     </div>
