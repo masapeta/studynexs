@@ -200,6 +200,10 @@ CAPABILITY_CONTRACTS: dict[str, CapabilityContract] = {
             "subject": _P("subject", "subject"),
         },
     ),
+    "student_learning_evidence": _C(
+        "student_learning_evidence", "exam_result", "lookup", "student", "timeless",
+        params={"student": _P("student", "student", required=True)},
+    ),
     "class_roster": _C(
         "class_roster", "student", "list", "class", "current_state",
         params={

@@ -345,6 +345,20 @@ ASSISTANT_TOOLS: tuple[AssistantTool, ...] = (
         handler=cap.student_marks,
     ),
     AssistantTool(
+        name="student_learning_evidence",
+        description=(
+            "LEARNING EVIDENCE for ONE student: trace a flagged WEAK TOPIC back to the "
+            "assessments, question papers and evaluations that produced it, with topic mastery "
+            "and whether it's curriculum-grounded. Use for 'show learning evidence for Aarav', "
+            "'why is ARM0218 weak in fractions', 'evidence for a student in my class'. This is "
+            "the audit trail behind a weakness — NOT raw exam marks (student_marks), NOT the "
+            "mastery heatmap, NOT a profile snapshot (student_profile)."
+        ),
+        params={"student": "string — admission no, roll no, or student name"},
+        roles=_STAFF,
+        handler=cap.student_learning_evidence,
+    ),
+    AssistantTool(
         name="class_results",
         description=(
             "Results matrix for a CLASS — each student's marks across subjects (latest exam "

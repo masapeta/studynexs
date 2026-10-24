@@ -892,6 +892,142 @@ async def student_marks(
     }
 
 
+async def _latest_accessible_flag(db: AsyncSession, user: CurrentUser, student_id: uuid.UUID):
+    """The most recent weak-topic flag for a student WITHIN the staff member's scope, or None.
+
+    Reuses the exact scope rule the workspace learning-evidence tool applies (admin = all;
+    incharge = their classes; teacher = their class+subject pairs), so a resolved student_id
+    never lets a teacher read a flag outside their teaching scope.
+    """
+    from sqlalchemy import or_, tuple_
+
+    from app.db.models.mastery import MasteryFlag
+
+    school_id = uuid.UUID(user.school_id)
+    filters = [MasteryFlag.school_id == school_id, MasteryFlag.student_id == student_id]
+    if user.role not in ("admin", "super_admin"):
+        scope = await get_staff_scope(db, user)
+        clauses = []
+        if scope.incharge_class_ids:
+            clauses.append(MasteryFlag.class_id.in_(scope.incharge_class_ids))
+        if scope.teaching_pairs:
+            clauses.append(
+                tuple_(MasteryFlag.class_id, MasteryFlag.subject_id).in_(scope.teaching_pairs)
+            )
+        if not clauses:
+            return None
+        filters.append(or_(*clauses))
+    return (
+        await db.execute(
+            select(MasteryFlag)
+            .where(*filters)
+            .order_by(MasteryFlag.created_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+
+async def student_learning_evidence(
+    db: AsyncSession, user: CurrentUser, params: dict[str, Any]
+) -> dict[str, Any]:
+    """Trace a student's weak-topic flag back to the academic evidence that produced it.
+
+    Reuses the authoritative build_learning_evidence_chain (same service the mastery review
+    page and the /workspace/turn report use) — no recomputation. Teacher/incharge/admin only;
+    scoped by assert_can_access_student + mastery-flag teaching scope. Returns a metrics+table
+    'mixed' block (topic, mastery %, grounding, and the assessment evidence behind it).
+    """
+    from app.modules.mastery.services.learning_evidence_service import (
+        build_learning_evidence_chain,
+    )
+
+    school_id = uuid.UUID(user.school_id)
+    token = str(params.get("student") or params.get("student_id") or "").strip()
+    entity, block = await _resolve_one_student(db, school_id, token)
+    if block:
+        return block
+    denied = await _authorize_student(db, user, entity.id, noun="student")
+    if denied:
+        return denied
+
+    flag = await _latest_accessible_flag(db, user, entity.id)
+    if flag is None:
+        # Distinguish "none in your scope" from "none exist" without leaking the flag's contents.
+        from app.db.models.mastery import MasteryFlag
+
+        any_flag = (
+            await db.execute(
+                select(MasteryFlag.id).where(
+                    MasteryFlag.school_id == school_id,
+                    MasteryFlag.student_id == entity.id,
+                ).limit(1)
+            )
+        ).scalar_one_or_none()
+        if any_flag is not None:
+            return _denied_block("learning evidence")
+        return {
+            "kind": "not_found",
+            "title": "No learning evidence yet",
+            "message": (
+                f"No weak-topic evidence has been recorded for {entity.detail['name']} yet. "
+                "Evidence appears after assessments flag a weak topic."
+            ),
+        }
+
+    chain = await build_learning_evidence_chain(
+        db, school_id=school_id, tenant_slug=user.tenant_slug, flag=flag
+    )
+    mastery_pct = chain.mastery.mastery_pct if chain.mastery is not None else None
+    metrics = []
+    if mastery_pct is not None:
+        metrics.append({"label": "Topic mastery", "value": mastery_pct, "format": "percent"})
+    metrics.append({"label": "Assessments", "value": len(chain.exams)})
+    metrics.append({"label": "Grounded", "value": "Yes" if chain.grounded else "No"})
+    rows = [
+        {
+            "exam": e.title,
+            "type": e.exam_type.replace("_", " ").title() if e.exam_type else "—",
+            "topic_pct": e.topic_pct,
+            "marks": (
+                f"{e.marks_obtained:g}/{e.total_marks:g}"
+                if e.marks_obtained is not None and e.total_marks
+                else "—"
+            ),
+            "date": e.assessed_on.isoformat() if e.assessed_on else "—",
+        }
+        for e in chain.exams
+    ]
+    header = {
+        "kind": "metrics",
+        "title": f"Learning evidence — {entity.detail['name']}",
+        "subtitle": f"{chain.topic_display} · {entity.label}",
+        "source": "Mastery / Learning evidence",
+        "metrics": metrics,
+    }
+    evidence_table = {
+        "kind": "table",
+        "title": "Assessment evidence",
+        "source": "Examinations",
+        "columns": [
+            {"key": "exam", "label": "Exam"},
+            {"key": "type", "label": "Type"},
+            {"key": "topic_pct", "label": "Topic %", "format": "percent"},
+            {"key": "marks", "label": "Marks"},
+            {"key": "date", "label": "Date"},
+        ],
+        "rows": rows,
+        "empty_message": "The flag has no linked assessment records.",
+        "href": "/dashboard/teaching",
+        "href_label": "Open mastery",
+    }
+    return {
+        "kind": "mixed",
+        "title": f"Learning evidence — {entity.detail['name']}",
+        "data": header,
+        "document": evidence_table,
+    }
+
+
 async def class_results(
     db: AsyncSession, user: CurrentUser, params: dict[str, Any]
 ) -> dict[str, Any]:
