@@ -9,13 +9,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models.academic import Subject
 from app.db.models.concept_card import ConceptCard, ConceptCardStatus
 from app.db.models.knowledge_graph import CurriculumConcept
-from app.db.models.mastery import StudentTopicMastery
+from app.db.models.mastery import AUDIENCE_LEARNER, StudentTopicMastery
 from app.db.models.misconception import MisconceptionEntry
 from app.db.models.student import Student
 from app.modules.curriculum.services.concept_card_service import ConceptCardService
 from app.modules.knowledge_graph.services.student_weak_concept_service import (
     StudentWeakConceptService,
 )
+from app.modules.mastery.services.audience import published_misconceptions_for_student
 from app.modules.tutor.schemas.tutor import TutorLessonOut, TutorRecommendationOut
 from app.modules.tutor.services.concept_card_lesson import build_lesson_from_concept_card
 from app.modules.tutor.services.lesson_templates import (
@@ -45,6 +46,8 @@ async def _weak_topics(
                 StudentTopicMastery.school_id == school_id,
                 StudentTopicMastery.student_id == student_id,
                 StudentTopicMastery.mastery_pct < _WEAK_THRESHOLD,
+                # E8/E9: tutor is learner-facing — released results only.
+                StudentTopicMastery.audience == AUDIENCE_LEARNER,
             )
             .order_by(StudentTopicMastery.mastery_pct.asc())
             .limit(8)
@@ -56,16 +59,10 @@ async def _weak_topics(
 async def _student_misconceptions(
     db: AsyncSession, school_id: uuid.UUID, student_id: uuid.UUID, limit: int = 5
 ) -> list[MisconceptionEntry]:
-    result = await db.execute(
-        select(MisconceptionEntry)
-        .where(
-            MisconceptionEntry.school_id == school_id,
-            MisconceptionEntry.student_id == student_id,
-        )
-        .order_by(MisconceptionEntry.created_at.desc())
-        .limit(limit)
+    # Safeguard 3: only misconceptions whose originating revision is in the released result.
+    return await published_misconceptions_for_student(
+        db, school_id=school_id, student_id=student_id, limit=limit
     )
-    return list(result.scalars().all())
 
 
 async def _student_weak_concept_card_for_lesson(
@@ -330,21 +327,10 @@ async def get_lesson(
             trigger="concept_card",
         )
 
+    # Read-only: content gaps are detected by the background learner-ledger handler, never here.
     card_match = await ConceptCardService(db).get_approved_by_slug(
         school_id=school_id, slug=lesson_key
     )
-    if card_match is None:
-        from app.db.models.content_review import ContentReviewSource
-        from app.modules.curriculum.services.content_review_service import (
-            ContentReviewService,
-        )
-
-        await ContentReviewService(db).enqueue_concept_gap_by_slug(
-            school_id=school_id,
-            slug=lesson_key,
-            created_by=student.user_id,
-            source=ContentReviewSource.TUTOR_GAP,
-        )
 
     if card_match is not None:
         card, concept = card_match

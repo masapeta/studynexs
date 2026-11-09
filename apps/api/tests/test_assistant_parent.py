@@ -118,6 +118,7 @@ async def parent_families(db_session: AsyncSession, test_school: School):
         subject_id=subject.id, academic_year_id=ay.id, topic="fractions",
         topic_display="Fractions", mastery_pct=Decimal("42.00"),
         assessments_count=2, trend=MasteryTrend.INSUFFICIENT,
+        audience="learner",  # released-results ledger (parent surface under test)
     ))
     structure = FeeStructure(
         school_id=test_school.id, class_id=cls.id, fee_type=FeeType.TUITION,

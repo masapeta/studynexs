@@ -239,7 +239,7 @@ async def test_approve_gap_promotes_concept_card(
 
 
 @pytest.mark.asyncio
-async def test_tutor_get_lesson_enqueues_gap(
+async def test_tutor_get_lesson_does_not_write_gap(
     db_session: AsyncSession,
     test_school: School,
     test_class: Class,
@@ -278,7 +278,8 @@ async def test_tutor_get_lesson_enqueues_gap(
             ContentReviewItem.status == ContentReviewStatus.PENDING,
         )
     )
-    assert pending == 1
+    # Student GETs are read-only; gaps are queued by the background learner-ledger handler.
+    assert pending == 0
 
 
 @pytest.mark.asyncio

@@ -95,6 +95,7 @@ async def _seed_copilot(db, *, mastery_pct=55.0):
     )
 
     await StudentWeakConceptService(db).sync_from_ledger(
+        audience="learner",  # simulates released-results evidence
         school_id=school.id,
         class_id=cls.id,
         subject_id=subject.id,

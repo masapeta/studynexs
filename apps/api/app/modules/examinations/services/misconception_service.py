@@ -71,8 +71,14 @@ async def extract_from_evaluation(
     evaluation: AnswerSheetEvaluation,
     exam: Exam,
     approved_by: uuid.UUID,
+    revision_id: uuid.UUID | None = None,
 ) -> list[MisconceptionEntry]:
-    """Upsert misconception rows for partially wrong questions."""
+    """Upsert misconception rows for partially wrong questions.
+
+    ``revision_id`` is the approved evaluation revision that produced this observation. It is
+    recorded on the entry only when the entry belongs to this student, which is the sole basis
+    for learner-facing exposure (see :func:`published_misconceptions_for_student`).
+    """
     if not evaluation.ai_suggestions or not exam.source_paper_id:
         return []
 
@@ -114,6 +120,10 @@ async def extract_from_evaluation(
         if existing:
             existing.occurrence_count = int(existing.occurrence_count or 0) + 1
             existing.source_evaluation_id = evaluation.id
+            # Learner provenance is student-specific: only this student's own approval may
+            # re-point it. Another student's hit keeps the original student's provenance.
+            if existing.student_id == evaluation.student_id:
+                existing.source_evaluation_revision_id = revision_id
             created.append(existing)
             continue
 
@@ -126,6 +136,7 @@ async def extract_from_evaluation(
             common_mistake=mistake,
             remedial_activity=remedial,
             source_evaluation_id=evaluation.id,
+            source_evaluation_revision_id=revision_id,
             student_id=evaluation.student_id,
             created_by=approved_by,
             content_fingerprint=fp,

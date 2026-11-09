@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models.academic import Class, Subject
 from app.db.models.attendance import Attendance
 from app.db.models.fee import FeeStructure, StudentFeeRecord
-from app.db.models.mastery import FlagStatus, MasteryFlag, StudentTopicMastery
+from app.db.models.mastery import AUDIENCE_LEARNER, FlagStatus, MasteryFlag, StudentTopicMastery
 from app.db.models.school import School
 from app.db.models.student import Parent, Student, StudentParentMap
 from app.db.models.user import User
@@ -94,6 +94,8 @@ async def _weak_topic_count(db: AsyncSession, school_id: uuid.UUID, student_id: 
             StudentTopicMastery.school_id == school_id,
             StudentTopicMastery.student_id == student_id,
             StudentTopicMastery.mastery_pct < _WEAK_THRESHOLD,
+            # E1: portal is learner-facing — released results only.
+            StudentTopicMastery.audience == AUDIENCE_LEARNER,
         )
     )
     return int(result.scalar_one() or 0)
@@ -318,6 +320,7 @@ async def list_parent_children_progress(
                 StudentTopicMastery.school_id == school_id,
                 StudentTopicMastery.student_id.in_(student_ids),
                 StudentTopicMastery.mastery_pct < _WEAK_THRESHOLD,
+                StudentTopicMastery.audience == AUDIENCE_LEARNER,
             )
             .order_by(StudentTopicMastery.mastery_pct)
         )
@@ -342,6 +345,8 @@ async def list_parent_children_progress(
                 MasteryFlag.student_id.in_(student_ids),
                 MasteryFlag.status == FlagStatus.NOTIFIED,
                 MasteryFlag.narrative.isnot(None),
+                # E3: only notes verified against released results at notify time.
+                MasteryFlag.audience == AUDIENCE_LEARNER,
             )
             .order_by(MasteryFlag.notified_at.desc())
         )

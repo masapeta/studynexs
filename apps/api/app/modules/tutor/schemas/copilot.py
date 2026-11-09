@@ -28,7 +28,7 @@ class StudyContextOut(BaseModel):
 
 class DailyLearningPlanOut(BaseModel):
     student_id: uuid.UUID
-    status: str  # ready | empty
+    status: str  # ready | empty | lesson_in_preparation
     title: str
     reason: str
     recommended_action: str

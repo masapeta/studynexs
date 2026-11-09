@@ -18,6 +18,14 @@ class TimetableSlotCreate(BaseModel):
     end_time: str    # "09:15"
 
 
+class ClassSubjectTeacherOut(BaseModel):
+    """A teacher mapped to teach a subject in a class — minimal fields for slot editing."""
+
+    teacher_id: uuid.UUID
+    full_name: str
+    subject_id: uuid.UUID
+
+
 class TimetableSlotOut(BaseModel):
     id: uuid.UUID
     class_id: uuid.UUID

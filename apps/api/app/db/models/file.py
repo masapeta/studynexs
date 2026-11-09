@@ -3,7 +3,7 @@
 import enum
 import uuid
 
-from sqlalchemy import BigInteger, Enum, ForeignKey, Index, String
+from sqlalchemy import BigInteger, Enum, ForeignKey, Index, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -37,4 +37,5 @@ class UploadedFile(BaseModel):
 
     __table_args__ = (
         Index("ix_files_school_category", "school_id", "category"),
+        UniqueConstraint("school_id", "id", name="uq_uploaded_files_school_id_id"),
     )

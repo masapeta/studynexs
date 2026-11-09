@@ -2,7 +2,11 @@
 from app.db.models.academic import AcademicYear, Class, Subject, TeacherSubjectMapping  # noqa: F401
 from app.db.models.ai_feedback import AIFeedback  # noqa: F401
 from app.db.models.ai_usage import AIUsage  # noqa: F401
-from app.db.models.answer_sheet_evaluation import AnswerSheetEvaluation  # noqa: F401
+from app.db.models.answer_sheet_evaluation import (  # noqa: F401
+    AnswerSheetEvaluation,
+    AnswerSheetEvaluationRevision,
+    AnswerSheetPage,
+)
 from app.db.models.attendance import Attendance  # noqa: F401
 from app.db.models.audit import AuditLog  # noqa: F401
 from app.db.models.base import Base  # noqa: F401
@@ -26,6 +30,14 @@ from app.db.models.document_ingestion import (  # noqa: F401
     DocumentIngestion,
     DocumentType,
     IngestStatus,
+)
+from app.db.models.exam_result import (  # noqa: F401
+    ExamReleaseState,
+    ExamResultNotification,
+    ExamResultPublished,
+    ExamResultRelease,
+    ExamResultReleaseItem,
+    ExamResultVersion,
 )
 from app.db.models.examination import Exam, ExamMark  # noqa: F401
 from app.db.models.fee import (  # noqa: F401
@@ -52,6 +64,7 @@ from app.db.models.lesson_plan import LessonPlan, LessonPlanStatus  # noqa: F401
 from app.db.models.mastery import (  # noqa: F401
     FlagSeverity,
     FlagStatus,
+    MasteryEvidence,
     MasteryFlag,
     MasteryTrend,
     StudentTopicMastery,

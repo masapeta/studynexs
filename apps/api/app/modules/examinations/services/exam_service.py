@@ -17,6 +17,10 @@ from app.modules.examinations.schemas.exam import (
     QuestionDef,
     QuestionSchemaSet,
 )
+from app.modules.examinations.services.result_version_service import (
+    VersionProvenance,
+    append_versions,
+)
 
 if TYPE_CHECKING:
     from app.db.models.question_paper import QuestionPaper
@@ -154,8 +158,21 @@ class ExamService:
         return paper, questions
 
     async def enter_marks(
-        self, school_id: uuid.UUID, exam_id: uuid.UUID, entries: list[MarkEntry]
+        self,
+        school_id: uuid.UUID,
+        exam_id: uuid.UUID,
+        entries: list[MarkEntry],
+        *,
+        provenance: VersionProvenance | None = None,
     ) -> int:
+        """The ONLY writer of ``exam_marks``. Every save appends result versions (safeguard 5).
+
+        ``provenance`` describes who/what produced the marks; manual gradebook entry passes the
+        acting user, AI approval passes the evaluation + revision. Learner visibility never
+        changes here — only a release generation publishes a version.
+        """
+        if provenance is None:
+            raise ValueError("enter_marks requires result-version provenance")
         scope = TenantScope(self.db, school_id)
         exam = await scope.exam(exam_id)
         by_student = {e.student_id: e for e in entries}
@@ -205,6 +222,14 @@ class ExamService:
         )
         await self.db.execute(stmt)
         await self.db.flush()
+
+        await append_versions(
+            self.db,
+            school_id=school_id,
+            exam_id=exam_id,
+            student_ids=list(by_student),
+            provenance=provenance,
+        )
 
         # Same-transaction outbox event: the worker recomputes the topic-mastery
         # ledger (and, later, notifies parents). No-ops for untagged exams.

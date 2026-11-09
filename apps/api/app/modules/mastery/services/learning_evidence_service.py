@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.answer_sheet_evaluation import EVAL_STATUS_APPROVED, AnswerSheetEvaluation
 from app.db.models.examination import Exam, ExamMark
-from app.db.models.mastery import FlagStatus, MasteryFlag, StudentTopicMastery
+from app.db.models.mastery import AUDIENCE_STAFF, FlagStatus, MasteryFlag, StudentTopicMastery
 from app.db.models.misconception import MisconceptionEntry
 from app.db.models.question_paper import QuestionPaper
 from app.modules.mastery.schemas.mastery import (
@@ -55,6 +55,8 @@ async def build_learning_evidence_chain(
                 StudentTopicMastery.subject_id == flag.subject_id,
                 StudentTopicMastery.academic_year_id == flag.academic_year_id,
                 StudentTopicMastery.topic == flag.topic,
+                # Teacher-only evidence report (E17): staff ledger.
+                StudentTopicMastery.audience == AUDIENCE_STAFF,
             )
         )
     ).scalar_one_or_none()
@@ -159,6 +161,7 @@ async def build_learning_evidence_chain(
         school_id=school_id,
         student_id=flag.student_id,
         subject_id=flag.subject_id,
+        audience=AUDIENCE_STAFF,  # staff-only evidence chain
     )
     matching_weak_concepts = [
         (concept, meta)

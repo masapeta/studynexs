@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.staff_permissions import StaffScope, assert_qp_generate
 from app.db.models.academic import Class, Subject
 from app.db.models.lesson_plan import LessonPlan, LessonPlanStatus
-from app.db.models.mastery import StudentTopicMastery
+from app.db.models.mastery import AUDIENCE_STAFF, StudentTopicMastery
 from app.modules.curriculum.services.curriculum_grounding import (
     CurriculumGrounding,
     ground_approved_pack,
@@ -36,6 +36,7 @@ class LessonPlanService:
                     StudentTopicMastery.school_id == school_id,
                     StudentTopicMastery.class_id == class_id,
                     StudentTopicMastery.subject_id == subject_id,
+                    StudentTopicMastery.audience == AUDIENCE_STAFF,
                 )
                 .group_by(StudentTopicMastery.topic_display)
                 .order_by(func.avg(StudentTopicMastery.mastery_pct).asc())

@@ -1514,10 +1514,11 @@ async def my_daily_plan(
         school_id=school_id, student_id=student_id
     )
     if plan.status != "ready":
+        preparing = plan.status == "lesson_in_preparation"
         return {
             "kind": "guide",
-            "title": "No learning action yet",
-            "message": plan.reason,
+            "title": plan.title if preparing else "No learning action yet",
+            "message": plan.recommended_action if preparing else plan.reason,
             "suggestions": [{"label": "Open tutor", "href": "/student/tutor"}],
         }
     metrics = []

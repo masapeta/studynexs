@@ -137,6 +137,7 @@ async def student_learning(db_session: AsyncSession):
         school_id=school.id, pack_id=pack.id
     )
     await StudentWeakConceptService(db_session).sync_from_ledger(
+        audience="learner",  # simulates released-results evidence (learner surface under test)
         school_id=school.id, class_id=cls.id, subject_id=subject.id, academic_year_id=ay.id,
         ledger_rows=[{
             "student_id": me.id, "topic": "linear equations",
@@ -150,6 +151,7 @@ async def student_learning(db_session: AsyncSession):
         school_id=school.id, student_id=me.id, class_id=cls.id, subject_id=subject.id,
         academic_year_id=ay.id, topic="linear equations", topic_display="Linear Equations",
         mastery_pct=48.0, assessments_count=2, trend=MasteryTrend.STABLE,
+        audience="learner",  # released-results ledger (student surface under test)
     ))
     await db_session.flush()
     concept = (

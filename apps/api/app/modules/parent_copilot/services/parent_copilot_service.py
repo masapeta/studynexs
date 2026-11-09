@@ -13,7 +13,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.academic import Class, Subject
-from app.db.models.misconception import MisconceptionEntry
 from app.db.models.school import School
 from app.db.models.student import Student
 from app.modules.ai.embeddings import EmbeddingService
@@ -28,6 +27,7 @@ from app.modules.ai.vectorstore.base import VectorStore
 from app.modules.knowledge_graph.services.student_weak_concept_service import (
     StudentWeakConceptService,
 )
+from app.modules.mastery.services.audience import published_misconceptions_for_student
 from app.modules.parent_copilot.schemas.copilot import (
     ParentAnswerOut,
     ParentAskIn,
@@ -171,20 +171,25 @@ class ParentCopilotService:
     async def _exam_focus_from_misconceptions(
         self, *, school_id: uuid.UUID, student_id: uuid.UUID
     ) -> tuple[list[ParentFocusAreaOut], list[str]]:
-        """Recent exam-derived topics (same chain as tutor recommendations)."""
-        rows = (
-            await self.db.execute(
-                select(MisconceptionEntry, Subject.name)
-                .join(Subject, Subject.id == MisconceptionEntry.subject_id)
-                .where(
-                    MisconceptionEntry.school_id == school_id,
-                    MisconceptionEntry.student_id == student_id,
-                    Subject.school_id == school_id,
+        """Recent exam-derived topics (same chain as tutor recommendations).
+
+        E10 / safeguard 3: only misconceptions proven to come from a released result.
+        """
+        entries = await published_misconceptions_for_student(
+            self.db, school_id=school_id, student_id=student_id, limit=4
+        )
+        subject_names = {
+            sid: name
+            for sid, name in (
+                await self.db.execute(
+                    select(Subject.id, Subject.name).where(
+                        Subject.school_id == school_id,
+                        Subject.id.in_({mc.subject_id for mc in entries}),
+                    )
                 )
-                .order_by(MisconceptionEntry.created_at.desc())
-                .limit(4)
-            )
-        ).all()
+            ).all()
+        } if entries else {}
+        rows = [(mc, subject_names.get(mc.subject_id, "")) for mc in entries]
         focus: list[ParentFocusAreaOut] = []
         lines: list[str] = []
         for mc, subject_name in rows:

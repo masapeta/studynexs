@@ -66,6 +66,7 @@ async def _seed_parent_copilot(
             class_avg_pct=70.0,
             assessments_count=2,
             trend=MasteryTrend.STABLE,
+            audience="learner",  # released-results ledger
         )
     )
     await db.flush()
@@ -93,6 +94,7 @@ async def _seed_parent_copilot(
         school_id=test_school.id, pack_id=pack.id
     )
     await StudentWeakConceptService(db).sync_from_ledger(
+        audience="learner",  # simulates released-results evidence
         school_id=test_school.id,
         class_id=test_class.id,
         subject_id=subject.id,

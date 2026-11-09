@@ -11,7 +11,8 @@ import uuid
 from typing import Any
 
 import structlog
-from sqlalchemy import select
+from fastapi import HTTPException
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import CurrentUser
@@ -120,6 +121,7 @@ class AssistantService:
         tools: Any,
         history: list[dict[str, str]] | None,
         prev_state: dict[str, Any] | None,
+        context_hint: str | None = None,
     ) -> tuple[Any, dict[str, Any]]:
         """Dispatch to the configured planner backend (default gemma). Only the planning STAGE
         varies; the returned PlannerDecision feeds the identical downstream runtime."""
@@ -131,7 +133,8 @@ class AssistantService:
 
             fn = plan_jev if backend == "jev" else plan_hybrid
             return await fn(text, tools=tools, history=history, prev_state=prev_state)
-        decision = await plan(text, tools=tools, history=history, prev_state=prev_state)
+        extra = {"context_hint": context_hint} if context_hint else {}
+        decision = await plan(text, tools=tools, history=history, prev_state=prev_state, **extra)
         return decision, {"planner": "gemma"}
 
     async def handle_turn(
@@ -140,6 +143,7 @@ class AssistantService:
         current_user: CurrentUser,
         text: str,
         session_id: uuid.UUID | None,
+        page_context: Any = None,
     ) -> dict[str, Any]:
         # Bind the active SchoolPack for this turn from the authenticated tenant (spec §23:
         # blind — the runtime never receives "School B uses Form Tutor"; it reads semantics
@@ -149,7 +153,10 @@ class AssistantService:
 
         with use_school_pack(pack_for_tenant(getattr(current_user, "tenant_slug", None))):
             return await self._handle_turn(
-                current_user=current_user, text=text, session_id=session_id
+                current_user=current_user,
+                text=text,
+                session_id=session_id,
+                page_context=page_context,
             )
 
     async def _handle_turn(
@@ -158,6 +165,7 @@ class AssistantService:
         current_user: CurrentUser,
         text: str,
         session_id: uuid.UUID | None,
+        page_context: Any = None,
     ) -> dict[str, Any]:
         school_id = uuid.UUID(current_user.school_id)
         user_id = uuid.UUID(current_user.id)
@@ -166,6 +174,21 @@ class AssistantService:
         session = await self._get_or_create_session(
             school_id=school_id, user_id=user_id, session_id=session_id, title=text
         )
+        # Continuing a conversation makes it recent again (and restores it if archived).
+        session.updated_at = func.now()
+        session.archived_at = None
+
+        resolved_ctx = None
+        if page_context is not None:
+            from app.modules.workspace.assistant.page_context import resolve_page_context
+
+            resolved_ctx, ctx_denied = await resolve_page_context(
+                self.db, current_user, page_context
+            )
+            if ctx_denied is not None:
+                return await self._persist_denied_context_turn(
+                    school_id, session, text, ctx_denied
+                )
 
         # Persist the user turn.
         self.db.add(
@@ -179,7 +202,11 @@ class AssistantService:
         tools = tools_for_role(role)
         prev_state = await self._prev_semantic_state(session.id)
         decision, planner_meta = await self._plan(
-            text, tools=tools, history=history[:-1], prev_state=prev_state
+            text,
+            tools=tools,
+            history=history[:-1],
+            prev_state=prev_state,
+            context_hint=resolved_ctx.hint() if resolved_ctx else None,
         )
 
         # Deterministic conversational carry-over (P1.2): merge unchanged dimensions from the
@@ -280,6 +307,16 @@ class AssistantService:
             }
         else:
             block = self._guide_block(role, message=decision.message)
+        if block.get("kind") == "guide":
+            from app.modules.workspace.assistant.role_access import (
+                restricted_domain_for,
+                role_denied_block,
+            )
+
+            denied_domain = restricted_domain_for(text, role)
+            if denied_domain is not None:
+                block = role_denied_block(denied_domain, role)
+                trace["role_denied_domain"] = denied_domain.key
         # Single typed-contract boundary (Phase 9): validate the block against its kind's model
         # for compatibility/telemetry, returning it unchanged so the wire shape is preserved.
         from app.modules.workspace.assistant.result import validate_block
@@ -287,7 +324,10 @@ class AssistantService:
         block = validate_block(block)
         result_kind = block.get("kind", "data")
         trace["result_kind"] = result_kind
+        if resolved_ctx is not None:
+            trace["page_context"] = resolved_ctx.to_trace()
 
+        semantic_state = self._state_to_persist(decision, sem_temporality, sem_label)
         # Persist the assistant turn (payload = the block for redisplay in history).
         self.db.add(
             WorkspaceChatMessage(
@@ -297,7 +337,7 @@ class AssistantService:
                 text=block.get("title", ""),
                 result_kind=result_kind,
                 payload=block,
-                semantic_state=self._state_to_persist(decision, sem_temporality, sem_label),
+                semantic_state=semantic_state,
             )
         )
         await self.db.flush()
@@ -307,6 +347,37 @@ class AssistantService:
             "result_kind": result_kind,
             "block": block,
             "trace": trace,
+            "semantic_state": semantic_state,
+        }
+
+    async def _persist_denied_context_turn(
+        self,
+        school_id: uuid.UUID,
+        session: WorkspaceChatSession,
+        text: str,
+        block: dict[str, Any],
+    ) -> dict[str, Any]:
+        """The page entity failed re-authorisation: answer with the denial, never plan."""
+        self.db.add(
+            WorkspaceChatMessage(school_id=school_id, session_id=session.id, role="user", text=text)
+        )
+        self.db.add(
+            WorkspaceChatMessage(
+                school_id=school_id,
+                session_id=session.id,
+                role="assistant",
+                text=block.get("title", ""),
+                result_kind=block.get("kind"),
+                payload=block,
+            )
+        )
+        await self.db.flush()
+        return {
+            "session_id": str(session.id),
+            "result_kind": block.get("kind"),
+            "block": block,
+            "trace": {"page_context_denied": True},
+            "semantic_state": None,
         }
 
     def _state_to_persist(
@@ -728,40 +799,75 @@ class AssistantService:
         }
 
     async def list_sessions(
-        self, *, current_user: CurrentUser, limit: int = 30
+        self, *, current_user: CurrentUser, limit: int = 30, archived: bool = False
     ) -> list[dict[str, Any]]:
+        archived_filter = (
+            WorkspaceChatSession.archived_at.is_not(None)
+            if archived
+            else WorkspaceChatSession.archived_at.is_(None)
+        )
         rows = (
             await self.db.execute(
                 select(WorkspaceChatSession)
                 .where(
                     WorkspaceChatSession.school_id == uuid.UUID(current_user.school_id),
                     WorkspaceChatSession.user_id == uuid.UUID(current_user.id),
+                    archived_filter,
                 )
                 .order_by(WorkspaceChatSession.updated_at.desc())
                 .limit(limit)
             )
         ).scalars().all()
-        return [
-            {
-                "id": str(s.id),
-                "title": s.title,
-                "updated_at": s.updated_at.isoformat() if s.updated_at else None,
-            }
-            for s in rows
-        ]
+        return [self._session_out(s) for s in rows]
+
+    @staticmethod
+    def _session_out(s: WorkspaceChatSession) -> dict[str, Any]:
+        return {
+            "id": str(s.id),
+            "title": s.title,
+            "updated_at": s.updated_at.isoformat() if s.updated_at else None,
+            "archived_at": s.archived_at.isoformat() if s.archived_at else None,
+        }
+
+    async def _owned_session(
+        self, current_user: CurrentUser, session_id: uuid.UUID, *, for_update: bool = False
+    ) -> WorkspaceChatSession:
+        """Owner + tenant scoped load; unknown and foreign ids are indistinguishable (404)."""
+        stmt = select(WorkspaceChatSession).where(
+            WorkspaceChatSession.id == session_id,
+            WorkspaceChatSession.school_id == uuid.UUID(current_user.school_id),
+            WorkspaceChatSession.user_id == uuid.UUID(current_user.id),
+        )
+        if for_update:
+            stmt = stmt.with_for_update()
+        session = await self.db.scalar(stmt)
+        if session is None:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        return session
+
+    async def update_session(
+        self,
+        *,
+        current_user: CurrentUser,
+        session_id: uuid.UUID,
+        title: str | None = None,
+        archived: bool | None = None,
+    ) -> dict[str, Any]:
+        session = await self._owned_session(current_user, session_id, for_update=True)
+        if title is not None:
+            session.title = title
+        if archived is True and session.archived_at is None:
+            session.archived_at = func.now()
+        elif archived is False:
+            session.archived_at = None
+        await self.db.flush()
+        await self.db.refresh(session)
+        return self._session_out(session)
 
     async def get_session_messages(
         self, *, current_user: CurrentUser, session_id: uuid.UUID
     ) -> list[dict[str, Any]]:
-        session = await self.db.scalar(
-            select(WorkspaceChatSession).where(
-                WorkspaceChatSession.id == session_id,
-                WorkspaceChatSession.school_id == uuid.UUID(current_user.school_id),
-                WorkspaceChatSession.user_id == uuid.UUID(current_user.id),
-            )
-        )
-        if session is None:
-            return []
+        await self._owned_session(current_user, session_id)
         rows = (
             await self.db.execute(
                 select(WorkspaceChatMessage)
@@ -775,6 +881,7 @@ class AssistantService:
                 "text": m.text,
                 "result_kind": m.result_kind,
                 "payload": m.payload,
+                "semantic_state": m.semantic_state,
             }
             for m in rows
         ]

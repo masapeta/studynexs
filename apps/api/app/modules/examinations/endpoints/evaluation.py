@@ -153,6 +153,7 @@ async def _evaluation_out(
             manual_review_acknowledgement_required=settings.AEI_V1_MANUAL_REVIEW_ACK_REQUIRED,
         )
     out.evidence_ledger = evidence_ledger
+    out.page_file_ids = await AnswerSheetEvalService(db).page_file_ids(row)
     return out
 
 
@@ -256,6 +257,7 @@ async def create_evaluation(
             school=school,
             file_id=body.file_id,
             student_answers=body.student_answers,
+            page_file_ids=body.page_file_ids,
         )
     except EvalError as e:
         raise HTTPException(status_code=400, detail=str(e))

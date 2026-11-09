@@ -16,7 +16,14 @@ from app.db.models.curriculum_pack import (
     CurriculumTopic,
     PackStatus,
 )
-from app.db.models.knowledge_graph import CurriculumConcept, KgEdge, KgEdgeType, KgNodeType
+from app.db.models.knowledge_graph import (
+    KG_AUDIENCE_LEARNER,
+    KG_AUDIENCE_STAFF,
+    CurriculumConcept,
+    KgEdge,
+    KgEdgeType,
+    KgNodeType,
+)
 
 logger = structlog.get_logger()
 
@@ -108,8 +115,18 @@ class StudentWeakConceptService:
         subject_id: uuid.UUID,
         academic_year_id: uuid.UUID,
         ledger_rows: list[dict],
+        audience: str = KG_AUDIENCE_STAFF,
+        roster_student_ids: set[uuid.UUID] | None = None,
     ) -> int:
-        """Rebuild STRUGGLES_WITH edges for students in this recompute pass."""
+        """Rebuild STRUGGLES_WITH edges of ONE audience for students in this recompute pass.
+
+        Staff and learner edges are separate rows (``audience`` is in the unique key); this
+        method only ever deletes/creates edges of its own audience (safeguard 2).
+        ``roster_student_ids`` widens the clean-up so a student whose released evidence was
+        withdrawn loses their learner edges even though they have no learner ledger rows.
+        """
+        if audience not in (KG_AUDIENCE_STAFF, KG_AUDIENCE_LEARNER):
+            raise ValueError(f"invalid student-evidence audience: {audience}")
         pack = await self._resolve_pack(
             school_id=school_id,
             class_id=class_id,
@@ -119,7 +136,7 @@ class StudentWeakConceptService:
         if pack is None:
             return 0
 
-        student_ids = {row["student_id"] for row in ledger_rows}
+        student_ids = {row["student_id"] for row in ledger_rows} | set(roster_student_ids or ())
         if not student_ids:
             return 0
 
@@ -130,6 +147,7 @@ class StudentWeakConceptService:
                 KgEdge.edge_type == KgEdgeType.STRUGGLES_WITH,
                 KgEdge.from_node_type == KgNodeType.STUDENT,
                 KgEdge.from_id.in_(student_ids),
+                KgEdge.audience == audience,
             )
         )
 
@@ -153,10 +171,16 @@ class StudentWeakConceptService:
                     from_id=row["student_id"],
                     to_node_type=KgNodeType.CONCEPT,
                     to_id=concept.id,
+                    audience=audience,
                     metadata_={
                         "mastery_pct": mastery,
                         "topic": row.get("topic_display") or row["topic"],
                         "subject_id": str(subject_id),
+                        "audience": audience,
+                        "evidence_exam_ids": sorted(
+                            {str(h.get("exam_id")) for h in row.get("history") or []
+                             if isinstance(h, dict) and h.get("exam_id")}
+                        ),
                     },
                 )
                 self.db.add(edge)
@@ -178,12 +202,16 @@ class StudentWeakConceptService:
         student_id: uuid.UUID,
         subject_id: uuid.UUID | None = None,
         pack_id: uuid.UUID | None = None,
+        audience: str = KG_AUDIENCE_LEARNER,
     ) -> list[tuple[CurriculumConcept, dict | None]]:
+        """Weak concepts for one student. Defaults to the LEARNER audience — every
+        student/parent/tutor/copilot caller is learner-facing; staff callers must opt in."""
         filters = [
             KgEdge.school_id == school_id,
             KgEdge.edge_type == KgEdgeType.STRUGGLES_WITH,
             KgEdge.from_node_type == KgNodeType.STUDENT,
             KgEdge.from_id == student_id,
+            KgEdge.audience == audience,
         ]
         if pack_id is not None:
             filters.append(KgEdge.pack_id == pack_id)

@@ -67,6 +67,11 @@ class Exam(BaseModel):
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
     )
 
+    __table_args__ = (
+        # Target for tenant-consistent composite FKs (result versions/releases).
+        UniqueConstraint("school_id", "id", name="uq_exams_school_id_id"),
+    )
+
 
 class ExamMark(BaseModel):
     __tablename__ = "exam_marks"

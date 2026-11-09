@@ -271,7 +271,9 @@ def create_app() -> FastAPI:
     from app.modules.platform.endpoints.engineering import router as platform_router
 
     app.include_router(dashboard_router, prefix=f"{prefix}/dashboard", tags=["dashboard"])
-    app.include_router(platform_router, prefix=f"{prefix}/platform", tags=["platform"])
+    # Internal engineering status is never served on staging/demo/production tiers.
+    if settings.is_internal_tier:
+        app.include_router(platform_router, prefix=f"{prefix}/platform", tags=["platform"])
     app.include_router(demo_router, prefix=f"{prefix}/demo", tags=["demo"])
     app.include_router(lesson_plan_router, prefix=f"{prefix}/lesson-plans", tags=["curriculum"])
 

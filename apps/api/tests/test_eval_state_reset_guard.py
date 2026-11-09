@@ -40,7 +40,7 @@ def test_new_evaluation_action_resets_all_mutable_input_state() -> None:
     required_resets = (
         "setActiveEval(null);",
         "setSelectedStudent(\"\");",
-        "setSheetFile(null);",
+        "setSheetPages([]);",
         "setAnswers(buildInitialAnswers(questions));",
         "setOverrides({});",
         "setOverrideReasons({});",
@@ -50,5 +50,5 @@ def test_new_evaluation_action_resets_all_mutable_input_state() -> None:
         assert expected in reset_body
 
     load_body = _function_body(source, "loadEval")
-    assert "setSheetFile(null);" in load_body
+    assert "setSheetPages([]);" in load_body
     assert "setAnswers(buildInitialAnswers(questions));" in load_body

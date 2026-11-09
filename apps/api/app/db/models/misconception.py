@@ -38,6 +38,15 @@ class MisconceptionEntry(BaseModel):
         ForeignKey("answer_sheet_evaluations.id", ondelete="SET NULL"),
         nullable=True,
     )
+    # Exact approved revision that produced (or last re-confirmed) this entry for this student.
+    # Learner-facing readers expose an entry only when the student's PUBLISHED result version
+    # carries this same revision id (equality, never a "later version" comparison). NULL for
+    # legacy rows, which therefore stay staff-only.
+    source_evaluation_revision_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("answer_sheet_evaluation_revisions.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     student_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("students.id"), nullable=True
     )

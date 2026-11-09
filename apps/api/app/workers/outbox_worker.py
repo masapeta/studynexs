@@ -71,6 +71,39 @@ async def handle_exam_marks(payload: dict, db: AsyncSession):
     logger.info("exam_marks_event", exam_id=payload.get("exam_id"), mastery_rows=rows)
 
 
+@register_handler("exam_results_published")
+async def handle_exam_results_published(payload: dict, db: AsyncSession):
+    """Release / withdraw / block / unblock → rebuild both ledgers, then detect content gaps.
+
+    Idempotent: the recompute is a full rebuild and gap creation is deduped by a partial unique
+    index, so worker retries never duplicate anything.
+    """
+    import uuid as _uuid
+
+    from app.modules.mastery.services.mastery_service import recompute_class_subject
+    from app.modules.tutor.services.content_gap_detection import detect_learner_content_gaps
+
+    school_id = _uuid.UUID(payload["school_id"])
+    class_id = _uuid.UUID(payload["class_id"])
+    subject_id = _uuid.UUID(payload["subject_id"])
+    rows = await recompute_class_subject(
+        db, school_id=school_id, class_id=class_id, subject_id=subject_id
+    )
+    gaps = await detect_learner_content_gaps(
+        db,
+        school_id=school_id,
+        class_id=class_id,
+        subject_id=subject_id,
+        actor_id=_uuid.UUID(payload["actor_id"]) if payload.get("actor_id") else None,
+    )
+    logger.info(
+        "exam_results_published_event",
+        exam_id=payload.get("exam_id"),
+        mastery_rows=rows,
+        content_gaps_created=gaps,
+    )
+
+
 # ── Worker Loop ──────────────────────────────────────────────────────────────
 
 

@@ -22,6 +22,7 @@ from app.modules.knowledge_graph.services.graph_service import (
     KnowledgeGraphError,
     KnowledgeGraphService,
 )
+from app.modules.mastery.services.audience import audience_for_role
 from app.shared.schemas.common import APIResponse
 
 router = APIRouter(route_class=CommitOnSuccessRoute)
@@ -90,6 +91,8 @@ async def get_student_weak_concepts(
         student_id=student_id,
         subject_id=subject_id,
         pack_id=pack_id,
+        # E18: learners only ever see weak concepts derived from released results.
+        audience=audience_for_role(current_user.role),
     )
     return APIResponse(
         data=StudentWeakConceptsOut(student_id=student_id, concepts=concepts)

@@ -134,6 +134,37 @@ async def test_approve_drafts_narrative_then_edit_then_notify(
     assert resp.status_code == 200
     assert resp.json()["data"]["narrative"] == "Edited note for the parent."
 
+    # P2/P4: the note is built from unreleased results → refused until they are released.
+    resp = await client.post(f"/api/v1/mastery/flags/{flag.id}/notify", headers=auth_headers(token))
+    assert resp.status_code == 409
+    assert "released" in resp.json()["detail"]
+    for point in (flag.evidence or {}).get("history") or []:
+        exam_id = point["exam_id"]
+        preview = await client.post(
+            f"/api/v1/exams/{exam_id}/release/preview", headers=auth_headers(token)
+        )
+        assert preview.status_code == 200, preview.text
+        p = preview.json()["data"]
+        confirm = await client.post(
+            f"/api/v1/exams/{exam_id}/release/confirm",
+            headers=auth_headers(token),
+            json={
+                "preview_token": p["preview_token"],
+                "confirm_partial": p["pending_total"] > 0,
+                "acknowledged_pending_count": p["pending_total"],
+            },
+        )
+        assert confirm.status_code == 200, confirm.text
+    # Release notifications went to the student + parent; count only flag notes below.
+    release_notifs = {
+        n.id
+        for n in (
+            await db_session.execute(
+                select(Notification).where(Notification.user_id == parent_user.id)
+            )
+        ).scalars().all()
+    }
+
     # Notify → one in-app notification per linked parent user.
     resp = await client.post(f"/api/v1/mastery/flags/{flag.id}/notify", headers=auth_headers(token))
     assert resp.status_code == 200, resp.text
@@ -150,6 +181,7 @@ async def test_approve_drafts_narrative_then_edit_then_notify(
         .scalars()
         .all()
     )
+    notifs = [n for n in notifs if n.id not in release_notifs]
     assert len(notifs) == 1
     assert notifs[0].body == "Edited note for the parent."
     assert "Algebra" in notifs[0].title

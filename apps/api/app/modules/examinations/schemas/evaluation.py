@@ -12,6 +12,9 @@ from app.modules.ai.gateway.input_guard import sanitize_answer_map, sanitize_pro
 class EvaluationCreate(BaseModel):
     student_id: uuid.UUID
     file_id: Optional[uuid.UUID] = None
+    # Ordered answer-sheet pages (page 1 first). Additive alternative to ``file_id`` (P9);
+    # the 12-page / 60 MB limits are enforced server-side in the service (P-R4).
+    page_file_ids: list[uuid.UUID] | None = Field(default=None, min_length=1, max_length=12)
     # Transcribed answers keyed by question number — used when OCR/vision is unavailable.
     student_answers: dict[str, str] = Field(default_factory=dict)
 
@@ -26,7 +29,7 @@ class EvaluationCreate(BaseModel):
 
     @model_validator(mode="after")
     def _require_input(self) -> "EvaluationCreate":
-        if not self.file_id and not self.student_answers:
+        if not self.file_id and not self.page_file_ids and not self.student_answers:
             raise ValueError("Provide an answer sheet image or transcribed answers")
         return self
 
@@ -64,6 +67,28 @@ class EvaluationOut(BaseModel):
     evaluation_grounded: bool = False
     citation_ids: list[str] = Field(default_factory=list)
     evidence_ledger: dict[str, Any] | None = None
+    page_file_ids: list[uuid.UUID] = Field(default_factory=list)
+
+
+class EvaluationReopen(BaseModel):
+    reason: str = Field(min_length=3, max_length=500)
+
+
+class RevisionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    revision_no: int
+    kind: str
+    question_marks: dict[str, Any] | None = None
+    marks_obtained: Optional[float] = None
+    correction_summary: Optional[str] = None
+    teacher_overrides: dict[str, Any] | None = None
+    page_file_ids: list[str] | None = None
+    actor_id: uuid.UUID
+    reason: Optional[str] = None
+    model_info: dict[str, Any] | None = None
+    created_at: datetime
 
 
 class MisconceptionOut(BaseModel):

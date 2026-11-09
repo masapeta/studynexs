@@ -293,6 +293,7 @@ async def get_student_learning_evidence_report(
         school_id=context.school_id,
         student_id=payload.student_id,
         subject_id=flag.subject_id,
+        audience="staff",  # teacher/incharge-only tool (E17)
     )
 
     return GetStudentLearningEvidenceReportOutput(

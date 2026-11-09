@@ -14,7 +14,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.concept_card import ConceptCard, ConceptCardStatus
 from app.db.models.curriculum_pack import CurriculumChapter, CurriculumTopic
-from app.db.models.knowledge_graph import CurriculumConcept, KgEdge, KgEdgeType, KgNodeType
+from app.db.models.knowledge_graph import (
+    KG_AUDIENCE_LEARNER,
+    CurriculumConcept,
+    KgEdge,
+    KgEdgeType,
+    KgNodeType,
+)
 from app.modules.ai.rag.service import RagService, RetrievedChunk, _topic_text
 
 _TOKEN_RE = re.compile(r"[a-z0-9]+", re.IGNORECASE)
@@ -236,6 +242,8 @@ class HybridRetrievalService:
                             KgEdge.school_id == school_id,
                             KgEdge.pack_id == pack_id,
                             KgEdge.edge_type == KgEdgeType.STRUGGLES_WITH,
+                            # Student-specific retrieval only runs for learner-facing copilots.
+                            KgEdge.audience == KG_AUDIENCE_LEARNER,
                             KgEdge.from_node_type == KgNodeType.STUDENT,
                             KgEdge.from_id == student_id,
                             KgEdge.to_node_type == KgNodeType.CONCEPT,

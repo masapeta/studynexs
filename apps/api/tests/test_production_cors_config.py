@@ -9,6 +9,7 @@ from app.core.config import Environment, Settings
 def _production_settings(origins: list[str]) -> Settings:
     return Settings(
         ENVIRONMENT=Environment.PRODUCTION,
+        DEPLOYMENT_TIER="production",
         DEBUG=False,
         JWT_SECRET_KEY="production-jwt-secret-with-more-than-32-characters",
         WEBHOOK_SECRET="production-webhook-secret",

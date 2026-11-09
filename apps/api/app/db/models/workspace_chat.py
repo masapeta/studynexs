@@ -8,9 +8,10 @@ Both tables are tenant-scoped by school_id and owned by a user.
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from typing import Any
 
-from sqlalchemy import ForeignKey, Index, String, Text
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -29,6 +30,8 @@ class WorkspaceChatSession(BaseModel):
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
     )
     title: Mapped[str] = mapped_column(String(200), nullable=False, default="New chat")
+    # Reversible archive (P3): hidden from the default list, restorable; never hard-deleted.
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     messages: Mapped[list["WorkspaceChatMessage"]] = relationship(
         back_populates="session",
@@ -38,6 +41,9 @@ class WorkspaceChatSession(BaseModel):
 
     __table_args__ = (
         Index("ix_workspace_chat_sessions_school_user", "school_id", "user_id"),
+        Index(
+            "ix_workspace_chat_sessions_owner_archived", "school_id", "user_id", "archived_at"
+        ),
     )
 
 

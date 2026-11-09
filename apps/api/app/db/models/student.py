@@ -86,6 +86,7 @@ class Student(BaseModel):
 
     __table_args__ = (
         UniqueConstraint("school_id", "admission_no", name="uq_student_admission"),
+        UniqueConstraint("school_id", "id", name="uq_students_school_id_id"),
         Index("ix_students_school_class", "school_id", "class_id"),
     )
 

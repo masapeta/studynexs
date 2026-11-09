@@ -13,7 +13,7 @@ from app.db.models.academic import Class, Subject
 from app.db.models.attendance import Attendance
 from app.db.models.communication import NoticeAudience, NoticeReadReceipt
 from app.db.models.lesson_plan import LessonPlan, LessonPlanStatus
-from app.db.models.mastery import FlagStatus, MasteryFlag, StudentTopicMastery
+from app.db.models.mastery import AUDIENCE_STAFF, FlagStatus, MasteryFlag, StudentTopicMastery
 from app.db.models.question_paper import (
     _INCHARGE_REVIEW_STATUSES,
     _TEACHER_SUBMIT_STATUSES,
@@ -247,6 +247,7 @@ class TeacherHomeService:
                     StudentTopicMastery.school_id == school_id,
                     StudentTopicMastery.class_id == class_id,
                     StudentTopicMastery.subject_id == subject_id,
+                    StudentTopicMastery.audience == AUDIENCE_STAFF,
                 )
                 .group_by(StudentTopicMastery.topic_display)
                 .order_by(func.avg(StudentTopicMastery.mastery_pct).asc())
@@ -320,6 +321,7 @@ class TeacherHomeService:
                     StudentTopicMastery.school_id == school_id,
                     StudentTopicMastery.class_id == class_id,
                     StudentTopicMastery.subject_id == subject_id,
+                    StudentTopicMastery.audience == AUDIENCE_STAFF,
                 )
             )
             avg_mastery = avg_row.scalar()
@@ -333,6 +335,7 @@ class TeacherHomeService:
                         StudentTopicMastery.school_id == school_id,
                         StudentTopicMastery.class_id == class_id,
                         StudentTopicMastery.subject_id == subject_id,
+                        StudentTopicMastery.audience == AUDIENCE_STAFF,
                     )
                     .group_by(StudentTopicMastery.topic_display)
                     .order_by(func.avg(StudentTopicMastery.mastery_pct).asc())

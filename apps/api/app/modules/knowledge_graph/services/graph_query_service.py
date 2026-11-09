@@ -7,7 +7,13 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.concept_card import ConceptCard, ConceptCardStatus
-from app.db.models.knowledge_graph import CurriculumConcept, KgEdge, KgEdgeType, KgNodeType
+from app.db.models.knowledge_graph import (
+    KG_AUDIENCE_STAFF,
+    CurriculumConcept,
+    KgEdge,
+    KgEdgeType,
+    KgNodeType,
+)
 from app.modules.curriculum.services.pack_service import PackService
 from app.modules.knowledge_graph.schemas.graph import ConceptContextOut, ConceptOut
 from app.modules.knowledge_graph.services.student_weak_concept_service import (
@@ -71,6 +77,8 @@ class GraphQueryService:
                     KgEdge.school_id == school_id,
                     KgEdge.pack_id == pack_id,
                     KgEdge.edge_type == KgEdgeType.STRUGGLES_WITH,
+                    # Staff-only endpoint; count each student once (staff audience only).
+                    KgEdge.audience == KG_AUDIENCE_STAFF,
                     KgEdge.to_node_type == KgNodeType.CONCEPT,
                     KgEdge.to_id == concept_id,
                 )
@@ -92,12 +100,14 @@ class GraphQueryService:
         student_id: uuid.UUID,
         subject_id: uuid.UUID | None = None,
         pack_id: uuid.UUID | None = None,
+        audience: str,
     ) -> list[ConceptOut]:
         pairs = await self.weak.get_weak_concepts_for_student(
             school_id=school_id,
             student_id=student_id,
             subject_id=subject_id,
             pack_id=pack_id,
+            audience=audience,
         )
         seen: set[uuid.UUID] = set()
         out: list[ConceptOut] = []

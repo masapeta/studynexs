@@ -5,12 +5,15 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.api_route import CommitOnSuccessRoute
 from app.core.authorization import assert_can_access_student
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, get_current_user
+from app.db.models.student import Student
+from app.modules.examinations.schemas.release import LearnerResultDetail, LearnerResultSummary
 from app.modules.portal.schemas.portal import (
     ChildSummaryOut,
     FeatureTeaserOut,
@@ -18,6 +21,7 @@ from app.modules.portal.schemas.portal import (
     ParentChildProgressOut,
     PortalContextOut,
 )
+from app.modules.portal.services.learner_results_service import list_results, result_detail
 from app.modules.portal.services.portal_service import (
     build_portal_context,
     features_for_role,
@@ -124,3 +128,86 @@ async def child_progress(
     if not progress:
         raise HTTPException(status_code=404, detail="Student not found")
     return APIResponse(data=progress)
+
+
+# ── Released results (E13) — learner roles only; staff use the gradebook ───────
+
+
+async def _self_student(db: AsyncSession, current_user: CurrentUser) -> Student:
+    if current_user.role != "student":
+        raise HTTPException(status_code=403, detail="Access denied")
+    student = (
+        await db.execute(
+            select(Student).where(
+                Student.user_id == uuid.UUID(current_user.id),
+                Student.school_id == uuid.UUID(current_user.school_id),
+            )
+        )
+    ).scalar_one_or_none()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    return student
+
+
+async def _child_student(
+    db: AsyncSession, current_user: CurrentUser, student_id: uuid.UUID
+) -> Student:
+    if current_user.role != "parent":
+        raise HTTPException(status_code=403, detail="Access denied")
+    return await assert_can_access_student(current_user, db, student_id)
+
+
+@router.get("/results", response_model=APIResponse[list[LearnerResultSummary]])
+async def my_results(
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    student = await _self_student(db, current_user)
+    rows = await list_results(db, school_id=uuid.UUID(current_user.school_id), student=student)
+    return APIResponse(data=rows)
+
+
+@router.get("/results/{exam_id}", response_model=APIResponse[LearnerResultDetail])
+async def my_result_detail(
+    exam_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    student = await _self_student(db, current_user)
+    detail = await result_detail(
+        db, school_id=uuid.UUID(current_user.school_id), student=student, exam_id=exam_id
+    )
+    if detail is None:
+        raise HTTPException(status_code=404, detail="Result not found")
+    return APIResponse(data=detail)
+
+
+@router.get(
+    "/child/{student_id}/results", response_model=APIResponse[list[LearnerResultSummary]]
+)
+async def child_results(
+    student_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    student = await _child_student(db, current_user, student_id)
+    rows = await list_results(db, school_id=uuid.UUID(current_user.school_id), student=student)
+    return APIResponse(data=rows)
+
+
+@router.get(
+    "/child/{student_id}/results/{exam_id}", response_model=APIResponse[LearnerResultDetail]
+)
+async def child_result_detail(
+    student_id: uuid.UUID,
+    exam_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    student = await _child_student(db, current_user, student_id)
+    detail = await result_detail(
+        db, school_id=uuid.UUID(current_user.school_id), student=student, exam_id=exam_id
+    )
+    if detail is None:
+        raise HTTPException(status_code=404, detail="Result not found")
+    return APIResponse(data=detail)

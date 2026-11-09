@@ -13,10 +13,12 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import (
+    CheckConstraint,
     Date,
     DateTime,
     Enum,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     Numeric,
@@ -29,6 +31,13 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.models.base import BaseModel
+
+# Dual ledger (plan Rev 2 §4.2). Staff = every approved mark; learner = only released
+# (published) result versions. Learner-facing readers MUST filter audience='learner'.
+AUDIENCE_STAFF = "staff"
+AUDIENCE_LEARNER = "learner"
+AUDIENCES = (AUDIENCE_STAFF, AUDIENCE_LEARNER)
+_AUDIENCE_CHECK = "audience IN ('staff', 'learner')"
 
 
 class MasteryTrend(str, enum.Enum):
@@ -72,12 +81,16 @@ class StudentTopicMastery(BaseModel):
     # Last 8 datapoints: [{"exam_id", "date", "pct", "weight", "exam_type"}] —
     # makes every number explainable in the UI and is the LLM grounding payload.
     history: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    audience: Mapped[str] = mapped_column(
+        String(10), nullable=False, default=AUDIENCE_STAFF, server_default=AUDIENCE_STAFF
+    )
 
     __table_args__ = (
         UniqueConstraint(
-            "student_id", "subject_id", "academic_year_id", "topic",
+            "student_id", "subject_id", "academic_year_id", "topic", "audience",
             name="uq_student_topic_mastery",
         ),
+        CheckConstraint(_AUDIENCE_CHECK, name="ck_stm_audience"),
         Index("ix_stm_school_student", "school_id", "student_id"),
         Index("ix_stm_school_class_subject", "school_id", "class_id", "subject_id", "topic"),
     )
@@ -132,8 +145,15 @@ class MasteryFlag(BaseModel):
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     dismissed_reason: Mapped[str | None] = mapped_column(String(300))
     notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Flags are raised from the staff ledger. A flag becomes learner-audience only at
+    # notify time, after the server verifies every contributing exam result is released
+    # at its latest version. Parent/student readers show learner-audience flags only.
+    audience: Mapped[str] = mapped_column(
+        String(10), nullable=False, default=AUDIENCE_STAFF, server_default=AUDIENCE_STAFF
+    )
 
     __table_args__ = (
+        CheckConstraint(_AUDIENCE_CHECK, name="ck_mastery_flags_audience"),
         # At most one OPEN flag per student+subject+year+topic — makes concurrent
         # flag-raising race-safe and idempotent (insert with ON CONFLICT DO NOTHING).
         Index(
@@ -144,4 +164,71 @@ class MasteryFlag(BaseModel):
         ),
         Index("ix_mastery_flags_school_status", "school_id", "status"),
         Index("ix_mastery_flags_school_student", "school_id", "student_id"),
+    )
+
+
+class MasteryEvidence(BaseModel):
+    """Provenance of every datapoint behind a ledger row (plan §4.2 item 2).
+
+    Rebuilt per (class, subject, audience) on each recompute. Learner rows reference the exact
+    published ``result_version_id``; staff rows reference the ``exam_mark_id`` they used.
+    """
+
+    __tablename__ = "mastery_evidence"
+
+    school_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("schools.id"), nullable=False
+    )
+    student_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    class_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("classes.id"), nullable=False
+    )
+    subject_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("subjects.id"), nullable=False
+    )
+    topic: Mapped[str] = mapped_column(String(120), nullable=False)
+    audience: Mapped[str] = mapped_column(String(10), nullable=False)
+    evidence_source: Mapped[str] = mapped_column(String(30), nullable=False)
+    exam_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    result_version_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    exam_mark_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("exam_marks.id", ondelete="CASCADE")
+    )
+    pct: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
+    assessed_on: Mapped[date] = mapped_column(Date, nullable=False)
+    recompute_run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["school_id", "student_id"],
+            ["students.school_id", "students.id"],
+            name="fk_mastery_evidence_student",
+        ),
+        ForeignKeyConstraint(
+            ["school_id", "exam_id"],
+            ["exams.school_id", "exams.id"],
+            name="fk_mastery_evidence_exam",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["school_id", "result_version_id"],
+            ["exam_result_versions.school_id", "exam_result_versions.id"],
+            name="fk_mastery_evidence_version",
+            ondelete="CASCADE",
+        ),
+        CheckConstraint(_AUDIENCE_CHECK, name="ck_mastery_evidence_audience"),
+        CheckConstraint("evidence_source IN ('exam_result')", name="ck_mastery_evidence_source"),
+        CheckConstraint(
+            "audience <> 'learner' OR result_version_id IS NOT NULL",
+            name="ck_mastery_evidence_learner_version",
+        ),
+        CheckConstraint(
+            "audience <> 'staff' OR exam_mark_id IS NOT NULL",
+            name="ck_mastery_evidence_staff_mark",
+        ),
+        Index(
+            "ix_mastery_evidence_scope",
+            "school_id", "class_id", "subject_id", "audience",
+        ),
+        Index("ix_mastery_evidence_student", "school_id", "student_id", "audience"),
     )

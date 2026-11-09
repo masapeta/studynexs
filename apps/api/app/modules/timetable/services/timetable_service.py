@@ -7,8 +7,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenant_scope import TenantScope
+from app.db.models.academic import TeacherSubjectMapping
 from app.db.models.timetable import TimetableSlot
+from app.db.models.user import User
 from app.modules.timetable.schemas.timetable import TimetableSlotCreate
+
+
+class TimetableAssignmentError(ValueError):
+    """The chosen teacher is not mapped to teach this subject in this class."""
 
 
 class TimetableService:
@@ -37,11 +43,46 @@ class TimetableService:
         )
         return list(result.scalars().all())
 
+    async def list_subject_teachers(
+        self, school_id: uuid.UUID, class_id: uuid.UUID, subject_id: uuid.UUID | None
+    ) -> list[tuple[uuid.UUID, str, uuid.UUID]]:
+        """Teachers mapped to this class (optionally one subject): (teacher_id, name, subject)."""
+        query = (
+            select(
+                TeacherSubjectMapping.teacher_id,
+                User.full_name,
+                TeacherSubjectMapping.subject_id,
+            )
+            .join(User, User.id == TeacherSubjectMapping.teacher_id)
+            .where(
+                TeacherSubjectMapping.school_id == school_id,
+                TeacherSubjectMapping.class_id == class_id,
+                User.school_id == school_id,
+                User.is_active.is_(True),
+            )
+            .order_by(User.full_name)
+        )
+        if subject_id is not None:
+            query = query.where(TeacherSubjectMapping.subject_id == subject_id)
+        return [(r[0], r[1], r[2]) for r in (await self.db.execute(query)).all()]
+
     async def create_slot(self, school_id: uuid.UUID, data: TimetableSlotCreate) -> TimetableSlot:
         scope = TenantScope(self.db, school_id)
         await scope.school_class(data.class_id)
         await scope.subject_in_class(data.subject_id, data.class_id)
         await scope.staff_user(data.teacher_id)
+        mapped = await self.db.scalar(
+            select(TeacherSubjectMapping.id).where(
+                TeacherSubjectMapping.school_id == school_id,
+                TeacherSubjectMapping.teacher_id == data.teacher_id,
+                TeacherSubjectMapping.class_id == data.class_id,
+                TeacherSubjectMapping.subject_id == data.subject_id,
+            ).limit(1)
+        )
+        if mapped is None:
+            raise TimetableAssignmentError(
+                "Teacher is not assigned to teach this subject in this class"
+            )
         slot = TimetableSlot(
             school_id=school_id,
             class_id=data.class_id,

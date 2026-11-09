@@ -7,16 +7,25 @@ and the upsert is idempotent so reprocessing (worker retries) is always safe.
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 
 import structlog
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.academic import Class, Subject
+from app.db.models.exam_result import ExamResultVersion
 from app.db.models.examination import Exam, ExamMark
-from app.db.models.mastery import FlagStatus, MasteryFlag, StudentTopicMastery
+from app.db.models.mastery import (
+    AUDIENCE_LEARNER,
+    AUDIENCE_STAFF,
+    FlagStatus,
+    MasteryEvidence,
+    MasteryFlag,
+    StudentTopicMastery,
+)
 from app.db.models.student import Student
 from app.db.models.user import User
 from app.modules.mastery.services import flag_rules
@@ -32,16 +41,32 @@ from app.modules.mastery.services.topic_norm import display_topic
 logger = structlog.get_logger()
 
 
+@dataclass(frozen=True)
+class _Evidence:
+    """One scored result feeding the ledger, with its provenance."""
+
+    student_id: uuid.UUID
+    exam: Exam
+    marks_obtained: float
+    question_marks: dict | None
+    exam_mark_id: uuid.UUID | None = None
+    result_version_id: uuid.UUID | None = None
+
+
 async def recompute_class_subject(
     db: AsyncSession,
     school_id: uuid.UUID,
     class_id: uuid.UUID,
     subject_id: uuid.UUID,
 ) -> int:
-    """Rebuild the topic-mastery ledger for one class × subject. Returns rows upserted.
+    """Rebuild BOTH mastery ledgers for one class × subject (plan Rev 2 §4.2).
 
-    Exactly three queries: class row, topic-tagged exams, all their marks.
-    Everything between is in-memory; the write is one bulk upsert.
+    - staff audience: every approved mark (``exam_marks``) — teacher/principal surfaces.
+    - learner audience: only published, currently released result versions — the only data
+      student/parent/tutor/copilot paths may read.
+
+    Both are computed from the same in-memory pass and written with distinct ``audience``
+    keys, so neither ever overwrites the other (safeguard 2). Returns staff rows upserted.
     """
     school_class = (
         await db.execute(
@@ -65,38 +90,132 @@ async def recompute_class_subject(
         .scalars()
         .all()
     )
-    if not exams:
-        return 0
+    exams_by_id = {e.id: e for e in exams}
+    exam_ids = list(exams_by_id)
 
-    marks = list(
-        (
+    staff_evidence: list[_Evidence] = []
+    learner_evidence: list[_Evidence] = []
+    if exam_ids:
+        for mark in (
             await db.execute(
                 select(ExamMark).where(
-                    ExamMark.school_id == school_id,
-                    ExamMark.exam_id.in_([e.id for e in exams]),
+                    ExamMark.school_id == school_id, ExamMark.exam_id.in_(exam_ids)
                 )
             )
-        )
-        .scalars()
-        .all()
+        ).scalars().all():
+            staff_evidence.append(
+                _Evidence(
+                    student_id=mark.student_id,
+                    exam=exams_by_id[mark.exam_id],
+                    marks_obtained=float(mark.marks_obtained),
+                    question_marks=mark.question_marks,
+                    exam_mark_id=mark.id,
+                )
+            )
+        from app.modules.examinations.services.release_service import visible_versions_query
+
+        for version, _pub, _exam in (
+            await db.execute(
+                visible_versions_query(school_id).where(ExamResultVersion.exam_id.in_(exam_ids))
+            )
+        ).all():
+            learner_evidence.append(
+                _Evidence(
+                    student_id=version.student_id,
+                    exam=exams_by_id[version.exam_id],
+                    marks_obtained=float(version.marks_obtained),
+                    question_marks=version.question_marks,
+                    result_version_id=version.id,
+                )
+            )
+
+    run_id = uuid.uuid4()
+    staff_rows = await _write_audience(
+        db,
+        audience=AUDIENCE_STAFF,
+        evidence=staff_evidence,
+        school_id=school_id,
+        school_class=school_class,
+        subject_id=subject_id,
+        run_id=run_id,
     )
-    if not marks:
-        return 0
+    learner_rows = await _write_audience(
+        db,
+        audience=AUDIENCE_LEARNER,
+        evidence=learner_evidence,
+        school_id=school_id,
+        school_class=school_class,
+        subject_id=subject_id,
+        run_id=run_id,
+    )
 
-    exams_by_id = {e.id: e for e in exams}
+    flags_raised = 0
+    if staff_rows:
+        flags_raised = await _raise_flags(
+            db,
+            school_id=school_id,
+            class_id=class_id,
+            subject_id=subject_id,
+            academic_year_id=school_class.academic_year_id,
+            ledger_rows=staff_rows,
+        )
 
-    # (student_id, normalized_topic) -> datapoints; remember a display form per topic.
+    from app.modules.knowledge_graph.services.student_weak_concept_service import (
+        StudentWeakConceptService,
+    )
+
+    weak = StudentWeakConceptService(db)
+    for audience, rows in ((AUDIENCE_STAFF, staff_rows), (AUDIENCE_LEARNER, learner_rows)):
+        await weak.sync_from_ledger(
+            school_id=school_id,
+            class_id=class_id,
+            subject_id=subject_id,
+            academic_year_id=school_class.academic_year_id,
+            ledger_rows=rows,
+            audience=audience,
+            roster_student_ids={e.student_id for e in staff_evidence},
+        )
+
+    logger.info(
+        "mastery_recomputed",
+        school_id=str(school_id),
+        class_id=str(class_id),
+        subject_id=str(subject_id),
+        rows=len(staff_rows),
+        learner_rows=len(learner_rows),
+        flags_raised=flags_raised,
+    )
+    return len(staff_rows)
+
+
+async def _write_audience(
+    db: AsyncSession,
+    *,
+    audience: str,
+    evidence: list[_Evidence],
+    school_id: uuid.UUID,
+    school_class: Class,
+    subject_id: uuid.UUID,
+    run_id: uuid.UUID,
+) -> list[dict]:
+    """Compute + persist one audience's ledger and provenance. Removes stale rows.
+
+    Stale rows matter for the learner audience: after a withdrawal the released evidence is
+    gone, so the learner ledger (and its evidence) must disappear too.
+    """
+    class_id = school_class.id
     points: dict[tuple[uuid.UUID, str], list[Datapoint]] = {}
     displays: dict[str, str] = {}
+    evidence_rows: list[dict] = []
 
-    for mark in marks:
-        exam = exams_by_id[mark.exam_id]
+    for ev in evidence:
+        exam = ev.exam
         assessed_on = exam.date or exam.created_at.date()
         pcts = topic_pcts_for_mark(
             question_schema=exam.question_schema,
-            question_marks=mark.question_marks,
+            question_marks=ev.question_marks,
             exam_topic=exam.topic,
-            marks_obtained=float(mark.marks_obtained),
+            marks_obtained=ev.marks_obtained,
             total_marks=float(exam.total_marks),
         )
         if pcts and exam.question_schema:
@@ -107,7 +226,7 @@ async def recompute_class_subject(
         if pcts and exam.topic:
             displays.setdefault(display_topic(exam.topic).casefold(), display_topic(exam.topic))
         for topic_key, pct in pcts.items():
-            points.setdefault((mark.student_id, topic_key), []).append(
+            points.setdefault((ev.student_id, topic_key), []).append(
                 Datapoint(
                     exam_id=str(exam.id),
                     exam_type=exam.exam_type.value,
@@ -116,9 +235,45 @@ async def recompute_class_subject(
                     pct=pct,
                 )
             )
+            evidence_rows.append(
+                {
+                    "id": uuid.uuid4(),
+                    "school_id": school_id,
+                    "student_id": ev.student_id,
+                    "class_id": class_id,
+                    "subject_id": subject_id,
+                    "topic": topic_key,
+                    "audience": audience,
+                    "evidence_source": "exam_result",
+                    "exam_id": exam.id,
+                    "result_version_id": ev.result_version_id,
+                    "exam_mark_id": ev.exam_mark_id,
+                    "pct": round(pct, 2),
+                    "assessed_on": assessed_on,
+                    "recompute_run_id": run_id,
+                }
+            )
 
+    ledger_scope = (
+        StudentTopicMastery.school_id == school_id,
+        StudentTopicMastery.class_id == class_id,
+        StudentTopicMastery.subject_id == subject_id,
+        StudentTopicMastery.academic_year_id == school_class.academic_year_id,
+        StudentTopicMastery.audience == audience,
+    )
+    await db.execute(
+        delete(MasteryEvidence).where(
+            MasteryEvidence.school_id == school_id,
+            MasteryEvidence.class_id == class_id,
+            MasteryEvidence.subject_id == subject_id,
+            MasteryEvidence.audience == audience,
+        )
+    )
     if not points:
-        return 0
+        if audience == AUDIENCE_LEARNER:
+            await db.execute(delete(StudentTopicMastery).where(*ledger_scope))
+            await db.flush()
+        return []
 
     today = date.today()
     per_student: dict[tuple[uuid.UUID, str], dict] = {}
@@ -154,6 +309,7 @@ async def recompute_class_subject(
             "last_assessed_on": stats["last_assessed_on"],
             "trend": stats["trend"],
             "history": stats["history"],
+            "audience": audience,
         }
         for (student_id, topic_key), stats in per_student.items()
     ]
@@ -174,38 +330,24 @@ async def recompute_class_subject(
         },
     )
     await db.execute(stmt)
+    if audience == AUDIENCE_LEARNER:
+        # Topics whose released evidence disappeared (withdrawal) must leave the learner view.
+        keep = [(r["student_id"], r["topic"]) for r in rows]
+        stale = (
+            await db.execute(
+                select(StudentTopicMastery.id, StudentTopicMastery.student_id,
+                       StudentTopicMastery.topic).where(*ledger_scope)
+            )
+        ).all()
+        stale_ids = [rid for rid, sid, topic in stale if (sid, topic) not in set(keep)]
+        if stale_ids:
+            await db.execute(
+                delete(StudentTopicMastery).where(StudentTopicMastery.id.in_(stale_ids))
+            )
+    if evidence_rows:
+        await db.execute(pg_insert(MasteryEvidence).values(evidence_rows))
     await db.flush()
-
-    flags_raised = await _raise_flags(
-        db,
-        school_id=school_id,
-        class_id=class_id,
-        subject_id=subject_id,
-        academic_year_id=school_class.academic_year_id,
-        ledger_rows=rows,
-    )
-
-    from app.modules.knowledge_graph.services.student_weak_concept_service import (
-        StudentWeakConceptService,
-    )
-
-    await StudentWeakConceptService(db).sync_from_ledger(
-        school_id=school_id,
-        class_id=class_id,
-        subject_id=subject_id,
-        academic_year_id=school_class.academic_year_id,
-        ledger_rows=rows,
-    )
-
-    logger.info(
-        "mastery_recomputed",
-        school_id=str(school_id),
-        class_id=str(class_id),
-        subject_id=str(subject_id),
-        rows=len(rows),
-        flags_raised=flags_raised,
-    )
-    return len(rows)
+    return rows
 
 
 async def _raise_flags(

@@ -5,7 +5,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, Text
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -76,4 +76,13 @@ class ContentReviewItem(BaseModel):
     __table_args__ = (
         Index("ix_content_review_school_pack_status", "school_id", "pack_id", "status"),
         Index("ix_content_review_concept", "school_id", "concept_id"),
+        # At most one pending concept-card gap per concept: background gap detection may run
+        # concurrently (outbox retries) and must stay idempotent at the database level.
+        Index(
+            "uq_content_review_pending_gap",
+            "school_id",
+            "concept_id",
+            unique=True,
+            postgresql_where=text("item_type = 'concept_card_gap' AND status = 'pending'"),
+        ),
     )

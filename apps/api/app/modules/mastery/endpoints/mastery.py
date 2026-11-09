@@ -17,7 +17,13 @@ from app.core.rate_limit import rate_limit
 from app.core.staff_permissions import assert_mastery_flag_review, get_staff_scope
 from app.core.tenant_scope import TenantScope
 from app.db.models.academic import Class, Subject
-from app.db.models.mastery import FlagStatus, MasteryFlag, StudentTopicMastery
+from app.db.models.mastery import (
+    AUDIENCE_LEARNER,
+    AUDIENCE_STAFF,
+    FlagStatus,
+    MasteryFlag,
+    StudentTopicMastery,
+)
 from app.db.models.notification import NotificationChannel
 from app.db.models.student import Parent, Student, StudentParentMap
 from app.db.models.user import User
@@ -39,6 +45,10 @@ from app.modules.mastery.schemas.mastery import (
     SubjectMasteryOut,
     TopicMasteryOut,
 )
+from app.modules.mastery.services.audience import (
+    audience_for_role,
+    flag_evidence_is_released,
+)
 from app.modules.mastery.services.learning_evidence_service import build_learning_evidence_chain
 from app.modules.mastery.services.mastery_service import recompute_class_subject
 from app.modules.mastery.services.narrative_service import draft_narrative
@@ -58,7 +68,10 @@ async def student_topic_profile(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Per-topic mastery — staff: any student; parent: linked child; student: self."""
+    """Per-topic mastery — staff: any student; parent: linked child; student: self.
+
+    E4: parents/students read the learner ledger (released results only); staff read staff.
+    """
     await assert_can_access_student(current_user, db, student_id)
 
     query = (
@@ -67,6 +80,7 @@ async def student_topic_profile(
         .where(
             StudentTopicMastery.school_id == uuid.UUID(current_user.school_id),
             StudentTopicMastery.student_id == student_id,
+            StudentTopicMastery.audience == audience_for_role(current_user.role),
         )
         .order_by(Subject.name, StudentTopicMastery.topic)
     )
@@ -120,6 +134,7 @@ async def class_heatmap(
                 StudentTopicMastery.school_id == school_id,
                 StudentTopicMastery.class_id == class_id,
                 StudentTopicMastery.subject_id == subject_id,
+                StudentTopicMastery.audience == AUDIENCE_STAFF,
             )
             .order_by(Student.roll_no)
         )
@@ -161,7 +176,10 @@ async def known_topics(
     scope = await get_staff_scope(db, current_user)
     query = (
         select(StudentTopicMastery.topic_display)
-        .where(StudentTopicMastery.school_id == school_id)
+        .where(
+            StudentTopicMastery.school_id == school_id,
+            StudentTopicMastery.audience == AUDIENCE_STAFF,
+        )
         .distinct()
         .order_by(StudentTopicMastery.topic_display)
     )
@@ -445,6 +463,15 @@ async def notify_parents(
         raise HTTPException(
             status_code=409, detail="Approve the flag and review its note before sending"
         )
+    # E15 / P4: a note derived from unreleased results must never reach a parent.
+    if not await flag_evidence_is_released(db, school_id, flag):
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "This note is based on results that haven't been released to families yet. "
+                "Release the results first, then send the note."
+            ),
+        )
 
     parent_user_ids = [
         row[0]
@@ -474,6 +501,7 @@ async def notify_parents(
 
     flag.status = FlagStatus.NOTIFIED
     flag.notified_at = datetime.now(timezone.utc)
+    flag.audience = AUDIENCE_LEARNER
     await db.flush()
 
     message = (

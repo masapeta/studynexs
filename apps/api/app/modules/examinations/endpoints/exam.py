@@ -14,8 +14,10 @@ from app.core.dependencies import CurrentUser, require_roles
 from app.core.staff_permissions import assert_exam_class, assert_exams_access, get_staff_scope
 from app.core.tenant_scope import TenantScope
 from app.db.models.academic import Class
+from app.db.models.exam_result import RESULT_SOURCE_MANUAL_ENTRY
 from app.db.models.examination import Exam, ExamMark
 from app.modules.examinations.endpoints.evaluation import router as evaluation_router
+from app.modules.examinations.endpoints.release import router as release_router
 from app.modules.examinations.schemas.exam import (
     BulkMarkEntryRequest,
     ExamCreate,
@@ -25,6 +27,7 @@ from app.modules.examinations.schemas.exam import (
     QuestionSchemaSet,
 )
 from app.modules.examinations.services.exam_service import ExamService
+from app.modules.examinations.services.result_version_service import VersionProvenance
 from app.shared.schemas.common import APIResponse
 
 router = APIRouter(route_class=CommitOnSuccessRoute)
@@ -155,7 +158,12 @@ async def enter_marks(
     service = ExamService(db)
     try:
         count = await service.enter_marks(
-            uuid.UUID(current_user.school_id), body.exam_id, body.entries
+            uuid.UUID(current_user.school_id),
+            body.exam_id,
+            body.entries,
+            provenance=VersionProvenance(
+                source=RESULT_SOURCE_MANUAL_ENTRY, actor_id=uuid.UUID(current_user.id)
+            ),
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -175,3 +183,5 @@ async def get_marks(
 
 
 router.include_router(evaluation_router)
+# Last: its ``GET /{exam_id}`` must not shadow the static paths registered above.
+router.include_router(release_router)

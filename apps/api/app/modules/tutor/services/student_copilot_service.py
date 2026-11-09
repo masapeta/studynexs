@@ -39,6 +39,15 @@ from app.modules.tutor.schemas.copilot import (
 logger = structlog.get_logger()
 
 
+def _resolvable_lesson_key(concept: WeakConceptStudyOut) -> str | None:
+    """A lesson key the tutor can actually open: an approved card, or a built-in template."""
+    from app.modules.tutor.services.lesson_templates import LESSON_TEMPLATES
+
+    if concept.has_approved_card or concept.slug in LESSON_TEMPLATES:
+        return concept.slug
+    return None
+
+
 def _build_ask_messages(
     *,
     board: str,
@@ -209,6 +218,34 @@ class StudentCopilotService:
             )
 
         primary = ctx.weak_concepts[0]
+        lesson_key = _resolvable_lesson_key(primary)
+        if lesson_key is None:
+            return DailyLearningPlanOut(
+                student_id=student_id,
+                status="lesson_in_preparation",
+                title=f"Your teacher is preparing a lesson on {primary.title}",
+                reason="Your latest evidence shows this topic needs practice.",
+                recommended_action=(
+                    "Revise this topic from your notes or textbook, and ask your teacher "
+                    "or Student Copilot a question about it."
+                ),
+                topic=primary.title,
+                mastery_topic=primary.mastery_topic,
+                mastery_pct=primary.mastery_pct,
+                lesson_key=None,
+                pack_id=primary.pack_id,
+                concept_id=primary.concept_id,
+                concept_slug=primary.slug,
+                source_count=ctx.source_count,
+                grounded=False,
+                fallback=False,
+                evidence_summary="An approved tutor lesson for this concept is not available yet.",
+                next_steps=[
+                    "Revise this topic from your notes.",
+                    "Ask Student Copilot one question about it.",
+                    "Check back for the tutor lesson.",
+                ],
+            )
         mastery_label = (
             f"{primary.mastery_pct:.0f}% mastery"
             if primary.mastery_pct is not None
@@ -230,7 +267,7 @@ class StudentCopilotService:
             topic=primary.title,
             mastery_topic=primary.mastery_topic,
             mastery_pct=primary.mastery_pct,
-            lesson_key=primary.slug,
+            lesson_key=lesson_key,
             pack_id=primary.pack_id,
             concept_id=primary.concept_id,
             concept_slug=primary.slug,

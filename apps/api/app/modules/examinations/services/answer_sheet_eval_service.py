@@ -16,9 +16,18 @@ from app.db.models.answer_sheet_evaluation import (
     EVAL_STATUS_FAILED,
     EVAL_STATUS_PROCESSING,
     EVAL_STATUS_SUGGESTED,
+    MAX_ANSWER_SHEET_PAGES,
+    MAX_ANSWER_SHEET_TOTAL_BYTES,
+    REVISION_KIND_APPROVED,
+    REVISION_KIND_REOPENED,
     AnswerSheetEvaluation,
+    AnswerSheetEvaluationRevision,
+    AnswerSheetPage,
 )
+from app.db.models.audit import AuditLog
+from app.db.models.exam_result import RESULT_SOURCE_AI_EVALUATION
 from app.db.models.examination import Exam, ExamMark
+from app.db.models.file import FileCategory, UploadedFile
 from app.db.models.question_paper import QuestionPaper
 from app.db.models.school import School
 from app.db.models.student import Student
@@ -70,6 +79,7 @@ from app.modules.examinations.services.answer_sheet_vision import (
 )
 from app.modules.examinations.services.exam_service import ExamService
 from app.modules.examinations.services.misconception_service import extract_from_evaluation
+from app.modules.examinations.services.result_version_service import VersionProvenance
 from app.modules.files.services.file_service import FileService
 from app.modules.files.services.file_validation import read_file_bytes_bounded
 
@@ -192,6 +202,7 @@ class AnswerSheetEvalService:
         school: School,
         file_id: uuid.UUID | None = None,
         student_answers: dict[str, str] | None = None,
+        page_file_ids: list[uuid.UUID] | None = None,
     ) -> AnswerSheetEvaluation:
         scope = TenantScope(self.db, school_id)
         exam = await scope.exam(exam_id)
@@ -199,10 +210,16 @@ class AnswerSheetEvalService:
             raise EvalError("Exam is not linked to an approved AI question paper")
         if not exam.question_schema:
             raise EvalError("Exam has no question schema")
-        if not file_id and not (student_answers or {}):
+        if page_file_ids and file_id and page_file_ids[0] != file_id:
+            raise EvalError("Send either file_id or page_file_ids (page 1 first), not both")
+        pages = list(page_file_ids or ([file_id] if file_id else []))
+        if not pages and not (student_answers or {}):
             raise EvalError("Upload an answer sheet image or provide student answers")
 
         await scope.students_in_class(exam.class_id, [student_id])
+        if pages:
+            await self._validate_pages(school_id=school_id, page_file_ids=pages)
+        file_id = pages[0] if pages else None
         await check_ai_credits(
             self.db, school, user_id=created_by, role=role, purpose_tag="exam_evaluation"
         )
@@ -228,7 +245,9 @@ class AnswerSheetEvalService:
             )
         ).scalar_one_or_none()
         if existing and existing.status == EVAL_STATUS_APPROVED:
-            raise EvalError("Marks already approved for this student — edit marks directly")
+            raise EvalError(
+                "Marks already approved for this student — reopen the evaluation first"
+            )
         if existing and existing.status == EVAL_STATUS_PROCESSING:
             raise EvalError("Evaluation already in progress for this student")
 
@@ -255,6 +274,7 @@ class AnswerSheetEvalService:
             )
             self.db.add(row)
         await self.db.flush()
+        await self._replace_pages(row, pages)
 
         if settings.ENVIRONMENT == Environment.TESTING:
             return await self.execute_evaluation(row.id, role=role)
@@ -819,6 +839,192 @@ class AnswerSheetEvalService:
                 )
         return suggestions, llm_results
 
+    async def _validate_pages(
+        self, *, school_id: uuid.UUID, page_file_ids: list[uuid.UUID]
+    ) -> None:
+        """P-R4: ≤12 ordered, distinct, same-tenant answer-sheet image pages, ≤60 MB total.
+
+        Per-page type and 5 MB size were already enforced at upload (``file_validation``);
+        they are re-checked here because the file id is client-supplied.
+        """
+        if len(page_file_ids) > MAX_ANSWER_SHEET_PAGES:
+            raise EvalError(f"An answer sheet can have at most {MAX_ANSWER_SHEET_PAGES} pages")
+        if len(set(page_file_ids)) != len(page_file_ids):
+            raise EvalError("The same page was attached more than once")
+        files = {
+            f.id: f
+            for f in (
+                await self.db.execute(
+                    select(UploadedFile).where(
+                        UploadedFile.school_id == school_id,
+                        UploadedFile.id.in_(page_file_ids),
+                    )
+                )
+            ).scalars().all()
+        }
+        if len(files) != len(page_file_ids):
+            # Foreign-tenant or unknown ids look identical to the caller (no enumeration).
+            raise EvalError("One or more pages were not found")
+        from app.modules.files.services.file_validation import max_upload_bytes
+
+        page_limit = max_upload_bytes(FileCategory.ANSWER_SHEET)
+        total = 0
+        for fid in page_file_ids:
+            f = files[fid]
+            if f.category != FileCategory.ANSWER_SHEET or not is_image_mime(f.content_type):
+                raise EvalError("Every page must be an answer-sheet image (JPEG, PNG or WebP)")
+            if f.size_bytes > page_limit:
+                raise EvalError("A page exceeds the 5 MB limit")
+            total += int(f.size_bytes)
+        if total > MAX_ANSWER_SHEET_TOTAL_BYTES:
+            raise EvalError("The answer sheet exceeds the 60 MB total limit")
+
+    async def _replace_pages(
+        self, row: AnswerSheetEvaluation, page_file_ids: list[uuid.UUID]
+    ) -> None:
+        from sqlalchemy import delete
+
+        await self.db.execute(
+            delete(AnswerSheetPage).where(
+                AnswerSheetPage.school_id == row.school_id,
+                AnswerSheetPage.evaluation_id == row.id,
+            )
+        )
+        for page_no, fid in enumerate(page_file_ids, start=1):
+            self.db.add(
+                AnswerSheetPage(
+                    school_id=row.school_id, evaluation_id=row.id, file_id=fid, page_no=page_no
+                )
+            )
+        await self.db.flush()
+
+    async def page_file_ids(self, row: AnswerSheetEvaluation) -> list[uuid.UUID]:
+        """Ordered page files; legacy single-file evaluations report ``file_id`` as page 1."""
+        ids = list(
+            (
+                await self.db.execute(
+                    select(AnswerSheetPage.file_id)
+                    .where(
+                        AnswerSheetPage.school_id == row.school_id,
+                        AnswerSheetPage.evaluation_id == row.id,
+                    )
+                    .order_by(AnswerSheetPage.page_no)
+                )
+            ).scalars().all()
+        )
+        if not ids and row.file_id:
+            return [row.file_id]
+        return ids
+
+    async def _append_revision(
+        self,
+        row: AnswerSheetEvaluation,
+        *,
+        kind: str,
+        actor_id: uuid.UUID,
+        question_marks: dict[str, float] | None = None,
+        reason: str | None = None,
+    ) -> AnswerSheetEvaluationRevision:
+        last = await self.db.scalar(
+            select(AnswerSheetEvaluationRevision.revision_no)
+            .where(
+                AnswerSheetEvaluationRevision.school_id == row.school_id,
+                AnswerSheetEvaluationRevision.evaluation_id == row.id,
+            )
+            .order_by(AnswerSheetEvaluationRevision.revision_no.desc())
+            .limit(1)
+        )
+        meta = (row.ai_suggestions or {}).get("_meta") if row.ai_suggestions else None
+        model_info = (
+            {k: meta.get(k) for k in ("provider", "model", "prompt_version") if meta.get(k)}
+            if isinstance(meta, dict)
+            else None
+        )
+        revision = AnswerSheetEvaluationRevision(
+            school_id=row.school_id,
+            evaluation_id=row.id,
+            revision_no=(last or 0) + 1,
+            kind=kind,
+            ai_suggestions=row.ai_suggestions,
+            teacher_overrides=row.teacher_overrides,
+            input_answers=row.input_answers,
+            page_file_ids=[str(f) for f in await self.page_file_ids(row)],
+            question_marks=question_marks,
+            marks_obtained=(round(sum(question_marks.values()), 2) if question_marks else None),
+            correction_summary=row.correction_summary,
+            actor_id=actor_id,
+            reason=reason,
+            model_info=model_info or None,
+        )
+        self.db.add(revision)
+        await self.db.flush()
+        return revision
+
+    async def reopen(
+        self,
+        *,
+        school_id: uuid.UUID,
+        evaluation_id: uuid.UUID,
+        actor_id: uuid.UUID,
+        reason: str,
+    ) -> AnswerSheetEvaluation:
+        """Reopen an approved evaluation for re-review (P10).
+
+        Allowed after release: the current mark and any published version stay unchanged, so
+        students keep seeing what was released until a new approval *and* a re-release.
+        """
+        reason = (reason or "").strip()
+        if not reason:
+            raise EvalError("A reason is required to reopen an evaluation")
+        row = (
+            await self.db.execute(
+                select(AnswerSheetEvaluation)
+                .where(
+                    AnswerSheetEvaluation.id == evaluation_id,
+                    AnswerSheetEvaluation.school_id == school_id,
+                )
+                .with_for_update()
+            )
+        ).scalar_one_or_none()
+        if not row:
+            raise EvalError("Evaluation not found")
+        if row.status != EVAL_STATUS_APPROVED:
+            raise EvalError("Only approved evaluations can be reopened")
+        await self._append_revision(
+            row, kind=REVISION_KIND_REOPENED, actor_id=actor_id, reason=reason
+        )
+        row.status = EVAL_STATUS_SUGGESTED
+        row.approved_by = None
+        row.approved_at = None
+        self.db.add(
+            AuditLog(
+                school_id=school_id,
+                user_id=actor_id,
+                action="evaluation.reopened",
+                resource_type="answer_sheet_evaluation",
+                resource_id=str(row.id),
+                details={"exam_id": str(row.exam_id), "reason": reason},
+            )
+        )
+        await self.db.flush()
+        return row
+
+    async def list_revisions(
+        self, school_id: uuid.UUID, evaluation_id: uuid.UUID
+    ) -> list[AnswerSheetEvaluationRevision]:
+        return list(
+            (
+                await self.db.execute(
+                    select(AnswerSheetEvaluationRevision)
+                    .where(
+                        AnswerSheetEvaluationRevision.school_id == school_id,
+                        AnswerSheetEvaluationRevision.evaluation_id == evaluation_id,
+                    )
+                    .order_by(AnswerSheetEvaluationRevision.revision_no)
+                )
+            ).scalars().all()
+        )
+
     async def list_for_exam(
         self, school_id: uuid.UUID, exam_id: uuid.UUID
     ) -> list[AnswerSheetEvaluation]:
@@ -914,6 +1120,13 @@ class AnswerSheetEvalService:
         row.approved_by = approved_by
         row.approved_at = approved_at
 
+        revision = await self._append_revision(
+            row,
+            kind=REVISION_KIND_APPROVED,
+            actor_id=approved_by,
+            question_marks=question_marks,
+        )
+
         exam_service = ExamService(self.db)
         feedback_lines = [
             f"Q{qno}: {(row.ai_suggestions.get(qno) or {}).get('feedback', '')}"
@@ -929,6 +1142,14 @@ class AnswerSheetEvalService:
                     remarks=row.correction_summary,
                 )
             ],
+            provenance=VersionProvenance(
+                source=RESULT_SOURCE_AI_EVALUATION,
+                actor_id=approved_by,
+                evaluation_id=row.id,
+                evaluation_revision_id=revision.id,
+                # Only teacher-approved text is ever shown to learners.
+                feedback=row.correction_summary,
+            ),
         )
 
         mark_row = (
@@ -947,7 +1168,11 @@ class AnswerSheetEvalService:
             mark_row.source_evaluation_id = row.id
 
         await extract_from_evaluation(
-            self.db, evaluation=row, exam=exam, approved_by=approved_by
+            self.db,
+            evaluation=row,
+            exam=exam,
+            approved_by=approved_by,
+            revision_id=revision.id,
         )
 
         await self.db.flush()

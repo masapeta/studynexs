@@ -12,7 +12,13 @@ from sqlalchemy.orm import aliased
 from app.core.staff_permissions import StaffScope
 from app.db.models.academic import Class, Subject, TeacherSubjectMapping
 from app.db.models.attendance import Attendance, AttendanceStatus
-from app.db.models.mastery import FlagSeverity, FlagStatus, MasteryFlag, StudentTopicMastery
+from app.db.models.mastery import (
+    AUDIENCE_STAFF,
+    FlagSeverity,
+    FlagStatus,
+    MasteryFlag,
+    StudentTopicMastery,
+)
 from app.db.models.question_paper import _INCHARGE_REVIEW_STATUSES, QuestionPaper
 from app.db.models.student import Student
 from app.db.models.user import User, UserRole
@@ -20,6 +26,7 @@ from app.modules.communications.services.notice_service import NoticeService
 from app.modules.dashboard.schemas.dashboard import (
     DashboardSummaryOut,
     InchargeClassSummaryOut,
+    MyClassOut,
     NoticeBriefOut,
     PrincipalInterventionEvidenceOut,
     PrincipalInterventionOut,
@@ -43,8 +50,17 @@ class DashboardService:
     ) -> DashboardSummaryOut:
         if scope.is_admin:
             return await self._admin_summary(school_id, scope)
+        if scope.role == "operations" and not scope.incharge_class_ids and not scope.teaching_pairs:
+            return await self._operations_summary(school_id, scope)
+        my_classes = await self._my_classes(school_id, scope)
         if scope.incharge_class_ids:
-            return await self._incharge_summary(school_id, scope)
+            out = await self._incharge_summary(school_id, scope)
+            out.my_classes = my_classes
+            if scope.teaching_pairs:
+                out.teacher_home = await TeacherHomeService(self.db).build(
+                    school_id, scope, teacher_name
+                )
+            return out
         if scope.teaching_pairs:
             teacher_home = await TeacherHomeService(self.db).build(
                 school_id, scope, teacher_name
@@ -53,6 +69,7 @@ class DashboardService:
                 persona="teacher",
                 subtitle=teacher_home.tagline,
                 teacher_home=teacher_home,
+                my_classes=my_classes,
             )
         return DashboardSummaryOut(
             persona="teacher",
@@ -60,6 +77,73 @@ class DashboardService:
             teacher_home=await TeacherHomeService(self.db).build(
                 school_id, scope, teacher_name
             ),
+        )
+
+    async def _my_classes(self, school_id: uuid.UUID, scope: StaffScope) -> list[MyClassOut]:
+        """Exactly teaching ∪ incharge classes, with the subjects this user teaches in each."""
+        class_ids = scope.incharge_class_ids | scope.teaching_class_ids
+        if not class_ids:
+            return []
+        classes = (
+            await self.db.execute(
+                select(Class).where(Class.school_id == school_id, Class.id.in_(class_ids))
+            )
+        ).scalars().all()
+        subject_ids = {sid for _, sid in scope.teaching_pairs}
+        names = {}
+        if subject_ids:
+            names = dict(
+                (
+                    await self.db.execute(
+                        select(Subject.id, Subject.name).where(
+                            Subject.school_id == school_id, Subject.id.in_(subject_ids)
+                        )
+                    )
+                ).all()
+            )
+        out = [
+            MyClassOut(
+                class_id=c.id,
+                class_label=f"{c.grade} - {c.section}",
+                is_incharge=c.id in scope.incharge_class_ids,
+                subjects=sorted(
+                    names[sid] for cid, sid in scope.teaching_pairs if cid == c.id and sid in names
+                ),
+            )
+            for c in classes
+        ]
+        out.sort(key=lambda m: (_grade_sort_num(m.class_label), m.class_label))
+        return out
+
+    async def _operations_summary(
+        self, school_id: uuid.UUID, scope: StaffScope
+    ) -> DashboardSummaryOut:
+        from app.db.models.school_ops import AdmissionCandidate, AdmissionStage, Event
+
+        pipeline = await self.db.scalar(
+            select(func.count())
+            .select_from(AdmissionCandidate)
+            .where(
+                AdmissionCandidate.school_id == school_id,
+                AdmissionCandidate.stage != AdmissionStage.ENROLLED,
+            )
+        )
+        events = await self.db.scalar(
+            select(func.count())
+            .select_from(Event)
+            .where(Event.school_id == school_id, Event.event_date >= date.today())
+        )
+        return DashboardSummaryOut(
+            persona="operations",
+            subtitle="Admissions, events and day-to-day operations.",
+            admissions_pipeline=pipeline or 0,
+            upcoming_events=events or 0,
+            quick_actions=[
+                QuickActionOut(label="Admissions", href="/dashboard/admissions"),
+                QuickActionOut(label="Events", href="/dashboard/events"),
+                QuickActionOut(label="Notices", href="/dashboard/notices"),
+            ],
+            notices=await self._notices_brief(school_id, scope),
         )
 
     async def _notices_brief(self, school_id: uuid.UUID, scope: StaffScope) -> list[NoticeBriefOut]:
@@ -209,6 +293,7 @@ class DashboardService:
                         StudentTopicMastery.subject_id == MasteryFlag.subject_id,
                         StudentTopicMastery.academic_year_id == MasteryFlag.academic_year_id,
                         StudentTopicMastery.topic == MasteryFlag.topic,
+                        StudentTopicMastery.audience == AUDIENCE_STAFF,
                     ),
                 )
                 .where(

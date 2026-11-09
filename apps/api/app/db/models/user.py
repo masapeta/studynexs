@@ -42,6 +42,7 @@ class User(BaseModel):
     __table_args__ = (
         UniqueConstraint("school_id", "mobile", name="uq_users_school_mobile"),
         UniqueConstraint("school_id", "username", name="uq_users_school_username"),
+        UniqueConstraint("school_id", "id", name="uq_users_school_id_id"),
         Index("ix_users_school_role", "school_id", "role"),
         Index("ix_users_mobile", "mobile"),
     )

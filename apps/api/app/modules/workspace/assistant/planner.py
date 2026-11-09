@@ -305,12 +305,15 @@ async def plan(
     tools: list[AssistantTool],
     history: list[dict[str, str]] | None = None,
     prev_state: dict[str, Any] | None = None,
+    context_hint: str | None = None,
 ) -> PlannerDecision:
     """Ask the LLM to choose a governed tool + params. Falls back to 'clarify'."""
     messages: list[LLMMessage] = [LLMMessage(role="system", content=_system_prompt(tools))]
     hint = _prev_state_hint(prev_state)
     if hint:
         messages.append(LLMMessage(role="system", content=hint))
+    if context_hint:
+        messages.append(LLMMessage(role="system", content=context_hint))
     for turn in history or []:
         role = turn.get("role", "user")
         content = turn.get("text", "")

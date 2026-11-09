@@ -195,6 +195,27 @@ class StaffScope:
             return True
         return self.is_class_incharge(report.class_id)
 
+    # ── Results release authority (P2 §3.3 with P-R1, P5, P12) ──────────────────────
+    # Explicit role checks — never ``is_admin``. A generic ``admin`` does NOT get normal
+    # release authority (P-R1); release is the class incharge's act, with the principal
+    # (super_admin) able to release or override.
+
+    def can_release_results(self, exam: Exam) -> bool:
+        if self.role == "super_admin":
+            return True
+        return exam.class_id in self.incharge_class_ids
+
+    def can_withdraw_results(self, exam: Exam) -> bool:
+        return self.role in ("super_admin", "admin")
+
+    def can_override_release(self, exam: Exam) -> bool:
+        return self.role == "super_admin"
+
+    def can_reopen_evaluation(self, exam: Exam) -> bool:
+        if self.role in ("super_admin", "admin"):
+            return True
+        return exam.class_id in self.incharge_class_ids
+
     def subject_ids_for_class(self, class_id: uuid.UUID) -> set[uuid.UUID] | None:
         """None = all subjects (admin or incharge). Empty set = no subjects."""
         if self.is_admin or class_id in self.incharge_class_ids:

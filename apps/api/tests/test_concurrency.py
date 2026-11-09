@@ -50,6 +50,7 @@ from app.modules.examinations.services.answer_sheet_eval_service import (
     EvalError,
 )
 from app.modules.examinations.services.exam_service import ExamService
+from app.modules.examinations.services.result_version_service import VersionProvenance
 from app.modules.fees.services.fee_service import FeeService
 from app.modules.school.schemas.school import AcademicYearCreate
 from app.modules.school.services.school_service import SchoolService
@@ -148,7 +149,8 @@ async def test_exam_marks_concurrent_save_one_row(engine):
         async with _sm(engine)() as s:
             await ExamService(s).enter_marks(
                 ids["school_id"], ids["exam_id"],
-                [MarkEntry(student_id=ids["student_id"], marks_obtained=Decimal(mark))])
+                [MarkEntry(student_id=ids["student_id"], marks_obtained=Decimal(mark))],
+                provenance=VersionProvenance(actor_id=ids["teacher_id"]))
             await s.commit()
 
     results = await asyncio.gather(*(enter(m) for m in (40, 55, 70, 88)), return_exceptions=True)
@@ -389,7 +391,8 @@ async def test_enter_marks_rejects_over_max(engine):
         with pytest.raises(ValueError):
             await ExamService(s).enter_marks(
                 ids["school_id"], ids["exam_id"],
-                [MarkEntry(student_id=ids["student_id"], marks_obtained=Decimal("200"))])
+                [MarkEntry(student_id=ids["student_id"], marks_obtained=Decimal("200"))],
+                provenance=VersionProvenance(actor_id=ids["teacher_id"]))
 
 
 @pytest.mark.asyncio

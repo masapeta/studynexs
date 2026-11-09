@@ -24,6 +24,10 @@ class Environment(str, enum.Enum):
     PRODUCTION = "production"
 
 
+DEPLOYMENT_TIERS = frozenset({"development", "internal", "staging", "demo", "production"})
+INTERNAL_DEPLOYMENT_TIERS = frozenset({"development", "internal"})
+
+
 def _unsafe_production_origin(origin: str) -> str | None:
     """Return why a CORS origin is unsafe for production, or ``None`` when safe.
 
@@ -83,6 +87,9 @@ class Settings(BaseSettings):
     APP_NAME: str = "StudyNexs API"
     APP_VERSION: str = "1.0.0"
     ENVIRONMENT: Environment = Environment.DEVELOPMENT
+    # Deployment tier (development | internal | staging | demo | production). Empty means
+    # "development" outside production; production deployments must set it explicitly.
+    DEPLOYMENT_TIER: str = ""
     DEBUG: bool = False
     API_V1_PREFIX: str = "/api/v1"
 
@@ -417,6 +424,18 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         return self.ENVIRONMENT == Environment.PRODUCTION
 
+    @property
+    def deployment_tier(self) -> str:
+        tier = self.DEPLOYMENT_TIER.strip().lower()
+        if tier:
+            return tier
+        return "production" if self.is_production else "development"
+
+    @property
+    def is_internal_tier(self) -> bool:
+        """Internal engineering surfaces are only served on development/internal tiers."""
+        return self.deployment_tier in INTERNAL_DEPLOYMENT_TIERS
+
     # ── Production Guardrails ────────────────────────────────────
     @model_validator(mode="after")
     def _validate_production_config(self) -> "Settings":
@@ -476,6 +495,12 @@ class Settings(BaseSettings):
             errors.append(
                 "TURNSTILE_SECRET_KEY is required when DEMO_PROVISIONING_ENABLED in production"
             )
+
+        tier = self.DEPLOYMENT_TIER.strip().lower()
+        if not tier:
+            errors.append("DEPLOYMENT_TIER must be set explicitly in production")
+        elif tier not in DEPLOYMENT_TIERS:
+            errors.append(f"DEPLOYMENT_TIER={tier!r} is not one of {sorted(DEPLOYMENT_TIERS)}")
 
         if errors:
             raise ValueError(

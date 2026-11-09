@@ -150,6 +150,7 @@ async def test_get_weak_concepts_for_student(db_session):
         subject_id=ids["subject"].id,
         academic_year_id=ids["ay"].id,
         ledger_rows=ids["ledger"],
+        audience="learner",
     )
     weak = await svc.get_weak_concepts_for_student(
         school_id=ids["school"].id,
@@ -158,6 +159,35 @@ async def test_get_weak_concepts_for_student(db_session):
     )
     assert len(weak) == 1
     assert weak[0][0].slug == "slope"
+    # Staff evidence is a separate audience: none was synced, so the staff view is empty.
+    assert await svc.get_weak_concepts_for_student(
+        school_id=ids["school"].id, student_id=ids["student"].id, audience="staff"
+    ) == []
+
+
+@pytest.mark.asyncio
+async def test_staff_and_learner_edges_coexist_without_overwrite(db_session):
+    """Safeguard 2: a staff recompute never deletes/overwrites learner edges and vice versa."""
+    ids = await _seed(db_session, mastery_pct=50.0)
+    svc = StudentWeakConceptService(db_session)
+    common = dict(
+        school_id=ids["school"].id,
+        class_id=ids["cls"].id,
+        subject_id=ids["subject"].id,
+        academic_year_id=ids["ay"].id,
+    )
+    await svc.sync_from_ledger(**common, ledger_rows=ids["ledger"], audience="learner")
+    await svc.sync_from_ledger(**common, ledger_rows=ids["ledger"], audience="staff")
+    # Staff rebuild with the student now strong: learner edge must survive untouched.
+    strong = [{**r, "mastery_pct": 95.0} for r in ids["ledger"]]
+    await svc.sync_from_ledger(**common, ledger_rows=strong, audience="staff")
+    sid = ids["student"].id
+    assert len(await svc.get_weak_concepts_for_student(
+        school_id=ids["school"].id, student_id=sid, audience="learner")) == 1
+    assert await svc.get_weak_concepts_for_student(
+        school_id=ids["school"].id, student_id=sid, audience="staff") == []
+    with pytest.raises(ValueError):
+        await svc.sync_from_ledger(**common, ledger_rows=ids["ledger"], audience="shared")
 
 
 @pytest.mark.asyncio
@@ -170,6 +200,7 @@ async def test_get_weak_concepts_for_student_has_deterministic_primary(db_sessio
         subject_id=ids["subject"].id,
         academic_year_id=ids["ay"].id,
         ledger_rows=ids["ledger"],
+        audience="learner",
     )
     weak = await svc.get_weak_concepts_for_student(
         school_id=ids["school"].id,

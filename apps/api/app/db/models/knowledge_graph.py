@@ -8,13 +8,25 @@ from __future__ import annotations
 import enum
 import uuid
 
-from sqlalchemy import Enum, ForeignKey, Index, Integer, String, UniqueConstraint
+from sqlalchemy import (
+    CheckConstraint,
+    Enum,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.models.base import BaseModel
 
 _ENUM_VALUES = lambda x: [e.value for e in x]  # noqa: E731 — PG stores enum values, not names
+
+KG_AUDIENCE_SHARED = "shared"
+KG_AUDIENCE_STAFF = "staff"
+KG_AUDIENCE_LEARNER = "learner"
 
 
 class ConceptSource(str, enum.Enum):
@@ -92,6 +104,12 @@ class KgEdge(BaseModel):
     )
     to_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB, nullable=True)
+    # 'shared' for curriculum structure edges; student evidence edges (STRUGGLES_WITH) are
+    # 'staff' (all approved marks) or 'learner' (released results only). Part of the unique
+    # key so both audiences coexist and a recompute of one never overwrites the other.
+    audience: Mapped[str] = mapped_column(
+        String(10), nullable=False, default=KG_AUDIENCE_SHARED, server_default=KG_AUDIENCE_SHARED
+    )
 
     __table_args__ = (
         UniqueConstraint(
@@ -101,7 +119,11 @@ class KgEdge(BaseModel):
             "from_id",
             "to_node_type",
             "to_id",
+            "audience",
             name="uq_kg_edge_endpoints",
+        ),
+        CheckConstraint(
+            "audience IN ('shared', 'staff', 'learner')", name="ck_kg_edges_audience"
         ),
         Index("ix_kg_edges_school_pack", "school_id", "pack_id"),
         Index("ix_kg_edges_to", "school_id", "to_node_type", "to_id"),

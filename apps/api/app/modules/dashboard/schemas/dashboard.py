@@ -38,6 +38,13 @@ class TeachingAssignmentOut(BaseModel):
     subject_name: str
 
 
+class MyClassOut(BaseModel):
+    class_id: uuid.UUID
+    class_label: str
+    is_incharge: bool = False
+    subjects: list[str] = Field(default_factory=list)
+
+
 class InchargeClassSummaryOut(BaseModel):
     class_id: uuid.UUID
     class_label: str
@@ -66,7 +73,7 @@ class PrincipalInterventionOut(BaseModel):
 
 
 class DashboardSummaryOut(BaseModel):
-    persona: Literal["admin", "class_incharge", "teacher"]
+    persona: Literal["admin", "operations", "class_incharge", "teacher"]
     subtitle: str
     teacher_home: TeacherCommandCenterOut | None = None
     # Admin-only school-wide stats
@@ -91,6 +98,10 @@ class DashboardSummaryOut(BaseModel):
     my_draft_papers: int = 0
     # Principal / admin decision workspace
     principal_interventions: list[PrincipalInterventionOut] = Field(default_factory=list)
+    # Staff home "My classes": exactly teaching ∪ incharge classes for scoped staff
+    my_classes: list[MyClassOut] = Field(default_factory=list)
+    # Operations
+    upcoming_events: int | None = None
     # Shared
     quick_actions: list[QuickActionOut] = Field(default_factory=list)
     notices: list[NoticeBriefOut] = Field(default_factory=list)
