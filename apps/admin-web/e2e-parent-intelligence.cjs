@@ -11,6 +11,7 @@
 const { chromium } = require("playwright");
 const fs = require("fs");
 const path = require("path");
+const { e2ePassword } = require("./e2e-harness-utils.cjs");
 const {
   REFERENCE_TENANT,
   requireReferenceTenant,
@@ -118,7 +119,7 @@ async function apiGet(page, token, pathName) {
 
   let fails = 0;
   try {
-    const token = await loginViaApi(page, "parent_demo", "Demo@1234");
+    const token = await loginViaApi(page, "parent_demo", e2ePassword("parent_demo"));
     const portal = await apiGet(page, token, "/api/v1/portal/context");
     const child = portal.children?.[0];
     const studentId = child?.student_id;

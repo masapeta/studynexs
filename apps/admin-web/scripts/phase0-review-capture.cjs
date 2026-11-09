@@ -11,6 +11,7 @@
 const { chromium } = require("playwright");
 const fs = require("fs");
 const path = require("path");
+const { e2ePassword } = require("../e2e-harness-utils.cjs");
 
 const BASE = process.env.E2E_BASE_URL || "http://127.0.0.1:3000";
 const API = process.env.E2E_API_URL || "http://localhost:8000";
@@ -32,7 +33,7 @@ async function apiUp() {
 async function loginViaApi(ctx) {
   const res = await ctx.request.post(`${API}/api/v1/auth/login`, {
     headers: { "Content-Type": "application/json", "X-Tenant-Slug": TENANT },
-    data: { username: "principal", password: "Demo@1234" },
+    data: { username: "principal", password: e2ePassword("principal") },
   });
   if (!res.ok()) throw new Error(`API login failed (${res.status()})`);
   const body = await res.json();
@@ -47,7 +48,7 @@ async function loginViaApi(ctx) {
 async function openAuthenticatedDashboard(page) {
   await openPasswordLogin(page);
   await page.locator("#username-input").fill("principal");
-  await page.locator("#password-input").fill("Demo@1234");
+  await page.locator("#password-input").fill(e2ePassword("principal"));
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.locator(".sidebar-brand").waitFor({ state: "visible", timeout: 60000 });
   await waitReady(page);

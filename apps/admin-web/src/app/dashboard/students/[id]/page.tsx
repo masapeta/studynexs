@@ -11,6 +11,7 @@ import {
   type LifecycleClassOption,
 } from "@/components/students/StudentLifecycleModal";
 import TopicMasterySection from "./TopicMasterySection";
+import { AskAIButton } from "@/components/assistant/AskAI";
 
 type EnrollmentRow = {
   id: string;
@@ -138,6 +139,7 @@ export default function StudentDetailPage() {
             {p.class_name} · Adm. {p.admission_no}{p.roll_no ? ` · Roll ${p.roll_no}` : ""}
           </div>
         </div>
+        <AskAIButton context={{ kind: "student", id: String(id), label: p.admission_no }} />
         {canManage && (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
             {isActive ? (

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Eye } from "lucide-react";
 import { api, getApiErrorMessage } from "@/lib/api";
+import { AskAIButton } from "@/components/assistant/AskAI";
 
 type ClassInfo = {
   id: string;
@@ -115,14 +116,17 @@ export default function ClassDetailPage() {
               {cls.avg_score != null ? ` · avg score ${cls.avg_score}%` : ""}
             </p>
           </div>
-          <input
-            className="form-input"
-            placeholder="Search by name or admission no..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ width: 260 }}
-            aria-label="Search students by name or admission number"
-          />
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <AskAIButton context={{ kind: "class", id: cls.id, label: title }} />
+            <input
+              className="form-input"
+              placeholder="Search by name or admission no..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ width: 260, maxWidth: "100%" }}
+              aria-label="Search students by name or admission number"
+            />
+          </div>
         </div>
       </div>
 

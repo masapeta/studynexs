@@ -120,8 +120,22 @@ function reportConsoleErrors(buckets) {
   return disallowed.length + apiFailures.length;
 }
 
+/**
+ * Password for an E2E account, from the environment only (never committed).
+ * Looks up E2E_PASSWORD_<USERNAME> (upper-cased, non-alphanumerics → _), then E2E_PASSWORD.
+ */
+function e2ePassword(username) {
+  const key = `E2E_PASSWORD_${String(username).toUpperCase().replace(/[^A-Z0-9]/g, "_")}`;
+  const value = process.env[key] || process.env.E2E_PASSWORD;
+  if (!value) {
+    throw new Error(`Set ${key} or E2E_PASSWORD to run this harness (credentials are env-only).`);
+  }
+  return value;
+}
+
 module.exports = {
   REFERENCE_TENANT,
+  e2ePassword,
   requireReferenceTenant,
   isAllowedConsoleError,
   attachConsoleGuard,

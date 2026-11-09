@@ -5,6 +5,7 @@
 const { chromium } = require("playwright");
 const fs = require("fs");
 const path = require("path");
+const { e2ePassword } = require("../e2e-harness-utils.cjs");
 
 const BASE = process.env.E2E_BASE_URL || "http://localhost:3003";
 const OUT = path.join(__dirname, "..", "..", "..", "docs", "product", "batch1-ui-demo");
@@ -36,7 +37,7 @@ async function login(page) {
     await page.waitForSelector("#username-input", { timeout: 30000 });
   }
   await page.fill("#username-input", "principal");
-  await page.fill("#password-input", "Demo@1234");
+  await page.fill("#password-input", e2ePassword("principal"));
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.waitForURL("**/dashboard**", { timeout: 90000, waitUntil: "commit" });
 }

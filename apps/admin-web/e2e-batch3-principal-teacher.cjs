@@ -10,6 +10,7 @@
 const { chromium } = require("playwright");
 const fs = require("fs");
 const path = require("path");
+const { e2ePassword } = require("./e2e-harness-utils.cjs");
 const {
   REFERENCE_TENANT,
   requireReferenceTenant,
@@ -31,7 +32,7 @@ const PERSONAS = [
   {
     key: "principal",
     username: "principal",
-    password: "Demo@1234",
+    password: e2ePassword("principal"),
     home: "/dashboard",
     routes: [
       { url: "/dashboard", name: "principal-dashboard", expect: ["Students", "Attendance"] },
@@ -43,7 +44,7 @@ const PERSONAS = [
   {
     key: "teacher",
     username: "teacher6",
-    password: "Demo@1234",
+    password: e2ePassword("teacher6"),
     home: "/teacher",
     routes: [
       { url: "/teacher", name: "teacher-home", expect: ["Teaching", "Lesson", "Kiran"] },

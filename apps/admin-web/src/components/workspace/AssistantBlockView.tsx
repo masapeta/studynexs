@@ -85,12 +85,16 @@ export function AssistantBlockView({
   block,
   onSelect,
   onAction,
+  onNavigate,
 }: {
   block: AssistantBlock;
   onSelect?: (text: string) => void;
   onAction?: (req: AssistantActionRequest) => Promise<void>;
+  /** Keeps the conversation recoverable (record drawer / back chip). Defaults to a plain push. */
+  onNavigate?: (href: string) => void;
 }) {
   const router = useRouter();
+  const go = (href: string) => (onNavigate ? onNavigate(href) : router.push(href));
 
   if (block.kind === "guide") {
     return (
@@ -135,7 +139,7 @@ export function AssistantBlockView({
                 key={s.href}
                 type="button"
                 className="card"
-                onClick={() => router.push(s.href)}
+                onClick={() => go(s.href)}
                 style={{
                   margin: 0,
                   padding: "12px 14px",
@@ -198,7 +202,7 @@ export function AssistantBlockView({
             type="button"
             className="btn btn-primary"
             style={{ width: "auto", padding: "7px 14px" }}
-            onClick={() => router.push(block.href!)}
+            onClick={() => go(block.href!)}
           >
             Open
           </button>
@@ -227,7 +231,13 @@ export function AssistantBlockView({
     return (
       <div style={{ display: "grid", gap: 12 }}>
         {children.map((child, i) => (
-          <AssistantBlockView key={i} block={child} onSelect={onSelect} onAction={onAction} />
+          <AssistantBlockView
+            key={i}
+            block={child}
+            onSelect={onSelect}
+            onAction={onAction}
+            onNavigate={onNavigate}
+          />
         ))}
       </div>
     );
@@ -355,7 +365,7 @@ export function AssistantBlockView({
                   type="button"
                   className="btn btn-outline"
                   style={{ width: "auto", padding: "7px 14px" }}
-                  onClick={() => router.push(a.href!)}
+                    onClick={() => go(a.href!)}
                 >
                   {a.label}
                 </button>
@@ -617,7 +627,7 @@ export function AssistantBlockView({
               type="button"
               className="btn btn-outline"
               style={{ width: "auto", padding: "7px 14px" }}
-              onClick={() => router.push(block.href!)}
+              onClick={() => go(block.href!)}
             >
               {block.href_label ?? "Open"}
             </button>

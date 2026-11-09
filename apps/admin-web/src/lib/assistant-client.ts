@@ -98,16 +98,36 @@ export interface AssistantBlock {
   created?: boolean;
 }
 
+/** Server-side conversational state after a turn (never authority; display-only chips). */
+export interface SemanticState {
+  domain?: string | null;
+  capability?: string | null;
+  entities?: Record<string, string | null> | null;
+  subject?: string | null;
+  temporal_presence?: string | null;
+  temporal_time?: unknown;
+}
+
+/** Ask-AI page hint. The server re-authorises the entity on every turn. */
+export interface PageContext {
+  kind: "class" | "student" | "exam" | "staff" | "fees" | "attendance" | "page";
+  id?: string;
+  label?: string;
+  route?: string;
+}
+
 export interface AssistantTurn {
   session_id: string;
   result_kind: string;
   block: AssistantBlock;
+  semantic_state?: SemanticState | null;
 }
 
 export interface ChatSessionSummary {
   id: string;
   title: string;
   updated_at: string | null;
+  archived_at?: string | null;
 }
 
 export interface ChatMessage {
@@ -115,19 +135,38 @@ export interface ChatMessage {
   text: string;
   result_kind?: string | null;
   payload?: AssistantBlock | null;
+  semantic_state?: SemanticState | null;
 }
 
-export async function assistantTurn(text: string, sessionId?: string | null): Promise<AssistantTurn> {
+export async function assistantTurn(
+  text: string,
+  sessionId?: string | null,
+  pageContext?: PageContext | null
+): Promise<AssistantTurn> {
   const res = await api<{ data: AssistantTurn }>("/api/v1/workspace/assistant/turn", {
     method: "POST",
-    body: JSON.stringify({ text, session_id: sessionId ?? null }),
+    body: JSON.stringify({ text, session_id: sessionId ?? null, page_context: pageContext ?? null }),
   });
   return res.data;
 }
 
-export async function listChatSessions(): Promise<ChatSessionSummary[]> {
-  const res = await api<{ data: ChatSessionSummary[] }>("/api/v1/workspace/assistant/sessions");
+export async function listChatSessions(
+  opts: { archived?: boolean } = {}
+): Promise<ChatSessionSummary[]> {
+  const q = opts.archived ? "?archived=true" : "";
+  const res = await api<{ data: ChatSessionSummary[] }>(`/api/v1/workspace/assistant/sessions${q}`);
   return res.data ?? [];
+}
+
+export async function updateChatSession(
+  sessionId: string,
+  patch: { title?: string; archived?: boolean }
+): Promise<ChatSessionSummary> {
+  const res = await api<{ data: ChatSessionSummary }>(
+    `/api/v1/workspace/assistant/sessions/${sessionId}`,
+    { method: "PATCH", body: JSON.stringify(patch) }
+  );
+  return res.data;
 }
 
 export async function getChatSession(sessionId: string): Promise<ChatMessage[]> {

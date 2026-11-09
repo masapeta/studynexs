@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import PortalShell from "@/components/PortalShell";
 import TutorLessonPlayer from "@/components/tutor/TutorLessonPlayer";
-import { api, getApiErrorMessage } from "@/lib/api";
+import { api, ApiError, getApiErrorMessage } from "@/lib/api";
 import { STUDENT_NAV } from "@/lib/student-portal";
 import type { DailyLearningPlan, TutorLesson } from "@/lib/student-portal";
 
@@ -72,8 +72,17 @@ export default function StudentTutorPage() {
         const key = lessonParam || planRes.data?.lesson_key || recRes.data?.[0]?.lesson_key;
         if (key) {
           setActiveKey(key);
-          const les = await api(`/api/v1/tutor/students/${sid}/lessons/${key}`);
-          setLesson(les.data);
+          try {
+            const les = await api(`/api/v1/tutor/students/${sid}/lessons/${key}`);
+            setLesson(les.data);
+          } catch (e) {
+            setLesson(null);
+            if (e instanceof ApiError && e.status === 404) {
+              setError("This lesson isn't ready yet. Your teacher is preparing it — try another recommendation.");
+            } else {
+              setError(getApiErrorMessage(e, "Could not load lesson"));
+            }
+          }
         }
       })
       .catch((e) => setError(getApiErrorMessage(e, "Failed to load tutor")))

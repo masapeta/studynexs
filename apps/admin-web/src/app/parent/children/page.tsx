@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   CalendarCheck,
@@ -50,7 +49,6 @@ function formatDate(iso: string | null | undefined): string {
 }
 
 export default function ParentChildrenPage() {
-  const router = useRouter();
   const [children, setChildren] = useState<ParentChildProgress[] | null>(null);
   const [error, setError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
@@ -115,7 +113,7 @@ export default function ParentChildrenPage() {
           const latestFeedback = child.feedbacks[0];
 
           return (
-            <Card key={child.student_id} onClick={() => router.push(`/parent/child/${child.student_id}`)}>
+            <Card key={child.student_id} href={`/parent/child/${child.student_id}`}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
                 <Avatar name={child.name} />
                 <div style={{ flex: 1, minWidth: 0 }}>

@@ -31,6 +31,7 @@ export const TEACHING = {
   masteryDigest: "/dashboard/teaching/mastery/digest",
   corrections: "/dashboard/teaching/exams/corrections",
   evaluate: (examId: string) => `/dashboard/teaching/exams/${examId}/evaluate`,
+  results: (examId: string) => `/dashboard/teaching/exams/${examId}/results`,
 } as const;
 
 export const PLATFORM = {

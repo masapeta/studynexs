@@ -20,7 +20,7 @@ export type SchoolAttendanceStatus =
   | "healthy";
 
 export type BriefingSummary = {
-  persona: "admin" | "class_incharge" | "teacher";
+  persona: "admin" | "operations" | "class_incharge" | "teacher";
   subtitle: string;
   total_students?: number | null;
   total_teachers?: number | null;

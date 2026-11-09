@@ -389,6 +389,7 @@ export default function ExamsPage() {
                     {e.can_evaluate_sheets && (
                       <a className="btn btn-ghost" style={btn} href={TEACHING.evaluate(e.id)}>Evaluate</a>
                     )}{" "}
+                    <a className="btn btn-ghost" style={btn} href={TEACHING.results(e.id)}>Results</a>{" "}
                     <button className="btn btn-ghost" style={btn} onClick={() => openMarks(e)}>Enter marks</button>
                   </td>
                 </tr>

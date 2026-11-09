@@ -10,6 +10,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "check:bundle": "node scripts/check-bundle-secrets.cjs",
     "e2e-smoke": "node e2e-smoke.cjs",
     "e2e-smoke:prod": "node e2e-smoke.cjs",
     "e2e-assessment-v1": "node e2e-assessment-intelligence-v1.cjs",

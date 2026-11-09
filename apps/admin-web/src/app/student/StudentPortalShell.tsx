@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { homePathForRole, portalFromRole } from "@/lib/portal";
 import { PortalEntryLoading } from "@/components/brand";
+import { AssistantProvider } from "@/components/assistant/AssistantProvider";
 
 export function StudentPortalShell({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -26,5 +27,5 @@ export function StudentPortalShell({ children }: { children: React.ReactNode }) 
     return <PortalEntryLoading portal="student" />;
   }
 
-  return <>{children}</>;
+  return <AssistantProvider base="/student">{children}</AssistantProvider>;
 }

@@ -1,10 +1,11 @@
-import { Bell, BookOpen, Home, MessageSquare, Sparkles } from "lucide-react";
+import { Bell, BookOpen, ClipboardList, Home, MessageSquare, Sparkles } from "lucide-react";
 import type { NavItem } from "@/components/PortalShell";
 
 export const STUDENT_NAV: NavItem[] = [
   { href: "/student", label: "Home", icon: Home },
   { href: "/student/assistant", label: "Ask StudyNexs", icon: MessageSquare },
   { href: "/student/tutor", label: "AI Tutor", icon: Sparkles },
+  { href: "/student/results", label: "Results", icon: ClipboardList },
   { href: "/student/mastery", label: "Mastery", icon: BookOpen },
   { href: "/student/notices", label: "Notices", icon: Bell },
 ];

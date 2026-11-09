@@ -113,7 +113,16 @@ export async function api<T = any>(
           headers,
           credentials: "include",
         });
-        if (!retry.ok) throw new ApiError(retry.status, await retry.text());
+        if (!retry.ok) {
+          throw new ApiError(
+            retry.status,
+            sanitizeCustomerErrorMessage(
+              errorDetailText(await retry.text()),
+              retry.status,
+              CUSTOMER_SERVER_ERROR
+            )
+          );
+        }
         return retry.json();
       }
       // Session truly gone — bounce to login, but only if we aren't already there.
@@ -131,13 +140,8 @@ export async function api<T = any>(
   }
 
   if (!res.ok) {
-    let text = await res.text();
-    try {
-      const json = JSON.parse(text);
-      if (json.detail) text = json.detail;
-    } catch {}
     const safe = sanitizeCustomerErrorMessage(
-      typeof text === "string" ? text : String(text),
+      errorDetailText(await res.text()),
       res.status,
       CUSTOMER_SERVER_ERROR
     );
@@ -145,6 +149,32 @@ export async function api<T = any>(
   }
 
   return res.json();
+}
+
+/**
+ * Human text from an error body. FastAPI `detail` may be a string, a 422 list of
+ * `{loc, msg}` objects, or an object; never stringify objects into "[object Object]".
+ */
+export function errorDetailText(body: string): string {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return body;
+  }
+  const detail = (parsed as { detail?: unknown } | null)?.detail;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    const first = detail.find(
+      (d): d is { msg: string } => !!d && typeof (d as { msg?: unknown }).msg === "string"
+    );
+    return first ? `Invalid request: ${first.msg}` : "Invalid request.";
+  }
+  if (detail && typeof detail === "object") {
+    const msg = (detail as { message?: unknown; msg?: unknown }).message ?? (detail as { msg?: unknown }).msg;
+    if (typeof msg === "string") return msg;
+  }
+  return "";
 }
 
 let refreshInFlight: Promise<boolean> | null = null;

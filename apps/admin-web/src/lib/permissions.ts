@@ -1,5 +1,6 @@
 /** Mirrors GET /api/v1/users/me/permissions — drives nav and action buttons. */
 import { FINANCE, STUDENTS, TEACHING } from "./dashboard-routes";
+import { isInternalDeploymentTier } from "./deployment-tier";
 
 export interface UserPermissions {
   role: string;
@@ -82,6 +83,7 @@ const TEACHING_SUBROUTES: { prefix: string; gate: NavGate }[] = [
 /** Nav item → permission flag. Core items without a gate are always shown when logged in. */
 export const NAV_PERMISSION: Record<string, NavGate | undefined> = {
   "/dashboard": "can_view_dashboard",
+  "/dashboard/assistant": "can_view_dashboard",
   "/dashboard/students": "can_manage_students",
   "/dashboard/staff": "can_manage_staff",
   "/dashboard/classes": "can_view_classes",
@@ -163,7 +165,7 @@ export function routeAllowed(pathname: string, perms: UserPermissions | null): b
     return teachingRouteAllowed(pathname, perms);
   }
   if (pathname.startsWith("/dashboard/platform")) {
-    return perms.role === "super_admin" || perms.role === "admin";
+    return isInternalDeploymentTier() && (perms.role === "super_admin" || perms.role === "admin");
   }
 
   const prefixes = Object.keys(NAV_PERMISSION).sort((a, b) => b.length - a.length);
@@ -191,6 +193,12 @@ export function roleLabel(role: string): string {
       return "Class Incharge";
     case "teacher":
       return "Subject Teacher";
+    case "operations":
+      return "Operations";
+    case "parent":
+      return "Parent";
+    case "student":
+      return "Student";
     default:
       return role.replace(/_/g, " ");
   }

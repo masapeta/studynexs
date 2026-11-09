@@ -13,9 +13,10 @@
 const { chromium } = require("playwright");
 const fs = require("fs");
 const path = require("path");
+const { e2ePassword } = require("./e2e-harness-utils.cjs");
 
 const BASE = process.env.E2E_BASE_URL || "http://localhost:3000";
-const PASSWORD = process.env.E2E_PASSWORD || "Demo@1234";
+const PASSWORD = e2ePassword("principal");
 const SHOTS = path.join(process.env.TEMP || "/tmp", "sn-assistant-chat");
 const results = [];
 

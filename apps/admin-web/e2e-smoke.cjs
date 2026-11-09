@@ -13,6 +13,7 @@
 const { chromium } = require("playwright");
 const fs = require("fs");
 const path = require("path");
+const { e2ePassword } = require("./e2e-harness-utils.cjs");
 const {
   REFERENCE_TENANT,
   requireReferenceTenant,
@@ -173,7 +174,7 @@ async function pickAppSelect(page, ariaLabel, optionLabel) {
 
 /** API login — avoids flaky headless UI hydration on the marketing login card. */
 async function authenticateStaff(page) {
-  const accessToken = await loginViaApi(page, "principal", "Demo@1234");
+  const accessToken = await loginViaApi(page, "principal", e2ePassword("principal"));
   await installSession(page, accessToken);
   await page.goto(`${BASE}/dashboard`, { waitUntil: "domcontentloaded" });
   await page.waitForURL("**/dashboard**", { timeout: 30000 });
@@ -205,9 +206,10 @@ async function openPasswordLogin(page, portal = "staff") {
     }
     await username.waitFor({ state: "visible", timeout: 15000 });
   }
-  if (portal !== "staff") {
-    const tab = portal.charAt(0).toUpperCase() + portal.slice(1);
-    await page.getByRole("tab", { name: tab }).click();
+  // Demo portal tabs exist only on demo-enabled tiers.
+  const tab = page.getByRole("tab", { name: portal.charAt(0).toUpperCase() + portal.slice(1) });
+  if (portal !== "staff" && (await tab.count())) {
+    await tab.click();
   }
 }
 
@@ -335,7 +337,7 @@ async function openPasswordLogin(page, portal = "staff") {
           const studentTenantTracker = attachTenantTracker(studentPage, TENANT);
           attachConsoleGuard(studentPage, consoleBuckets);
           attachApiFailureTracker(studentPage, consoleBuckets);
-          await authenticatePortal(studentPage, "student", "student_demo", "Demo@1234");
+          await authenticatePortal(studentPage, "student", "student_demo", e2ePassword("student_demo"));
           await studentPage.goto(`${BASE}/student/tutor`, { waitUntil: "domcontentloaded" });
           await waitForPageReady(studentPage);
           const body = await assertNotLoginScreen(studentPage, "student tutor");

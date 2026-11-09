@@ -12,6 +12,7 @@
 const { chromium } = require("playwright");
 const fs = require("fs");
 const path = require("path");
+const { e2ePassword } = require("../e2e-harness-utils.cjs");
 
 const BASE = process.env.E2E_BASE_URL || "http://127.0.0.1:3000";
 const API = process.env.E2E_API_URL || "http://127.0.0.1:8000";
@@ -60,10 +61,10 @@ const PORTAL_PAGES = {
 };
 
 const CREDS = {
-  staff: { username: "principal", password: "Demo@1234" },
-  teacher: { username: "teacher6", password: "Demo@1234" },
-  parent: { username: "parent_demo", password: "Demo@1234" },
-  student: { username: "student_demo", password: "Demo@1234" },
+  staff: { username: "principal", password: e2ePassword("principal") },
+  teacher: { username: "teacher6", password: e2ePassword("teacher6") },
+  parent: { username: "parent_demo", password: e2ePassword("parent_demo") },
+  student: { username: "student_demo", password: e2ePassword("student_demo") },
 };
 
 async function waitForPageReady(page) {
@@ -107,9 +108,10 @@ async function openPasswordLogin(page, portal) {
     }
     await username.waitFor({ state: "visible", timeout: 15000 });
   }
-  if (portal !== "staff") {
-    const tab = portal.charAt(0).toUpperCase() + portal.slice(1);
-    await page.getByRole("tab", { name: tab }).click();
+  // Demo portal tabs exist only on demo-enabled tiers.
+  const tab = page.getByRole("tab", { name: portal.charAt(0).toUpperCase() + portal.slice(1) });
+  if (portal !== "staff" && (await tab.count())) {
+    await tab.click();
   }
 }
 

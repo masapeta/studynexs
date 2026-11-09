@@ -9,6 +9,7 @@
 const { chromium } = require("playwright");
 const fs = require("fs");
 const path = require("path");
+const { e2ePassword } = require("./e2e-harness-utils.cjs");
 const {
   REFERENCE_TENANT,
   requireReferenceTenant,
@@ -47,7 +48,7 @@ async function authenticateStaff(page) {
       "Content-Type": "application/json",
       "X-Tenant-Slug": TENANT,
     },
-    data: { username: "principal", password: "Demo@1234" },
+    data: { username: "principal", password: e2ePassword("principal") },
   });
   if (loginResp.status() === 429) {
     throw new Error(

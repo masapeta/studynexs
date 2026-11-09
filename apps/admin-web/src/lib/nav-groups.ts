@@ -4,7 +4,6 @@ import {
   Bus,
   CalendarDays,
   ClipboardCheck,
-  Cpu,
   FileText,
   GraduationCap,
   LayoutDashboard,
@@ -14,7 +13,7 @@ import {
   Wallet,
 } from "lucide-react";
 import type { UserPermissions } from "./permissions";
-import { FINANCE, PLATFORM, STUDENTS, TEACHING } from "./dashboard-routes";
+import { FINANCE, STUDENTS, TEACHING } from "./dashboard-routes";
 
 export type NavItem = {
   label: string;
@@ -90,17 +89,6 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: "Platform",
-    items: [
-      {
-        label: "Engineering",
-        href: PLATFORM.engineering,
-        icon: Cpu,
-        roles: ["platform_operator"],
-      },
-    ],
-  },
-  {
     label: "Communications",
     items: [
       { label: "Notices", href: "/dashboard/notices", icon: Megaphone, module: "notices", perm: "can_view_notices" },
@@ -109,3 +97,44 @@ export const NAV_GROUPS: NavGroup[] = [
 ];
 
 export const DEFAULT_OFF_MODULES = new Set(["transport", "residential"]);
+
+export type Persona = "principal" | "admin" | "operations" | "incharge" | "teacher";
+
+/** Shell persona from role + scope: a TEACHER-role user with incharge classes gets the incharge IA. */
+export function personaForPermissions(perms: UserPermissions | null): Persona {
+  if (!perms) return "teacher";
+  if (perms.role === "super_admin") return "principal";
+  if (perms.role === "admin") return "admin";
+  if (perms.role === "operations" && !perms.incharge_class_ids.length && !perms.teaching_class_ids.length) {
+    return "operations";
+  }
+  if (perms.incharge_class_ids.length > 0) return "incharge";
+  return "teacher";
+}
+
+export function moduleVisible(m: string | undefined, modules: Record<string, boolean>): boolean {
+  if (!m) return true;
+  if (DEFAULT_OFF_MODULES.has(m)) return modules[m] === true;
+  return modules[m] !== false;
+}
+
+/** Visible staff nav groups (permission + module gated). Empty groups are dropped. */
+export function visibleNavGroups(
+  perms: UserPermissions | null,
+  modules: Record<string, boolean>,
+  allowed: (href: string, perms: UserPermissions | null) => boolean
+): NavGroup[] {
+  const itemVisible = (item: NavItem) => {
+    if (!moduleVisible(item.module, modules)) return false;
+    if (item.roles && perms && !item.roles.includes(perms.role)) return false;
+    if (item.anyPerm && perms) {
+      if (!item.anyPerm.some((p) => perms[p])) return false;
+    } else if (item.perm && perms && !perms[item.perm]) {
+      return false;
+    }
+    return allowed(item.href, perms);
+  };
+  return NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter(itemVisible) })).filter(
+    (g) => g.items.length > 0
+  );
+}

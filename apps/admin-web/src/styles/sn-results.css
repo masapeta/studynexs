@@ -1,0 +1,64 @@
+/* Exam evaluation hub + results release (P2 Stage 2). Tokens only — no hardcoded brand colours. */
+
+.sn-eval-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: var(--space-grid, 20px);
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .sn-eval-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.sn-eval-grid .btn.is-active {
+  border-color: var(--accent);
+}
+
+.sn-page-strip {
+  list-style: decimal inside;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.sn-page-strip__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 8px);
+  overflow-wrap: anywhere;
+}
+
+.sn-release-pending {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.sn-release-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.sn-table-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sn-page-strip__item {
+    transition: none;
+  }
+}

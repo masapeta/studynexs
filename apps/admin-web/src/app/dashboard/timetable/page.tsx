@@ -14,7 +14,6 @@ const DAY_LABEL: Record<string, string> = {
 
 export default function TimetablePage() {
   const { permissions } = useAuth();
-  const canEdit = permissions?.can_edit_timetable ?? false;
   const [classes, setClasses] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [teachers, setTeachers] = useState<any[]>([]);
@@ -27,6 +26,10 @@ export default function TimetablePage() {
     day_of_week: "monday", period_number: 1, subject_id: "", teacher_id: "",
     start_time: "09:00", end_time: "09:45",
   });
+  // Editing is per class (admin, or incharge of this class); the server re-checks on save.
+  const canEdit =
+    !!permissions?.can_edit_timetable &&
+    (permissions.is_admin || permissions.incharge_class_ids.includes(classId));
 
   useEffect(() => {
     api("/api/v1/academic/classes?page_size=100")
@@ -35,17 +38,8 @@ export default function TimetablePage() {
         setClasses(sortClasses<any>(items));
         if (items[0]) setClassId(items[0].id);
       })
-      .catch((e) => console.error(e));
-    if (canEdit) {
-      api("/api/v1/users?role=teacher&page_size=100")
-        .then((r) => {
-          const items = r.items || r.data || [];
-          setTeachers(items);
-          setForm((f) => ({ ...f, teacher_id: items[0]?.id || "" }));
-        })
-        .catch((e) => console.error(e));
-    }
-  }, [canEdit]);
+      .catch((e) => setError(getApiErrorMessage(e, "Failed to load classes")));
+  }, []);
 
   useEffect(() => {
     if (!classId) return;
@@ -55,9 +49,25 @@ export default function TimetablePage() {
         setSubjects(items);
         setForm((f) => ({ ...f, subject_id: items[0]?.id || "" }));
       })
-      .catch((e) => console.error(e));
+      .catch((e) => setError(getApiErrorMessage(e, "Failed to load subjects")));
     loadSlots();
   }, [classId]);
+
+  useEffect(() => {
+    if (!classId || !canEdit || !form.subject_id) {
+      setTeachers([]);
+      return;
+    }
+    api<{ data: Array<{ teacher_id: string; full_name: string }> }>(
+      `/api/v1/timetable/class/${classId}/teachers?subject_id=${form.subject_id}`
+    )
+      .then((r) => {
+        const items = (r.data || []).map((t) => ({ id: t.teacher_id, full_name: t.full_name }));
+        setTeachers(items);
+        setForm((f) => ({ ...f, teacher_id: items[0]?.id || "" }));
+      })
+      .catch((e) => setError(getApiErrorMessage(e, "Failed to load teachers for this subject")));
+  }, [classId, canEdit, form.subject_id]);
 
   function loadSlots() {
     setLoading(true);
@@ -145,6 +155,7 @@ export default function TimetablePage() {
             variant="field"
             value={form.subject_id}
             onChange={(v) => setForm({ ...form, subject_id: v })}
+            placeholder={teachers.length ? "Select…" : "No teacher mapped to this subject"}
             aria-label="Subject"
             options={subjects.map((s) => ({ value: s.id, label: s.name }))}
           />
@@ -174,7 +185,7 @@ export default function TimetablePage() {
       )}
 
       {!canEdit && (
-        <div className="card sn-info-banner">
+        <div className="card sn-info-banner">this class&apos;s incharge
           View-only timetable. Only the principal and class incharges can add or edit slots.
         </div>
       )}

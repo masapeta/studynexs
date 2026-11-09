@@ -10,6 +10,7 @@
 const { chromium } = require("playwright");
 const fs = require("fs");
 const path = require("path");
+const { e2ePassword } = require("./e2e-harness-utils.cjs");
 const {
   REFERENCE_TENANT,
   requireReferenceTenant,
@@ -148,7 +149,7 @@ async function openFlagEvidenceInUi(page, target) {
 
   let fails = 0;
   try {
-    const token = await loginViaApi(page, "teacher6", "Demo@1234");
+    const token = await loginViaApi(page, "teacher6", e2ePassword("teacher6"));
     const verifiedFlag = await findVerifiedFlagViaApi(page, token);
     await installSession(page, token);
     await page.goto(`${BASE}/teacher`, { waitUntil: "domcontentloaded", timeout: 60000 });

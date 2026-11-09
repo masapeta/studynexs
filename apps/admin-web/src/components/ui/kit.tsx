@@ -6,6 +6,7 @@
  * Styling lives in globals.css under the `.ui-*` namespace.
  */
 import type { ReactNode } from "react";
+import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { ChevronRight } from "lucide-react";
 
@@ -14,14 +15,28 @@ export type Tone = "default" | "success" | "warning" | "danger" | "info" | "acce
 export function Card({
   children,
   onClick,
+  href,
   className = "",
   padded = true,
 }: {
   children: ReactNode;
   onClick?: () => void;
+  /** Navigable card: renders a real link (new tab, prefetch, announced as a link). */
+  href?: string;
   className?: string;
   padded?: boolean;
 }) {
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className={`ui-card${padded ? "" : " ui-card-flush"} ui-card-tap ${className}`}
+        style={{ display: "block", color: "inherit", textDecoration: "none" }}
+      >
+        {children}
+      </Link>
+    );
+  }
   const interactive = !!onClick;
   return (
     <div

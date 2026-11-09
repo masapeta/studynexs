@@ -12,10 +12,15 @@ import { AppBackground } from "@/components/AppBackground";
 import { NAV_GROUPS } from "@/lib/nav-groups";
 import { DemoDataBanner } from "@/components/DemoDataBanner";
 import { PortalEntryLoading } from "@/components/brand";
-import { WorkspaceRoot } from "@/components/workspace/WorkspaceRoot";
+import { AppShell } from "@/components/shell/AppShell";
+import { AssistantProvider } from "@/components/assistant/AssistantProvider";
+import { navAllowed } from "@/lib/permissions";
+import { personaForPermissions, visibleNavGroups } from "@/lib/nav-groups";
 
 /** Human title for the workspace topbar, derived from the nav registry. */
 function pageTitleForPath(pathname: string): string {
+  if (pathname === "/dashboard") return "Home";
+  if (pathname.startsWith("/dashboard/assistant")) return "Ask StudyNexs";
   let best = "";
   let bestLen = -1;
   for (const group of NAV_GROUPS) {
@@ -82,31 +87,30 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   if (!user) return null;
 
-  const schoolDisplayName = schoolName.trim();
-  const isHome = pathname === "/dashboard";
+  const persona = personaForPermissions(permissions);
+  const groups = visibleNavGroups(permissions, modules, navAllowed);
+  const showMyClasses = persona === "incharge" || persona === "teacher";
 
-  // One unified workspace shell across EVERY /dashboard route. The home index is
-  // the chat-first command center; module pages render their content inside the
-  // same slim-nav + workspace topbar (page mode) so navigating never jumps to a
-  // different-looking layout.
   return (
     <div className="sn-app">
       <SkipLink />
       <AppBackground />
       <DemoDataBanner />
       <main id="main-content" tabIndex={-1}>
-        <WorkspaceRoot
-          userName={user.full_name}
-          role={user.role}
-          permissions={permissions}
-          institution={schoolDisplayName}
-          modules={modules}
-          settingsHref="/dashboard/settings"
-          homeHref="/dashboard"
-          pageTitle={isHome ? undefined : pageTitleForPath(pathname)}
-        >
-          {isHome ? undefined : <RouteGuard>{children}</RouteGuard>}
-        </WorkspaceRoot>
+        <AssistantProvider base="/dashboard">
+          <AppShell
+            title={pageTitleForPath(pathname)}
+            institution={schoolName.trim()}
+            homeHref="/dashboard"
+            groups={groups}
+            myClassesHref={showMyClasses ? "/dashboard#my-classes" : undefined}
+            settingsHref={permissions?.can_use_settings ? "/dashboard/settings" : undefined}
+            staffSearch
+            permissions={permissions}
+          >
+            <RouteGuard>{children}</RouteGuard>
+          </AppShell>
+        </AssistantProvider>
       </main>
     </div>
   );

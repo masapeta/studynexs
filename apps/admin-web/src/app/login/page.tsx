@@ -8,6 +8,7 @@ import { PLATFORM_MOTION } from "@/lib/platform-motion";
 import { useAuth } from "@/lib/auth-context";
 import { apiAuth, getAccessTokenFromAuthResponse, getApiErrorMessage } from "@/lib/api";
 import { DEMO_LOGINS, DemoPortalKey, homePathAfterLogin } from "@/lib/portal";
+import { demoLoginEnabled } from "@/lib/deployment-tier";
 import { ArrowLeft, Lock, RotateCcw, Smartphone } from "lucide-react";
 import { DemoDataBanner } from "@/components/DemoDataBanner";
 
@@ -31,14 +32,16 @@ function LoginPageInner() {
   const [devOtp, setDevOtp] = useState("");
 
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const showDemoPicker = demoLoginEnabled();
 
+  // ?portal= only opens the password step; demo usernames prefill only on demo-enabled tiers.
   const applyPortalFromQuery = (portal: string | null) => {
     if (portal === "parent" || portal === "student" || portal === "teacher" || portal === "staff") {
-      setPortalTab(portal);
       setStep("password");
-      const creds = DEMO_LOGINS[portal];
-      setUsername(creds.username);
-      setPassword(creds.password);
+      if (showDemoPicker) {
+        setPortalTab(portal);
+        setUsername(DEMO_LOGINS[portal].username);
+      }
     }
   };
 
@@ -56,9 +59,8 @@ function LoginPageInner() {
 
   const applyPortalTab = (key: DemoPortalKey) => {
     setPortalTab(key);
-    const creds = DEMO_LOGINS[key];
-    setUsername(creds.username);
-    setPassword(creds.password);
+    setUsername(DEMO_LOGINS[key].username);
+    setPassword("");
     setStep("password");
     setError("");
   };
@@ -353,35 +355,39 @@ function LoginPageInner() {
             <h1 className="mkt-h3" style={{ fontSize: "1.5rem" }}>
               Sign in
             </h1>
-            <p style={{ color: "var(--mkt-gray-500)", fontSize: "0.88rem", margin: "0.5rem 0 1rem" }}>
-              Demo logins — select a portal
-            </p>
+            {showDemoPicker && (
+              <>
+                <p style={{ color: "var(--mkt-gray-500)", fontSize: "0.88rem", margin: "0.5rem 0 1rem" }}>
+                  Demo accounts — select a portal (ask your StudyNexs contact for the password)
+                </p>
 
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "0.4rem",
-                marginBottom: "1rem",
-              }}
-              role="tablist"
-            >
-              {(Object.keys(DEMO_LOGINS) as DemoPortalKey[]).map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  role="tab"
-                  aria-selected={portalTab === key}
-                  className={`mkt-btn mkt-btn--sm${portalTab === key ? " mkt-btn--primary" : " mkt-btn--glass"}`}
-                  onClick={() => applyPortalTab(key)}
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "0.4rem",
+                    marginBottom: "1rem",
+                  }}
+                  role="tablist"
                 >
-                  {key === "staff" ? "Admin" : key.charAt(0).toUpperCase() + key.slice(1)}
-                </button>
-              ))}
-            </div>
-            <p style={{ fontSize: "0.78rem", color: "var(--mkt-gray-500)", marginBottom: "1rem" }}>
-              {DEMO_LOGINS[portalTab].label} · <code>{DEMO_LOGINS[portalTab].username}</code>
-            </p>
+                  {(Object.keys(DEMO_LOGINS) as DemoPortalKey[]).map((key) => (
+                    <button
+                      key={key}
+                      type="button"
+                      role="tab"
+                      aria-selected={portalTab === key}
+                      className={`mkt-btn mkt-btn--sm${portalTab === key ? " mkt-btn--primary" : " mkt-btn--glass"}`}
+                      onClick={() => applyPortalTab(key)}
+                    >
+                      {key === "staff" ? "Admin" : key.charAt(0).toUpperCase() + key.slice(1)}
+                    </button>
+                  ))}
+                </div>
+                <p style={{ fontSize: "0.78rem", color: "var(--mkt-gray-500)", marginBottom: "1rem" }}>
+                  {DEMO_LOGINS[portalTab].label} · <code>{DEMO_LOGINS[portalTab].username}</code>
+                </p>
+              </>
+            )}
 
             <div className="mkt-form-group">
               <label className="mkt-form-label" htmlFor="username-input">

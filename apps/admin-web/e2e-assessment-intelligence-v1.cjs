@@ -26,6 +26,7 @@
 const { chromium } = require("playwright");
 const fs = require("fs");
 const path = require("path");
+const { e2ePassword } = require("./e2e-harness-utils.cjs");
 const {
   REFERENCE_TENANT,
   requireReferenceTenant,
@@ -164,7 +165,7 @@ async function assertNotLoginScreen(page, label) {
 }
 
 async function authenticateStaff(page) {
-  const accessToken = await loginViaApi(page, "principal", "Demo@1234");
+  const accessToken = await loginViaApi(page, "principal", e2ePassword("principal"));
   await installSession(page, accessToken);
   await page.goto(`${BASE}/dashboard`, { waitUntil: "domcontentloaded" });
   await waitForPageReady(page);

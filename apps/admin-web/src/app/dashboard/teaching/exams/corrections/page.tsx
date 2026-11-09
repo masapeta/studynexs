@@ -16,6 +16,7 @@ export default function CorrectionsPage() {
   const [students, setStudents] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [namesNotice, setNamesNotice] = useState("");
 
   useEffect(() => {
     api("/api/v1/academic/classes?page_size=100")
@@ -24,28 +25,37 @@ export default function CorrectionsPage() {
         setClasses(items);
         if (items[0]) setClassId(items[0].id);
       })
-      .catch(() => {});
+      .catch((e) => setError(getApiErrorMessage(e, "Failed to load classes")));
   }, []);
 
   useEffect(() => {
     if (!classId) return;
     setLoading(true);
     setError("");
-    Promise.all([
+    setNamesNotice("");
+    // Names are optional: a roster the user may not read must not hide the corrections.
+    Promise.allSettled([
       api(`/api/v1/exams/corrections?class_id=${classId}&limit=200`),
       api(`/api/v1/exams/misconceptions?class_id=${classId}&limit=50`),
-      api(`/api/v1/academic/students?class_id=${classId}&page_size=200`),
+      api(`/api/v1/academic/students?class_id=${classId}&page_size=100`),
     ])
       .then(([corrRes, miscRes, stuRes]) => {
-        setRows(corrRes.data || []);
-        setMisconceptions(miscRes.data || []);
+        if (corrRes.status === "fulfilled") setRows(corrRes.value.data || []);
+        else {
+          setRows([]);
+          setError(getApiErrorMessage(corrRes.reason, "Failed to load corrections"));
+        }
+        setMisconceptions(miscRes.status === "fulfilled" ? miscRes.value.data || [] : []);
         const map: Record<string, string> = {};
-        (stuRes.items || stuRes.data || []).forEach((s: any) => {
-          map[s.id] = s.student_name || s.full_name || s.roll_no || s.id.slice(0, 8);
-        });
+        if (stuRes.status === "fulfilled") {
+          (stuRes.value.items || stuRes.value.data || []).forEach((s: any) => {
+            map[s.id] = s.student_name || s.full_name || s.roll_no || s.id.slice(0, 8);
+          });
+        } else {
+          setNamesNotice("Student names are shown to class incharges. Showing student references.");
+        }
         setStudents(map);
       })
-      .catch((e) => setError(getApiErrorMessage(e, "Failed to load corrections")))
       .finally(() => setLoading(false));
   }, [classId]);
 
@@ -74,6 +84,7 @@ export default function CorrectionsPage() {
       </div>
 
       {error && <div className="card sn-inline-alert sn-inline-alert--error">{error}</div>}
+      {namesNotice && <div className="card sn-info-banner">{namesNotice}</div>}
 
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         <table className="data-table">
@@ -99,7 +110,7 @@ export default function CorrectionsPage() {
               <tr key={`${r.evaluation_id}-${r.question_no}-${i}`}>
                 <td style={{ fontSize: 13 }}>{r.topic || "—"}</td>
                 <td>{r.exam_title}</td>
-                <td>{students[r.student_id] || "—"}</td>
+                <td>{students[r.student_id] || `Student ${String(r.student_id).slice(0, 8)}`}</td>
                 <td style={{ fontWeight: 600 }}>{r.question_no}</td>
                 <td>{r.ai_marks}</td>
                 <td style={{ fontWeight: r.ai_marks !== r.teacher_marks ? 700 : 400, color: r.ai_marks !== r.teacher_marks ? "var(--primary)" : undefined }}>

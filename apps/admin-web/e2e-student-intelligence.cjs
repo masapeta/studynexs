@@ -10,6 +10,7 @@
 const { chromium } = require("playwright");
 const fs = require("fs");
 const path = require("path");
+const { e2ePassword } = require("./e2e-harness-utils.cjs");
 const {
   REFERENCE_TENANT,
   requireReferenceTenant,
@@ -117,7 +118,7 @@ async function apiGet(page, token, pathName) {
 
   let fails = 0;
   try {
-    const token = await loginViaApi(page, "student_demo", "Demo@1234");
+    const token = await loginViaApi(page, "student_demo", e2ePassword("student_demo"));
     const portal = await apiGet(page, token, "/api/v1/portal/context");
     const studentId = portal.student_id || portal.children?.[0]?.student_id;
     if (!studentId) throw new Error("student_demo has no student_id");

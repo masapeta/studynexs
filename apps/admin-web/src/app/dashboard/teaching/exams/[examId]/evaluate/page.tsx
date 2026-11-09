@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { api, API_URL, getAccessToken, getApiErrorMessage, getTenantSlug } from "@/lib/api";
-import { AppSelect } from "@/components/ui/AppSelect";
+import { ClipboardCheck } from "lucide-react";
+import { api, API_URL, errorDetailText, getAccessToken, getApiErrorMessage, getTenantSlug } from "@/lib/api";
 import { PageHeaderCard } from "@/components/layout/PageHeaderCard";
-import { AppFileInput } from "@/components/ui/AppFileInput";
+import { EmptyState } from "@/components/ui/kit";
 import { TEACHING } from "@/lib/dashboard-routes";
 import {
   buildAeiEvaluationTrustSummary,
@@ -23,11 +23,6 @@ type ApiDataResponse<T> = {
   data: T;
 };
 
-type ApiCollectionResponse<T> = {
-  data?: T[];
-  items?: T[];
-};
-
 type UploadResponse = {
   data: {
     id: string;
@@ -39,10 +34,6 @@ type JobStatusResponse = {
     status?: string;
     error?: string;
   };
-};
-
-type ClassRow = {
-  id: string;
 };
 
 type ExamRow = {
@@ -57,12 +48,58 @@ type QuestionRow = {
   max_marks: string | number;
 };
 
-type StudentRow = {
-  id: string;
-  student_name?: string | null;
-  full_name?: string | null;
-  roll_no?: string | number | null;
+type SubmissionRow = {
+  student_id: string;
+  student_name: string;
+  roll_no?: string | null;
+  status: string;
+  evaluation_id?: string | null;
+  page_count: number;
+  latest_version_no?: number | null;
+  published_version_no?: number | null;
+  changed_since_release: boolean;
 };
+
+// P-R4 (server enforces the same limits).
+const MAX_PAGES = 12;
+const MAX_TOTAL_BYTES = 60 * 1024 * 1024;
+
+function validateAnswerSheetPages(pages: File[]): string | null {
+  if (pages.length > MAX_PAGES) return `An answer sheet can have at most ${MAX_PAGES} pages.`;
+  let total = 0;
+  for (const [i, page] of pages.entries()) {
+    const err = validateAnswerSheetFile(page);
+    if (err) return `Page ${i + 1}: ${err}`;
+    total += page.size;
+  }
+  if (total > MAX_TOTAL_BYTES) return "The answer sheet exceeds the 60 MB total limit.";
+  return null;
+}
+
+function submissionLabel(s: SubmissionRow): string {
+  if (s.changed_since_release) return "Changed since release";
+  if (s.published_version_no) return "Released";
+  switch (s.status) {
+    case "approved":
+      return "Approved";
+    case "suggested":
+      return "Review";
+    case "processing":
+    case "pending":
+      return "Processing";
+    case "failed":
+      return "Failed";
+    default:
+      return "Not submitted";
+  }
+}
+
+function submissionTone(s: SubmissionRow): "success" | "warning" | "danger" | "info" {
+  if (s.changed_since_release) return "warning";
+  if (s.published_version_no || s.status === "approved") return "success";
+  if (s.status === "failed") return "danger";
+  return "info";
+}
 
 type EvaluationRow = EvaluationEvidence & EvaluationWithOverrides & {
   id: string;
@@ -86,7 +123,9 @@ async function uploadAnswerSheet(file: File): Promise<string> {
     body: form,
     credentials: "include",
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    throw new Error(`${file.name}: ${errorDetailText(await res.text()) || "Upload failed"}`);
+  }
   const body = (await res.json()) as UploadResponse;
   return body.data.id;
 }
@@ -123,12 +162,14 @@ export default function EvaluateExamPage() {
   const examId = params.examId as string;
 
   const [exam, setExam] = useState<ExamRow | null>(null);
-  const [students, setStudents] = useState<StudentRow[]>([]);
+  const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
   const [questions, setQuestions] = useState<QuestionRow[]>([]);
   const [evaluations, setEvaluations] = useState<EvaluationRow[]>([]);
   const [selectedStudent, setSelectedStudent] = useState("");
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [sheetFile, setSheetFile] = useState<File | null>(null);
+  const [sheetPages, setSheetPages] = useState<File[]>([]);
+  const [reopenReason, setReopenReason] = useState("");
+  const [reopening, setReopening] = useState(false);
   const [activeEval, setActiveEval] = useState<EvaluationRow | null>(null);
   const [overrides, setOverrides] = useState<Record<string, string>>({});
   const [overrideReasons, setOverrideReasons] = useState<Record<string, string>>({});
@@ -137,6 +178,7 @@ export default function EvaluateExamPage() {
   const [running, setRunning] = useState(false);
   const [approving, setApproving] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   useEffect(() => {
     if (!examId) return;
@@ -144,27 +186,20 @@ export default function EvaluateExamPage() {
     async function loadInitialExamData() {
       setLoading(true);
       setError("");
-      const classesRes = await api<ApiCollectionResponse<ClassRow>>("/api/v1/academic/classes?page_size=100");
-      const classes = classesRes.items || classesRes.data || [];
-
-      for (const c of classes) {
-        const exRes = await api<ApiCollectionResponse<ExamRow>>(`/api/v1/exams?class_id=${c.id}`)
-          .catch(() => ({ data: [] as ExamRow[] }));
-        const found = (exRes.data || []).find((e) => e.id === examId);
-        if (!found) continue;
-        setExam({ ...found, class_id: c.id });
-        const [qRes, evRes, stuRes] = await Promise.all([
-          api<ApiDataResponse<QuestionRow[]>>(`/api/v1/exams/${examId}/questions`),
-          api<ApiDataResponse<EvaluationRow[]>>(`/api/v1/exams/${examId}/evaluations`),
-          api<ApiCollectionResponse<StudentRow>>(`/api/v1/academic/students?class_id=${c.id}&page_size=100`),
-        ]);
-        const qs = qRes.data || [];
-        setQuestions(qs);
-        setEvaluations(evRes.data || []);
-        setStudents(stuRes.items || stuRes.data || []);
-        setAnswers(buildInitialAnswers(qs));
-        break;
-      }
+      // Exam + per-student submissions come from exam-scoped endpoints, so a pure subject
+      // teacher (no class-roster access) gets the same hub as the class incharge.
+      const [exRes, qRes, evRes, subRes] = await Promise.all([
+        api<ApiDataResponse<ExamRow>>(`/api/v1/exams/${examId}`),
+        api<ApiDataResponse<QuestionRow[]>>(`/api/v1/exams/${examId}/questions`),
+        api<ApiDataResponse<EvaluationRow[]>>(`/api/v1/exams/${examId}/evaluations`),
+        api<ApiDataResponse<SubmissionRow[]>>(`/api/v1/exams/${examId}/submissions`),
+      ]);
+      setExam(exRes.data);
+      const qs = qRes.data || [];
+      setQuestions(qs);
+      setEvaluations(evRes.data || []);
+      setSubmissions(subRes.data || []);
+      setAnswers(buildInitialAnswers(qs));
     }
 
     loadInitialExamData()
@@ -184,28 +219,27 @@ export default function EvaluateExamPage() {
       return;
     }
     const hasAnswers = Object.values(answers).some((v) => v.trim());
-    if (!sheetFile && !hasAnswers) {
-      setError("Upload an answer sheet photo or enter answers manually.");
+    if (sheetPages.length === 0 && !hasAnswers) {
+      setError("Upload answer sheet pages or enter answers manually.");
+      return;
+    }
+    const pagesErr = validateAnswerSheetPages(sheetPages);
+    if (pagesErr) {
+      setError(pagesErr);
       return;
     }
     setRunning(true);
     setError("");
     try {
-      let fileId: string | undefined;
-      if (sheetFile) {
-        const fileErr = validateAnswerSheetFile(sheetFile);
-        if (fileErr) {
-          setError(fileErr);
-          setRunning(false);
-          return;
-        }
-        fileId = await uploadAnswerSheet(sheetFile);
+      const pageFileIds: string[] = [];
+      for (const page of sheetPages) {
+        pageFileIds.push(await uploadAnswerSheet(page));
       }
       const res = await api<ApiDataResponse<EvaluationRow>>(`/api/v1/exams/${examId}/evaluations`, {
         method: "POST",
         body: JSON.stringify({
           student_id: selectedStudent,
-          file_id: fileId,
+          page_file_ids: pageFileIds.length ? pageFileIds : undefined,
           student_answers: answers,
         }),
       });
@@ -282,7 +316,10 @@ export default function EvaluateExamPage() {
       setOverrideReasons(buildOverrideReasons(res.data));
       setManualReviewAcknowledgements(buildManualReviewAcknowledgements(res.data));
       setEvaluations((evs) => evs.map((e) => (e.id === res.data.id ? res.data : e)));
-      alert("Marks approved. Weak topics updated in mastery; misconceptions saved to library.");
+      await refreshSubmissions();
+      setNotice(
+        "Marks approved and saved. Students and parents see them only after the class incharge releases results."
+      );
     } catch (e) {
       setError(getApiErrorMessage(e, "Approve failed"));
     } finally {
@@ -290,29 +327,91 @@ export default function EvaluateExamPage() {
     }
   }
 
+  async function refreshSubmissions() {
+    const subRes = await api<ApiDataResponse<SubmissionRow[]>>(`/api/v1/exams/${examId}/submissions`);
+    setSubmissions(subRes.data || []);
+  }
+
+  async function reopenEvaluation() {
+    if (!activeEval) return;
+    const reason = reopenReason.trim();
+    if (reason.length < 3) {
+      setError("Give a short reason for reopening (at least 3 characters).");
+      return;
+    }
+    setReopening(true);
+    setError("");
+    try {
+      const res = await api<ApiDataResponse<EvaluationRow>>(
+        `/api/v1/exams/evaluations/${activeEval.id}/reopen`,
+        { method: "POST", body: JSON.stringify({ reason }) }
+      );
+      setActiveEval(res.data);
+      setEvaluations((evs) => evs.map((e) => (e.id === res.data.id ? res.data : e)));
+      setOverrides(buildOverrideMarks(res.data));
+      setOverrideReasons(buildOverrideReasons(res.data));
+      setManualReviewAcknowledgements(buildManualReviewAcknowledgements(res.data));
+      setReopenReason("");
+      await refreshSubmissions();
+      setNotice(
+        "Evaluation reopened. Released marks stay visible to families until you re-approve and the results are re-released."
+      );
+    } catch (e) {
+      setError(getApiErrorMessage(e, "Reopen failed"));
+    } finally {
+      setReopening(false);
+    }
+  }
+
   function loadEval(ev: EvaluationRow) {
     setActiveEval(ev);
     setSelectedStudent(ev.student_id);
-    setSheetFile(null);
+    setSheetPages([]);
     setAnswers(buildInitialAnswers(questions));
     setOverrides(buildOverrideMarks(ev));
     setOverrideReasons(buildOverrideReasons(ev));
     setManualReviewAcknowledgements(buildManualReviewAcknowledgements(ev));
+    setNotice("");
   }
 
   function startNewEvaluation() {
     setActiveEval(null);
     setSelectedStudent("");
-    setSheetFile(null);
+    setSheetPages([]);
     setAnswers(buildInitialAnswers(questions));
     setOverrides({});
     setOverrideReasons({});
     setManualReviewAcknowledgements({});
     setError("");
+    setNotice("");
+  }
+
+  function selectStudent(studentId: string) {
+    const ev = evaluations.find((e) => e.student_id === studentId);
+    if (ev && ev.status !== "processing") {
+      loadEval(ev);
+      return;
+    }
+    startNewEvaluation();
+    setSelectedStudent(studentId);
+  }
+
+  function addPages(files: File[]) {
+    setSheetPages((pages) => [...pages, ...files].slice(0, MAX_PAGES + 1));
+  }
+
+  function movePage(index: number, delta: number) {
+    setSheetPages((pages) => {
+      const next = [...pages];
+      const target = index + delta;
+      if (target < 0 || target >= next.length) return pages;
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
   }
 
   const studentName = (id: string) =>
-    students.find((s) => s.id === id)?.student_name || students.find((s) => s.id === id)?.full_name || id.slice(0, 8);
+    submissions.find((s) => s.student_id === id)?.student_name || `Student ${id.slice(0, 8)}`;
 
   if (loading) {
     return <div className="card" style={{ padding: 40, textAlign: "center" }}><div className="spinner" style={{ margin: "0 auto" }} /></div>;
@@ -331,15 +430,21 @@ export default function EvaluateExamPage() {
     <>
       <PageHeaderCard
         title="Evaluate answer sheets"
-        subtitle={`${exam?.title || "Exam"} · Review AI-suggested marks before publishing`}
+        subtitle={`${exam?.title || "Exam"} · Approved marks stay private until results are released`}
       >
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Link href={TEACHING.results(examId)} className="btn btn-ghost gw-btn-sm">Results &amp; release</Link>
           <Link href={TEACHING.corrections} className="btn btn-ghost gw-btn-sm">Past corrections</Link>
           <button type="button" className="btn btn-ghost gw-btn-sm" onClick={() => router.push(TEACHING.exams)}>← Exams</button>
         </div>
       </PageHeaderCard>
 
-      {error && <div className="card sn-inline-alert sn-inline-alert--error">{error}</div>}
+      {error && <div className="card sn-inline-alert sn-inline-alert--error" role="alert">{error}</div>}
+      {notice && (
+        <div className="card sn-inline-alert sn-success-pulse" role="status" style={{ marginBottom: 16 }}>
+          {notice}
+        </div>
+      )}
 
       {evaluations.some((e) => e.status === "suggested") && (
         <div
@@ -355,61 +460,85 @@ export default function EvaluateExamPage() {
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 20 }}>
+      <div className="sn-eval-grid">
         <div className="card" style={{ padding: 16 }}>
-          <div className="stat-label" style={{ marginBottom: 8 }}>Students</div>
-          <AppSelect
-            variant="field"
-            value={selectedStudent}
-            onChange={setSelectedStudent}
-            aria-label="Select student"
-            placeholder="Select student…"
-            style={{ marginBottom: 12 }}
-            options={[
-              { value: "", label: "Select student…" },
-              ...students.map((s) => ({
-                value: s.id,
-                label: `${s.roll_no ? `${s.roll_no} · ` : ""}${s.student_name || s.full_name || "Student"}`,
-              })),
-            ]}
-          />
-          <div className="stat-label" style={{ marginBottom: 8 }}>Recent evaluations</div>
-          {evaluations.length === 0 ? (
-            <p style={{ fontSize: 13, color: "var(--text-muted)" }}>None yet.</p>
-          ) : evaluations.map((ev) => (
-            <button
-              key={ev.id}
-              type="button"
-              className="btn btn-ghost"
-              style={{ ...btn, width: "100%", justifyContent: "flex-start", marginBottom: 6, fontSize: 12 }}
-              onClick={() => loadEval(ev)}
-            >
-              {studentName(ev.student_id)} — {ev.status}
-            </button>
-          ))}
+          <div className="stat-label" style={{ marginBottom: 8 }} id="eval-students-label">
+            Students ({submissions.filter((s) => s.status === "approved").length}/{submissions.length} approved)
+          </div>
+          {submissions.length === 0 ? (
+            <p style={{ fontSize: 13, color: "var(--text-muted)" }}>No active students in this class.</p>
+          ) : (
+            <ul aria-labelledby="eval-students-label" style={{ listStyle: "none", margin: 0, padding: 0 }}>
+              {submissions.map((s) => (
+                <li key={s.student_id}>
+                  <button
+                    type="button"
+                    className={`btn btn-ghost${selectedStudent === s.student_id ? " is-active" : ""}`}
+                    aria-pressed={selectedStudent === s.student_id}
+                    style={{ ...btn, width: "100%", justifyContent: "space-between", marginBottom: 6, fontSize: 12, gap: 8 }}
+                    onClick={() => selectStudent(s.student_id)}
+                  >
+                    <span style={{ textAlign: "left" }}>
+                      {s.roll_no ? `${s.roll_no} · ` : ""}{s.student_name}
+                    </span>
+                    <span className={`badge badge-${submissionTone(s)}`}>{submissionLabel(s)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         <div className="card" style={{ padding: 20 }}>
-          {!activeEval || activeEval.status === "processing" ? (
+          {!selectedStudent && !activeEval ? (
+            <EmptyState
+              icon={ClipboardCheck}
+              title="Choose a student"
+              message="Pick a student on the left to upload their answer sheet or review suggested marks."
+            />
+          ) : !activeEval || activeEval.status === "processing" ? (
             <>
+              <div style={{ marginBottom: 4, fontWeight: 600 }}>{studentName(selectedStudent)}</div>
               <div style={{ marginBottom: 16 }}>
-                <div className="stat-label" style={{ marginBottom: 8 }}>Answer sheet photo</div>
-                <AppFileInput
-                  variant="field"
+                <label className="stat-label" htmlFor="sheet-pages" style={{ display: "block", marginBottom: 8 }}>
+                  Answer sheet pages (up to {MAX_PAGES}, JPEG / PNG / WebP, 5 MB each)
+                </label>
+                <input
+                  id="sheet-pages"
+                  type="file"
+                  multiple
                   accept="image/jpeg,image/png,image/webp"
-                  file={sheetFile}
-                  onChange={setSheetFile}
-                  placeholder="Choose JPEG, PNG, or WebP"
-                  aria-label="Answer sheet photo"
+                  className="form-input"
+                  onChange={(e) => {
+                    addPages(Array.from(e.target.files || []));
+                    e.target.value = "";
+                  }}
                 />
-                {sheetFile && (
-                  <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 6 }}>
-                    Vision OCR will transcribe answers from this sheet.
-                  </p>
+                {sheetPages.length > 0 && (
+                  <ol className="sn-page-strip" aria-label="Answer sheet pages in order">
+                    {sheetPages.map((page, i) => (
+                      <li key={`${page.name}-${i}`} className="sn-page-strip__item">
+                        <span>Page {i + 1}: {page.name} ({Math.ceil(page.size / 1024)} KB)</span>
+                        <span style={{ display: "flex", gap: 4 }}>
+                          <button type="button" className="btn btn-ghost gw-btn-sm" onClick={() => movePage(i, -1)}
+                            disabled={i === 0} aria-label={`Move page ${i + 1} up`}>↑</button>
+                          <button type="button" className="btn btn-ghost gw-btn-sm" onClick={() => movePage(i, 1)}
+                            disabled={i === sheetPages.length - 1} aria-label={`Move page ${i + 1} down`}>↓</button>
+                          <button type="button" className="btn btn-ghost gw-btn-sm"
+                            onClick={() => setSheetPages((p) => p.filter((_, j) => j !== i))}
+                            aria-label={`Remove page ${i + 1}`}>Remove</button>
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
                 )}
+                <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 6 }}>
+                  Automatic reading of sheets is not switched on for your school. Type the student&apos;s
+                  answers below; the pages are kept with the evaluation for review.
+                </p>
               </div>
               <p style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 12 }}>
-                Optional: override or fill gaps with manual answers per question.
+                Enter the student&apos;s answer for each question.
               </p>
               <table className="data-table">
                 <thead><tr><th>Q</th><th>Max</th><th>Override answer</th></tr></thead>
@@ -429,7 +558,8 @@ export default function EvaluateExamPage() {
                             })
                           }
                           maxLength={AI_INPUT.answerMaxLength}
-                          placeholder="Optional override"
+                          placeholder="Student's answer"
+                          aria-label={`Answer for question ${q.no}`}
                           style={{ width: "100%" }}
                         />
                       </td>
@@ -438,7 +568,7 @@ export default function EvaluateExamPage() {
                 </tbody>
               </table>
               <button className="btn btn-primary" style={{ ...btn, marginTop: 16 }} onClick={runEvaluation} disabled={running}>
-                {running ? "Evaluating (async)…" : "Upload & evaluate"}
+                {running ? "Evaluating…" : "Evaluate"}
               </button>
             </>
           ) : (
@@ -567,6 +697,28 @@ export default function EvaluateExamPage() {
                     {approving ? "Saving…" : "Approve marks"}
                   </button>
                   <button className="btn btn-ghost" style={btn} onClick={startNewEvaluation}>New evaluation</button>
+                </div>
+              )}
+              {activeEval.status === "approved" && (
+                <div className="card" style={{ marginTop: 16, padding: 12 }}>
+                  <label htmlFor="reopen-reason" className="stat-label" style={{ display: "block", marginBottom: 6 }}>
+                    Reopen for re-evaluation (class incharge or administrator)
+                  </label>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <input
+                      id="reopen-reason"
+                      className="form-input"
+                      value={reopenReason}
+                      maxLength={500}
+                      onChange={(e) => setReopenReason(e.target.value)}
+                      placeholder="Reason, e.g. Recheck Q3 after parent query"
+                      style={{ flex: "1 1 240px" }}
+                    />
+                    <button type="button" className="btn btn-ghost" style={btn} onClick={reopenEvaluation}
+                      disabled={reopening}>
+                      {reopening ? "Reopening…" : "Reopen"}
+                    </button>
+                  </div>
                 </div>
               )}
             </>

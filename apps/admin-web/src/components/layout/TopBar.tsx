@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Bell, Calendar, ChevronDown, CircleHelp, GraduationCap, LogOut, Settings } from "lucide-react";
 import { api } from "@/lib/api";
 import { PersonMono } from "@/components/briefing/PersonMono";
-import { roleLabel } from "@/lib/permissions";
+import { roleLabel, type UserPermissions } from "@/lib/permissions";
 import { todayCompact } from "@/lib/format";
 import { TopBarSearch } from "./GlobalSearch";
 
@@ -22,12 +22,30 @@ type Props = {
   userName: string;
   userRole: string;
   academicLabel: string;
+  title?: string;
+  institution?: string;
+  settingsHref?: string | null;
+  /** Staff get ⌘K search; portals don't (E16: search is staff-only). */
+  search?: { permissions: UserPermissions | null; conversationHref: (id: string) => string } | null;
   showSettings?: boolean;
   onLogout: () => void | Promise<void>;
 };
 
+function safeAppPath(link?: string | null): string | null {
+  return link && link.startsWith("/") && !link.startsWith("//") ? link : null;
+}
 
-export function TopBar({ userName, userRole, academicLabel, showSettings = true, onLogout }: Props) {
+export function TopBar({
+  userName,
+  userRole,
+  academicLabel,
+  title,
+  institution,
+  settingsHref = "/dashboard/settings",
+  search = null,
+  showSettings = true,
+  onLogout,
+}: Props) {
   const [scrolled, setScrolled] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -67,7 +85,7 @@ export function TopBar({ userName, userRole, academicLabel, showSettings = true,
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+      if (search && (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setSearchOpen(true);
       }
@@ -79,7 +97,7 @@ export function TopBar({ userName, userRole, academicLabel, showSettings = true,
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [search]);
 
   useEffect(() => {
     if (!notifOpen) return;
@@ -123,6 +141,9 @@ export function TopBar({ userName, userRole, academicLabel, showSettings = true,
     <>
       <header className={`header topbar${scrolled ? " topbar--scrolled" : ""}`}>
         <div className="topbar-left">
+          {title ? <span className="sn-shell-title">{title}</span> : null}
+          <span className="sn-ws-badge">{roleLabel(userRole)}</span>
+          {institution ? <span className="sn-shell-institution">{institution}</span> : null}
           {academicLabel ? (
             <div className="topbar-chip topbar-chip--static topbar-context-chip">
               <GraduationCap size={14} aria-hidden />
@@ -136,7 +157,14 @@ export function TopBar({ userName, userRole, academicLabel, showSettings = true,
         </div>
 
         <div className="topbar-center">
-          <TopBarSearch open={searchOpen} onOpenChange={setSearchOpen} />
+          {search ? (
+            <TopBarSearch
+              open={searchOpen}
+              onOpenChange={setSearchOpen}
+              permissions={search.permissions}
+              conversationHref={search.conversationHref}
+            />
+          ) : null}
         </div>
 
         <div className="topbar-actions">
@@ -167,15 +195,23 @@ export function TopBar({ userName, userRole, academicLabel, showSettings = true,
                   {notifications.length === 0 ? (
                     <p className="topbar-notif-empty">No notifications yet</p>
                   ) : (
-                    notifications.map((n) => (
-                      <div
-                        key={n.id}
-                        className={`topbar-notif-item ${n.is_read ? "" : "unread"}`}
-                      >
-                        <div className="topbar-notif-item-title">{n.title}</div>
-                        <div className="topbar-notif-item-body">{n.body}</div>
-                      </div>
-                    ))
+                    notifications.map((n) => {
+                      const href = safeAppPath(n.link);
+                      const body = (
+                        <>
+                          <div className="topbar-notif-item-title">{n.title}</div>
+                          <div className="topbar-notif-item-body">{n.body}</div>
+                        </>
+                      );
+                      const cls = `topbar-notif-item ${n.is_read ? "" : "unread"}`;
+                      return href ? (
+                        <Link key={n.id} href={href} className={cls} onClick={() => setNotifOpen(false)}>
+                          {body}
+                        </Link>
+                      ) : (
+                        <div key={n.id} className={cls}>{body}</div>
+                      );
+                    })
                   )}
                 </div>
               </div>
@@ -213,9 +249,9 @@ export function TopBar({ userName, userRole, academicLabel, showSettings = true,
                   </div>
                 </div>
                 <div className="topbar-profile-menu-divider" />
-                {showSettings && (
+                {showSettings && settingsHref && (
                   <Link
-                    href="/dashboard/settings"
+                    href={settingsHref}
                     className="topbar-profile-item"
                     role="menuitem"
                     onClick={() => setProfileOpen(false)}

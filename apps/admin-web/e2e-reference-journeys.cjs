@@ -10,6 +10,7 @@ const fs = require("fs");
 const path = require("path");
 const {
   REFERENCE_TENANT,
+  e2ePassword,
   requireReferenceTenant,
   attachConsoleGuard,
   attachTenantTracker,
@@ -26,6 +27,7 @@ requireReferenceTenant(TENANT);
 const PERSONAS = [
   {
     key: "principal",
+    username: "principal",
     portal: "staff",
     homePattern: "**/dashboard**",
     routes: [
@@ -36,6 +38,7 @@ const PERSONAS = [
   },
   {
     key: "teacher",
+    username: "teacher6",
     portal: "teacher",
     homePattern: "**/teacher**",
     routes: [
@@ -47,12 +50,14 @@ const PERSONAS = [
   },
   {
     key: "parent",
+    username: "parent_demo",
     portal: "parent",
     homePattern: "**/parent**",
     routes: [{ url: "/parent", name: "parent-home", expect: ["Parent", "Child"] }],
   },
   {
     key: "student",
+    username: "student_demo",
     portal: "student",
     homePattern: "**/student**",
     routes: [
@@ -77,14 +82,13 @@ async function openPasswordLogin(page, portal) {
     }
     await username.waitFor({ state: "visible", timeout: 15000 });
   }
-  if (portal !== "staff") {
-    const tab = portal.charAt(0).toUpperCase() + portal.slice(1);
-    await page.getByRole("tab", { name: tab }).click();
-  }
 }
 
 async function uiLogin(page, persona) {
   await openPasswordLogin(page, persona.portal);
+  // Credentials come from the environment; the login page never prefills passwords.
+  await page.fill("#username-input", persona.username);
+  await page.fill("#password-input", e2ePassword(persona.username));
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.waitForURL(persona.homePattern, { timeout: 45000 });
 }

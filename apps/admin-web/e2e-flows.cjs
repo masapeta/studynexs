@@ -15,6 +15,7 @@
 const { chromium } = require("playwright");
 const fs = require("fs");
 const path = require("path");
+const { e2ePassword } = require("./e2e-harness-utils.cjs");
 
 const BASE = "http://localhost:3000";
 const SHOTS = path.join(process.env.TEMP || "/tmp", "sn-e2e-flows");
@@ -40,7 +41,7 @@ async function shot(page, name) {
     await page.goto(`${BASE}/login?portal=staff`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector("#username-input", { timeout: 15000 });
     await page.fill("#username-input", "principal");
-    await page.fill("#password-input", "Demo@1234");
+    await page.fill("#password-input", e2ePassword("principal"));
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
     await page.waitForURL("**/dashboard", { timeout: 20000 });
     await page.waitForLoadState("domcontentloaded");

@@ -159,6 +159,15 @@ export default function ParentChildPage() {
             />
           </div>
 
+          <div style={{ marginBottom: 16 }}>
+            <Card href={`/parent/child/${studentId}/results`}>
+              <strong>Exam results</strong>
+              <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
+                Results released by teachers. Learning insights appear after results are released.
+              </div>
+            </Card>
+          </div>
+
           <SectionHeader title="Parent Copilot" />
           <div style={{ marginBottom: 16 }}>
             <Card>
