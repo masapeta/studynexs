@@ -94,6 +94,12 @@
   color: var(--accent-dark); text-decoration: none; padding: 6px 10px; border-radius: 999px; background: var(--accent-50);
 }
 
+.sn-asst-row-link {
+  border: none; background: transparent; padding: 0; font: inherit; color: var(--accent-dark);
+  text-decoration: underline; text-underline-offset: 2px; cursor: pointer; text-align: left;
+}
+.sn-asst-row-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
 /* Drawers (history, record) */
 .sn-asst-drawer { position: fixed; inset: 0; z-index: 80; display: flex; }
 .sn-asst-drawer__scrim { position: absolute; inset: 0; background: rgba(15, 23, 42, 0.35); }

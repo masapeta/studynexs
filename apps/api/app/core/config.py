@@ -482,8 +482,10 @@ class Settings(BaseSettings):
             errors.append(
                 f"AI_DEFAULT_PROVIDER={self.AI_DEFAULT_PROVIDER!r} but its API key is not set"
             )
-        if self.AI_DEFAULT_PROVIDER == "stub":
-            errors.append("AI_DEFAULT_PROVIDER cannot be 'stub' in production")
+        if self.AI_DEFAULT_PROVIDER in ("stub", "e2e_scripted"):
+            errors.append(
+                f"AI_DEFAULT_PROVIDER cannot be {self.AI_DEFAULT_PROVIDER!r} in production"
+            )
 
         if not [k for k in self.AADHAAR_ENCRYPTION_KEYS if k.strip()]:
             errors.append(

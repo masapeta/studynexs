@@ -184,13 +184,17 @@ async def list_students(
 ):
     # Roster listing is staff-only — parents/students must not enumerate the school.
     scope = await get_staff_scope(db, current_user)
+    roster_class_ids: set[uuid.UUID] | None = None
     if class_id:
         assert_class_roster(scope, class_id)
-    elif scope.is_subject_only or scope.scoped_only:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Select a class you manage to view students",
-        )
+    elif scope.scoped_only:
+        # Roster visibility is incharge-only; subject teachers stay class-picker-only.
+        if not scope.incharge_class_ids:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Select a class you manage to view students",
+            )
+        roster_class_ids = set(scope.incharge_class_ids)
     service = AcademicService(db)
     students, total = await service.list_students(
         uuid.UUID(current_user.school_id),
@@ -198,11 +202,8 @@ async def list_students(
         page,
         page_size,
         search=search,
+        class_ids=roster_class_ids,
     )
-    if scope.scoped_only and class_id is None:
-        allowed = scope.all_class_ids() or set()
-        students = [s for s in students if s.class_id in allowed]
-        total = len(students)
     return PaginatedResponse(
         items=students,
         total=total,

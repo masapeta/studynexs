@@ -71,25 +71,17 @@ export function TopBarSearch({ open, onOpenChange, permissions, conversationHref
       setLoading(true);
       const enc = encodeURIComponent(term);
       const lower = term.toLowerCase();
-      const inchargeIds = inchargeKey ? inchargeKey.split(",") : [];
       try {
-        // Admin: school-wide student search. Incharge: per own class (server checks the roster).
+        // The server scopes this to the school (admin) or every class the user is incharge of.
         // Subject teachers have no student-search endpoint in v1 — classes and chats only.
-        const studentReqs: Promise<StudentRow[]>[] = isAdmin
-          ? [
-              api<{ items?: StudentRow[] }>(`/api/v1/academic/students?search=${enc}&page_size=5`)
-                .then((r) => r.items ?? [])
-                .catch(() => []),
-            ]
-          : inchargeIds.slice(0, 4).map((cid) =>
-              api<{ items?: StudentRow[] }>(
-                `/api/v1/academic/students?class_id=${cid}&search=${enc}&page_size=5`
-              )
+        const studentReq: Promise<StudentRow[]> =
+          isAdmin || inchargeKey
+            ? api<{ items?: StudentRow[] }>(`/api/v1/academic/students?search=${enc}&page_size=5`)
                 .then((r) => r.items ?? [])
                 .catch(() => [])
-            );
-        const [studentLists, staffRes, classesRes, sessions] = await Promise.all([
-          Promise.all(studentReqs),
+            : Promise.resolve([]);
+        const [studentRows, staffRes, classesRes, sessions] = await Promise.all([
+          studentReq,
           canSearchStaff
             ? api<{ items?: StaffRow[] }>(`/api/v1/users?search=${enc}&page_size=8`).catch(() => ({
                 items: [] as StaffRow[],
@@ -101,8 +93,7 @@ export function TopBarSearch({ open, onOpenChange, permissions, conversationHref
           listChatSessions().catch(() => []),
         ]);
 
-        const students: Result[] = studentLists
-          .flat()
+        const students: Result[] = studentRows
           .slice(0, 5)
           .map((s) => ({
             id: s.id,

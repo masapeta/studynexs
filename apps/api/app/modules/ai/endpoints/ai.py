@@ -936,6 +936,7 @@ def _to_report_out(r: ReportCard) -> ReportCardOut:
         student_name=r.student_name,
         class_name=r.class_name,
         subjects=r.subjects or [],
+        not_assessed=list(r.not_assessed or []),
         total_obtained=float(r.total_obtained or 0),
         total_max=float(r.total_max or 0),
         percentage=float(r.percentage or 0),

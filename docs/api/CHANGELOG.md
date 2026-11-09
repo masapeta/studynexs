@@ -2,6 +2,27 @@
 
 All notable changes to the public `/api/v1` contract.
 
+## [Unreleased]
+
+### Added
+
+- `GET /portal/timetable` — the signed-in student's class timetable
+- `GET /portal/child/{studentId}/timetable` — a linked child's class timetable
+- `GET /portal/report-cards` and `GET /portal/report-cards/{reportId}` — the signed-in
+  student's report cards
+- `GET /portal/child/{studentId}/report-cards` and
+  `GET /portal/child/{studentId}/report-cards/{reportId}` — a linked child's report cards
+- `not_assessed` (list of subject names) on report-card responses, including the staff
+  `/ai/report-cards*` endpoints (additive)
+
+### Security
+
+- `/portal/timetable` and `/portal/report-cards*` are student-only (own record);
+  `/portal/child/{studentId}/*` is parent-only and limited to linked children (`403` otherwise)
+- Learner report cards list only approved cards whose every included exam has published
+  results; figures reflect the published results, the remark is withheld (`remark_withheld`)
+  when they differ from the approved card, and an unavailable card returns `404`
+
 ## [1.1.0] - 2026-05-22
 
 ### Added

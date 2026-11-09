@@ -73,6 +73,25 @@ async def _consolidate_marks(
     ]
 
 
+async def _consolidated_exam_ids(
+    db: AsyncSession, *, school_id: uuid.UUID, student_id: uuid.UUID,
+    academic_year_id: uuid.UUID | None = None, exam_type: ExamType | None = None,
+) -> list[str]:
+    """Exams whose marks ``_consolidate_marks`` summed — the card's learner-release manifest."""
+    query = (
+        select(Exam.id)
+        .join(ExamMark, (ExamMark.exam_id == Exam.id) & (ExamMark.student_id == student_id))
+        .join(Class, Exam.class_id == Class.id)
+        .where(ExamMark.school_id == school_id)
+    )
+    if academic_year_id is not None:
+        query = query.where(Class.academic_year_id == academic_year_id)
+    if exam_type is not None:
+        query = query.where(Exam.exam_type == exam_type)
+    rows = (await db.execute(query.distinct())).scalars().all()
+    return sorted(str(r) for r in rows)
+
+
 async def _not_assessed_subjects(
     db: AsyncSession, *, school_id: uuid.UUID, student_id: uuid.UUID, class_id: uuid.UUID,
     academic_year_id: uuid.UUID | None = None, exam_type: ExamType | None = None,
@@ -233,6 +252,14 @@ async def generate_report_for_student(
         exam_type=exam_type,
     )
 
+    exam_ids = await _consolidated_exam_ids(
+        db,
+        school_id=school_id,
+        student_id=student_id,
+        academic_year_id=academic_year_id,
+        exam_type=exam_type,
+    )
+
     student_name = student.user.full_name if student.user else "Student"
     cls = student.class_
     class_name = f"{cls.grade} - {cls.section}" if cls else ""
@@ -293,6 +320,7 @@ async def generate_report_for_student(
         ai_remark=remark,
         status=ReportStatus.DRAFT,
         ai_model=f"{result.provider}:{result.model}",
+        exam_ids=exam_ids,
     )
     db.add(report)
     await db.flush()

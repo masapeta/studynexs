@@ -21,6 +21,11 @@ from app.modules.portal.schemas.portal import (
     ParentChildProgressOut,
     PortalContextOut,
 )
+from app.modules.portal.services.learner_report_cards_service import (
+    LearnerReportCard,
+    list_report_cards,
+    report_card_detail,
+)
 from app.modules.portal.services.learner_results_service import list_results, result_detail
 from app.modules.portal.services.portal_service import (
     build_portal_context,
@@ -30,6 +35,8 @@ from app.modules.portal.services.portal_service import (
     parent_child_progress,
     parent_child_summary,
 )
+from app.modules.timetable.schemas.timetable import TimetableSlotOut
+from app.modules.timetable.services.timetable_service import TimetableService
 from app.shared.schemas.common import APIResponse
 
 router = APIRouter(route_class=CommitOnSuccessRoute)
@@ -193,6 +200,92 @@ async def child_results(
     student = await _child_student(db, current_user, student_id)
     rows = await list_results(db, school_id=uuid.UUID(current_user.school_id), student=student)
     return APIResponse(data=rows)
+
+
+@router.get("/timetable", response_model=APIResponse[list[TimetableSlotOut]])
+async def my_timetable(
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    student = await _self_student(db, current_user)
+    rows = await TimetableService(db).class_timetable_out(
+        uuid.UUID(current_user.school_id), student.class_id
+    )
+    return APIResponse(data=rows)
+
+
+@router.get("/child/{student_id}/timetable", response_model=APIResponse[list[TimetableSlotOut]])
+async def child_timetable(
+    student_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    student = await _child_student(db, current_user, student_id)
+    rows = await TimetableService(db).class_timetable_out(
+        uuid.UUID(current_user.school_id), student.class_id
+    )
+    return APIResponse(data=rows)
+
+
+@router.get("/report-cards", response_model=APIResponse[list[LearnerReportCard]])
+async def my_report_cards(
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    student = await _self_student(db, current_user)
+    rows = await list_report_cards(
+        db, school_id=uuid.UUID(current_user.school_id), student=student
+    )
+    return APIResponse(data=rows)
+
+
+@router.get("/report-cards/{report_id}", response_model=APIResponse[LearnerReportCard])
+async def my_report_card(
+    report_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    student = await _self_student(db, current_user)
+    card = await report_card_detail(
+        db, school_id=uuid.UUID(current_user.school_id), student=student, report_id=report_id
+    )
+    if card is None:
+        raise HTTPException(status_code=404, detail="Report card not found")
+    return APIResponse(data=card)
+
+
+@router.get(
+    "/child/{student_id}/report-cards", response_model=APIResponse[list[LearnerReportCard]]
+)
+async def child_report_cards(
+    student_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    student = await _child_student(db, current_user, student_id)
+    rows = await list_report_cards(
+        db, school_id=uuid.UUID(current_user.school_id), student=student
+    )
+    return APIResponse(data=rows)
+
+
+@router.get(
+    "/child/{student_id}/report-cards/{report_id}",
+    response_model=APIResponse[LearnerReportCard],
+)
+async def child_report_card(
+    student_id: uuid.UUID,
+    report_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    student = await _child_student(db, current_user, student_id)
+    card = await report_card_detail(
+        db, school_id=uuid.UUID(current_user.school_id), student=student, report_id=report_id
+    )
+    if card is None:
+        raise HTTPException(status_code=404, detail="Report card not found")
+    return APIResponse(data=card)
 
 
 @router.get(

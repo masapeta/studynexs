@@ -618,6 +618,7 @@ export default function EvaluateExamPage() {
                             max={s.max_marks}
                             step={0.5}
                             value={finalMarks}
+                            aria-label={`Final marks for question ${qno}`}
                             onChange={(e) => setOverrides({ ...overrides, [qno]: e.target.value })}
                             style={{ width: 72 }}
                             disabled={activeEval.status === "approved"}

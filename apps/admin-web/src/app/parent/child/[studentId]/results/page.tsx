@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import PortalShell from "@/components/PortalShell";
 import { LearnerResultsList } from "@/components/results/LearnerResults";
+import { LearnerReportCardsList } from "@/components/results/LearnerReportCards";
 import { PARENT_NAV } from "@/lib/portal-nav";
 
 export default function ParentChildResultsPage() {
@@ -16,6 +17,10 @@ export default function ParentChildResultsPage() {
       <LearnerResultsList
         endpoint={`/api/v1/portal/child/${studentId}/results`}
         detailHref={(id) => `/parent/child/${studentId}/results/${id}`}
+      />
+      <LearnerReportCardsList
+        endpoint={`/api/v1/portal/child/${studentId}/report-cards`}
+        detailHref={(id) => `/parent/child/${studentId}/results/report-cards/${id}`}
       />
     </PortalShell>
   );

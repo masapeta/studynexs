@@ -37,7 +37,10 @@ settings = get_settings()
 
 db_url = settings.DATABASE_URL
 base_url = db_url.rsplit("/", 1)[0]
-TEST_DB_NAME = "studynexs_test"
+TEST_DB_NAME = os.environ.get("SN_TEST_DB_NAME", "studynexs_test")
+# The schema is dropped per test; never let the override point at a real database.
+if not TEST_DB_NAME.startswith("studynexs_test"):
+    raise RuntimeError(f"SN_TEST_DB_NAME must start with 'studynexs_test', got {TEST_DB_NAME!r}")
 TEST_DB_URL = f"{base_url}/{TEST_DB_NAME}"
 
 

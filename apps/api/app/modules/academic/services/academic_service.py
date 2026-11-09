@@ -266,6 +266,7 @@ class AcademicService:
         page: int = 1,
         page_size: int = 50,
         search: str | None = None,
+        class_ids: set[uuid.UUID] | None = None,
     ) -> tuple[list[StudentOut], int]:
         if class_id:
             await TenantScope(self.db, school_id).school_class(class_id)
@@ -278,6 +279,8 @@ class AcademicService:
         )
         if class_id:
             base = base.where(Student.class_id == class_id)
+        if class_ids is not None:
+            base = base.where(Student.class_id.in_(class_ids))
         if search:
             term = f"%{search.strip()}%"
             base = base.where(

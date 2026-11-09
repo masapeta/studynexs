@@ -582,20 +582,35 @@ export function AssistantBlockView({
               <tbody>
                 {(block.rows ?? []).map((row, i) => (
                   <tr key={i}>
-                    {(block.columns ?? []).map((c) => (
-                      <td
-                        key={c.key}
-                        style={{
-                          fontSize: 13,
-                          color: "var(--text-primary)",
-                          borderBottom:
-                            "1px solid color-mix(in srgb, var(--border) 70%, transparent)",
-                          padding: "10px 12px 10px 0",
-                        }}
-                      >
-                        {c.format ? fmt(row[c.key], c.format) : String(row[c.key] ?? "—")}
-                      </td>
-                    ))}
+                    {(block.columns ?? []).map((c, ci) => {
+                      const text = c.format ? fmt(row[c.key], c.format) : String(row[c.key] ?? "—");
+                      const href = ci === 0 && typeof row.href === "string" ? row.href : null;
+                      return (
+                        <td
+                          key={c.key}
+                          style={{
+                            fontSize: 13,
+                            color: "var(--text-primary)",
+                            borderBottom:
+                              "1px solid color-mix(in srgb, var(--border) 70%, transparent)",
+                            padding: "10px 12px 10px 0",
+                          }}
+                        >
+                          {href ? (
+                            <button
+                              type="button"
+                              className="sn-asst-row-link"
+                              data-record-href={href}
+                              onClick={() => go(href)}
+                            >
+                              {text}
+                            </button>
+                          ) : (
+                            text
+                          )}
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>

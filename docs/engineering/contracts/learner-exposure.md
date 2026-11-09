@@ -50,11 +50,15 @@ until re-release.
 | E10 | parent copilot | `learner` KG + provenance-gated misconceptions + E1 |
 | E11–E12 | assistant parent/student tools | inherit E1 / tutor / copilot services |
 | E13 | `/portal/results*`, `/portal/child/{id}/results*` | `visible_versions_query` only |
-| E14 | report cards | staff-only endpoints (`_TEACH_ROLES`); no learner report-card path exists |
+| E14 | `/portal/report-cards*`, `/portal/child/{id}/report-cards*` | approved cards only; every exam in the card's `exam_ids` manifest must be visible via `visible_versions_query`; figures recomputed from published versions; remark withheld when they differ from the approved snapshot; legacy cards (no manifest) never shown |
 | E15 | flag notify; release notifications | release check at notify; release notifications only on real generations |
 | E16 | search | staff-only (Stage 1) |
 | E17 | learning-evidence tool/report | staff roles only; staff audience |
 | E18 | `GET /curriculum/students/{id}/weak-concepts` (found during implementation) | audience by caller role |
+
+Endpoint-level gating test against approved-but-unreleased marks, with a release step proving
+the assertions are not vacuous: `tests/test_learner_exposure_gating.py` (E1–E8, E10–E15, E18).
+Report-card specifics: `tests/test_learner_report_cards.py`.
 
 Staff paths explicitly filtered to `staff`: lesson-plan weakest topic, principal dashboard flag
 join, teacher home, class heatmap, known topics, learning-evidence chain, KG concept context

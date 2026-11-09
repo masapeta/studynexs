@@ -14,6 +14,7 @@ _DEFAULT_MODELS = {
     "openai": "gpt-4o-mini",
     "ollama": "gemma4:cloud",
     "stub": "dev-stub",
+    "e2e_scripted": "e2e-scripted",
 }
 
 _PROVIDER_KEYS = {
@@ -44,6 +45,10 @@ def get_provider(name: str | None = None) -> LLMProvider:
         from app.modules.ai.gateway.stub import StubProvider
 
         return StubProvider()
+    if provider == "e2e_scripted":
+        from app.modules.ai.gateway.e2e_scripted import E2EScriptedProvider
+
+        return E2EScriptedProvider()
     if provider == "ollama" and _ollama_configured():
         from app.modules.ai.gateway.ollama import OllamaProvider
 

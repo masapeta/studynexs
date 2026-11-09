@@ -53,6 +53,8 @@ class ReportCard(BaseModel):
         Enum(ReportStatus), default=ReportStatus.DRAFT, nullable=False
     )
     ai_model: Mapped[str | None] = mapped_column(String(100))
+    # Exam ids consolidated into this card. NULL on legacy cards, which learners never see.
+    exam_ids: Mapped[list | None] = mapped_column(JSONB)
 
     __table_args__ = (
         Index("ix_report_cards_school_class", "school_id", "class_id"),

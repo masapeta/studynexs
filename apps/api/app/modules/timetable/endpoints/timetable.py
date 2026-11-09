@@ -3,7 +3,6 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.api_route import CommitOnSuccessRoute
@@ -11,8 +10,6 @@ from app.core.database import get_db
 from app.core.dependencies import CurrentUser, get_current_user, require_roles
 from app.core.staff_permissions import assert_timetable_edit, get_staff_scope
 from app.core.tenant_scope import TenantScope
-from app.db.models.academic import Subject
-from app.db.models.user import User
 from app.modules.timetable.schemas.timetable import (
     ClassSubjectTeacherOut,
     TimetableSlotCreate,
@@ -27,49 +24,16 @@ from app.shared.schemas.common import APIResponse
 router = APIRouter(route_class=CommitOnSuccessRoute)
 
 
-def _slot_out(
-    slot, teacher_name: str | None = None, subject_name: str | None = None
-) -> TimetableSlotOut:
-    base = TimetableSlotOut.model_validate(slot)
-    return base.model_copy(update={"teacher_name": teacher_name, "subject_name": subject_name})
-
-
 @router.get("/class/{class_id}", response_model=APIResponse[list[TimetableSlotOut]])
 async def get_class_timetable(
     class_id: uuid.UUID,
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    service = TimetableService(db)
-    school_id = uuid.UUID(current_user.school_id)
-    slots = await service.get_class_timetable(school_id, class_id)
-    if not slots:
-        return APIResponse(data=[])
-    teacher_ids = {s.teacher_id for s in slots}
-    subject_ids = {s.subject_id for s in slots}
-    teachers = {
-        row.id: row.full_name
-        for row in (
-            await db.execute(
-                select(User).where(User.school_id == school_id, User.id.in_(teacher_ids))
-            )
-        )
-        .scalars()
-        .all()
-    }
-    subjects = {
-        row.id: row.name
-        for row in (
-            await db.execute(
-                select(Subject).where(Subject.school_id == school_id, Subject.id.in_(subject_ids))
-            )
-        )
-        .scalars()
-        .all()
-    }
-    return APIResponse(
-        data=[_slot_out(s, teachers.get(s.teacher_id), subjects.get(s.subject_id)) for s in slots]
+    rows = await TimetableService(db).class_timetable_out(
+        uuid.UUID(current_user.school_id), class_id
     )
+    return APIResponse(data=rows)
 
 
 @router.get(

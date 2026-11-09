@@ -71,7 +71,7 @@ def _password() -> str:
 
 
 async def _seed(run_id: str) -> dict:
-    from datetime import date
+    from datetime import date, time
     from decimal import Decimal
 
     from app.core.database import async_session_factory
@@ -81,6 +81,7 @@ async def _seed(run_id: str) -> dict:
     from app.db.models.question_paper import PaperStatus, QuestionPaper
     from app.db.models.school import School
     from app.db.models.student import Parent, Relationship, Student, StudentParentMap
+    from app.db.models.timetable import DayOfWeek, TimetableSlot
     from app.db.models.user import User, UserRole
     from app.modules.ai.services.question_bank_service import ingest_from_paper
 
@@ -170,8 +171,27 @@ async def _seed(run_id: str) -> dict:
             ],
         )
         db.add(exam)
+        # Second exam: driven through gen 1 → late approval → gen 2 → changed marks → gen 3
+        # → withdraw → restore, independently of the first exam's journey.
+        lifecycle_exam = Exam(
+            school_id=school.id, class_id=cls.id, subject_id=subj.id, exam_type=ExamType.UNIT_TEST,
+            title="E2E Lifecycle Test", total_marks=6, date=date(2026, 7, 20),
+            created_by=teacher.id, source_paper_id=paper.id,
+            question_schema=[
+                {"no": "1", "max_marks": 2, "topic": "Number sense"},
+                {"no": "2", "max_marks": 1, "topic": "Civics"},
+                {"no": "3", "max_marks": 3, "topic": "Plants"},
+            ],
+        )
+        db.add(lifecycle_exam)
+        db.add(TimetableSlot(
+            school_id=school.id, class_id=cls.id, subject_id=subj.id, teacher_id=teacher.id,
+            day_of_week=DayOfWeek.MONDAY, period_number=1,
+            start_time=time(9, 0), end_time=time(9, 45),
+        ))
         await db.commit()
-        creds.update(exam_id=str(exam.id), class_id=str(cls.id), student_id=str(s1.id),
+        creds.update(exam_id=str(exam.id), lifecycle_exam_id=str(lifecycle_exam.id),
+                     class_id=str(cls.id), student_id=str(s1.id),
                      student2_id=str(s2.id), school_id=str(school.id))
     return creds
 

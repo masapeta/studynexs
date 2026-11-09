@@ -48,6 +48,10 @@ interface AssistantContextValue {
 const AssistantContext = createContext<AssistantContextValue | null>(null);
 
 const RECORD_RE = /^\/dashboard\/(students|classes)\/([0-9a-f-]{36})$/;
+const PORTAL_ROUTE: Record<string, string> = {
+  "/dashboard/timetable": "/timetable",
+  "/dashboard/notices": "/notices",
+};
 
 /** Owns the conversation above route content, so navigating never destroys it. */
 export function AssistantProvider({ base, children }: { base: string; children: React.ReactNode }) {
@@ -224,7 +228,9 @@ export function AssistantProvider({ base, children }: { base: string; children: 
 
   /** Records open in a drawer; other pages route with a way back to this conversation. */
   const navigate = useCallback(
-    (href: string) => {
+    (rawHref: string) => {
+      // Planner nav targets are staff routes; portals have their own equivalents.
+      const href = base !== "/dashboard" && PORTAL_ROUTE[rawHref] ? `${base}${PORTAL_ROUTE[rawHref]}` : rawHref;
       const m = RECORD_RE.exec(href);
       if (m && base === "/dashboard") {
         setRecord({ kind: m[1] === "students" ? "student" : "class", id: m[2], href });
@@ -240,6 +246,8 @@ export function AssistantProvider({ base, children }: { base: string; children: 
     },
     [router, base]
   );
+
+  const closeRecord = useCallback(() => setRecord(null), []);
 
   const value = useMemo<AssistantContextValue>(
     () => ({
@@ -258,11 +266,11 @@ export function AssistantProvider({ base, children }: { base: string; children: 
       handleAction,
       navigate,
       setPageContext,
-      closeRecord: () => setRecord(null),
+      closeRecord,
       conversationHref,
     }),
     [base, sessionId, turns, submitting, error, notFound, semanticState, pageContext, record,
-     send, open, startNew, handleAction, navigate, conversationHref]
+     send, open, startNew, handleAction, navigate, closeRecord, conversationHref]
   );
 
   return <AssistantContext.Provider value={value}>{children}</AssistantContext.Provider>;

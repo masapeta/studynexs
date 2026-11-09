@@ -328,6 +328,7 @@ async def class_roster(
     rows = (
         await db.execute(
             select(
+                Student.id,
                 User.full_name,
                 Student.admission_no,
                 Student.roll_no,
@@ -347,8 +348,10 @@ async def class_roster(
             "admission_no": adm,
             "roll_no": roll or "—",
             "class_label": _pack.class_label(grade, section),
+            # Opens the record drawer; the drawer re-authorizes on fetch.
+            "href": f"/dashboard/students/{sid}",
         }
-        for name, adm, roll, grade, section in rows
+        for sid, name, adm, roll, grade, section in rows
     ]
     label = ", ".join(c.label for c in res.candidates)
     return {

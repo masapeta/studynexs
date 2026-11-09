@@ -7,10 +7,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenant_scope import TenantScope
-from app.db.models.academic import TeacherSubjectMapping
+from app.db.models.academic import Subject, TeacherSubjectMapping
 from app.db.models.timetable import TimetableSlot
 from app.db.models.user import User
-from app.modules.timetable.schemas.timetable import TimetableSlotCreate
+from app.modules.timetable.schemas.timetable import TimetableSlotCreate, TimetableSlotOut
 
 
 class TimetableAssignmentError(ValueError):
@@ -31,6 +31,29 @@ class TimetableService:
             ).order_by(TimetableSlot.day_of_week, TimetableSlot.period_number)
         )
         return list(result.scalars().all())
+
+    async def class_timetable_out(
+        self, school_id: uuid.UUID, class_id: uuid.UUID
+    ) -> list[TimetableSlotOut]:
+        """Class timetable with teacher and subject names resolved (tenant-scoped)."""
+        slots = await self.get_class_timetable(school_id, class_id)
+        if not slots:
+            return []
+        teachers = dict((await self.db.execute(
+            select(User.id, User.full_name).where(
+                User.school_id == school_id, User.id.in_({s.teacher_id for s in slots}))
+        )).all())
+        subjects = dict((await self.db.execute(
+            select(Subject.id, Subject.name).where(
+                Subject.school_id == school_id, Subject.id.in_({s.subject_id for s in slots}))
+        )).all())
+        return [
+            TimetableSlotOut.model_validate(s).model_copy(update={
+                "teacher_name": teachers.get(s.teacher_id),
+                "subject_name": subjects.get(s.subject_id),
+            })
+            for s in slots
+        ]
 
     async def get_teacher_timetable(
         self, school_id: uuid.UUID, teacher_id: uuid.UUID
