@@ -39,6 +39,10 @@ jobs:
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 10s --health-timeout 5s --health-retries 10
+      # Same pin as infra/docker/docker-compose.dev.yml; readiness is checked from the runner.
+      qdrant:
+        image: qdrant/qdrant:v1.18.3@sha256:0bd98fa7977f1e75694779359ca4e212822e5a71334e28421182f72f209d5286
+        ports: ["6333:6333"]
     env:
       ENVIRONMENT: testing
       POSTGRES_HOST: localhost
@@ -61,6 +65,14 @@ jobs:
       - name: Lint (ruff) — report-only (incremental hygiene, not a merge gate)
         continue-on-error: true
         run: ruff check .
+      - name: Wait for Qdrant readiness
+        run: |
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:6333/readyz && exit 0
+            sleep 2
+          done
+          echo "Qdrant did not become ready" >&2
+          exit 1
       - name: Tests — main suite (FakeRedis, tenant/RBAC/money/AI)
         run: pytest -q -p no:cacheprovider
       - name: Tests — security suite (middleware + tenant match + rate limits ON, real Redis)
