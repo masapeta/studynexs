@@ -42,10 +42,10 @@ async def test_tts_synth_returns_audio_with_mock(client: AsyncClient, admin_user
     fake_audio = b"\xff\xfb\x90" + b"\x00" * 64
 
     with patch(
-        "app.modules.tutor.services.tts_service.synthesize_speech",
+        "app.modules.tutor.endpoints.tutor.synthesize_speech",
         new=AsyncMock(return_value=fake_audio),
     ):
-        with patch("app.modules.tutor.services.tts_service.tts_enabled", return_value=True):
+        with patch("app.modules.tutor.endpoints.tutor.tts_enabled", return_value=True):
             resp = await client.post(
                 "/api/v1/tutor/tts",
                 headers=auth_headers(token),
