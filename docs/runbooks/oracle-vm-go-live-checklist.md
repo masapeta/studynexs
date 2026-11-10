@@ -35,6 +35,7 @@ docker compose version
 - [ ] File exists: /opt/studynexs/deploy/env/api.env
 - [ ] Permissions are strict: chmod 600
 - [ ] ENVIRONMENT=production
+- [ ] DEPLOYMENT_TIER matches this host (`staging`, `demo` or `production`)
 - [ ] COOKIE_SECURE=true
 - [ ] ALLOWED_ORIGINS points to real HTTPS app hosts
 - [ ] AI provider keys are present for selected provider
@@ -44,7 +45,7 @@ Quick check:
 
 ```bash
 ls -l /opt/studynexs/deploy/env/api.env
-grep -E '^(ENVIRONMENT|COOKIE_SECURE|ALLOWED_ORIGINS|AI_DEFAULT_PROVIDER|TENANT_BASE_DOMAIN)=' /opt/studynexs/deploy/env/api.env
+grep -E '^(ENVIRONMENT|DEPLOYMENT_TIER|COOKIE_SECURE|ALLOWED_ORIGINS|AI_DEFAULT_PROVIDER|TENANT_BASE_DOMAIN)=' /opt/studynexs/deploy/env/api.env
 ```
 
 ## D) Deploy and migrate

@@ -29,6 +29,13 @@ say() { printf '\n== %s\n' "$*"; }
 
 [[ -f "$ENV_FILE" ]] || { echo "Missing $ENV_FILE — run bootstrap_oci_vm.sh first." >&2; exit 1; }
 
+# Compose only checks presence; the app would accept development/internal (engineering surfaces).
+TIER=$(grep -E '^DEPLOYMENT_TIER=' "$ENV_FILE" | cut -d= -f2- || true)
+case "$TIER" in
+    staging|demo|production) say "Deploying with DEPLOYMENT_TIER=$TIER" ;;
+    *) echo "$ENV_FILE must contain exactly one DEPLOYMENT_TIER=staging|demo|production (found: '${TIER//$'\n'/, }')." >&2; exit 1 ;;
+esac
+
 compose() {
     docker compose --env-file "$ENV_FILE" -f "$COMPOSE_DIR/docker-compose.prod.yml" "$@"
 }

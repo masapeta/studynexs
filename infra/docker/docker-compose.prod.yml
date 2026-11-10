@@ -40,6 +40,8 @@ services:
     container_name: studynexs-prod-api
     environment: &api_environment
       ENVIRONMENT: production
+      # Per-host tier from the --env-file; no default so staging can never boot as production.
+      DEPLOYMENT_TIER: ${DEPLOYMENT_TIER:?DEPLOYMENT_TIER must be set (staging, demo or production)}
       DEBUG: "false"
       APP_NAME: StudyNexs API
       # Secrets have NO defaults: compose fails loudly if they are not provided
@@ -88,7 +90,7 @@ services:
   worker:
     image: studynexs-api:${STUDYNEXS_IMAGE_TAG:-operational-proof}
     build:
-      context: ../../apps/api
+      context: ../../repo/apps/api
       dockerfile: Dockerfile
     container_name: studynexs-prod-worker
     environment:

@@ -59,6 +59,27 @@ def test_prod_compose_requires_secrets_with_no_bootable_defaults():
         assert var not in text, f"secret {var.rstrip(':-')} must not have a default"
 
 
+def test_prod_compose_requires_explicit_deployment_tier_for_api_and_worker():
+    """The tier is per-host (supplied via --env-file): no default, so a host can't boot mislabelled."""
+    text = PROD_COMPOSE.read_text(encoding="utf-8")
+
+    assert "DEPLOYMENT_TIER: ${DEPLOYMENT_TIER:?" in text
+    assert "DEPLOYMENT_TIER:-" not in text
+    for literal in ("staging", "demo", "production"):
+        assert f"DEPLOYMENT_TIER: {literal}" not in text
+    # The worker inherits the api environment block, so both receive the same tier.
+    assert "environment: &api_environment" in text
+    assert "<<: *api_environment" in text
+
+
+def test_prod_compose_api_and_worker_build_from_the_same_repo_path():
+    text = PROD_COMPOSE.read_text(encoding="utf-8")
+
+    contexts = [line.split("context:", 1)[1].strip() for line in text.splitlines()
+                if line.strip().startswith("context:")]
+    assert contexts == ["../../repo/apps/api", "../../repo/apps/api"]
+
+
 def test_prod_prometheus_uses_metrics_token_file():
     text = PROMETHEUS_PROD.read_text(encoding="utf-8")
 

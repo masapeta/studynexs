@@ -246,7 +246,7 @@ by the script as copy-paste commands; subsequent releases use
 3. git clone → /opt/studynexs/repo                                       │ bootstrap_oci_vm.sh
 4. Sync repo/infra/docker → deploy/compose/                              │
 5. Sync repo/infra/nginx → deploy/nginx/                                 │
-6. Create deploy/env/api.env (chmod 600, secrets generated)              ┘
+6. Create deploy/env/api.env (chmod 600, secrets + DEPLOYMENT_TIER from --tier) ┘
 7. Install Docker + Compose (script checks and instructs)
 8. cd deploy/compose && docker compose --env-file ../env/api.env build && up (healthchecks green)
 9. alembic upgrade head + demo seed (via `compose run --rm api …`)

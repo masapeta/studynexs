@@ -7,7 +7,8 @@
 # api.env (your secrets survive re-runs).
 #
 # Usage (on the OCI VM, as a user with sudo):
-#   sudo bash bootstrap_oci_vm.sh [--repo-url https://github.com/<owner>/<repo>.git] [--branch develop]
+#   sudo bash bootstrap_oci_vm.sh --tier staging|demo|production \
+#       [--repo-url https://github.com/<owner>/<repo>.git] [--branch develop]
 #
 # After this script, continue with the numbered next steps it prints
 # (build → migrate → seed → verify), or run deploy.sh for the standard cycle.
@@ -17,17 +18,25 @@ set -euo pipefail
 BASE=/opt/studynexs
 REPO_URL=""
 BRANCH="develop"
+TIER=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --repo-url) REPO_URL="$2"; shift 2 ;;
         --branch)   BRANCH="$2";   shift 2 ;;
+        --tier)     TIER="$2";     shift 2 ;;
         *) echo "Unknown argument: $1" >&2; exit 2 ;;
     esac
 done
 
 say()  { printf '\n== %s\n' "$*"; }
 note() { printf '   %s\n' "$*"; }
+
+# Deployable tiers only: development/internal expose engineering surfaces.
+case "$TIER" in
+    ""|staging|demo|production) ;;
+    *) echo "--tier must be staging, demo or production (got '${TIER}')." >&2; exit 2 ;;
+esac
 
 # ── 1. Host layout (conventions §2) ──────────────────────────────
 say "Creating $BASE layout"
@@ -61,8 +70,21 @@ chmod +x "$BASE"/deploy/scripts/*.sh 2>/dev/null || true
 API_ENV="$BASE/deploy/env/api.env"
 if [[ -f "$API_ENV" ]]; then
     say "api.env already exists — leaving it untouched (secrets are never regenerated)"
+    EXISTING_TIERS=$(grep -E '^DEPLOYMENT_TIER=' "$API_ENV" | cut -d= -f2- || true)
+    if [[ -z "$EXISTING_TIERS" ]]; then
+        note "WARNING: $API_ENV has no DEPLOYMENT_TIER. Add exactly one line, e.g."
+        note "  DEPLOYMENT_TIER=staging     (staging | demo | production)"
+        note "deploy.sh and compose refuse to start the API until it is set."
+    elif [[ "$EXISTING_TIERS" != "staging" && "$EXISTING_TIERS" != "demo" && "$EXISTING_TIERS" != "production" ]]; then
+        note "WARNING: $API_ENV has an invalid or duplicated DEPLOYMENT_TIER: ${EXISTING_TIERS//$'\n'/, }"
+        note "Fix it by hand to exactly one of: staging | demo | production."
+    elif [[ -n "$TIER" && "$TIER" != "$EXISTING_TIERS" ]]; then
+        echo "--tier $TIER does not match DEPLOYMENT_TIER=$EXISTING_TIERS in $API_ENV; refusing to continue." >&2
+        exit 2
+    fi
 else
-    say "Generating $API_ENV"
+    [[ -n "$TIER" ]] || { echo "Generating api.env needs --tier staging|demo|production." >&2; exit 2; }
+    say "Generating $API_ENV (tier: $TIER)"
     # Fernet key = urlsafe-base64 of 32 random bytes (what cryptography expects).
     FERNET_KEY=$(openssl rand -base64 32 | tr '+/' '-_')
     umask 177
@@ -71,6 +93,9 @@ else
 # chmod 600, never in git, never in backups. Rotation: conventions doc §5.2.
 # KEEP AN OFFLINE COPY OF AADHAAR_ENCRYPTION_KEY — losing it makes encrypted
 # Aadhaar data permanently unrecoverable. The other secrets rotate freely.
+
+# Which environment this host is. Never copy a staging api.env to production.
+DEPLOYMENT_TIER=${TIER}
 
 JWT_SECRET_KEY=$(openssl rand -base64 48 | tr -d '\n' | tr '+/' '-_')
 WEBHOOK_SECRET=$(openssl rand -base64 32 | tr -d '\n' | tr '+/' '-_')

@@ -301,6 +301,7 @@ Detail: [`pilot/GATE1_EXECUTION.md`](./pilot/GATE1_EXECUTION.md).
 | Variable | Notes |
 |----------|-------|
 | `ENVIRONMENT=production` | Enables guardrails |
+| `DEPLOYMENT_TIER` | `staging`, `demo` or `production` — set per host in `deploy/env/api.env`; no default (compose and boot both refuse to start without it) |
 | `JWT_SECRET_KEY` | ≥32 chars, unique |
 | `POSTGRES_*` | Database connection |
 | `REDIS_URL` | Non-localhost |

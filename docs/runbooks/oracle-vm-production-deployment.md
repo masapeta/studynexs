@@ -54,6 +54,8 @@ Create this on VM at /opt/studynexs/deploy/env/api.env with chmod 600.
 
 # Core
 ENVIRONMENT=production
+# This host's tier: staging | demo | production. Never copy one host's api.env to another.
+DEPLOYMENT_TIER=<REPLACE_WITH_staging_OR_demo_OR_production>
 DEBUG=false
 APP_NAME=StudyNexs API
 
@@ -154,6 +156,9 @@ set -euo pipefail
 # ---------- customize once ----------
 REPO_URL="https://github.com/masapeta/studynexs.git"
 BRANCH="develop"
+# staging | demo | production — must match this host; the ONE source for the tier below
+DEPLOYMENT_TIER="<REPLACE_WITH_staging_OR_demo_OR_production>"
+case "$DEPLOYMENT_TIER" in staging|demo|production) ;; *) echo "Set DEPLOYMENT_TIER first" >&2; exit 2 ;; esac
 
 # Real domains (customized)
 ROOT_DOMAIN="studynexs.com"
@@ -172,11 +177,12 @@ git clone --branch "$BRANCH" "$REPO_URL" studynexs-dev-bootstrap
 
 # ---------- bootstrap host layout ----------
 cd /tmp/studynexs-dev-bootstrap/infra/scripts
-sudo bash bootstrap_oci_vm.sh --repo-url "$REPO_URL" --branch "$BRANCH"
+sudo bash bootstrap_oci_vm.sh --tier "$DEPLOYMENT_TIER" --repo-url "$REPO_URL" --branch "$BRANCH"
 
 # ---------- write safe env from template ----------
 sudo tee /opt/studynexs/deploy/env/api.env >/dev/null <<EOF
 ENVIRONMENT=production
+DEPLOYMENT_TIER=$DEPLOYMENT_TIER
 DEBUG=false
 APP_NAME=StudyNexs API
 JWT_SECRET_KEY=<REPLACE_WITH_STRONG_SECRET_MIN_32_CHARS>
@@ -232,6 +238,7 @@ AEI_V1_MANUAL_REVIEW_ACK_REQUIRED=false
 AEI_HANDWRITING_OCR_PHASE1_ENABLED=false
 EOF
 sudo chmod 600 /opt/studynexs/deploy/env/api.env
+sudo grep -x "DEPLOYMENT_TIER=$DEPLOYMENT_TIER" /opt/studynexs/deploy/env/api.env
 
 # ---------- create production override for provider + CORS ----------
 sudo tee /opt/studynexs/deploy/compose/docker-compose.prod.override.yml >/dev/null <<EOF
