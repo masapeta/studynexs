@@ -26,6 +26,8 @@ class Environment(str, enum.Enum):
 
 DEPLOYMENT_TIERS = frozenset({"development", "internal", "staging", "demo", "production"})
 INTERNAL_DEPLOYMENT_TIERS = frozenset({"development", "internal"})
+# Explicit allowlist: a new tier in DEPLOYMENT_TIERS is not production-approved by default.
+PRODUCTION_DEPLOYMENT_TIERS = frozenset({"staging", "demo", "production"})
 
 
 def _unsafe_production_origin(origin: str) -> str | None:
@@ -501,8 +503,15 @@ class Settings(BaseSettings):
         tier = self.DEPLOYMENT_TIER.strip().lower()
         if not tier:
             errors.append("DEPLOYMENT_TIER must be set explicitly in production")
-        elif tier not in DEPLOYMENT_TIERS:
-            errors.append(f"DEPLOYMENT_TIER={tier!r} is not one of {sorted(DEPLOYMENT_TIERS)}")
+        elif tier in INTERNAL_DEPLOYMENT_TIERS:
+            errors.append(
+                f"DEPLOYMENT_TIER={tier!r} exposes internal engineering surfaces and is not "
+                f"allowed in production; use one of {sorted(PRODUCTION_DEPLOYMENT_TIERS)}"
+            )
+        elif tier not in PRODUCTION_DEPLOYMENT_TIERS:
+            errors.append(
+                f"DEPLOYMENT_TIER={tier!r} is not one of {sorted(PRODUCTION_DEPLOYMENT_TIERS)}"
+            )
 
         if errors:
             raise ValueError(

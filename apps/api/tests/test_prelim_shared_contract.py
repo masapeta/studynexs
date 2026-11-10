@@ -44,11 +44,43 @@ def test_production_requires_explicit_deployment_tier():
     assert ok.is_internal_tier is False
 
 
+@pytest.mark.parametrize("tier", ["staging", "demo", "production", " Staging "])
+def test_production_accepts_non_internal_tiers(tier):
+    ok = Settings(**_prod_settings(DEPLOYMENT_TIER=tier))
+    assert ok.deployment_tier == tier.strip().lower()
+    assert ok.is_internal_tier is False
+
+
+@pytest.mark.parametrize("tier", ["development", "internal", "INTERNAL", " development "])
+def test_production_rejects_internal_tiers(tier):
+    with pytest.raises(ValueError, match="not allowed in production"):
+        Settings(**_prod_settings(DEPLOYMENT_TIER=tier))
+
+
+@pytest.mark.parametrize("tier", ["", "   "])
+def test_production_rejects_empty_tier(tier):
+    with pytest.raises(ValueError, match="DEPLOYMENT_TIER must be set"):
+        Settings(**_prod_settings(DEPLOYMENT_TIER=tier))
+
+
+def test_production_rejects_missing_tier(monkeypatch):
+    monkeypatch.delenv("DEPLOYMENT_TIER", raising=False)
+    with pytest.raises(ValueError, match="DEPLOYMENT_TIER must be set"):
+        Settings(_env_file=None, **_prod_settings())
+
+
 def test_internal_tier_resolution():
     assert Settings(ENVIRONMENT="development", DEPLOYMENT_TIER="").is_internal_tier is True
     assert Settings(ENVIRONMENT="development", DEPLOYMENT_TIER="internal").is_internal_tier is True
     for tier in ("staging", "demo", "production"):
         assert Settings(ENVIRONMENT="development", DEPLOYMENT_TIER=tier).is_internal_tier is False
+
+
+@pytest.mark.parametrize("tier", ["development", "internal"])
+def test_development_environment_keeps_internal_tiers(tier):
+    s = Settings(ENVIRONMENT="development", DEPLOYMENT_TIER=tier)
+    assert s.deployment_tier == tier
+    assert s.is_internal_tier is True
 
 
 @pytest.mark.asyncio
@@ -60,6 +92,17 @@ async def test_engineering_status_refused_on_non_internal_tier(
     monkeypatch.setattr(settings, "DEPLOYMENT_TIER", "production")
     resp = await client.get("/api/v1/platform/engineering-status", headers=auth_headers(token))
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("tier", ["development", "internal"])
+async def test_engineering_status_served_on_internal_tier(
+    client: AsyncClient, admin_user: User, monkeypatch, tier
+):
+    token = access_token_for(admin_user)
+    monkeypatch.setattr(get_settings(), "DEPLOYMENT_TIER", tier)
+    resp = await client.get("/api/v1/platform/engineering-status", headers=auth_headers(token))
+    assert resp.status_code == 200
 
 
 # ── Q5: timetable teacher selection is class + subject scoped ───────────────
