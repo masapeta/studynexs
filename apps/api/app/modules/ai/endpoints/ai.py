@@ -1170,7 +1170,7 @@ async def copilot_review_question_paper(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     except Exception as exc:
-        raise_http_for_llm_error(exc)
+        raise_http_for_llm_error(exc, log_event="copilot_paper_review_failed")
         raise
     await db.commit()
     suggestions = [
@@ -1230,7 +1230,7 @@ async def copilot_feedback_draft(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     except Exception as exc:
-        raise_http_for_llm_error(exc)
+        raise_http_for_llm_error(exc, log_event="copilot_feedback_draft_failed")
         raise
     await db.commit()
     return CopilotFeedbackOut(**result)

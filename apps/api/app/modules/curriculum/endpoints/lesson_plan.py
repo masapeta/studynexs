@@ -209,7 +209,7 @@ async def generate_lesson_plan(
             except ValueError:
                 raise
             except Exception as exc:
-                raise_http_for_llm_error(exc)
+                raise_http_for_llm_error(exc, log_event="lesson_plan_copilot_generate_failed")
                 raise
         else:
             svc = LessonPlanService(db)
