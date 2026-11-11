@@ -254,7 +254,7 @@ by the script as copy-paste commands; subsequent releases use
 11. DNS api.studynexs.com → VM
 12. Cloudflare Pages → demo.studynexs.com
 13. HTTPS smokes green
-14. Write runtime/current.json (image tag, sha, timestamp) — deploy.sh does this
+14. Write runtime/current.json (image tag, sha, compose files, override sha256, timestamp) — deploy.sh does this
 15. Apply document freeze protocol (§12) → commit (ARM approval)
 ```
 

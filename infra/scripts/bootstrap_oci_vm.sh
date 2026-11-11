@@ -15,7 +15,8 @@
 
 set -euo pipefail
 
-BASE=/opt/studynexs
+# STUDYNEXS_BASE exists for the contract tests; on the VM it is always /opt/studynexs.
+BASE="${STUDYNEXS_BASE:-/opt/studynexs}"
 REPO_URL=""
 BRANCH="develop"
 TIER=""
@@ -63,8 +64,17 @@ fi
 say "Syncing deploy artifacts from repo/infra"
 cp -f  "$BASE"/repo/infra/docker/docker-compose.prod.yml "$BASE"/deploy/compose/
 cp -f  "$BASE"/repo/infra/nginx/nginx.conf               "$BASE"/deploy/nginx/
-cp -rf "$BASE"/repo/infra/scripts/.                      "$BASE"/deploy/scripts/ 2>/dev/null || true
-chmod +x "$BASE"/deploy/scripts/*.sh 2>/dev/null || true
+# Temp file + rename, so a script running from deploy/scripts/ is never rewritten in place.
+for src in "$BASE"/repo/infra/scripts/*; do
+    [[ -f "$src" ]] || continue
+    dst="$BASE/deploy/scripts/$(basename "$src")"
+    tmp=$(mktemp "$dst.XXXXXX")
+    if ! { cp "$src" "$tmp" && chmod 0755 "$tmp" && mv -f "$tmp" "$dst"; }; then
+        rm -f "$tmp"
+        echo "FAIL: could not install $dst" >&2
+        exit 1
+    fi
+done
 
 # ── 4. Secrets: deploy/env/api.env (conventions §5) ──────────────
 API_ENV="$BASE/deploy/env/api.env"
@@ -183,4 +193,6 @@ cat <<'STEPS'
      Then the teacher walkthrough in docs/runbooks/aei-pilot-activation.md.
 
   Redeploys after this: bash /opt/studynexs/deploy/scripts/deploy.sh
+  (add --include-prod-override only if deploy/compose/docker-compose.prod.override.yml
+   exists and has been reviewed; deploy.sh refuses an unacknowledged override)
 STEPS

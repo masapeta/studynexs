@@ -356,7 +356,41 @@ ls -lh /opt/studynexs/backups/postgres | tail -n 5
 
 ## 8) Standard redeploy sequence (copy-paste)
 
-Use this instead of the base deploy script so provider/CORS override remains active.
+### 8a) One-time: upgrade the installed deploy script
+
+A VM bootstrapped before the override check has an old `deploy/scripts/deploy.sh` that does
+not know `--include-prod-override` (it exits with `Unknown argument` and does nothing). Install
+the new one by re-running bootstrap from the updated repo. Bootstrap never rewrites an existing
+`api.env`, never touches the override, and does not build, migrate, start or stop anything:
+
+```bash
+set -euo pipefail
+BRANCH="develop"
+DEPLOYMENT_TIER="<REPLACE_WITH_THE_TIER_ALREADY_IN_api.env>"
+cd /opt/studynexs/repo
+git fetch origin "$BRANCH" && git checkout "$BRANCH" && git pull --ff-only origin "$BRANCH"
+sudo bash /opt/studynexs/repo/infra/scripts/bootstrap_oci_vm.sh --tier "$DEPLOYMENT_TIER" --branch "$BRANCH"
+grep -c include-prod-override /opt/studynexs/deploy/scripts/deploy.sh   # must be > 0
+```
+
+Do not run the old installed `deploy.sh` to upgrade itself.
+
+### 8b) Redeploy
+
+Review `docker-compose.prod.override.yml`, then:
+
+```bash
+sudo bash /opt/studynexs/deploy/scripts/deploy.sh --branch develop --include-prod-override
+```
+
+`deploy.sh` refuses to run if the override exists and the flag is missing, or if the flag is
+given and the file is missing. It uses the same file set for build, migration and restart, and
+records it (with the override's SHA-256) in `runtime/current.json`.
+
+### 8c) Manual equivalent (fallback only)
+
+The same steps by hand, for when `deploy.sh` cannot be used. Keep the `-f` set identical in every
+command.
 
 ```bash
 set -euo pipefail
@@ -386,11 +420,15 @@ sudo STUDYNEXS_IMAGE_TAG="$GIT_SHA" docker compose --env-file ../env/api.env \
 curl -fsS http://127.0.0.1:8080/health
 curl -fsS http://127.0.0.1:8080/ready
 
+OVERRIDE_SHA256=$(sha256sum docker-compose.prod.override.yml | cut -d' ' -f1)
 cat >/opt/studynexs/runtime/current.json <<EOF
 {
   "image_tag": "$GIT_SHA",
-  "git_sha": "$(git rev-parse HEAD)",
+  "git_sha": "$(git -C /opt/studynexs/repo rev-parse HEAD)",
   "branch": "$BRANCH",
+  "compose_files": ["$PWD/docker-compose.prod.yml", "$PWD/docker-compose.prod.override.yml"],
+  "override_included": true,
+  "override_sha256": "$OVERRIDE_SHA256",
   "deployed_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
 EOF

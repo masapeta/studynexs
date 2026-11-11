@@ -21,6 +21,55 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_COMPOSE_FILE = REPO_ROOT / "infra" / "docker" / "docker-compose.dev.yml"
 
 
+def add_compose_args(parser: argparse.ArgumentParser, *, required: bool = False) -> None:
+    default_note = "" if required else " Defaults to the dev compose file."
+    parser.add_argument(
+        "--compose-file",
+        action="append",
+        dest="compose_files",
+        required=required,
+        help=f"Compose file; repeat to add override files in order.{default_note}",
+    )
+    parser.add_argument(
+        "--env-file",
+        required=required,
+        help=(
+            "Compose --env-file for interpolation. Required for docker-compose.prod.yml, "
+            "whose secrets have no defaults. Never printed."
+        ),
+    )
+
+
+def _compose_paths(args: argparse.Namespace) -> tuple[list[Path], Path | None]:
+    files = [Path(f).expanduser().resolve() for f in (args.compose_files or [DEFAULT_COMPOSE_FILE])]
+    env_file = Path(args.env_file).expanduser().resolve() if args.env_file else None
+    return files, env_file
+
+
+def compose_base(args: argparse.Namespace) -> list[str] | str:
+    """Return the ``docker compose`` argv prefix, or an error message if an input is missing."""
+    files, env_file = _compose_paths(args)
+    missing = [str(p) for p in [*files, *([env_file] if env_file else [])] if not p.is_file()]
+    if missing:
+        return f"required file not found: {', '.join(missing)}"
+    command = ["docker", "compose"]
+    if env_file:
+        command += ["--env-file", str(env_file)]
+    for path in files:
+        command += ["-f", str(path)]
+    return command
+
+
+def compose_summary(args: argparse.Namespace) -> dict[str, object]:
+    """Effective Compose configuration for reports: paths only, never env-file contents."""
+    files, env_file = _compose_paths(args)
+    return {
+        "compose_files": [str(p) for p in files],
+        "compose_files_defaulted": not args.compose_files,
+        "env_file": str(env_file) if env_file else None,
+    }
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Create a StudyNexs PostgreSQL backup.")
     parser.add_argument(
@@ -28,7 +77,7 @@ def _parse_args() -> argparse.Namespace:
         required=True,
         help="Destination .dump path. Use a secure location outside Git for real backups.",
     )
-    parser.add_argument("--compose-file", default=str(DEFAULT_COMPOSE_FILE))
+    add_compose_args(parser)
     parser.add_argument("--service", default="postgres")
     parser.add_argument("--database", default="studynexs")
     parser.add_argument("--user", default="studynexs")
@@ -73,14 +122,15 @@ def write_manifest(path: Path, payload: dict[str, object]) -> None:
 
 def main() -> int:
     args = _parse_args()
+    base = compose_base(args)
+    if isinstance(base, str):
+        print(json.dumps({"status": "fail", "error": base}, indent=2, sort_keys=True))
+        return 2
     output = Path(args.output).expanduser().resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
 
     command = [
-        "docker",
-        "compose",
-        "-f",
-        str(Path(args.compose_file).resolve()),
+        *base,
         "exec",
         "-T",
         args.service,
@@ -141,6 +191,7 @@ def main() -> int:
         "format": "pg_dump_custom",
         "database": args.database,
         "service": args.service,
+        **compose_summary(args),
     }
     if copied_path:
         payload["copied_path"] = str(copied_path)

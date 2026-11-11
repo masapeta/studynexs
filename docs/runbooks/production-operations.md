@@ -50,24 +50,71 @@ python scripts/production_ops_check.py `
 
 ## 3. Backup verification
 
-Create a PostgreSQL custom-format backup to a secure location outside Git:
+All three helpers accept the same Compose arguments:
+
+- `--compose-file <path>` — repeatable; files are applied in the order given.
+- `--env-file <path>` — passed to every Compose call. Its contents are never printed.
+
+For the backup and verify helpers both are optional and default to the local development stack
+(`infra/docker/docker-compose.dev.yml`, no env file). Every result reports the effective
+`compose_files`, `compose_files_defaulted` and `env_file`, so a run against the dev default is
+visible. **Any production-like run must pass the production Compose file(s) and env file
+explicitly.** The restore helper has no defaults: both are required.
+
+A missing Compose or env file fails before Docker is invoked.
+
+### 3.1 Create a backup
+
+Write a PostgreSQL custom-format backup to a secure location outside Git:
 
 ```powershell
 cd apps/api
 python scripts/backup_postgres.py --output "$env:TEMP\studynexs-prepilot.dump"
 ```
 
-Verify the backup is readable:
+Against the production-like Compose profile, add the env file (and any override, in order):
+
+```powershell
+python scripts/backup_postgres.py --output "$env:TEMP\studynexs-prepilot.dump" `
+  --compose-file ../../infra/docker/docker-compose.prod.yml `
+  --env-file <path-to-env-file>
+```
+
+### 3.2 Verify the backup (non-destructive)
 
 ```powershell
 python scripts/verify_postgres_backup.py "$env:TEMP\studynexs-prepilot.dump"
 ```
 
-Operational Proof also requires a restore drill into a clean target:
+Runs `pg_restore -l` only; no database is changed. Add the same `--compose-file` /
+`--env-file` arguments used for the backup.
+
+### 3.3 Restore into an isolated scratch database (drill)
+
+Operational Proof also requires a restore drill into a clean scratch database. The helper
+**drops and recreates** the target first, so the Compose file set, the env file and the target
+must all be given explicitly, and the target confirmed by repeating its name. It refuses a
+target equal to `--source-database` (default `studynexs`):
 
 ```powershell
-python scripts/restore_postgres_backup.py "$env:TEMP\studynexs-prepilot.dump"
+python scripts/restore_postgres_backup.py "$env:TEMP\studynexs-prepilot.dump" `
+  --compose-file <path-to-compose-file> `
+  --env-file <path-to-env-file> `
+  --target-database studynexs_restore_drill `
+  --confirm-drop-target studynexs_restore_drill
 ```
+
+For the local development stack, pass `../../infra/docker/docker-compose.dev.yml` and
+`.env.example` (the dev Compose file interpolates no variables, so no secrets are needed).
+Before the first destructive command it prints the plan (Compose files, env-file
+path, target database) to stderr; the final JSON result goes to stdout. The scratch database is
+dropped again afterwards unless `--keep-target` is given.
+
+### 3.4 Destructive restoration of a live database
+
+Not performed with this helper, which is for drills only. Restoring over a database that serves
+traffic loses every write made after the backup, and needs a maintenance window and explicit
+owner approval: see the staging backup-and-rollback procedure (draft) before attempting it.
 
 Pass criteria:
 
@@ -75,7 +122,7 @@ Pass criteria:
 - size is non-zero
 - `pg_restore -l` succeeds
 - restore listing contains schema/table entries
-- restore drill succeeds against the synthetic restore target
+- restore drill succeeds against the scratch restore target
 
 Production note: for managed databases, use the managed backup facility, then
 perform the equivalent restore-list/readability verification.

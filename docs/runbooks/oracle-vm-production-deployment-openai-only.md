@@ -248,6 +248,16 @@ npm run e2e-smoke:prod
 
 ## 6) Redeploy command sequence (copy-paste)
 
+Preferred: upgrade the installed deploy script once, then run it with the override
+acknowledged. Both steps are described in
+[oracle-vm-production-deployment.md §8a–8b](oracle-vm-production-deployment.md#8-standard-redeploy-sequence-copy-paste):
+
+```bash
+sudo bash /opt/studynexs/deploy/scripts/deploy.sh --branch develop --include-prod-override
+```
+
+Manual equivalent (fallback only; keep the `-f` set identical in every command):
+
 ```bash
 set -euo pipefail
 BRANCH="develop"

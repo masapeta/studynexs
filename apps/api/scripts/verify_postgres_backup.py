@@ -13,14 +13,18 @@ import json
 import subprocess
 from pathlib import Path
 
+try:
+    from scripts.backup_postgres import add_compose_args, compose_base, compose_summary
+except ModuleNotFoundError:  # pragma: no cover - exercised by direct script execution
+    from backup_postgres import add_compose_args, compose_base, compose_summary
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
-DEFAULT_COMPOSE_FILE = REPO_ROOT / "infra" / "docker" / "docker-compose.dev.yml"
 
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Verify a StudyNexs PostgreSQL backup.")
     parser.add_argument("backup", help="Path to a pg_dump -Fc backup artifact.")
-    parser.add_argument("--compose-file", default=str(DEFAULT_COMPOSE_FILE))
+    add_compose_args(parser)
     parser.add_argument("--service", default="postgres")
     return parser.parse_args()
 
@@ -31,12 +35,13 @@ def main() -> int:
     if not backup.exists():
         print(json.dumps({"status": "fail", "error": f"backup not found: {backup}"}))
         return 2
+    base = compose_base(args)
+    if isinstance(base, str):
+        print(json.dumps({"status": "fail", "error": base}, indent=2, sort_keys=True))
+        return 2
 
     command = [
-        "docker",
-        "compose",
-        "-f",
-        str(Path(args.compose_file).resolve()),
+        *base,
         "exec",
         "-T",
         args.service,
@@ -78,6 +83,7 @@ def main() -> int:
         "size_bytes": backup.stat().st_size,
         "restore_list_entries": len(entries),
         "contains_schema_entries": any("SCHEMA" in line or "TABLE" in line for line in entries),
+        **compose_summary(args),
     }
     print(json.dumps(payload, indent=2, sort_keys=True))
     return 0 if payload["contains_schema_entries"] else 1

@@ -59,6 +59,14 @@ set -euo pipefail
 bash /opt/studynexs/deploy/scripts/deploy.sh --branch develop
 ```
 
+If `/opt/studynexs/deploy/compose/docker-compose.prod.override.yml` exists, `deploy.sh` stops
+before doing anything. Review that file, then re-run with `--include-prod-override`. The
+flag only acknowledges intentional use; it is not a review.
+
+If the installed script answers `Unknown argument: --include-prod-override`, it predates the
+override check and has done nothing. Upgrade it first by re-running bootstrap from the updated
+repo (`oracle-vm-production-deployment.md` §8a); do not run the old script to upgrade itself.
+
 Verify the deployed runtime state on the VM:
 
 ```bash
